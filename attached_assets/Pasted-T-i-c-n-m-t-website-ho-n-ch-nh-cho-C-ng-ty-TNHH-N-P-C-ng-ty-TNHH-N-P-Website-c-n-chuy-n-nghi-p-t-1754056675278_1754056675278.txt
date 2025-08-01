@@ -1,0 +1,61 @@
+Tôi cần một website hoàn chỉnh cho Công ty TNHH N&P (Công ty TNHH N&P). Website cần chuyên nghiệp, thân thiện với người dùng và thể hiện rõ ràng bốn dịch vụ cốt lõi của chúng tôi: Dịch vụ xin thị thực, Tư vấn du học, Đào tạo tiếng Nhật và Bán vé máy bay.
+Dưới đây là những gì tôi hình dung cho từng mục và toàn bộ website:
+1. Trang chủ:
+* Tiêu đề: Hấp dẫn và lôi cuốn, nêu rõ sứ mệnh của N&P (ví dụ: "Đối tác tin cậy cho giấc mơ toàn cầu").
+* Mục nổi bật: Hình ảnh hoặc video chất lượng cao liên quan đến các dịch vụ của chúng tôi (ví dụ: du lịch toàn cầu, sinh viên đang theo học).
+* Tổng quan dịch vụ ngắn gọn: Tóm tắt ngắn gọn, hấp dẫn về từng dịch vụ trong bốn dịch vụ của chúng tôi với lời kêu gọi hành động (CTA) rõ ràng để tìm hiểu thêm.
+* Điểm khác biệt chính/Giá trị đề xuất: Điều gì làm nên sự khác biệt của N&P? (ví dụ: "Chuyên gia giàu kinh nghiệm", "Hỗ trợ cá nhân hóa", "Giá cả cạnh tranh", "Tỷ lệ thành công cao").
+* Lời chứng thực/Câu chuyện thành công của khách hàng: Vòng xoay phản hồi tích cực từ những khách hàng hài lòng.
+* Thông tin liên hệ: Hiển thị nổi bật, có thể là biểu mẫu liên hệ nhanh.
+2. Trang Dịch vụ Xin Thị thực:
+* Mô tả chi tiết: Giải thích các loại thị thực mà N&P hỗ trợ (ví dụ: du lịch, công tác, sinh viên, lao động) và các quốc gia chúng tôi chuyên về.
+* Tổng quan quy trình: Hướng dẫn từng bước về cách N&P hỗ trợ khách hàng xin thị thực.
+* Hồ sơ bắt buộc: Danh sách chung các giấy tờ phổ biến cần thiết.
+* Câu hỏi thường gặp: Các câu hỏi thường gặp về hồ sơ xin thị thực.
+* Lời kêu gọi hành động: "Nhận tư vấn miễn phí", "Nộp đơn ngay".
+3. Trang Tư vấn Du học:
+* Mô tả chi tiết: Nêu bật chuyên môn của chúng tôi trong việc giúp học sinh lựa chọn chương trình, trường đại học và quốc gia (ví dụ: Nhật Bản, Hàn Quốc, Hoa Kỳ, Canada, Châu Âu).
+* Dịch vụ cung cấp: (ví dụ: lựa chọn chương trình, hỗ trợ nộp đơn, hướng dẫn học bổng, hướng dẫn trước khi khởi hành, hỗ trợ chỗ ở).
+* Câu chuyện thành công/Điểm nổi bật của cựu sinh viên: Giới thiệu những sinh viên mà N&P đã hỗ trợ.
+* Tại sao nên du học với N&P?: Nhấn mạnh những lợi ích như hướng dẫn cá nhân hóa và mạng lưới rộng khắp.
+* Lời kêu gọi hành động: "Khám phá các lựa chọn học tập của bạn", "Đặt lịch tư vấn miễn phí".
+4. Trang Đào tạo Tiếng Nhật:
+* Các khóa học: Mô tả các cấp độ khác nhau (ví dụ: sơ cấp, trung cấp, cao cấp) và các loại khóa học (ví dụ: luyện thi JLPT, tiếng Nhật giao tiếp, tiếng Nhật thương mại).
+* Phương pháp giảng dạy: Giải thích phương pháp tiếp cận của N&P (ví dụ: người bản ngữ, sĩ số lớp học nhỏ, bài học tương tác).
+* Lịch học và Học phí: Cung cấp thông tin rõ ràng về thời gian học và cơ cấu học phí.
+* Hồ sơ giảng viên: Tiểu sử tóm tắt của các giáo viên tiếng Nhật có trình độ của chúng tôi.
+* Lời chứng thực của học viên: Phản hồi từ người học ngôn ngữ.
+* Lời kêu gọi hành động: "Xem lịch học", "Đăng ký lớp học thử miễn phí".
+5. Trang Bán Vé Máy Bay:
+* Lợi ích khi Đặt Vé với N&P: (ví dụ: "Giá Cả Cạnh Tranh", "Hàng Không Đa Dạng", "Hỗ Trợ 24/7", "Quy Trình Đặt Vé Dễ Dàng").
+* Đối Tác: Đề cập đến bất kỳ đối tác hàng không nào nếu có.
+* Tiện ích/Biểu Mẫu Đặt Vé (Tùy chọn cho việc tạo AI, nhưng cần lưu ý): Đề xuất thiết kế giao diện tìm kiếm và đặt vé máy bay trực quan.
+* Ưu Đãi/Khuyến Mãi Đặc Biệt: Làm nổi bật bất kỳ chương trình khuyến mãi hiện hành nào.
+* Lời Kêu Gọi Hành Động: "Tìm Chuyến Bay Của Bạn", "Nhận Báo Giá".
+6. Trang Giới Thiệu:
+* Câu Chuyện Của Chúng Tôi: Lịch sử, sứ mệnh và giá trị của N&P.
+* Đội Ngũ: Giới thiệu các thành viên chủ chốt của đội ngũ N&P.
+* Tầm Nhìn và Sứ Mệnh: Nêu rõ các mục tiêu dài hạn của chúng tôi.
+* Tại Sao Chọn N&P?: Nhắc lại các điểm bán hàng độc đáo của chúng tôi.
+7. Trang Liên Hệ:
+* Biểu Mẫu Liên Hệ: Biểu mẫu dễ sử dụng để liên hệ.
+* Số Điện Thoại, Địa Chỉ Email: Được liệt kê rõ ràng.
+* Địa chỉ Văn phòng và Bản đồ: Nếu có.
+* Giờ hoạt động:
+* Liên kết Mạng xã hội: Liên kết đến các trang mạng xã hội của chúng tôi.
+Yêu cầu Chung về Website:
+* Thiết kế: Hiện đại, gọn gàng, chuyên nghiệp và đáng tin cậy. Sử dụng bảng màu thống nhất (ví dụ: tông màu xanh lam, xanh lá cây hoặc vàng để tạo sự tin tưởng và an toàn).
+* Tương thích với thiết bị di động: Website phải tương thích hoàn toàn và hiển thị đẹp mắt trên mọi thiết bị (máy tính để bàn, máy tính bảng, điện thoại di động).
+* Thân thiện với SEO: Được tối ưu hóa cho các công cụ tìm kiếm với các từ khóa phù hợp cho từng dịch vụ.
+* Điều hướng rõ ràng: Cấu trúc menu trực quan.
+* Hình ảnh/Video chất lượng cao: Sử dụng hình ảnh chuyên nghiệp và phù hợp trên toàn bộ trang web.
+* Ngôn ngữ: Chủ yếu là tiếng Việt, có tùy chọn dịch sang tiếng Anh (nếu AI có thể gợi ý).
+* Giọng điệu: Chuyên nghiệp, hữu ích, đồng cảm và am hiểu.
+Vui lòng tạo nội dung sau dựa trên gợi ý này:
+Cấu trúc/Sơ đồ trang web: Sơ đồ rõ ràng về tất cả các trang và thứ bậc của chúng.
+Gợi ý nội dung: Tiêu đề chính, dấu đầu dòng và ý tưởng đoạn văn cho mỗi trang.
+Yếu tố thiết kế/Ý tưởng bố cục: Gợi ý về yếu tố hình ảnh, bảng màu và bố cục trang tổng thể.
+Ý tưởng từ khóa: Từ khóa liên quan cho từng dịch vụ để cải thiện SEO.
+
+Ví dụ về lời kêu gọi hành động (CTA): CTA cụ thể và hấp dẫn cho các phần khác nhau.
+Những thách thức/cân nhắc tiềm ẩn: Bất kỳ thách thức nào liên quan đến kỹ thuật hoặc nội dung cần lưu ý.
