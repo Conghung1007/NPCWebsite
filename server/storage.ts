@@ -150,7 +150,7 @@ export class MemStorage implements IStorage {
     return this.getAllArticles();
   }
 
-  async updateArticle(id: string, title: string, content: string, category: string, imageUrl?: string | null): Promise<Article | null> {
+  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null }): Promise<Article | null> {
     const existingArticle = this.articles.get(id);
     if (!existingArticle) {
       return null;
@@ -158,11 +158,10 @@ export class MemStorage implements IStorage {
     
     const updatedArticle = {
       ...existingArticle,
-      title,
-      content,
-      category,
-      imageUrl: imageUrl !== undefined ? imageUrl : existingArticle.imageUrl,
-      updatedAt: new Date()
+      title: updateData.title,
+      content: updateData.content,
+      category: updateData.category,
+      imageUrl: updateData.imageUrl !== undefined ? updateData.imageUrl : existingArticle.imageUrl,
     };
     
     this.articles.set(id, updatedArticle);

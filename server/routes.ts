@@ -281,7 +281,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const imageMatch = content.match(/!\[([^\]]*)\]\(([^)]+)\)/);
       const imageUrl = imageMatch ? imageMatch[2] : null;
 
-      const updatedArticle = await storage.updateArticle(id, title, content, category, imageUrl);
+      const updatedArticle = await storage.updateArticle(id, { title, content, category, imageUrl });
 
       if (!updatedArticle) {
         return res.status(404).json({ 
@@ -300,16 +300,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/articles/:id", async (req, res) => {
     try {
       const { id } = req.params;
+      
+      // Get article first to extract images before deleting
+      const article = await storage.getArticle(id);
+      if (!article) {
+        return res.status(404).json({ success: false, message: "Không tìm thấy bài viết" });
+      }
+
+      // Extract all image URLs from content and thumbnail
+      const imageUrls: string[] = [];
+      
+      // Add thumbnail if exists
+      if (article.imageUrl) {
+        imageUrls.push(article.imageUrl);
+      }
+      
+      // Extract all images from content
+      const imageMatches = article.content.match(/!\[([^\]]*)\]\(([^)]+)\)/g);
+      if (imageMatches) {
+        imageMatches.forEach(match => {
+          const urlMatch = match.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+          if (urlMatch && urlMatch[2]) {
+            imageUrls.push(urlMatch[2]);
+          }
+        });
+      }
+
+      // Delete images from object storage
+      const objectStorageService = new ObjectStorageService();
+      for (const imageUrl of imageUrls) {
+        try {
+          if (imageUrl.startsWith('/objects/')) {
+            const objectFile = await objectStorageService.getObjectEntityFile(imageUrl);
+            await objectFile.delete();
+            console.log(`Deleted image: ${imageUrl}`);
+          }
+        } catch (error) {
+          console.error(`Failed to delete image ${imageUrl}:`, error);
+          // Continue with deletion even if some images fail
+        }
+      }
+
+      // Delete the article
       const deleted = await storage.deleteArticle(id);
       
       if (deleted) {
-        res.json({ success: true, message: "Đã xóa bài viết thành công" });
+        res.json({ success: true, message: "Đã xóa bài viết và hình ảnh thành công" });
       } else {
         res.status(404).json({ success: false, message: "Không tìm thấy bài viết" });
       }
     } catch (error) {
       console.error("Error deleting article:", error);
-      res.status(500).json({ success: false, message: "Có lỗi xảy ra" });
+      res.status(500).json({ success: false, message: "Có lỗi xảy ra khi xóa bài viết" });
     }
   });
 
