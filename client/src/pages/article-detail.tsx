@@ -94,8 +94,8 @@ export default function ArticleDetail() {
 
         {/* Article content */}
         <article className="bg-white rounded-lg shadow-sm border border-gray-200">
-          {/* Header image */}
-          {article.imageUrl && (
+          {/* Header image - only show if not in content */}
+          {article.imageUrl && !article.content.includes(article.imageUrl) && (
             <div className="w-full h-64 md:h-80 lg:h-96 rounded-t-lg overflow-hidden">
               <img 
                 src={article.imageUrl} 
@@ -127,17 +127,10 @@ export default function ArticleDetail() {
             {/* Article content */}
             <div className="prose prose-lg max-w-none">
               <div className="text-gray-700 leading-relaxed text-base md:text-lg">
-                {(() => {
-                  let firstImageSkipped = false;
-                  return article.content.split('\n').map((line, index) => {
+                {article.content.split('\n').map((line, index) => {
                     // Handle images
                     const imageMatch = line.match(/!\[([^\]]*)\]\(([^)]+)\)/);
                     if (imageMatch) {
-                      // Skip the first image if it matches the header image
-                      if (!firstImageSkipped && article.imageUrl && imageMatch[2] === article.imageUrl) {
-                        firstImageSkipped = true;
-                        return null;
-                      }
                       return (
                         <figure key={index} className="my-6 inline-block">
                           <img 
@@ -185,8 +178,7 @@ export default function ArticleDetail() {
                     ) : (
                       <br key={index} />
                     );
-                  });
-                })()}
+                })}
               </div>
             </div>
 
