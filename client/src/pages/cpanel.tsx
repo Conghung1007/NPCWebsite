@@ -5,9 +5,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2 } from "lucide-react";
+import { ArticleManager } from "@/components/ArticleManager";
+import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText } from "lucide-react";
 import { type User as UserType, type ContactRequest } from "@shared/schema";
 
 export function CpanelPage() {
@@ -282,11 +284,24 @@ export function CpanelPage() {
                   Quản lý người dùng
                 </Button>
               )}
+              <Button 
+                variant={activeTab === "articles" ? "default" : "ghost"}
+                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
+                onClick={() => setActiveTab("articles")}
+              >
+                <FileText className="w-5 h-5" />
+                Quản lý bài viết
+              </Button>
             </div>
           </div>
 
           {/* Right Content Area */}
           <div className="flex-1">
+            {/* Articles Content - Available for all users */}
+            {activeTab === "articles" && (
+              <ArticleManager />
+            )}
+
             {/* Users Content - For managers and admins */}
             {canManageUsers && activeTab === "users" && (
               <div className="space-y-6">

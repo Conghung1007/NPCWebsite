@@ -26,6 +26,7 @@ export const articles = pgTable("articles", {
   title: text("title").notNull(),
   content: text("content").notNull(),
   imageUrl: text("image_url"),
+  videoUrl: text("video_url"), // Add video URL field
   category: text("category").notNull(), // visa-services, study-abroad, japanese-training, flight-tickets
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
