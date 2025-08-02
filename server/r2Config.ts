@@ -107,9 +107,13 @@ export class R2ClientManager {
       const command = new PutObjectCommand({
         Bucket: config.bucketName,
         Key: key,
+        ContentType: 'image/jpeg' // Default content type for images
       });
 
-      const signedUrl = await getSignedUrl(client, command, { expiresIn });
+      const signedUrl = await getSignedUrl(client, command, { 
+        expiresIn,
+        unhoistableHeaders: new Set(['content-type'])
+      });
       return signedUrl;
     } catch (error) {
       console.error(`Error generating upload URL for ${configName}:`, error);

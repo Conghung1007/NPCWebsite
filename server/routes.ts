@@ -662,7 +662,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get upload URL to ui-images folder
       const uploadConfig: MediaUploadConfig = {
         provider: config as "replit" | "primary" | "secondary",
-        folder: "ui-images",
+        folder: config === "replit" ? "uploads" : "ui-images", // Replit uses uploads folder
         allowedTypes: ["image/*"],
         maxSizeBytes: 10 * 1024 * 1024 // 10MB
       };
