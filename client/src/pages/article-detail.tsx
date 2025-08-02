@@ -6,10 +6,19 @@ import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Calendar, User, Tag } from "lucide-react";
 import { ArticleCard } from "@/components/ArticleCard";
 import type { Article } from "@shared/schema";
+import { useEffect } from "react";
 
 export default function ArticleDetail() {
   const { id } = useParams();
   const [, setLocation] = useLocation();
+
+  // Scroll to top when component mounts or id changes
+  useEffect(() => {
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
+  }, [id]);
 
   // Fetch article detail
   const { data: article, isLoading, error } = useQuery<Article>({
