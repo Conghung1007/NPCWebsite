@@ -114,7 +114,7 @@ export default function FlightTickets() {
       />
 
       {/* Benefits & Airlines */}
-      <section className="py-20 bg-white">
+      <section className="py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-3 gap-8 mb-16">
             <div className="lg:col-span-2">
@@ -173,7 +173,7 @@ export default function FlightTickets() {
       </section>
 
       {/* Popular Routes */}
-      <section className="py-20 bg-neutral">
+      <section className="py-12 bg-neutral">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h3 className="text-2xl font-bold text-foreground text-center mb-8">
             Tuyến bay phổ biến
