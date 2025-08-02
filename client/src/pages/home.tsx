@@ -5,7 +5,7 @@ import { ServiceCard } from "@/components/ui/service-card";
 import { TestimonialCard } from "@/components/ui/testimonial-card";
 import { ContactForm } from "@/components/ui/contact-form";
 import { Button } from "@/components/ui/button";
-import { AutoScrollingArticles } from "@/components/AutoScrollingArticles";
+import { ServiceWithArticles } from "@/components/ServiceWithArticles";
 import { 
   IdCard, 
   GraduationCap, 
@@ -53,25 +53,29 @@ export default function Home() {
       icon: <IdCard className="h-8 w-8 text-primary" />,
       title: "Dịch vụ xin thị thực",
       description: "Hỗ trợ xin thị thực du lịch, công tác, sinh viên cho hơn 50 quốc gia với tỷ lệ thành công 98%",
-      route: "/visa-services"
+      route: "/visa-services",
+      category: "visa-services"
     },
     {
       icon: <GraduationCap className="h-8 w-8 text-secondary" />,
       title: "Tư vấn du học", 
       description: "Tư vấn chọn trường, chương trình học, hỗ trợ hồ sơ và học bổng tại Nhật, Mỹ, Canada, Châu Âu",
-      route: "/study-abroad"
+      route: "/study-abroad",
+      category: "study-abroad"
     },
     {
       icon: <Languages className="h-8 w-8 text-accent" />,
       title: "Đào tạo tiếng Nhật",
       description: "Khóa học tiếng Nhật từ cơ bản đến nâng cao, luyện thi JLPT với giảng viên bản ngữ",
-      route: "/japanese-training"
+      route: "/japanese-training",
+      category: "japanese-training"
     },
     {
       icon: <Plane className="h-8 w-8 text-red-600" />,
       title: "Bán vé máy bay",
       description: "Vé máy bay giá tốt, đa dạng hãng hàng không, hỗ trợ 24/7 cho mọi hành trình của bạn",
-      route: "/flight-tickets"
+      route: "/flight-tickets",
+      category: "flight-tickets"
     }
   ];
 
@@ -153,7 +157,7 @@ export default function Home() {
         </div>
       </HeroSection>
 
-      {/* Services Overview */}
+      {/* Services with Articles */}
       <section id="services" className="py-20 bg-neutral">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
@@ -165,25 +169,19 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
+          <div className="space-y-20">
             {services.map((service, index) => (
-              <ServiceCard
+              <ServiceWithArticles
                 key={index}
-                icon={service.icon}
-                title={service.title}
-                description={service.description}
-                onClick={() => handleServiceClick(service.route)}
+                service={service}
+                category={service.category}
+                isReversed={index % 2 === 1}
+                onServiceClick={() => handleServiceClick(service.route)}
               />
             ))}
           </div>
         </div>
       </section>
-
-      {/* Auto-scrolling Articles Section */}
-      <AutoScrollingArticles 
-        title="Bài viết mới nhất" 
-        description="Cập nhật thông tin hữu ích từ N&P về visa, du học, tiếng Nhật và vé máy bay"
-      />
 
       {/* Why Choose N&P */}
       <section className="py-20 bg-white">
