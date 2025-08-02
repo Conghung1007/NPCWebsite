@@ -179,7 +179,7 @@ export default function VisaServices() {
         </div>
       </section>
       {/* Process Steps */}
-      <section className="py-20 bg-neutral">
+      <section className="py-20 bg-neutral pt-[30px] pb-[30px]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h3 className="text-2xl font-bold text-foreground text-center mb-12">
             Quy trình xin thị thực
