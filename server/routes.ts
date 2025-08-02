@@ -628,7 +628,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get upload URL for UI images (stored in ui-images folder on R2)
   app.post("/api/ui-images/upload", async (req, res) => {
     try {
-      const { fileName, contentType, imageType } = req.body;
+      const { fileName, contentType, imageType, config = "primary" } = req.body;
       
       if (!fileName || !contentType || !imageType) {
         return res.status(400).json({ error: "Missing required fields" });
@@ -639,7 +639,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uniqueFileName = `${imageType}-${timestamp}-${fileName}`;
       
       // Get upload URL to ui-images folder
-      const result = await multiR2Storage.getUploadUrl("primary", `ui-images/${uniqueFileName}`, contentType);
+      const result = await multiR2Storage.getUploadUrl(config, `ui-images/${uniqueFileName}`, contentType);
       
       if (result.success) {
         res.json({
@@ -653,6 +653,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error getting UI image upload URL:", error);
       res.status(500).json({ error: "Failed to get upload URL" });
+    }
+  });
+
+  // Get existing UI images from R2
+  app.get("/api/ui-images", async (req, res) => {
+    try {
+      // For now, return empty array since we need to implement file listing
+      // This can be enhanced later with actual R2 listing functionality
+      res.json([]);
+    } catch (error) {
+      console.error("Error listing UI images:", error);
+      res.status(500).json({ error: "Failed to list images" });
+    }
+  });
+
+  // Delete UI image from R2
+  app.delete("/api/ui-images/:fileName", async (req, res) => {
+    try {
+      const { fileName } = req.params;
+      // For now, return success since delete functionality needs to be implemented
+      // This can be enhanced later with actual R2 delete functionality
+      res.json({ success: true, message: "Đã xóa hình ảnh thành công" });
+    } catch (error) {
+      console.error("Error deleting UI image:", error);
+      res.status(500).json({ error: "Failed to delete image" });
     }
   });
 

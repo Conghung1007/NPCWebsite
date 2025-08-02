@@ -3,16 +3,26 @@ import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Upload, Eye, X } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Upload, Eye, X, ImageIcon, Trash2, Check, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 
 
 interface ImageManagerProps {
   currentImageUrl?: string;
   onImageUpdate: (newImageUrl: string) => void;
-  imageType: "hero" | "service" | "testimonial" | "feature" | "ui";
+  imageType: "hero" | "service" | "testimonial" | "feature" | "ui" | "why-choose-image";
   altText?: string;
   className?: string;
+}
+
+interface ExistingImage {
+  name: string;
+  url: string;
+  lastModified: string;
+  size: number;
 }
 
 export function ImageManager({
@@ -25,7 +35,43 @@ export function ImageManager({
   const [isOpen, setIsOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState("");
+  const [selectedExistingImage, setSelectedExistingImage] = useState<string>("");
+  const [activeTab, setActiveTab] = useState("upload");
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  // Fetch existing images from R2
+  const { data: existingImages, isLoading: loadingImages } = useQuery<ExistingImage[]>({
+    queryKey: ["/api/ui-images"],
+    retry: false,
+  });
+
+  // Delete image mutation
+  const deleteImageMutation = useMutation({
+    mutationFn: async (fileName: string) => {
+      const response = await fetch(`/api/ui-images/${fileName}`, {
+        method: 'DELETE',
+      });
+      if (!response.ok) {
+        throw new Error('Failed to delete image');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ui-images"] });
+      toast({
+        title: "Thành công",
+        description: "Đã xóa hình ảnh thành công",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa hình ảnh",
+        variant: "destructive"
+      });
+    }
+  });
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -167,6 +213,46 @@ export function ImageManager({
     }
   };
 
+  // Helper functions
+  const handleClose = () => {
+    setIsOpen(false);
+    setPreviewUrl("");
+    setSelectedExistingImage("");
+    setUploading(false);
+    setActiveTab("upload");
+  };
+
+  const handleDeleteImage = async (fileName: string) => {
+    if (confirm("Bạn có chắc chắn muốn xóa hình ảnh này không?")) {
+      deleteImageMutation.mutate(fileName);
+    }
+  };
+
+  const getImageName = (url: string) => {
+    const parts = url.split('/');
+    return parts[parts.length - 1];
+  };
+
+  const handleConfirm = () => {
+    if (activeTab === "upload" && previewUrl) {
+      onImageUpdate(previewUrl);
+      setIsOpen(false);
+      setPreviewUrl("");
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật hình ảnh thành công",
+      });
+    } else if (activeTab === "existing" && selectedExistingImage) {
+      onImageUpdate(selectedExistingImage);
+      setIsOpen(false);
+      setSelectedExistingImage("");
+      toast({
+        title: "Thành công",
+        description: "Đã chọn hình ảnh thành công",
+      });
+    }
+  };
+
   return (
     <>
       <Button
@@ -179,23 +265,29 @@ export function ImageManager({
         Đổi hình ảnh
       </Button>
 
-      <Dialog open={isOpen} onOpenChange={setIsOpen}>
-        <DialogContent className="sm:max-w-md">
+      <Dialog open={isOpen} onOpenChange={handleClose}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Cập nhật hình ảnh</DialogTitle>
+            <DialogTitle>Quản lý hình ảnh</DialogTitle>
           </DialogHeader>
           
-          <div className="space-y-4">
-            {currentImageUrl && (
-              <div className="space-y-2">
-                <Label>Hình ảnh hiện tại:</Label>
-                <img 
-                  src={currentImageUrl} 
-                  alt={altText}
-                  className="w-full h-32 object-cover rounded border"
-                />
-              </div>
-            )}
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="upload">Tải lên mới</TabsTrigger>
+              <TabsTrigger value="existing">Chọn có sẵn</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="upload" className="space-y-4">
+              {currentImageUrl && (
+                <div className="space-y-2">
+                  <Label>Hình ảnh hiện tại:</Label>
+                  <img 
+                    src={currentImageUrl} 
+                    alt={altText}
+                    className="w-full h-32 object-cover rounded border"
+                  />
+                </div>
+              )}
 
             <div className="space-y-2">
               <Label htmlFor="file-upload">Upload file mới:</Label>
@@ -271,7 +363,91 @@ export function ImageManager({
                 Hủy
               </Button>
             </div>
-          </div>
+            </TabsContent>
+
+            <TabsContent value="existing" className="space-y-4">
+              <div className="space-y-2">
+                <Label>Hình ảnh có sẵn trên hệ thống:</Label>
+                {loadingImages ? (
+                  <div className="text-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin mx-auto" />
+                    <p className="text-sm text-muted-foreground mt-2">Đang tải danh sách hình ảnh...</p>
+                  </div>
+                ) : existingImages && existingImages.length > 0 ? (
+                  <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto">
+                    {existingImages.map((image, index) => (
+                      <Card key={index} className={`cursor-pointer transition-all ${
+                        selectedExistingImage === image.url ? 'ring-2 ring-primary' : ''
+                      }`}>
+                        <CardContent className="p-2">
+                          <div className="relative">
+                            <img
+                              src={image.url}
+                              alt={image.name}
+                              className="w-full h-24 object-cover rounded"
+                              onClick={() => setSelectedExistingImage(image.url)}
+                            />
+                            {selectedExistingImage === image.url && (
+                              <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-1">
+                                <Check className="h-3 w-3" />
+                              </div>
+                            )}
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              className="absolute top-1 left-1 h-6 w-6 p-0"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                handleDeleteImage(getImageName(image.url));
+                              }}
+                              disabled={deleteImageMutation.isPending}
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1 truncate" title={image.name}>
+                            {image.name}
+                          </p>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
+                    <p className="text-sm text-muted-foreground">Chưa có hình ảnh nào</p>
+                  </div>
+                )}
+              </div>
+
+              {selectedExistingImage && (
+                <div className="space-y-2">
+                  <Label>Hình ảnh đã chọn:</Label>
+                  <img 
+                    src={selectedExistingImage}
+                    alt="Selected image"
+                    className="w-full h-32 object-cover rounded border"
+                  />
+                </div>
+              )}
+
+              <div className="flex gap-2 pt-4">
+                <Button
+                  onClick={handleConfirm}
+                  disabled={!selectedExistingImage}
+                  className="flex-1"
+                >
+                  Chọn hình ảnh này
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleClose}
+                >
+                  Hủy
+                </Button>
+              </div>
+            </TabsContent>
+          </Tabs>
         </DialogContent>
       </Dialog>
     </>
