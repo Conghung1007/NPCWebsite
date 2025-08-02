@@ -5,6 +5,43 @@ import { insertContactRequestSchema, insertArticleSchema } from "@shared/schema"
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Authentication routes
+  app.post("/api/auth/login", async (req, res) => {
+    try {
+      const { username, password } = req.body;
+      
+      if (!username || !password) {
+        return res.status(400).json({
+          success: false,
+          message: "Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu"
+        });
+      }
+
+      const user = await storage.authenticateUser(username, password);
+      
+      if (user) {
+        // Don't send password back to client
+        const { password: _, ...userWithoutPassword } = user;
+        res.json({
+          success: true,
+          message: "Đăng nhập thành công",
+          user: userWithoutPassword
+        });
+      } else {
+        res.status(401).json({
+          success: false,
+          message: "Tên đăng nhập hoặc mật khẩu không đúng"
+        });
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Có lỗi xảy ra, vui lòng thử lại sau"
+      });
+    }
+  });
+
   // Contact form submission
   app.post("/api/contact", async (req, res) => {
     try {

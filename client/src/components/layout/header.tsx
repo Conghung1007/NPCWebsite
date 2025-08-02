@@ -85,9 +85,11 @@ export function Header() {
             <Button variant="outline" size="sm" className="text-base">
               VI
             </Button>
-            <Button variant="outline" className="text-base">
-              Đăng nhập
-            </Button>
+            <Link href="/login">
+              <Button variant="outline" className="text-base">
+                Đăng nhập
+              </Button>
+            </Link>
           </div>
 
           {/* Mobile menu button */}
@@ -129,9 +131,11 @@ export function Header() {
                       <Button variant="outline" size="sm" className="text-base" onClick={() => setIsOpen(false)}>
                         VI
                       </Button>
-                      <Button variant="outline" className="flex-1 text-base" onClick={() => setIsOpen(false)}>
-                        Đăng nhập
-                      </Button>
+                      <Link href="/login" className="flex-1">
+                        <Button variant="outline" className="w-full text-base" onClick={() => setIsOpen(false)}>
+                          Đăng nhập
+                        </Button>
+                      </Link>
                     </div>
                   </div>
                 </div>
