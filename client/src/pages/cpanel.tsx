@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { ArticleManager } from "@/components/ArticleManager";
+import { Pagination } from "@/components/ui/pagination";
 import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText } from "lucide-react";
 import { type User as UserType, type ContactRequest } from "@shared/schema";
 
@@ -34,7 +35,7 @@ export function CpanelPage() {
     message: null
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const messagesPerPage = 10;
+  const messagesPerPage = 9;
   const { toast } = useToast();
 
   useEffect(() => {
@@ -240,14 +241,6 @@ export function CpanelPage() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-  };
-
-  const getPageNumbers = () => {
-    const pages = [];
-    for (let i = 1; i <= totalPages; i++) {
-      pages.push(i);
-    }
-    return pages;
   };
 
   return (
@@ -549,66 +542,16 @@ export function CpanelPage() {
                         
                         {/* Pagination */}
                         {totalPages > 1 && (
-                          <div className="flex items-center justify-between mt-6">
-                            <div className="text-sm text-muted-foreground">
+                          <div className="mt-6">
+                            <div className="mb-4 text-center text-sm text-muted-foreground">
                               Hiển thị {startIndex + 1}-{Math.min(endIndex, sortedMessages.length)} trong tổng số {sortedMessages.length} tin nhắn
                             </div>
-                            <div className="flex items-center space-x-2">
-                              {/* First Page */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePageChange(1)}
-                                disabled={currentPage === 1}
-                              >
-                                Đầu
-                              </Button>
-                              
-                              {/* Previous Page */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePageChange(currentPage - 1)}
-                                disabled={currentPage === 1}
-                              >
-                                Trước
-                              </Button>
-                              
-                              {/* Page Numbers */}
-                              <div className="flex items-center space-x-1">
-                                {getPageNumbers().map((page) => (
-                                  <Button
-                                    key={page}
-                                    variant={currentPage === page ? "default" : "outline"}
-                                    size="sm"
-                                    onClick={() => handlePageChange(page)}
-                                    className="w-10 h-8"
-                                  >
-                                    {page}
-                                  </Button>
-                                ))}
-                              </div>
-                              
-                              {/* Next Page */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePageChange(currentPage + 1)}
-                                disabled={currentPage === totalPages}
-                              >
-                                Kế
-                              </Button>
-                              
-                              {/* Last Page */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePageChange(totalPages)}
-                                disabled={currentPage === totalPages}
-                              >
-                                Cuối
-                              </Button>
-                            </div>
+                            <Pagination
+                              currentPage={currentPage}
+                              totalPages={totalPages}
+                              onPageChange={handlePageChange}
+                              className="justify-center"
+                            />
                           </div>
                         )}
                       </>
