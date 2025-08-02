@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +23,8 @@ import {
   Edit2, 
   Trash2,
   Save,
-  X
+  X,
+  Plus
 } from "lucide-react";
 import type { Article } from "@shared/schema";
 
@@ -238,7 +240,15 @@ export function ArticleManager() {
 
       <Card>
         <CardHeader>
-          <CardTitle>Danh sách bài viết</CardTitle>
+          <div className="flex items-center justify-between">
+            <CardTitle>Danh sách bài viết</CardTitle>
+            <Link href="/create-article">
+              <Button className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Tạo bài viết mới
+              </Button>
+            </Link>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (
