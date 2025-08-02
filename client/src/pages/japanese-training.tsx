@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { TestimonialCard } from "@/components/ui/testimonial-card";
 import { ArticleSection } from "@/components/ArticleSection";
 import { ImageManager } from "@/components/ui/image-manager";
+import { InstructorCard } from "@/components/ui/instructor-card";
 import { 
   Sprout, 
   TreePine, 
@@ -29,7 +30,6 @@ export default function JapaneseTraining() {
   const [classroomImage, setClassroomImage] = useState("https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600");
   const [showHeroImageManager, setShowHeroImageManager] = useState(false);
   const [showClassroomImageManager, setShowClassroomImageManager] = useState(false);
-  const [showInstructorImageManager, setShowInstructorImageManager] = useState<number | null>(null);
 
   useEffect(() => {
     document.title = "Đào Tạo Tiếng Nhật - N&P Company";
@@ -352,26 +352,15 @@ export default function JapaneseTraining() {
           </h3>
           <div className="grid md:grid-cols-3 gap-8">
             {instructors.map((instructor, index) => (
-              <Card key={index} className="text-center">
-                <CardContent className="p-6">
-                  <div className="relative group w-24 h-24 mx-auto mb-4">
-                    <img 
-                      src={instructor.avatar} 
-                      alt={instructor.name}
-                      className="w-24 h-24 rounded-full object-cover" 
-                    />
-                    <button
-                      onClick={() => setShowInstructorImageManager(instructor.id)}
-                      className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-50 rounded-full flex items-center justify-center transition-all duration-200 opacity-0 group-hover:opacity-100"
-                    >
-                      <Edit className="h-5 w-5 text-white" />
-                    </button>
-                  </div>
-                  <h4 className="font-semibold text-foreground mb-2">{instructor.name}</h4>
-                  <p className="text-accent text-sm mb-3">{instructor.title}</p>
-                  <p className="text-muted-foreground text-sm">{instructor.description}</p>
-                </CardContent>
-              </Card>
+              <InstructorCard
+                key={index}
+                name={instructor.name}
+                title={instructor.title}
+                description={instructor.description}
+                avatar={instructor.avatar}
+                allowAvatarEdit={true}
+                onAvatarUpdate={(newAvatar) => handleInstructorAvatarUpdate(instructor.id, newAvatar)}
+              />
             ))}
           </div>
         </div>
@@ -383,40 +372,6 @@ export default function JapaneseTraining() {
         title="Thông tin về tiếng Nhật"
         description="Mẹo học tiếng Nhật hiệu quả và thông tin về văn hóa Nhật Bản"
       />
-
-      {/* Instructor Image Manager Modal */}
-      {showInstructorImageManager && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg max-w-4xl w-full mx-4" style={{ height: '95vh' }}>
-            <div className="p-6 border-b">
-              <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold">
-                  Cập nhật avatar giảng viên
-                </h3>
-                <button
-                  onClick={() => setShowInstructorImageManager(null)}
-                  className="text-gray-500 hover:text-gray-700"
-                >
-                  ✕
-                </button>
-              </div>
-            </div>
-            <div className="p-6 overflow-y-auto" style={{ height: 'calc(95vh - 120px)' }}>
-              <ImageManager
-                onImageSelect={(imageUrl) => {
-                  if (showInstructorImageManager) {
-                    handleInstructorAvatarUpdate(showInstructorImageManager, imageUrl);
-                    setShowInstructorImageManager(null);
-                  }
-                }}
-                folder="ui-images"
-                imageType={`instructor-${showInstructorImageManager}`}
-                currentImageUrl={instructors.find(i => i.id === showInstructorImageManager)?.avatar}
-              />
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }
