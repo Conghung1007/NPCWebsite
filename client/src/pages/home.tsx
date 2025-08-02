@@ -136,7 +136,7 @@ export default function Home() {
         title="Đối tác tin cậy cho"
         subtitle="giấc mơ toàn cầu"
         description="Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và vé máy bay với hơn 10 năm kinh nghiệm"
-        backgroundImage="https://images.unsplash.com/photo-1556075798-4825dfaaf498?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080"
+        backgroundImage="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080"
         primaryAction={{
           text: "Tư vấn miễn phí ngay",
           onClick: handleContactClick
