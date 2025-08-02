@@ -1,12 +1,65 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Menu, User, LogOut } from "lucide-react";
 
 export function Header() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
+  const [user, setUser] = useState(null);
+
+  // Check for logged in user on component mount and when localStorage changes
+  useEffect(() => {
+    const checkUser = () => {
+      const userData = localStorage.getItem("user");
+      if (userData) {
+        try {
+          setUser(JSON.parse(userData));
+        } catch (error) {
+          console.error("Error parsing user data:", error);
+          localStorage.removeItem("user");
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+    };
+
+    checkUser();
+    
+    // Listen for storage changes (login/logout in other tabs or components)
+    const handleStorageChange = (e) => {
+      if (e.key === "user") {
+        checkUser();
+      }
+    };
+
+    window.addEventListener("storage", handleStorageChange);
+    
+    // Also listen for custom events for same-tab updates
+    const handleUserChange = () => {
+      checkUser();
+    };
+    
+    window.addEventListener("userChange", handleUserChange);
+    
+    return () => {
+      window.removeEventListener("storage", handleStorageChange);
+      window.removeEventListener("userChange", handleUserChange);
+    };
+  }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem("user");
+    setUser(null);
+    
+    // Trigger event for same-tab updates
+    window.dispatchEvent(new CustomEvent("userChange"));
+    
+    setLocation("/");
+  };
 
   const services = [
     {
@@ -85,11 +138,31 @@ export function Header() {
             <Button variant="outline" size="sm" className="text-base">
               VI
             </Button>
-            <Link href="/login">
-              <Button variant="outline" className="text-base">
-                Đăng nhập
-              </Button>
-            </Link>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="text-base">
+                    <User className="w-4 h-4 mr-2" />
+                    {user.username}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem disabled>
+                    <span className="font-medium">{user.role}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Đăng xuất
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Link href="/login">
+                <Button variant="outline" className="text-base">
+                  Đăng nhập
+                </Button>
+              </Link>
+            )}
           </div>
 
           {/* Mobile menu button */}
@@ -131,11 +204,32 @@ export function Header() {
                       <Button variant="outline" size="sm" className="text-base" onClick={() => setIsOpen(false)}>
                         VI
                       </Button>
-                      <Link href="/login" className="flex-1">
-                        <Button variant="outline" className="w-full text-base" onClick={() => setIsOpen(false)}>
-                          Đăng nhập
-                        </Button>
-                      </Link>
+                      {user ? (
+                        <div className="flex-1 space-y-2">
+                          <div className="text-sm text-center">
+                            <span className="font-medium">{user.username}</span>
+                            <br />
+                            <span className="text-muted-foreground">({user.role})</span>
+                          </div>
+                          <Button 
+                            variant="outline" 
+                            className="w-full text-base" 
+                            onClick={() => {
+                              handleLogout();
+                              setIsOpen(false);
+                            }}
+                          >
+                            <LogOut className="w-4 h-4 mr-2" />
+                            Đăng xuất
+                          </Button>
+                        </div>
+                      ) : (
+                        <Link href="/login" className="flex-1">
+                          <Button variant="outline" className="w-full text-base" onClick={() => setIsOpen(false)}>
+                            Đăng nhập
+                          </Button>
+                        </Link>
+                      )}
                     </div>
                   </div>
                 </div>

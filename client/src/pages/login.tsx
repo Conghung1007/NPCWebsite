@@ -61,6 +61,9 @@ export default function Login() {
         // Store user data in localStorage
         localStorage.setItem("user", JSON.stringify(data.user));
         
+        // Trigger custom event for same-tab updates
+        window.dispatchEvent(new CustomEvent("userChange"));
+        
         // Redirect to home page
         setLocation("/");
       } else {
