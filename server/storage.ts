@@ -22,7 +22,7 @@ export interface IStorage {
   getAllArticles(): Promise<Article[]>;
   getArticles(): Promise<Article[]>;
   getArticle(id: string): Promise<Article | undefined>;
-  updateArticle(id: string, title: string, content: string, category: string, imageUrl?: string | null): Promise<Article | null>;
+  updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null }): Promise<Article | null>;
   deleteArticle(id: string): Promise<boolean>;
 }
 
@@ -550,13 +550,18 @@ export class DatabaseStorage implements IStorage {
     return this.getAllArticles();
   }
 
-  async updateArticle(article: Article): Promise<Article> {
+  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null }): Promise<Article | null> {
     const [updatedArticle] = await db
       .update(articles)
-      .set(article)
-      .where(eq(articles.id, article.id))
+      .set(updateData)
+      .where(eq(articles.id, id))
       .returning();
-    return updatedArticle;
+    return updatedArticle || null;
+  }
+
+  async deleteArticle(id: string): Promise<boolean> {
+    const result = await db.delete(articles).where(eq(articles.id, id));
+    return (result.rowCount || 0) > 0;
   }
 }
 
