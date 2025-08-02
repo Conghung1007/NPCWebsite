@@ -115,23 +115,32 @@ export function ImageManager({
 
       const uploadData = await uploadResponse.json();
 
-      // Upload file to R2
-      console.log('Uploading to URL:', uploadData.uploadURL);
-      console.log('File type:', file.type, 'File size:', file.size);
+      // Try upload to R2 first, fallback to Replit if CORS fails
+      let finalUploadUrl = uploadData.uploadURL;
+      let uploadSuccessful = false;
       
-      const uploadResult = await fetch(uploadData.uploadURL, {
-        method: 'PUT',
-        body: file,
-        headers: {
-          'Content-Type': file.type || 'image/jpeg'
-        },
-        mode: 'cors'
-      });
-
-      if (!uploadResult.ok) {
-        // If CORS error with external R2, fallback to Replit storage
-        console.log('External R2 upload failed, trying Replit storage...');
+      try {
+        console.log('Trying R2 upload to:', uploadData.uploadURL);
+        console.log('File type:', file.type, 'File size:', file.size);
         
+        const uploadResult = await fetch(uploadData.uploadURL, {
+          method: 'PUT',
+          body: file,
+          headers: {
+            'Content-Type': file.type || 'image/jpeg'
+          },
+          mode: 'cors'
+        });
+
+        if (uploadResult.ok) {
+          uploadSuccessful = true;
+        } else {
+          throw new Error(`R2 upload failed with status: ${uploadResult.status}`);
+        }
+      } catch (r2Error) {
+        console.log('R2 upload failed, trying Replit storage...', r2Error);
+        
+        // Fallback to Replit storage
         const replitUploadResponse = await fetch(`/api/ui-images/upload`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -139,12 +148,12 @@ export function ImageManager({
             fileName: file.name,
             contentType: file.type,
             imageType: imageType,
-            config: "replit" // Use Replit storage
+            config: "replit"
           })
         });
         
         if (!replitUploadResponse.ok) {
-          throw new Error('Both R2 and Replit upload failed');
+          throw new Error('Failed to get Replit upload URL');
         }
         
         const replitUploadData = await replitUploadResponse.json();
@@ -158,11 +167,15 @@ export function ImageManager({
         });
         
         if (!replitResult.ok) {
-          throw new Error('Replit upload failed');
+          throw new Error('Replit upload also failed');
         }
         
-        // Update uploadData to use Replit URL
-        uploadData.uploadURL = replitUploadData.uploadURL;
+        finalUploadUrl = replitUploadData.path || replitUploadData.uploadURL.split('?')[0];
+        uploadSuccessful = true;
+      }
+
+      if (!uploadSuccessful) {
+        throw new Error('All upload methods failed');
       }
 
       // Update image metadata
@@ -170,7 +183,7 @@ export function ImageManager({
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          imageUrl: uploadData.uploadURL.split('?')[0], // Remove query params
+          imageUrl: finalUploadUrl, // Use the successful upload URL
           imageType: imageType,
           altText: altText
         })
