@@ -140,7 +140,7 @@ export default function VisaServices() {
         }}
       />
       {/* Visa Types & Countries */}
-      <section className="py-20 bg-white pt-[50px] pb-[50px]">
+      <section className="py-20 bg-white pt-[60px] pb-[60px]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 mb-16">
             <div>
