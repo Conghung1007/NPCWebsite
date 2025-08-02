@@ -209,6 +209,17 @@ export function CpanelPage() {
     setDeleteMessageConfirm({ isOpen: false, message: null });
   };
 
+  const getServiceName = (service: string) => {
+    const serviceNames: Record<string, string> = {
+      'visa-services': 'Dịch vụ Visa',
+      'study-abroad': 'Du học',
+      'japanese-training': 'Đào tạo tiếng Nhật',
+      'flight-tickets': 'Vé máy bay',
+      'flights': 'Vé máy bay'
+    };
+    return serviceNames[service] || service || 'Chưa chọn';
+  };
+
   if (!user) {
     return null; // Will redirect to login
   }
@@ -485,7 +496,7 @@ export function CpanelPage() {
                                 <TableCell>{message.phone}</TableCell>
                                 <TableCell>
                                   <Badge variant="outline" className="text-sm">
-                                    {message.service || "Chưa chọn"}
+                                    {getServiceName(message.service)}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="max-w-xs">
@@ -640,7 +651,7 @@ export function CpanelPage() {
                   <div>
                     <label className="block text-sm font-medium mb-1">Dịch vụ quan tâm</label>
                     <Badge variant="outline" className="text-sm">
-                      {messageDetail.message.service}
+                      {getServiceName(messageDetail.message.service)}
                     </Badge>
                   </div>
                 </div>
