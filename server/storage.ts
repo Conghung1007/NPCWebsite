@@ -1,5 +1,5 @@
-import { type User, type InsertUser, type ContactRequest, type InsertContactRequest, type Article, type InsertArticle } from "@shared/schema";
-import { users, contactRequests, articles } from "@shared/schema";
+import { type User, type InsertUser, type ContactRequest, type InsertContactRequest, type Article, type InsertArticle, type UiImage, type InsertUiImage } from "@shared/schema";
+import { users, contactRequests, articles, uiImages } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -25,17 +25,27 @@ export interface IStorage {
   updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number }): Promise<Article | null>;
   deleteArticle(id: string): Promise<boolean>;
   moveArticleOrder(id: string, direction: 'up' | 'down'): Promise<boolean>;
+  
+  // UI Images methods
+  createUiImage(uiImage: InsertUiImage): Promise<UiImage>;
+  getUiImagesByType(imageType: string): Promise<UiImage[]>;
+  getAllUiImages(): Promise<UiImage[]>;
+  updateUiImage(id: string, updateData: Partial<InsertUiImage>): Promise<UiImage | null>;
+  deleteUiImage(id: string): Promise<boolean>;
+  getUiImageByType(imageType: string): Promise<UiImage | undefined>;
 }
 
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private contactRequests: Map<string, ContactRequest>;
   private articles: Map<string, Article>;
+  private uiImages: Map<string, UiImage>;
 
   constructor() {
     this.users = new Map();
     this.contactRequests = new Map();
     this.articles = new Map();
+    this.uiImages = new Map();
     this.seedUsers();
     this.seedArticles();
     console.log(`Seeded ${this.articles.size} articles`);
@@ -495,6 +505,55 @@ export class MemStorage implements IStorage {
       this.articles.set(article.id, article as Article);
     });
   }
+
+  // UI Images methods
+  async createUiImage(uiImageData: InsertUiImage): Promise<UiImage> {
+    const id = randomUUID();
+    const uiImage: UiImage = {
+      ...uiImageData,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.uiImages.set(id, uiImage);
+    return uiImage;
+  }
+
+  async getUiImagesByType(imageType: string): Promise<UiImage[]> {
+    return Array.from(this.uiImages.values()).filter(
+      (image) => image.imageType === imageType
+    );
+  }
+
+  async getAllUiImages(): Promise<UiImage[]> {
+    return Array.from(this.uiImages.values());
+  }
+
+  async updateUiImage(id: string, updateData: Partial<InsertUiImage>): Promise<UiImage | null> {
+    const existingImage = this.uiImages.get(id);
+    if (!existingImage) {
+      return null;
+    }
+
+    const updatedImage: UiImage = {
+      ...existingImage,
+      ...updateData,
+      updatedAt: new Date()
+    };
+
+    this.uiImages.set(id, updatedImage);
+    return updatedImage;
+  }
+
+  async deleteUiImage(id: string): Promise<boolean> {
+    return this.uiImages.delete(id);
+  }
+
+  async getUiImageByType(imageType: string): Promise<UiImage | undefined> {
+    return Array.from(this.uiImages.values()).find(
+      (image) => image.imageType === imageType
+    );
+  }
 }
 
 // Database Storage Implementation
@@ -664,6 +723,42 @@ export class DatabaseStorage implements IStorage {
     // Execute all updates
     await Promise.all(updates);
     return true;
+  }
+
+  // UI Images methods for DatabaseStorage
+  async createUiImage(insertUiImage: InsertUiImage): Promise<UiImage> {
+    const [uiImage] = await db
+      .insert(uiImages)
+      .values(insertUiImage)
+      .returning();
+    return uiImage;
+  }
+
+  async getUiImagesByType(imageType: string): Promise<UiImage[]> {
+    return await db.select().from(uiImages).where(eq(uiImages.imageType, imageType));
+  }
+
+  async getAllUiImages(): Promise<UiImage[]> {
+    return await db.select().from(uiImages);
+  }
+
+  async updateUiImage(id: string, updateData: Partial<InsertUiImage>): Promise<UiImage | null> {
+    const [uiImage] = await db
+      .update(uiImages)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(uiImages.id, id))
+      .returning();
+    return uiImage || null;
+  }
+
+  async deleteUiImage(id: string): Promise<boolean> {
+    const result = await db.delete(uiImages).where(eq(uiImages.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async getUiImageByType(imageType: string): Promise<UiImage | undefined> {
+    const [uiImage] = await db.select().from(uiImages).where(eq(uiImages.imageType, imageType));
+    return uiImage || undefined;
   }
 }
 

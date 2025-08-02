@@ -654,7 +654,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // UI Images Management API endpoints
 
-  // Server-side upload to R2 (avoids CORS issues)
+  // Get all UI images 
+  app.get("/api/ui-images", async (req, res) => {
+    try {
+      const uiImages = await storage.getAllUiImages();
+      res.json(uiImages);
+    } catch (error) {
+      console.error("Error fetching UI images:", error);
+      res.status(500).json({ error: "Failed to fetch UI images" });
+    }
+  });
+
+  // Server-side upload to R2 (similar to article uploads)
   app.post("/api/ui-images/server-upload", upload.single('file'), async (req, res) => {
     try {
       const file = req.file;
@@ -670,46 +681,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uniqueFileName = `${imageType}-${timestamp}.${fileExtension}`;
       const fullPath = `ui-images/${uniqueFileName}`;
       
-      // Upload directly to R2 from server
-      const uploadUrl = await r2Manager.generateUploadUrl("primary", fullPath, 3600);
-      if (!uploadUrl) {
-        return res.status(500).json({ error: "Failed to generate upload URL" });
-      }
-      
-      // Upload file buffer to R2
-      const uploadResponse = await fetch(uploadUrl, {
-        method: 'PUT',
-        body: file.buffer,
-        headers: {
-          'Content-Type': file.mimetype
-        }
-      });
-      
-      if (!uploadResponse.ok) {
-        return res.status(500).json({ error: "Upload to R2 failed" });
-      }
-      
-      // Generate public URL
-      const config = EXTERNAL_R2_CONFIGS.primary;
-      const publicUrl = `${config.endpoint}/${config.bucketName}/${fullPath}`;
-      
-      // Update UI images in storage
-      const currentImages = storage.getUIImages();
-      const updatedImages = {
-        ...currentImages,
-        [imageType]: {
-          url: publicUrl,
-          altText: altText || '',
-          lastUpdated: new Date().toISOString()
-        }
+      // Upload directly to R2 from server using multiR2Storage
+      const uploadConfig: MediaUploadConfig = {
+        provider: "primary",
+        folder: "ui-images",
+        allowedTypes: ["image/*"],
+        maxSizeBytes: 10 * 1024 * 1024
       };
       
-      storage.updateUIImages(updatedImages);
+      const uploadResult = await multiR2Storage.uploadFile(file.buffer, uniqueFileName, file.mimetype, uploadConfig);
+      
+      if (!uploadResult.success) {
+        return res.status(500).json({ error: uploadResult.error || "Upload to R2 failed" });
+      }
+      
+      // Save to database/storage
+      const uiImage = await storage.createUiImage({
+        imageUrl: uploadResult.url!,
+        imageType: imageType,
+        altText: altText || null,
+        description: null
+      });
       
       res.json({
         success: true,
-        imageUrl: publicUrl,
-        imageType: imageType
+        imageUrl: uploadResult.url,
+        imageType: imageType,
+        uiImage: uiImage
       });
       
     } catch (error) {

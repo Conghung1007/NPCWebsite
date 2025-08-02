@@ -98,24 +98,7 @@ export function ImageManager({
     setUploading(true);
     
     try {
-      // Get upload URL for UI images folder
-      const uploadResponse = await fetch(`/api/ui-images/upload`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: file.name,
-          contentType: file.type,
-          imageType: imageType
-        })
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to get upload URL');
-      }
-
-      const uploadData = await uploadResponse.json();
-
-      // Upload via server (to avoid CORS issues)
+      // Upload directly via server (like article uploads)
       console.log('Uploading file via server...', file.name, file.type, file.size);
       
       const formData = new FormData();
@@ -129,7 +112,8 @@ export function ImageManager({
       });
       
       if (!serverUploadResponse.ok) {
-        throw new Error('Server upload failed');
+        const errorText = await serverUploadResponse.text();
+        throw new Error(`Server upload failed: ${errorText}`);
       }
       
       const serverUploadData = await serverUploadResponse.json();
