@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { ArticleMediaManager } from "./ArticleMediaManager";
+import { StorageProviderSelector } from "./StorageProviderSelector";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { 
@@ -50,6 +51,7 @@ export function ArticleManager() {
     content: "",
     category: ""
   });
+  const [selectedProvider, setSelectedProvider] = useState<string>("replit");
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -258,10 +260,16 @@ export function ArticleManager() {
               />
             </div>
 
+            <StorageProviderSelector
+              selectedProvider={selectedProvider}
+              onProviderChange={setSelectedProvider}
+            />
+
             <ArticleMediaManager
               onMediaChange={handleMediaChange}
               initialImage={formData.imageUrl}
               initialVideo={formData.videoUrl}
+              storageProvider={selectedProvider}
             />
 
             <div className="flex gap-2">

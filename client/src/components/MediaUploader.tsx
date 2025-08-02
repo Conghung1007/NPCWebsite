@@ -93,23 +93,7 @@ export function MediaUploader({
         locale={{
           strings: {
             dropPasteFiles: "Kéo thả file hoặc %{browseFiles}",
-            browseFiles: "chọn file",
-            uploadingXFiles: {
-              0: "Đang upload %{smart_count} file",
-              1: "Đang upload %{smart_count} files",
-            },
-            uploadComplete: "Upload thành công!",
-            uploadFailed: "Upload thất bại",
-            paused: "Tạm dừng",
-            retry: "Thử lại",
-            cancel: "Hủy",
-            done: "Hoàn thành",
-            removeFile: "Xóa file",
-            editFile: "Chỉnh sửa file",
-            editing: "Đang chỉnh sửa %{file}",
-            finishEditingFile: "Hoàn thành chỉnh sửa file",
-            saveChanges: "Lưu thay đổi",
-            cancelChanges: "Hủy thay đổi"
+            browseFiles: "chọn file"
           }
         }}
       />

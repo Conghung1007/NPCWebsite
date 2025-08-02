@@ -16,12 +16,14 @@ interface ArticleMediaManagerProps {
   onMediaChange: (imageUrl?: string, videoUrl?: string) => void;
   initialImage?: string;
   initialVideo?: string;
+  storageProvider?: string;
 }
 
 export function ArticleMediaManager({ 
   onMediaChange, 
   initialImage, 
-  initialVideo 
+  initialVideo,
+  storageProvider = "replit"
 }: ArticleMediaManagerProps) {
   const [mediaItems, setMediaItems] = useState<MediaItem[]>(() => {
     const items: MediaItem[] = [];
@@ -50,6 +52,10 @@ export function ArticleMediaManager({
       headers: {
         "Content-Type": "application/json",
       },
+      body: JSON.stringify({
+        provider: storageProvider,
+        folder: "article-media"
+      }),
     });
 
     if (!response.ok) {
@@ -64,6 +70,8 @@ export function ArticleMediaManager({
   };
 
   const handleUploadComplete = async (result: UploadResult<Record<string, unknown>, Record<string, unknown>>) => {
+    if (!result?.successful) return;
+    
     for (const file of result.successful) {
       try {
         // Finalize upload by setting ACL

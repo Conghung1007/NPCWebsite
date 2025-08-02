@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import { insertContactRequestSchema, insertArticleSchema } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
+import { multiR2Storage } from "./multiR2Storage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Users endpoint - for managers and admins
@@ -262,15 +263,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Endpoint to get upload URL for media files
+  // Endpoint to get upload URL for media files (supports multiple R2 providers)
   app.post("/api/media/upload", async (req, res) => {
-    const objectStorageService = new ObjectStorageService();
     try {
-      const uploadURL = await objectStorageService.getObjectEntityUploadURL();
-      res.json({ uploadURL });
+      const { provider = "replit", folder = "uploads", maxSize = 50 * 1024 * 1024 } = req.body;
+      
+      const result = await multiR2Storage.getUploadUrl({
+        provider,
+        folder,
+        allowedTypes: ["image/*", "video/*"],
+        maxSizeBytes: maxSize
+      });
+
+      if (result.success) {
+        res.json({ 
+          uploadURL: result.url,
+          provider: result.provider,
+          path: result.path
+        });
+      } else {
+        res.status(500).json({ error: result.error || "Failed to get upload URL" });
+      }
     } catch (error) {
       console.error("Error getting upload URL:", error);
       res.status(500).json({ error: "Failed to get upload URL" });
+    }
+  });
+
+  // Endpoint to get available storage providers
+  app.get("/api/storage/providers", async (req, res) => {
+    try {
+      const providers = multiR2Storage.getAvailableProviders();
+      const connectionTests = await multiR2Storage.testAllConnections();
+      
+      const providersWithStatus = providers.map(provider => ({
+        ...provider,
+        connected: connectionTests[provider.id] || false
+      }));
+
+      res.json({ providers: providersWithStatus });
+    } catch (error) {
+      console.error("Error getting storage providers:", error);
+      res.status(500).json({ error: "Failed to get storage providers" });
+    }
+  });
+
+  // Endpoint to test R2 connections
+  app.post("/api/storage/test", async (req, res) => {
+    try {
+      const { provider } = req.body;
+      
+      if (provider && provider !== "replit") {
+        const isConnected = await multiR2Storage.testAllConnections();
+        res.json({ 
+          provider,
+          connected: isConnected[provider] || false 
+        });
+      } else {
+        const allConnections = await multiR2Storage.testAllConnections();
+        res.json({ connections: allConnections });
+      }
+    } catch (error) {
+      console.error("Error testing storage connections:", error);
+      res.status(500).json({ error: "Failed to test connections" });
     }
   });
 
