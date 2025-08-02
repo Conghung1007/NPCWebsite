@@ -1,6 +1,7 @@
 import { ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ImageManager } from "@/components/ui/image-manager";
+import { Edit } from "lucide-react";
 
 interface HeroSectionProps {
   title: string;
@@ -32,6 +33,7 @@ export function HeroSection({
   onImageUpdate
 }: HeroSectionProps) {
   const [currentBgImage, setCurrentBgImage] = useState(backgroundImage);
+  const [showImageManager, setShowImageManager] = useState(false);
 
   const handleImageUpdate = (newImageUrl: string) => {
     setCurrentBgImage(newImageUrl);
@@ -51,12 +53,21 @@ export function HeroSection({
       
       {allowImageEdit && (
         <div className="absolute top-4 right-4 z-10">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowImageManager(true)}
+            className="bg-white/20 text-white hover:bg-white/30 border-white/50"
+          >
+            <Edit className="w-4 h-4 mr-2" />
+            Cập nhật ảnh nền
+          </Button>
           <ImageManager
-            currentImageUrl={currentBgImage}
+            isOpen={showImageManager}
+            onClose={() => setShowImageManager(false)}
             onImageUpdate={handleImageUpdate}
             imageType="hero"
             altText="Hero background image"
-            className="bg-white/20 text-white hover:bg-white/30"
           />
         </div>
       )}

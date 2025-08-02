@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, ArrowRight, ChevronLeft, ChevronRight, Edit } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useRef, useEffect } from "react";
 import type { Article } from "@shared/schema";
@@ -44,6 +44,7 @@ export function ServiceWithArticles({
   // State for carousel
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [showImageManager, setShowImageManager] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Filter articles by category and limit to 6 most recent
@@ -140,12 +141,21 @@ export function ServiceWithArticles({
           {/* Image Manager Button */}
           {allowImageEdit && (
             <div className="absolute top-4 right-4 z-10">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowImageManager(true)}
+                className="bg-white/80 hover:bg-white/90 text-gray-700"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Cập nhật ảnh
+              </Button>
               <ImageManager
-                currentImageUrl={service.backgroundImage}
+                isOpen={showImageManager}
+                onClose={() => setShowImageManager(false)}
                 onImageUpdate={(newImageUrl) => onServiceImageUpdate?.(newImageUrl)}
                 imageType="service"
                 altText={`${service.title} background image`}
-                className="bg-white/80 hover:bg-white/90 text-gray-700"
               />
             </div>
           )}
