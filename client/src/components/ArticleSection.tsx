@@ -57,14 +57,15 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
             {articles?.map((article) => {
               console.log('ArticleSection - Rendering article:', article);
               return (
-                <ArticleCard
-                  key={article.id}
-                  article={article}
-                  onClick={() => {
-                    // In a real app, this would navigate to article detail page
-                    console.log('Navigate to article:', article.id);
-                  }}
-                />
+                <div key={article.id} className="w-full">
+                  <ArticleCard
+                    article={article}
+                    onClick={() => {
+                      // In a real app, this would navigate to article detail page
+                      console.log('Navigate to article:', article.id);
+                    }}
+                  />
+                </div>
               );
             })}
           </div>

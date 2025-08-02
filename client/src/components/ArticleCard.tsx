@@ -16,7 +16,7 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
   };
 
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer" onClick={onClick}>
+    <div className="w-full bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer" onClick={onClick}>
       {/* Image placeholder */}
       <div className="h-48 bg-gradient-to-br from-green-100 to-green-200 rounded-t-lg flex items-center justify-center">
         {article.imageUrl ? (
@@ -44,7 +44,7 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center text-gray-500 text-xs">
             <Calendar className="w-4 h-4 mr-1" />
-{formatDate(article.createdAt.toString())}
+            {formatDate(article.createdAt.toString())}
           </div>
           
           <span className="text-green-600 hover:text-green-700 text-sm font-medium">
