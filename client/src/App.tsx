@@ -10,7 +10,7 @@ import VisaServices from "@/pages/visa-services";
 import StudyAbroad from "@/pages/study-abroad";
 import JapaneseTraining from "@/pages/japanese-training";
 import FlightTickets from "@/pages/flight-tickets";
-import AboutUs from "@/pages/about-us";
+
 import Contact from "@/pages/contact";
 
 function Router() {
@@ -22,7 +22,7 @@ function Router() {
         <Route path="/study-abroad" component={StudyAbroad} />
         <Route path="/japanese-training" component={JapaneseTraining} />
         <Route path="/flight-tickets" component={FlightTickets} />
-        <Route path="/about-us" component={AboutUs} />
+
         <Route path="/contact" component={Contact} />
         {/* Fallback to 404 */}
         <Route component={NotFound} />

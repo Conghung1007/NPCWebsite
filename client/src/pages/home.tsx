@@ -73,8 +73,8 @@ function ServiceRowWithPosts({ service, isReversed, onLearnMore }: {
           <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
             {service.icon}
           </div>
-          <h3 className="text-2xl font-bold text-foreground mb-4">{service.title}</h3>
-          <p className="text-muted-foreground mb-6">{service.description}</p>
+          <h3 className="text-3xl font-bold text-foreground mb-4">{service.title}</h3>
+          <p className="text-lg text-muted-foreground mb-6">{service.description}</p>
           <Button onClick={onLearnMore} className="w-full">
             Tìm hiểu thêm
             <ArrowRight className="ml-2 h-4 w-4" />
@@ -103,7 +103,7 @@ function ServiceRowWithPosts({ service, isReversed, onLearnMore }: {
                   <span className="inline-block bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full mb-2">
                     {post.type}
                   </span>
-                  <h4 className="font-semibold text-sm text-gray-800 line-clamp-2">
+                  <h4 className="font-semibold text-base text-gray-800 line-clamp-2">
                     {post.title}
                   </h4>
                 </div>
@@ -249,10 +249,10 @@ export default function Home() {
       <section id="services" className="py-20 bg-neutral">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
               Dịch vụ chuyên nghiệp
             </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+            <p className="text-2xl text-muted-foreground max-w-3xl mx-auto">
               Chúng tôi cung cấp giải pháp toàn diện cho mọi nhu cầu du lịch, học tập và phát triển sự nghiệp quốc tế của bạn
             </p>
           </div>
@@ -275,10 +275,10 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-6">
+              <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
                 Tại sao chọn N&P?
               </h2>
-              <p className="text-xl text-muted-foreground mb-8">
+              <p className="text-2xl text-muted-foreground mb-8">
                 Với hơn 10 năm kinh nghiệm, chúng tôi tự hào là đối tác đáng tin cậy giúp hàng nghìn khách hàng thực hiện ước mơ toàn cầu
               </p>
 
@@ -289,10 +289,10 @@ export default function Home() {
                       {reason.icon}
                     </div>
                     <div>
-                      <h3 className="text-lg font-semibold text-foreground mb-2">
+                      <h3 className="text-xl font-semibold text-foreground mb-2">
                         {reason.title}
                       </h3>
-                      <p className="text-muted-foreground">{reason.description}</p>
+                      <p className="text-lg text-muted-foreground">{reason.description}</p>
                     </div>
                   </div>
                 ))}
@@ -314,10 +314,10 @@ export default function Home() {
       <section className="py-20 bg-neutral">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">
+            <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
               Khách hàng nói gì về chúng tôi
             </h2>
-            <p className="text-xl text-muted-foreground">
+            <p className="text-2xl text-muted-foreground">
               Hàng nghìn câu chuyện thành công từ khách hàng tin tưởng N&P
             </p>
           </div>
