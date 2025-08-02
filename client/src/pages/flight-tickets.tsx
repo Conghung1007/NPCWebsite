@@ -198,32 +198,7 @@ export default function FlightTickets() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-red-600 text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h3 className="text-2xl font-bold mb-4">
-            Tìm Chuyến Bay Hoàn Hảo Cho Bạn
-          </h3>
-          <p className="text-red-100 mb-6">
-            Hãy để chúng tôi giúp bạn tìm được vé máy bay phù hợp nhất
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              onClick={() => document.getElementById('search')?.scrollIntoView({ behavior: 'smooth' })}
-              className="bg-white text-red-600 hover:bg-white/90 text-lg px-8 py-3"
-            >
-              Tìm Chuyến Bay Của Tôi
-            </Button>
-            <Button 
-              onClick={handleContactClick}
-              variant="outline"
-              className="border-white text-white hover:bg-white hover:text-red-600 text-lg px-8 py-3"
-            >
-              Nhận Báo Giá
-            </Button>
-          </div>
-        </div>
-      </section>
+
 
       {/* Articles Section */}
       <ArticleSection 
