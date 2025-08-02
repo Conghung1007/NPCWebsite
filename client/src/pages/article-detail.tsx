@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowLeft, Calendar, User, Tag } from "lucide-react";
+import { ArticleCard } from "@/components/ArticleCard";
 import type { Article } from "@shared/schema";
 
 export default function ArticleDetail() {
@@ -14,6 +15,12 @@ export default function ArticleDetail() {
   const { data: article, isLoading, error } = useQuery<Article>({
     queryKey: ["/api/articles", id],
     enabled: !!id,
+  });
+
+  // Fetch all articles for related articles section
+  const { data: allArticles } = useQuery<Article[]>({
+    queryKey: ["/api/articles"],
+    enabled: !!article,
   });
 
   const getServiceName = (category: string) => {
@@ -35,6 +42,17 @@ export default function ArticleDetail() {
       minute: '2-digit'
     });
   };
+
+  // Get 3 random related articles (excluding current article)
+  const getRelatedArticles = () => {
+    if (!allArticles || !article) return [];
+    
+    const otherArticles = allArticles.filter(a => a.id !== article.id);
+    const shuffled = [...otherArticles].sort(() => 0.5 - Math.random());
+    return shuffled.slice(0, 3);
+  };
+
+  const relatedArticles = getRelatedArticles();
 
   if (isLoading) {
     return (
@@ -146,7 +164,21 @@ export default function ArticleDetail() {
           </div>
         </article>
 
-        {/* Related articles section could be added here */}
+        {/* Related articles section */}
+        {relatedArticles.length > 0 && (
+          <div className="mt-12">
+            <h2 className="text-2xl font-bold text-gray-900 mb-8 text-center">
+              Bài viết liên quan
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {relatedArticles.map((relatedArticle) => (
+                <div key={relatedArticle.id} className="w-full h-full flex">
+                  <ArticleCard article={relatedArticle} />
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
