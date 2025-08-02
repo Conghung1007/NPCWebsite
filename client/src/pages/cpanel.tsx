@@ -18,6 +18,7 @@ export function CpanelPage() {
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [showFormPassword, setShowFormPassword] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; user: UserType | null }>({
     isOpen: false,
     user: null
@@ -104,6 +105,7 @@ export function CpanelPage() {
         setEditingUser(null);
         setIsAddingUser(false);
         setFormData({ username: "", password: "" });
+        setShowFormPassword(false);
         refetchUsers();
       } else {
         throw new Error("Failed to save user");
@@ -121,6 +123,7 @@ export function CpanelPage() {
     setEditingUser(null);
     setIsAddingUser(false);
     setFormData({ username: "", password: "" });
+    setShowFormPassword(false);
   };
 
   const togglePasswordVisibility = (userId: string) => {
@@ -261,13 +264,28 @@ export function CpanelPage() {
                             <label className="block text-sm font-medium mb-1">
                               {editingUser ? "Mật khẩu mới" : "Mật khẩu"}
                             </label>
-                            <input
-                              type="password"
-                              value={formData.password}
-                              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                              className="w-full px-3 py-2 border rounded-md"
-                              placeholder={editingUser ? "Nhập mật khẩu mới" : "Nhập mật khẩu"}
-                            />
+                            <div className="relative">
+                              <input
+                                type={showFormPassword ? "text" : "password"}
+                                value={formData.password}
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                className="w-full px-3 py-2 pr-10 border rounded-md"
+                                placeholder={editingUser ? "Nhập mật khẩu mới" : "Nhập mật khẩu"}
+                              />
+                              <Button
+                                type="button"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setShowFormPassword(!showFormPassword)}
+                                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
+                              >
+                                {showFormPassword ? (
+                                  <EyeOff className="w-4 h-4" />
+                                ) : (
+                                  <Eye className="w-4 h-4" />
+                                )}
+                              </Button>
+                            </div>
                           </div>
                         </div>
                         <div className="flex gap-2">
