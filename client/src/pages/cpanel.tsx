@@ -204,7 +204,7 @@ export function CpanelPage() {
               )}
               <Button 
                 variant={activeTab === "messages" ? "default" : "ghost"}
-                className="justify-start flex items-center gap-2 h-12 px-4"
+                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
                 onClick={() => setActiveTab("messages")}
               >
                 <MessageSquare className="w-5 h-5" />
@@ -288,12 +288,12 @@ export function CpanelPage() {
                             </div>
                           </div>
                         </div>
-                        <div className="flex gap-2">
-                          <Button onClick={handleSaveUser} className="bg-green-600 hover:bg-green-700">
-                            {editingUser ? "💾 Cập nhật người dùng" : "✅ Thêm người dùng"}
-                          </Button>
+                        <div className="flex gap-2 justify-end">
                           <Button variant="outline" onClick={handleCancelEdit}>
                             ❌ Hủy
+                          </Button>
+                          <Button onClick={handleSaveUser} className="bg-green-600 hover:bg-green-700">
+                            {editingUser ? "💾 Cập nhật người dùng" : "✅ Thêm người dùng"}
                           </Button>
                         </div>
                       </div>
