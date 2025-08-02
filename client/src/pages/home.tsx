@@ -175,7 +175,6 @@ export default function Home() {
                 key={index}
                 service={service}
                 category={service.category}
-                isReversed={index % 2 === 1}
                 onServiceClick={() => handleServiceClick(service.route)}
               />
             ))}

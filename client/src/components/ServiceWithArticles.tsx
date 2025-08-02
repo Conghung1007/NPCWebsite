@@ -13,7 +13,6 @@ interface ServiceWithArticlesProps {
     route: string;
   };
   category: string;
-  isReversed?: boolean;
   onServiceClick: () => void;
 }
 
@@ -29,7 +28,6 @@ function Badge({ children, className }: { children: React.ReactNode; className?:
 export function ServiceWithArticles({ 
   service, 
   category, 
-  isReversed = false, 
   onServiceClick 
 }: ServiceWithArticlesProps) {
   const { data: allArticles = [], isLoading } = useQuery<Article[]>({
@@ -62,7 +60,7 @@ export function ServiceWithArticles({
   };
 
   return (
-    <div className={`flex flex-col lg:flex-row items-start gap-8 ${isReversed ? 'lg:flex-row-reverse' : ''}`}>
+    <div className="flex flex-col lg:flex-row items-start gap-8">
       {/* Service Info */}
       <div className="flex-1 lg:max-w-md">
         <div className="bg-white rounded-xl p-8 shadow-lg h-fit pt-[51px] pb-[51px]">
