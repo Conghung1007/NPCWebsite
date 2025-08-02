@@ -200,7 +200,7 @@ export default function StudyAbroad() {
       </section>
 
       {/* Success Stories */}
-      <section className="py-20 bg-white">
+      <section className="py-4 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h3 className="text-2xl font-bold text-foreground text-center mb-8">
             Câu chuyện thành công
@@ -223,7 +223,7 @@ export default function StudyAbroad() {
       </section>
 
       {/* Why Choose N&P */}
-      <section className="py-20 bg-gradient-to-r from-primary to-blue-700 text-white">
+      <section className="py-4 bg-gradient-to-r from-primary to-blue-700 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h3 className="text-2xl font-bold mb-8 text-center">
             Tại Sao Nên Du Học Với N&P?
