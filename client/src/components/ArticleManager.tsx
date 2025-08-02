@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Pagination } from "@/components/ui/pagination";
@@ -26,6 +27,10 @@ export function ArticleManager() {
   const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const articlesPerPage = 6;
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; article: Article | null }>({
+    isOpen: false,
+    article: null
+  });
 
   // Fetch articles
   const { data: articles = [], isLoading, refetch } = useQuery<Article[]>({
@@ -64,9 +69,17 @@ export function ArticleManager() {
   });
 
   const handleDelete = (article: Article) => {
-    if (confirm(`Bạn có chắc chắn muốn xóa bài viết "${article.title}"?`)) {
-      deleteMutation.mutate(article.id);
-    }
+    setDeleteConfirm({ isOpen: true, article });
+  };
+
+  const confirmDelete = async () => {
+    if (!deleteConfirm.article) return;
+    deleteMutation.mutate(deleteConfirm.article.id);
+    setDeleteConfirm({ isOpen: false, article: null });
+  };
+
+  const cancelDelete = () => {
+    setDeleteConfirm({ isOpen: false, article: null });
   };
 
   const getCategoryLabel = (category: string) => {
@@ -179,6 +192,32 @@ export function ArticleManager() {
           )}
         </CardContent>
       </Card>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteConfirm.isOpen} onOpenChange={(open) => !open && cancelDelete()}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Xác nhận xóa bài viết</DialogTitle>
+            <DialogDescription>
+              Bạn có chắc chắn muốn xóa bài viết "{deleteConfirm.article?.title}"?
+              <br />
+              Hành động này không thể hoàn tác.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={cancelDelete}>
+              Hủy
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={confirmDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Đang xóa..." : "Xóa"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
