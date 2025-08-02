@@ -9,8 +9,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, PlusCircle } from "lucide-react";
+import { ArrowLeft, PlusCircle, Eye, Edit } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 
 const createArticleSchema = z.object({
@@ -21,10 +22,46 @@ const createArticleSchema = z.object({
 
 type CreateArticleForm = z.infer<typeof createArticleSchema>;
 
+// Simple markdown to HTML converter
+function convertMarkdownToHTML(markdown: string): string {
+  return markdown
+    // Headers
+    .replace(/^### (.*$)/gm, '<h3>$1</h3>')
+    .replace(/^## (.*$)/gm, '<h2>$1</h2>')
+    .replace(/^# (.*$)/gm, '<h1>$1</h1>')
+    // Bold and Italic
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    // Links
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="text-primary hover:underline">$1</a>')
+    // Images
+    .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg my-4" />')
+    // Lists
+    .replace(/^\d+\.\s+(.*$)/gm, '<li>$1</li>')
+    .replace(/^-\s+(.*$)/gm, '<li>$1</li>')
+    // Wrap consecutive list items
+    .replace(/(<li>.*<\/li>)/gs, (match) => {
+      if (match.includes('1.')) {
+        return '<ol class="list-decimal list-inside mb-4">' + match + '</ol>';
+      }
+      return '<ul class="list-disc list-inside mb-4">' + match + '</ul>';
+    })
+    // Line breaks
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(.+)$/gm, '<p>$1</p>')
+    // Clean up empty paragraphs
+    .replace(/<p><\/p>/g, '')
+    .replace(/<p>(<h[1-6]>.*<\/h[1-6]>)<\/p>/g, '$1')
+    .replace(/<p>(<ul.*<\/ul>)<\/p>/g, '$1')
+    .replace(/<p>(<ol.*<\/ol>)<\/p>/g, '$1')
+    .replace(/<p>(<img.*\/>)<\/p>/g, '$1');
+}
+
 export default function CreateArticle() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [activeTab, setActiveTab] = useState("edit");
 
   const form = useForm<CreateArticleForm>({
     resolver: zodResolver(createArticleSchema),
@@ -156,7 +193,7 @@ export default function CreateArticle() {
                   )}
                 />
 
-                {/* Content */}
+                {/* Content with Preview */}
                 <FormField
                   control={form.control}
                   name="content"
@@ -164,11 +201,44 @@ export default function CreateArticle() {
                     <FormItem>
                       <FormLabel>Nội dung bài viết *</FormLabel>
                       <FormControl>
-                        <RichTextEditor
-                          value={field.value}
-                          onChange={field.onChange}
-                          placeholder="Nhập nội dung bài viết... Sử dụng các nút định dạng để tạo văn bản đẹp và chèn hình ảnh ở bất kỳ vị trí nào."
-                        />
+                        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                          <TabsList className="grid w-full grid-cols-2">
+                            <TabsTrigger value="edit" className="flex items-center gap-2">
+                              <Edit className="h-4 w-4" />
+                              Chỉnh sửa
+                            </TabsTrigger>
+                            <TabsTrigger value="preview" className="flex items-center gap-2">
+                              <Eye className="h-4 w-4" />
+                              Xem trước
+                            </TabsTrigger>
+                          </TabsList>
+                          
+                          <TabsContent value="edit" className="mt-4">
+                            <RichTextEditor
+                              value={field.value}
+                              onChange={field.onChange}
+                              placeholder="Nhập nội dung bài viết... Sử dụng các nút định dạng để tạo văn bản đẹp và chèn hình ảnh ở bất kỳ vị trí nào."
+                            />
+                          </TabsContent>
+                          
+                          <TabsContent value="preview" className="mt-4">
+                            <div className="border rounded-lg p-6 min-h-[400px] bg-white">
+                              <div className="prose prose-lg max-w-none">
+                                {field.value ? (
+                                  <div 
+                                    dangerouslySetInnerHTML={{ 
+                                      __html: convertMarkdownToHTML(field.value) 
+                                    }} 
+                                  />
+                                ) : (
+                                  <p className="text-gray-500 italic">
+                                    Chưa có nội dung để xem trước. Hãy nhập nội dung ở tab "Chỉnh sửa".
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+                          </TabsContent>
+                        </Tabs>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
