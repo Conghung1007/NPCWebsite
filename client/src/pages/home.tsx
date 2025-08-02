@@ -20,7 +20,8 @@ import {
   HandHeart,
   Handshake,
   BarChart3,
-  ArrowRight
+  ArrowRight,
+  Edit
 } from "lucide-react";
 
 
@@ -30,6 +31,7 @@ export default function Home() {
   const [heroBgImage, setHeroBgImage] = useState("https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=2074&q=80");
   const [whyChooseImage, setWhyChooseImage] = useState("https://images.unsplash.com/photo-1521737604893-d14cc237f11d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2084&q=80");
   const [uiImages, setUiImages] = useState({});
+  const [showWhyChooseImageManager, setShowWhyChooseImageManager] = useState(false);
 
   useEffect(() => {
     document.title = "N&P Company - Đối Tác Tin Cậy Cho Giấc Mơ Toàn Cầu";
@@ -275,11 +277,21 @@ export default function Home() {
                 alt="Professional business team providing visa and international services" 
                 className="rounded-xl shadow-lg w-full h-auto" 
               />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowWhyChooseImageManager(true)}
+                className="absolute top-4 right-4 bg-white/80 hover:bg-white/90 text-gray-700"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Cập nhật ảnh
+              </Button>
               <ImageManager
-                imageUrl={whyChooseImage}
+                isOpen={showWhyChooseImageManager}
+                onClose={() => setShowWhyChooseImageManager(false)}
                 onImageUpdate={setWhyChooseImage}
-                imageType="why-choose-image"
-                className="absolute top-2 right-2"
+                imageType="why-choose-us"
+                altText="Why choose N&P image"
               />
             </div>
           </div>
