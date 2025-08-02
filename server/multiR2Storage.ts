@@ -223,7 +223,7 @@ export class MultiR2StorageService {
       }
 
       return response.Contents
-        .filter(obj => obj.Key && obj.Key !== prefix) // Exclude folder itself
+        .filter(obj => obj.Key && obj.Key !== prefix && obj.Size && obj.Size > 0) // Exclude folder itself and empty files
         .map(obj => ({
           name: obj.Key!.split('/').pop() || obj.Key!,
           url: `/api/proxy-image/${provider}/${obj.Key}`, // Use proxy endpoint

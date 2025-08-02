@@ -405,7 +405,7 @@ export function ImageManager({
                 ) : existingImages && Array.isArray(existingImages) && existingImages.length > 0 ? (
                   <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto">
                     {existingImages.map((image, index) => (
-                      <Card key={index} className={`cursor-pointer transition-all ${
+                      <Card key={index} className={`image-card cursor-pointer transition-all ${
                         selectedExistingImage === image.url ? 'ring-2 ring-primary' : ''
                       }`}>
                         <CardContent className="p-2">
@@ -418,7 +418,10 @@ export function ImageManager({
                               onError={(e) => {
                                 console.error('Image load error for:', image.url);
                                 const target = e.target as HTMLImageElement;
-                                target.style.display = 'none';
+                                const cardElement = target.closest('.image-card');
+                                if (cardElement) {
+                                  (cardElement as HTMLElement).style.display = 'none';
+                                }
                               }}
                             />
                             {selectedExistingImage === image.url && (

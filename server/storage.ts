@@ -31,6 +31,7 @@ export interface IStorage {
   getUiImagesByType(imageType: string): Promise<UiImage[]>;
   getAllUiImages(): Promise<UiImage[]>;
   updateUiImage(id: string, updateData: Partial<InsertUiImage>): Promise<UiImage | null>;
+  updateUiImageByType(imageType: string, updateData: Partial<InsertUiImage>): Promise<UiImage | null>;
   deleteUiImage(id: string): Promise<boolean>;
   getUiImageByType(imageType: string): Promise<UiImage | undefined>;
 }
@@ -545,6 +546,22 @@ export class MemStorage implements IStorage {
     return updatedImage;
   }
 
+  async updateUiImageByType(imageType: string, updateData: Partial<InsertUiImage>): Promise<UiImage | null> {
+    const existingImage = Array.from(this.uiImages.values()).find(img => img.imageType === imageType);
+    if (!existingImage) {
+      return null;
+    }
+
+    const updatedImage: UiImage = {
+      ...existingImage,
+      ...updateData,
+      updatedAt: new Date()
+    };
+
+    this.uiImages.set(existingImage.id, updatedImage);
+    return updatedImage;
+  }
+
   async deleteUiImage(id: string): Promise<boolean> {
     return this.uiImages.delete(id);
   }
@@ -747,6 +764,15 @@ export class DatabaseStorage implements IStorage {
       .update(uiImages)
       .set({ ...updateData, updatedAt: new Date() })
       .where(eq(uiImages.id, id))
+      .returning();
+    return uiImage || null;
+  }
+
+  async updateUiImageByType(imageType: string, updateData: Partial<InsertUiImage>): Promise<UiImage | null> {
+    const [uiImage] = await db
+      .update(uiImages)
+      .set({ ...updateData, updatedAt: new Date() })
+      .where(eq(uiImages.imageType, imageType))
       .returning();
     return uiImage || null;
   }
