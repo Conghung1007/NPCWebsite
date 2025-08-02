@@ -195,7 +195,7 @@ export function CpanelPage() {
               {canManageUsers && (
                 <Button 
                   variant={activeTab === "users" ? "default" : "ghost"}
-                  className="justify-start flex items-center gap-2 h-12 px-4"
+                  className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
                   onClick={() => setActiveTab("users")}
                 >
                   <Users className="w-5 h-5" />
