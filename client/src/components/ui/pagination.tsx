@@ -45,8 +45,18 @@ export function Pagination({ currentPage, totalPages, onPageChange, className = 
 
   return (
     <div className={`flex items-center justify-between w-full ${className}`}>
-      {/* Left side: Previous and Next buttons */}
+      {/* Left side: First and Previous buttons */}
       <div className="flex items-center space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(1)}
+          disabled={currentPage === 1}
+          className="h-9 px-3"
+        >
+          <ChevronsLeft className="h-4 w-4 mr-1" />
+          Trang đầu
+        </Button>
         <Button
           variant="outline"
           size="sm"
@@ -56,16 +66,6 @@ export function Pagination({ currentPage, totalPages, onPageChange, className = 
         >
           <ChevronLeft className="h-4 w-4 mr-1" />
           Trang trước
-        </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onPageChange(currentPage + 1)}
-          disabled={currentPage === totalPages}
-          className="h-9 px-3"
-        >
-          Trang kế
-          <ChevronRight className="h-4 w-4 ml-1" />
         </Button>
       </div>
 
@@ -94,17 +94,17 @@ export function Pagination({ currentPage, totalPages, onPageChange, className = 
         })}
       </div>
 
-      {/* Right side: First and Last page buttons */}
+      {/* Right side: Next and Last page buttons */}
       <div className="flex items-center space-x-2">
         <Button
           variant="outline"
           size="sm"
-          onClick={() => onPageChange(1)}
-          disabled={currentPage === 1}
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
           className="h-9 px-3"
         >
-          <ChevronsLeft className="h-4 w-4 mr-1" />
-          Trang đầu
+          Trang kế
+          <ChevronRight className="h-4 w-4 ml-1" />
         </Button>
         <Button
           variant="outline"
