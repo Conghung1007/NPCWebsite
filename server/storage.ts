@@ -604,15 +604,19 @@ export class DatabaseStorage implements IStorage {
   }
 
   async moveArticleOrder(id: string, direction: 'up' | 'down'): Promise<boolean> {
-    // Get the current article
-    const [currentArticle] = await db.select().from(articles).where(eq(articles.id, id));
-    if (!currentArticle) return false;
-
-    // Get all articles sorted by order
+    // Get all articles sorted by order (then by creation date as secondary sort)
     const allArticles = await db.select().from(articles);
-    const sortedArticles = allArticles.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
-    const currentIndex = sortedArticles.findIndex(a => a.id === id);
+    const sortedArticles = allArticles.sort((a, b) => {
+      const aOrder = a.sortOrder || 0;
+      const bOrder = b.sortOrder || 0;
+      if (aOrder !== bOrder) {
+        return aOrder - bOrder;
+      }
+      // If sortOrder is the same, sort by creation date (oldest first)
+      return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+    });
     
+    const currentIndex = sortedArticles.findIndex(a => a.id === id);
     if (currentIndex === -1) return false;
     
     let targetIndex: number;
@@ -624,21 +628,41 @@ export class DatabaseStorage implements IStorage {
       return false; // Can't move further
     }
 
-    // Swap sort orders
-    const currentOrder = sortedArticles[currentIndex].sortOrder || 0;
-    const targetOrder = sortedArticles[targetIndex].sortOrder || 0;
+    // Instead of swapping, assign new sequential sort orders
+    // This ensures proper ordering even when multiple items have the same sortOrder
+    const updates: Promise<any>[] = [];
     
-    // Update both articles
-    await db
-      .update(articles)
-      .set({ sortOrder: targetOrder })
-      .where(eq(articles.id, sortedArticles[currentIndex].id));
+    for (let i = 0; i < sortedArticles.length; i++) {
+      let newSortOrder: number;
       
-    await db
-      .update(articles)
-      .set({ sortOrder: currentOrder })
-      .where(eq(articles.id, sortedArticles[targetIndex].id));
+      if (i === currentIndex) {
+        // Current item moves to target position
+        newSortOrder = targetIndex;
+      } else if (i === targetIndex) {
+        // Target item moves to current position  
+        newSortOrder = currentIndex;
+      } else if (direction === 'up' && i >= targetIndex && i < currentIndex) {
+        // Items between target and current shift down
+        newSortOrder = i + 1;
+      } else if (direction === 'down' && i > currentIndex && i <= targetIndex) {
+        // Items between current and target shift up
+        newSortOrder = i - 1;
+      } else {
+        // All other items maintain their relative position
+        newSortOrder = i;
+      }
+      
+      if (newSortOrder !== i) {
+        updates.push(
+          db.update(articles)
+            .set({ sortOrder: newSortOrder })
+            .where(eq(articles.id, sortedArticles[i].id))
+        );
+      }
+    }
     
+    // Execute all updates
+    await Promise.all(updates);
     return true;
   }
 }
