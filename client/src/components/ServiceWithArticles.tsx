@@ -90,61 +90,59 @@ export function ServiceWithArticles({
         </div>
 
         {isLoading ? (
-          <div className="grid gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
               <Card key={i} className="overflow-hidden">
-                <div className="flex">
-                  <div className="w-32 h-24 bg-gray-200 animate-pulse flex-shrink-0"></div>
-                  <CardContent className="p-4 flex-1">
-                    <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
-                    <div className="h-6 bg-gray-200 rounded animate-pulse mb-2"></div>
-                    <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
-                  </CardContent>
-                </div>
+                <div className="w-full h-48 bg-gray-200 animate-pulse"></div>
+                <CardContent className="p-4">
+                  <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
+                  <div className="h-6 bg-gray-200 rounded animate-pulse mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                </CardContent>
               </Card>
             ))}
           </div>
         ) : categoryArticles.length > 0 ? (
-          <div className="space-y-4">
-            {categoryArticles.map((article) => (
-              <Card 
-                key={article.id}
-                className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer"
-              >
-                <div className="flex">
-                  <div className="relative w-32 h-24 flex-shrink-0 overflow-hidden">
+          <div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {categoryArticles.map((article) => (
+                <Card 
+                  key={article.id}
+                  className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer"
+                >
+                  <div className="relative w-full h-48 overflow-hidden">
                     <img
                       src={article.imageUrl || 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=300&fit=crop'}
                       alt={article.title}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                    <div className="absolute top-2 left-2">
+                    <div className="absolute top-3 left-3">
                       <Badge className={getCategoryColor(category)}>
                         {getCategoryLabel(category)}
                       </Badge>
                     </div>
                   </div>
                   
-                  <CardContent className="p-4 flex-1">
-                    <div className="flex items-center text-sm text-gray-500 mb-2">
-                      <Clock className="w-3 h-3 mr-1" />
+                  <CardContent className="p-4">
+                    <div className="flex items-center text-sm text-gray-500 mb-3">
+                      <Clock className="w-4 h-4 mr-1" />
                       <span>{new Date(article.createdAt || Date.now()).toLocaleDateString('vi-VN')}</span>
                     </div>
                     
-                    <h5 className="text-lg font-semibold text-gray-900 mb-2 group-hover:text-primary transition-colors line-clamp-2">
+                    <h5 className="text-lg font-semibold text-gray-900 mb-3 group-hover:text-primary transition-colors line-clamp-2">
                       {article.title}
                     </h5>
                     
-                    <p className="text-gray-600 text-sm line-clamp-2">
-                      {article.content.substring(0, 100)}...
+                    <p className="text-gray-600 text-sm line-clamp-3">
+                      {article.content.substring(0, 120)}...
                     </p>
                   </CardContent>
-                </div>
-              </Card>
-            ))}
+                </Card>
+              ))}
+            </div>
             
             {/* View more articles link */}
-            <div className="pt-4">
+            <div className="pt-6 text-center">
               <Link href={service.route}>
                 <button className="inline-flex items-center text-primary font-medium hover:text-primary/80 transition-colors">
                   <span>Xem thêm bài viết về {getCategoryLabel(category)}</span>
