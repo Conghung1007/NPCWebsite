@@ -246,8 +246,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const downloadUrl = await multiR2Storage.getDownloadUrl("primary", `article-images/${fileName}`);
         
         if (downloadUrl) {
-          console.log(`Redirecting to R2 URL: ${downloadUrl}`);
-          return res.redirect(downloadUrl);
+          console.log(`Proxying R2 URL: ${downloadUrl}`);
+          
+          // Proxy the image instead of redirecting
+          try {
+            const imageResponse = await fetch(downloadUrl);
+            if (imageResponse.ok) {
+              const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+              res.set({
+                'Content-Type': contentType,
+                'Cache-Control': 'public, max-age=3600',
+                'Access-Control-Allow-Origin': '*'
+              });
+              
+              // Stream the image data
+              const imageBuffer = await imageResponse.arrayBuffer();
+              return res.send(Buffer.from(imageBuffer));
+            } else {
+              console.log(`R2 image not found: ${imageResponse.status}`);
+            }
+          } catch (proxyError) {
+            console.error("Error proxying R2 image:", proxyError);
+          }
         }
       }
       
