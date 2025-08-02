@@ -273,11 +273,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Title, content, and category are required" });
       }
 
-      const updatedArticle = await storage.updateArticle(id, {
-        title,
-        content,
-        category,
-      });
+      const updatedArticle = await storage.updateArticle(id, title, content, category);
 
       if (!updatedArticle) {
         return res.status(404).json({ 

@@ -22,7 +22,8 @@ export interface IStorage {
   getAllArticles(): Promise<Article[]>;
   getArticles(): Promise<Article[]>;
   getArticle(id: string): Promise<Article | undefined>;
-  updateArticle(article: Article): Promise<Article>;
+  updateArticle(id: string, title: string, content: string, category: string): Promise<Article | null>;
+  deleteArticle(id: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -149,9 +150,26 @@ export class MemStorage implements IStorage {
     return this.getAllArticles();
   }
 
-  async updateArticle(article: Article): Promise<Article> {
-    this.articles.set(article.id, article);
-    return article;
+  async updateArticle(id: string, title: string, content: string, category: string): Promise<Article | null> {
+    const existingArticle = this.articles.get(id);
+    if (!existingArticle) {
+      return null;
+    }
+    
+    const updatedArticle = {
+      ...existingArticle,
+      title,
+      content,
+      category,
+      updatedAt: new Date()
+    };
+    
+    this.articles.set(id, updatedArticle);
+    return updatedArticle;
+  }
+
+  async deleteArticle(id: string): Promise<boolean> {
+    return this.articles.delete(id);
   }
 
   private seedUsers(): void {

@@ -185,28 +185,10 @@ export function RichTextEditor({
         
         <ImageUploader
           onImageUploaded={(url, alt) => {
-            const imageMarkdown = `![${alt || 'Hình ảnh'}](${url})`;
-            const textarea = textareaRef.current;
-            
-            if (textarea) {
-              const start = textarea.selectionStart;
-              const end = textarea.selectionEnd;
-              
-              // Insert image at cursor position
-              const newText = 
-                value.substring(0, start) + 
-                imageMarkdown + 
-                value.substring(end);
-              
-              onChange(newText);
-              
-              // Focus back to textarea and position cursor after the inserted image
-              setTimeout(() => {
-                textarea.focus();
-                const newCursorPosition = start + imageMarkdown.length;
-                textarea.setSelectionRange(newCursorPosition, newCursorPosition);
-              }, 100);
-            }
+            // Instead of inserting immediately, open dialog with pre-filled URL
+            setImageUrl(url);
+            setImageAlt(alt || '');
+            setIsImageDialogOpen(true);
           }}
           triggerButton={
             <Button
@@ -219,7 +201,7 @@ export function RichTextEditor({
               <Upload className="h-4 w-4" />
             </Button>
           }
-          insertAtCursor={true}
+          insertAtCursor={false}
         />
       </div>
 

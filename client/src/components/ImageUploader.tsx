@@ -100,7 +100,7 @@ export function ImageUploader({ onImageUploaded, triggerButton, insertAtCursor =
         throw new Error('Failed to upload file');
       }
 
-      // Call callback with image URL
+      // Call callback with image URL and close dialog
       onImageUploaded(imageUrl, altText);
       
       // Reset form
@@ -149,8 +149,7 @@ export function ImageUploader({ onImageUploaded, triggerButton, insertAtCursor =
         </DialogHeader>
         <div className="space-y-4">
           <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
-            <strong>💡 Mẹo:</strong> Hình ảnh sẽ được chèn vào vị trí con trỏ hiện tại trong văn bản. 
-            Hãy đặt con trỏ ở vị trí bạn muốn chèn hình trước khi tải lên.
+            <strong>💡 Mẹo:</strong> Sau khi tải lên, bạn sẽ có thể nhập mô tả và chọn vị trí chèn hình ảnh vào bài viết.
           </div>
           
           {/* Drag and Drop Area */}
