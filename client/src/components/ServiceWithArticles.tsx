@@ -179,46 +179,48 @@ export function ServiceWithArticles({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {categoryArticles.slice(currentIndex, currentIndex + 3).map((article) => (
                 <div key={article.id} className="w-full h-full flex">
-                  <div className="w-full h-full bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer flex flex-col">
-                    {/* Image placeholder */}
-                    <div className="h-48 bg-gradient-to-br from-green-100 to-green-200 rounded-t-lg flex items-center justify-center flex-shrink-0">
-                      {article.imageUrl ? (
-                        <img 
-                          src={article.imageUrl} 
-                          alt={article.title}
-                          className="w-full h-full object-cover rounded-t-lg"
-                        />
-                      ) : (
-                        <div className="text-green-600 text-4xl font-bold">
-                          {article.title.charAt(0)}
-                        </div>
-                      )}
-                    </div>
-                    
-                    <div className="p-6 flex flex-col flex-grow">
-                      <Badge className={getCategoryColor(category)}>
-                        {getCategoryLabel(category)}
-                      </Badge>
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 mt-2">
-                        {article.title}
-                      </h3>
+                  <Link href={`/article/${article.id}`} className="w-full h-full">
+                    <div className="w-full h-full bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer flex flex-col">
+                      {/* Image placeholder */}
+                      <div className="h-48 bg-gradient-to-br from-green-100 to-green-200 rounded-t-lg flex items-center justify-center flex-shrink-0">
+                        {article.imageUrl ? (
+                          <img 
+                            src={article.imageUrl} 
+                            alt={article.title}
+                            className="w-full h-full object-cover rounded-t-lg"
+                          />
+                        ) : (
+                          <div className="text-green-600 text-4xl font-bold">
+                            {article.title.charAt(0)}
+                          </div>
+                        )}
+                      </div>
                       
-                      <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-grow">
-                        {article.content}
-                      </p>
-                      
-                      <div className="flex items-center justify-between mt-auto">
-                        <div className="flex items-center text-gray-500 text-xs">
-                          <Clock className="w-4 h-4 mr-1" />
-                          {new Date(article.createdAt.toString()).toLocaleDateString("vi-VN")}
-                        </div>
+                      <div className="p-6 flex flex-col flex-grow">
+                        <Badge className={getCategoryColor(category)}>
+                          {getCategoryLabel(category)}
+                        </Badge>
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 mt-2">
+                          {article.title}
+                        </h3>
                         
-                        <span className="text-green-600 hover:text-green-700 text-sm font-medium">
-                          Đọc thêm →
-                        </span>
+                        <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-grow">
+                          {article.content}
+                        </p>
+                        
+                        <div className="flex items-center justify-between mt-auto">
+                          <div className="flex items-center text-gray-500 text-xs">
+                            <Clock className="w-4 h-4 mr-1" />
+                            {new Date(article.createdAt.toString()).toLocaleDateString("vi-VN")}
+                          </div>
+                          
+                          <span className="text-green-600 hover:text-green-700 text-sm font-medium">
+                            Đọc thêm →
+                          </span>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
                 </div>
               ))}
             </div>

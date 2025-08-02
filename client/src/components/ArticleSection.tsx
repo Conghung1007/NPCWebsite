@@ -79,10 +79,6 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
                   <div key={article.id} className="w-full h-full flex">
                     <ArticleCard
                       article={article}
-                      onClick={() => {
-                        // In a real app, this would navigate to article detail page
-                        console.log('Navigate to article:', article.id);
-                      }}
                     />
                   </div>
                 );
