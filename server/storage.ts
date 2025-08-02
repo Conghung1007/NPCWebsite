@@ -22,7 +22,7 @@ export interface IStorage {
   getAllArticles(): Promise<Article[]>;
   getArticles(): Promise<Article[]>;
   getArticle(id: string): Promise<Article | undefined>;
-  updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null }): Promise<Article | null>;
+  updateArticle(id: string, title: string, content: string, category: string, imageUrl?: string | null): Promise<Article | null>;
   deleteArticle(id: string): Promise<boolean>;
 }
 
@@ -150,7 +150,7 @@ export class MemStorage implements IStorage {
     return this.getAllArticles();
   }
 
-  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null }): Promise<Article | null> {
+  async updateArticle(id: string, title: string, content: string, category: string, imageUrl?: string | null): Promise<Article | null> {
     const existingArticle = this.articles.get(id);
     if (!existingArticle) {
       return null;
@@ -158,10 +158,11 @@ export class MemStorage implements IStorage {
     
     const updatedArticle = {
       ...existingArticle,
-      title: updateData.title,
-      content: updateData.content,
-      category: updateData.category,
-      imageUrl: updateData.imageUrl !== undefined ? updateData.imageUrl : existingArticle.imageUrl,
+      title,
+      content,
+      category,
+      imageUrl: imageUrl !== undefined ? imageUrl : existingArticle.imageUrl,
+      updatedAt: new Date()
     };
     
     this.articles.set(id, updatedArticle);
@@ -550,18 +551,13 @@ export class DatabaseStorage implements IStorage {
     return this.getAllArticles();
   }
 
-  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null }): Promise<Article | null> {
+  async updateArticle(article: Article): Promise<Article> {
     const [updatedArticle] = await db
       .update(articles)
-      .set(updateData)
-      .where(eq(articles.id, id))
+      .set(article)
+      .where(eq(articles.id, article.id))
       .returning();
-    return updatedArticle || null;
-  }
-
-  async deleteArticle(id: string): Promise<boolean> {
-    const result = await db.delete(articles).where(eq(articles.id, id));
-    return (result.rowCount || 0) > 0;
+    return updatedArticle;
   }
 }
 
