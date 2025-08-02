@@ -5,6 +5,7 @@ import { ServiceCard } from "@/components/ui/service-card";
 import { TestimonialCard } from "@/components/ui/testimonial-card";
 import { ContactForm } from "@/components/ui/contact-form";
 import { Button } from "@/components/ui/button";
+import { AutoScrollingArticles } from "@/components/AutoScrollingArticles";
 import { 
   IdCard, 
   GraduationCap, 
@@ -21,100 +22,7 @@ import {
   ArrowRight
 } from "lucide-react";
 
-// Service Row with Animated Posts Component
-function ServiceRowWithPosts({ service, isReversed, onLearnMore }: {
-  service: any;
-  isReversed: boolean;
-  onLearnMore: () => void;
-}) {
-  // Sample posts for each service
-  const getServicePosts = (title: string) => {
-    const postSets = {
-      "Dịch vụ xin thị thực": [
-        { title: "Visa Nhật Bản - Thủ tục đơn giản", image: "https://images.unsplash.com/photo-1490650034439-fd184c3c86a5?w=300&h=200&fit=crop", type: "Visa" },
-        { title: "Visa Mỹ - Tỷ lệ thành công 98%", image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=200&fit=crop", type: "Visa" },
-        { title: "Visa Châu Âu - Xử lý nhanh chóng", image: "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=300&h=200&fit=crop", type: "Visa" },
-        { title: "Visa Australia - Hỗ trợ 24/7", image: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=300&h=200&fit=crop", type: "Visa" },
-        { title: "Visa Canada - Tư vấn miễn phí", image: "https://images.unsplash.com/photo-1503614472-8c93d56ad7eb?w=300&h=200&fit=crop", type: "Visa" }
-      ],
-      "Tư vấn du học": [
-        { title: "Du học Nhật - Học bổng 100%", image: "https://images.unsplash.com/photo-1523050854058-8df90110c9d1?w=300&h=200&fit=crop", type: "Du học" },
-        { title: "Du học Úc - Định cư dễ dàng", image: "https://images.unsplash.com/photo-1523240795612-9a054b0db644?w=300&h=200&fit=crop", type: "Du học" },
-        { title: "Du học Mỹ - Top trường đại học", image: "https://images.unsplash.com/photo-1562774053-701939374585?w=300&h=200&fit=crop", type: "Du học" },
-        { title: "Du học Canada - Chi phí thấp", image: "https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?w=300&h=200&fit=crop", type: "Du học" },
-        { title: "Du học Đức - Miễn học phí", image: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop", type: "Du học" }
-      ],
-      "Đào tạo tiếng Nhật": [
-        { title: "Lớp N5 - Khởi đầu hoàn hảo", image: "https://images.unsplash.com/photo-1481627834876-b7833e8f5570?w=300&h=200&fit=crop", type: "Nhật ngữ" },
-        { title: "Lớp N3 - Giao tiếp thành thạo", image: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=300&h=200&fit=crop", type: "Nhật ngữ" },
-        { title: "Lớp N1 - Trình độ chuyên gia", image: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=300&h=200&fit=crop", type: "Nhật ngữ" },
-        { title: "Khóa giao tiếp - Thực tế", image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?w=300&h=200&fit=crop", type: "Nhật ngữ" },
-        { title: "Luyện thi JLPT - Đạt điểm cao", image: "https://images.unsplash.com/photo-1456513080510-7bf3a84b82f8?w=300&h=200&fit=crop", type: "Nhật ngữ" }
-      ],
-      "Bán vé máy bay": [
-        { title: "Vé Hà Nội - Tokyo siêu rẻ", image: "https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=300&h=200&fit=crop", type: "Vé bay" },
-        { title: "Vé TP.HCM - Seoul giảm 50%", image: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop", type: "Vé bay" },
-        { title: "Vé quốc tế - Ưu đãi đặc biệt", image: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=300&h=200&fit=crop", type: "Vé bay" },
-        { title: "Vé khứ hồi - Tiết kiệm 30%", image: "https://images.unsplash.com/photo-1517479149777-5f3b1511d5ad?w=300&h=200&fit=crop", type: "Vé bay" },
-        { title: "Vé nhóm - Ưu đãi hấp dẫn", image: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=300&h=200&fit=crop", type: "Vé bay" }
-      ]
-    };
-    return postSets[title as keyof typeof postSets] || postSets["Dịch vụ xin thị thực"];
-  };
 
-  const posts = getServicePosts(service.title);
-  const duplicatedPosts = [...posts, ...posts]; // Duplicate for seamless loop
-
-  return (
-    <div className={`flex flex-col lg:flex-row items-center gap-8 ${isReversed ? 'lg:flex-row-reverse' : ''}`}>
-      {/* Service Info */}
-      <div className="flex-1 lg:max-w-md">
-        <div className="bg-white rounded-xl p-8 shadow-lg">
-          <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
-            {service.icon}
-          </div>
-          <h3 className="text-3xl font-bold text-foreground mb-4">{service.title}</h3>
-          <p className="text-lg text-muted-foreground mb-6">{service.description}</p>
-          <Button onClick={onLearnMore} className="w-full">
-            Tìm hiểu thêm
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
-        </div>
-      </div>
-
-      {/* Animated Posts */}
-      <div className="flex-1 overflow-hidden">
-        <div className="relative">
-          <div className="flex animate-scroll space-x-4" style={{
-            animation: 'scroll 30s linear infinite',
-            width: `${duplicatedPosts.length * 280}px`
-          }}>
-            {duplicatedPosts.map((post, index) => (
-              <div
-                key={index}
-                className="flex-shrink-0 w-64 bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow"
-              >
-                <img
-                  src={post.image}
-                  alt={post.title}
-                  className="w-full h-32 object-cover"
-                />
-                <div className="p-4">
-                  <span className="inline-block bg-primary/10 text-primary text-xs font-medium px-2 py-1 rounded-full mb-2">
-                    {post.type}
-                  </span>
-                  <h4 className="font-semibold text-base text-gray-800 line-clamp-2">
-                    {post.title}
-                  </h4>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
 
 export default function Home() {
   const [, setLocation] = useLocation();
@@ -257,18 +165,25 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="space-y-12">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-8">
             {services.map((service, index) => (
-              <ServiceRowWithPosts
+              <ServiceCard
                 key={index}
-                service={service}
-                isReversed={index % 2 === 1}
-                onLearnMore={() => handleServiceClick(service.route)}
+                icon={service.icon}
+                title={service.title}
+                description={service.description}
+                onClick={() => handleServiceClick(service.route)}
               />
             ))}
           </div>
         </div>
       </section>
+
+      {/* Auto-scrolling Articles Section */}
+      <AutoScrollingArticles 
+        title="Bài viết mới nhất" 
+        description="Cập nhật thông tin hữu ích từ N&P về visa, du học, tiếng Nhật và vé máy bay"
+      />
 
       {/* Why Choose N&P */}
       <section className="py-20 bg-white">
