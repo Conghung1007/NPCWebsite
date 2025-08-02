@@ -135,7 +135,7 @@ export default function StudyAbroad() {
         }}
       />
       {/* Services & Destinations */}
-      <section className="py-4 bg-neutral">
+      <section className="py-4 bg-neutral pt-[10px] pb-[10px]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-3 gap-8 mt-[60px] mb-[60px]">
             <div className="lg:col-span-2">
@@ -199,7 +199,7 @@ export default function StudyAbroad() {
       </section>
       {/* Success Stories */}
       <section className="py-4 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-[0px] mb-[0px] pt-[20px] pb-[20px]">
           <h3 className="text-2xl font-bold text-foreground text-center mb-8">
             Câu chuyện thành công
           </h3>
