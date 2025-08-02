@@ -63,13 +63,15 @@ export function ServiceWithArticles({
     <div className="flex flex-col lg:flex-row items-start gap-8">
       {/* Service Info */}
       <div className="flex-1 lg:max-w-md">
-        <div className="bg-white rounded-xl p-8 shadow-lg h-fit pt-[51px] pb-[51px]">
-          <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
-            {service.icon}
+        <div className="bg-white rounded-xl p-8 shadow-lg h-[400px] flex flex-col justify-between">
+          <div>
+            <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
+              {service.icon}
+            </div>
+            <h3 className="text-3xl font-bold text-foreground mb-4">{service.title}</h3>
+            <p className="text-lg text-muted-foreground mb-6">{service.description}</p>
           </div>
-          <h3 className="text-3xl font-bold text-foreground mb-4">{service.title}</h3>
-          <p className="text-lg text-muted-foreground mb-6">{service.description}</p>
-          <Button onClick={onServiceClick} className="w-full">
+          <Button onClick={onServiceClick} className="w-full mt-auto">
             Tìm hiểu thêm
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
@@ -82,12 +84,12 @@ export function ServiceWithArticles({
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="overflow-hidden">
-                <div className="w-full h-48 bg-gray-200 animate-pulse"></div>
-                <CardContent className="p-4">
+              <Card key={i} className="overflow-hidden h-[400px] flex flex-col">
+                <div className="w-full h-48 bg-gray-200 animate-pulse flex-shrink-0"></div>
+                <CardContent className="p-4 flex-1 flex flex-col">
                   <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
                   <div className="h-6 bg-gray-200 rounded animate-pulse mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4 flex-1"></div>
                 </CardContent>
               </Card>
             ))}
@@ -98,9 +100,9 @@ export function ServiceWithArticles({
               {categoryArticles.map((article) => (
                 <Card 
                   key={article.id}
-                  className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer"
+                  className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer h-[400px] flex flex-col"
                 >
-                  <div className="relative w-full h-48 overflow-hidden">
+                  <div className="relative w-full h-48 overflow-hidden flex-shrink-0">
                     <img
                       src={article.imageUrl || 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=300&fit=crop'}
                       alt={article.title}
@@ -113,17 +115,17 @@ export function ServiceWithArticles({
                     </div>
                   </div>
                   
-                  <CardContent className="p-4">
+                  <CardContent className="p-4 flex-1 flex flex-col">
                     <div className="flex items-center text-sm text-gray-500 mb-3">
                       <Clock className="w-4 h-4 mr-1" />
                       <span>{new Date(article.createdAt || Date.now()).toLocaleDateString('vi-VN')}</span>
                     </div>
                     
-                    <h5 className="text-lg font-semibold text-gray-900 mb-3 group-hover:text-primary transition-colors line-clamp-2">
+                    <h5 className="text-lg font-semibold text-gray-900 mb-3 group-hover:text-primary transition-colors line-clamp-2 flex-shrink-0">
                       {article.title}
                     </h5>
                     
-                    <p className="text-gray-600 text-sm line-clamp-3">
+                    <p className="text-gray-600 text-sm line-clamp-3 flex-1">
                       {article.content.substring(0, 120)}...
                     </p>
                   </CardContent>
