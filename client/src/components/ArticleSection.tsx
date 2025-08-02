@@ -1,6 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { ArticleCard } from "./ArticleCard";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Pagination } from "@/components/ui/pagination";
 import type { Article } from "@shared/schema";
 
 interface ArticleSectionProps {
@@ -10,7 +12,10 @@ interface ArticleSectionProps {
 }
 
 export function ArticleSection({ category, title, description }: ArticleSectionProps) {
-  const { data: articles, isLoading, error } = useQuery<Article[]>({
+  const [currentPage, setCurrentPage] = useState(1);
+  const articlesPerPage = 9;
+
+  const { data: allArticles, isLoading, error } = useQuery<Article[]>({
     queryKey: ['/api/articles', category],
     queryFn: async () => {
       const response = await fetch(`/api/articles?category=${category}`);
@@ -22,6 +27,19 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
       return data;
     }
   });
+
+  // Calculate pagination
+  const totalArticles = allArticles?.length || 0;
+  const totalPages = Math.ceil(totalArticles / articlesPerPage);
+  const startIndex = (currentPage - 1) * articlesPerPage;
+  const endIndex = startIndex + articlesPerPage;
+  const articles = allArticles?.slice(startIndex, endIndex) || [];
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    // Scroll to top of articles section
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   if (error) {
     return (
@@ -43,7 +61,7 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, index) => (
+            {Array.from({ length: 9 }).map((_, index) => (
               <div key={index} className="space-y-4">
                 <Skeleton className="aspect-video rounded-lg" />
                 <Skeleton className="h-4 w-3/4" />
@@ -53,30 +71,50 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
             ))}
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {articles?.map((article) => {
-              console.log('ArticleSection - Rendering article:', article);
-              return (
-                <div key={article.id} className="w-full h-full flex">
-                  <ArticleCard
-                    article={article}
-                    onClick={() => {
-                      // In a real app, this would navigate to article detail page
-                      console.log('Navigate to article:', article.id);
-                    }}
-                  />
-                </div>
-              );
-            })}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {articles?.map((article) => {
+                console.log('ArticleSection - Rendering article:', article);
+                return (
+                  <div key={article.id} className="w-full h-full flex">
+                    <ArticleCard
+                      article={article}
+                      onClick={() => {
+                        // In a real app, this would navigate to article detail page
+                        console.log('Navigate to article:', article.id);
+                      }}
+                    />
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="mt-12">
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={totalPages}
+                  onPageChange={handlePageChange}
+                />
+              </div>
+            )}
+          </>
         )}
 
-        {!isLoading && (!articles || articles.length === 0) && (
+        {!isLoading && (!allArticles || allArticles.length === 0) && (
           <div className="text-center py-8">
             <p className="text-muted-foreground">Chưa có bài viết nào trong danh mục này.</p>
             <div className="text-xs text-gray-400 mt-2">
-              Debug: Category: {category}, Articles: {JSON.stringify(articles)}
+              Debug: Category: {category}, Articles: {JSON.stringify(allArticles)}
             </div>
+          </div>
+        )}
+
+        {/* Articles summary */}
+        {!isLoading && allArticles && allArticles.length > 0 && (
+          <div className="mt-8 text-center text-sm text-gray-600">
+            Hiển thị {startIndex + 1}-{Math.min(endIndex, totalArticles)} trong tổng số {totalArticles} bài viết
           </div>
         )}
       </div>
