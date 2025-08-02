@@ -9,8 +9,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { ArticleManager } from "@/components/ArticleManager";
+
 import { Pagination } from "@/components/ui/pagination";
-import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText } from "lucide-react";
+import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText, Image } from "lucide-react";
 import { type User as UserType, type ContactRequest } from "@shared/schema";
 
 export function CpanelPage() {

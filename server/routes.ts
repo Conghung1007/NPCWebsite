@@ -740,6 +740,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update UI image metadata
+  app.put("/api/ui-images/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { altText, description } = req.body;
+      
+      const updatedImage = await storage.updateUiImage(id, {
+        altText,
+        description
+      });
+      
+      if (updatedImage) {
+        res.json(updatedImage);
+      } else {
+        res.status(404).json({ error: "UI image not found" });
+      }
+    } catch (error) {
+      console.error("Error updating UI image:", error);
+      res.status(500).json({ error: "Failed to update UI image" });
+    }
+  });
+
   // Server-side upload to R2 (similar to article uploads)
   app.post("/api/ui-images/server-upload", upload.single('file'), async (req, res) => {
     try {

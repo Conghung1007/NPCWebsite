@@ -13,7 +13,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 interface ImageManagerProps {
   currentImageUrl?: string;
   onImageUpdate: (newImageUrl: string) => void;
-  imageType: "hero" | "service" | "testimonial" | "feature" | "ui" | "why-choose-image";
+  imageType: string;
   altText?: string;
   className?: string;
 }
