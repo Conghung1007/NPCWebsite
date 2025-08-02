@@ -36,7 +36,8 @@ export function Header() {
     { name: "Dịch vụ xin\nthị thực", href: "/visa-services" },
     { name: "Tư vấn\ndu học", href: "/study-abroad" },
     { name: "Đào tạo\ntiếng Nhật", href: "/japanese-training" },
-    { name: "Bán vé\nmáy bay", href: "/flight-tickets" }
+    { name: "Bán vé\nmáy bay", href: "/flight-tickets" },
+    { name: "Tư vấn\nmiễn phí", href: "/contact" }
   ];
 
   return (
@@ -75,11 +76,6 @@ export function Header() {
           </div>
 
           <div className="hidden md:flex items-center space-x-4">
-            <Link href="/contact">
-              <Button className="btn-primary text-base">
-                Tư vấn miễn phí
-              </Button>
-            </Link>
             <Button variant="outline" size="sm" className="text-base">
               VI
             </Button>
@@ -116,12 +112,7 @@ export function Header() {
                       </span>
                     </Link>
                   ))}
-                  <div className="border-t pt-4 space-y-3">
-                    <Link href="/contact">
-                      <Button className="w-full btn-primary" onClick={() => setIsOpen(false)}>
-                        Tư vấn miễn phí
-                      </Button>
-                    </Link>
+                  <div className="border-t pt-4">
                     <div className="flex space-x-3">
                       <Button variant="outline" size="sm" className="text-base" onClick={() => setIsOpen(false)}>
                         VI
