@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { HeroSection } from "@/components/ui/hero-section";
 import { ContactForm } from "@/components/ui/contact-form";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 
 export default function Contact() {
+  const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1423666639041-f56000c27a9a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
+
   useEffect(() => {
     document.title = "Liên Hệ - N&P Company";
     const metaDescription = document.querySelector('meta[name="description"]');
@@ -79,7 +81,9 @@ export default function Contact() {
         title="Liên hệ với chúng tôi"
         subtitle=""
         description="Sẵn sàng hỗ trợ bạn 24/7. Hãy liên hệ ngay để nhận tư vấn miễn phí!"
-        backgroundImage="https://images.unsplash.com/photo-1423666639041-f56000c27a9a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080"
+        backgroundImage={heroImage}
+        allowImageEdit={true}
+        onImageUpdate={setHeroImage}
       />
 
       {/* Contact Section */}
