@@ -54,7 +54,7 @@ export function Header() {
           </div>
 
           {/* Desktop Navigation - Centered */}
-          <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2">
+          <div className="hidden md:flex flex-1 justify-center">
             <div className="flex items-center space-x-3">
               {navigation.map((item) => (
                 <Link key={item.name} href={item.href}>
@@ -75,14 +75,14 @@ export function Header() {
           </div>
 
           <div className="hidden md:flex items-center space-x-4">
-            <Button variant="outline" size="sm" className="text-base">
-              VI
-            </Button>
             <Link href="/contact">
               <Button className="btn-primary text-base">
                 Tư vấn miễn phí
               </Button>
             </Link>
+            <Button variant="outline" size="sm" className="text-base">
+              VI
+            </Button>
             <Button variant="outline" className="text-base">
               Đăng nhập
             </Button>
@@ -122,9 +122,14 @@ export function Header() {
                         Tư vấn miễn phí
                       </Button>
                     </Link>
-                    <Button variant="outline" className="w-full text-base" onClick={() => setIsOpen(false)}>
-                      Đăng nhập
-                    </Button>
+                    <div className="flex space-x-3">
+                      <Button variant="outline" size="sm" className="text-base" onClick={() => setIsOpen(false)}>
+                        VI
+                      </Button>
+                      <Button variant="outline" className="flex-1 text-base" onClick={() => setIsOpen(false)}>
+                        Đăng nhập
+                      </Button>
+                    </div>
                   </div>
                 </div>
               </SheetContent>
