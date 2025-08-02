@@ -36,8 +36,7 @@ export function Header() {
     { name: "Dịch vụ xin\nthị thực", href: "/visa-services" },
     { name: "Tư vấn\ndu học", href: "/study-abroad" },
     { name: "Đào tạo\ntiếng Nhật", href: "/japanese-training" },
-    { name: "Bán vé\nmáy bay", href: "/flight-tickets" },
-    { name: "Liên hệ", href: "/contact" }
+    { name: "Bán vé\nmáy bay", href: "/flight-tickets" }
   ];
 
   return (
