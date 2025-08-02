@@ -228,13 +228,15 @@ export function CpanelPage() {
                           Quản lý tất cả người dùng trong hệ thống
                         </CardDescription>
                       </div>
-                      <Button 
-                        onClick={() => setIsAddingUser(true)}
-                        className="flex items-center gap-2"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Thêm người dùng
-                      </Button>
+                      {!isAddingUser && !editingUser && (
+                        <Button 
+                          onClick={() => setIsAddingUser(true)}
+                          className="flex items-center gap-2"
+                        >
+                          <Plus className="w-4 h-4" />
+                          Thêm người dùng
+                        </Button>
+                      )}
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -269,11 +271,11 @@ export function CpanelPage() {
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Button onClick={handleSaveUser}>
-                            {editingUser ? "Cập nhật" : "Thêm"}
+                          <Button onClick={handleSaveUser} className="bg-green-600 hover:bg-green-700">
+                            {editingUser ? "💾 Cập nhật người dùng" : "✅ Thêm người dùng"}
                           </Button>
                           <Button variant="outline" onClick={handleCancelEdit}>
-                            Hủy
+                            ❌ Hủy
                           </Button>
                         </div>
                       </div>
