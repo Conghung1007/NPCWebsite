@@ -5,6 +5,7 @@ import { Clock, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useRef, useEffect } from "react";
 import type { Article } from "@shared/schema";
+import { ImageManager } from "@/components/ui/image-manager";
 
 interface ServiceWithArticlesProps {
   service: {
@@ -12,9 +13,12 @@ interface ServiceWithArticlesProps {
     title: string;
     description: string;
     route: string;
+    backgroundImage?: string;
   };
   category: string;
   onServiceClick: () => void;
+  allowImageEdit?: boolean;
+  onServiceImageUpdate?: (newImageUrl: string) => void;
 }
 
 // Simple Badge component
@@ -29,7 +33,9 @@ function Badge({ children, className }: { children: React.ReactNode; className?:
 export function ServiceWithArticles({ 
   service, 
   category, 
-  onServiceClick 
+  onServiceClick,
+  allowImageEdit = false,
+  onServiceImageUpdate
 }: ServiceWithArticlesProps) {
   const { data: allArticles = [], isLoading } = useQuery<Article[]>({
     queryKey: ['/api/articles'],
@@ -119,15 +125,39 @@ export function ServiceWithArticles({
     <div className="flex flex-col lg:flex-row items-start gap-8">
       {/* Service Info */}
       <div className="flex-1 lg:max-w-md">
-        <div className="bg-white rounded-xl p-8 shadow-lg h-[400px] flex flex-col justify-between">
-          <div>
+        <div className="relative bg-white rounded-xl p-8 shadow-lg h-[400px] flex flex-col justify-between overflow-hidden">
+          {/* Background Image */}
+          {service.backgroundImage && (
+            <div className="absolute inset-0 opacity-5">
+              <img 
+                src={service.backgroundImage} 
+                alt={`${service.title} background`}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+
+          {/* Image Manager Button */}
+          {allowImageEdit && (
+            <div className="absolute top-4 right-4 z-10">
+              <ImageManager
+                currentImageUrl={service.backgroundImage}
+                onImageUpdate={(newImageUrl) => onServiceImageUpdate?.(newImageUrl)}
+                imageType="service"
+                altText={`${service.title} background image`}
+                className="bg-white/80 hover:bg-white/90 text-gray-700"
+              />
+            </div>
+          )}
+
+          <div className="relative z-10">
             <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
               {service.icon}
             </div>
             <h3 className="text-3xl font-bold text-foreground mb-4">{service.title}</h3>
             <p className="text-lg text-muted-foreground mb-6">{service.description}</p>
           </div>
-          <Button onClick={onServiceClick} className="w-full mt-auto">
+          <Button onClick={onServiceClick} className="relative z-10 w-full mt-auto">
             Tìm hiểu thêm
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>

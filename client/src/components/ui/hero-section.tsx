@@ -1,5 +1,6 @@
-import { ReactNode } from "react";
+import { ReactNode, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { ImageManager } from "@/components/ui/image-manager";
 
 interface HeroSectionProps {
   title: string;
@@ -15,6 +16,8 @@ interface HeroSectionProps {
   };
   backgroundImage?: string;
   children?: ReactNode;
+  allowImageEdit?: boolean;
+  onImageUpdate?: (newImageUrl: string) => void;
 }
 
 export function HeroSection({
@@ -24,16 +27,36 @@ export function HeroSection({
   primaryAction,
   secondaryAction,
   backgroundImage,
-  children
+  children,
+  allowImageEdit = false,
+  onImageUpdate
 }: HeroSectionProps) {
+  const [currentBgImage, setCurrentBgImage] = useState(backgroundImage);
+
+  const handleImageUpdate = (newImageUrl: string) => {
+    setCurrentBgImage(newImageUrl);
+    onImageUpdate?.(newImageUrl);
+  };
   return (
     <section className="relative hero-gradient text-white overflow-hidden">
-      {backgroundImage && (
+      {currentBgImage && (
         <div className="absolute inset-0">
           <img 
-            src={backgroundImage} 
+            src={currentBgImage} 
             alt="Hero background" 
             className="w-full h-full object-cover opacity-20" 
+          />
+        </div>
+      )}
+      
+      {allowImageEdit && (
+        <div className="absolute top-4 right-4 z-10">
+          <ImageManager
+            currentImageUrl={currentBgImage}
+            onImageUpdate={handleImageUpdate}
+            imageType="hero"
+            altText="Hero background image"
+            className="bg-white/20 text-white hover:bg-white/30"
           />
         </div>
       )}

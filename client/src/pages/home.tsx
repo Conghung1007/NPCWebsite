@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { HeroSection } from "@/components/ui/hero-section";
 import { ServiceCard } from "@/components/ui/service-card";
@@ -6,6 +6,7 @@ import { TestimonialCard } from "@/components/ui/testimonial-card";
 import { ContactForm } from "@/components/ui/contact-form";
 import { Button } from "@/components/ui/button";
 import { ServiceWithArticles } from "@/components/ServiceWithArticles";
+import { ImageManager } from "@/components/ui/image-manager";
 import { 
   IdCard, 
   GraduationCap, 
@@ -26,6 +27,8 @@ import {
 
 export default function Home() {
   const [, setLocation] = useLocation();
+  const [heroBgImage, setHeroBgImage] = useState("https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
+  const [whyChooseImage, setWhyChooseImage] = useState("https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600");
 
   useEffect(() => {
     document.title = "N&P Company - Đối Tác Tin Cậy Cho Giấc Mơ Toàn Cầu";
@@ -48,36 +51,50 @@ export default function Home() {
     setLocation("/contact");
   };
 
-  const services = [
+  const handleServiceImageUpdate = (serviceIndex: number, newImageUrl: string) => {
+    setServices(prevServices => 
+      prevServices.map((service, index) => 
+        index === serviceIndex 
+          ? { ...service, backgroundImage: newImageUrl }
+          : service
+      )
+    );
+  };
+
+  const [services, setServices] = useState([
     {
       icon: <IdCard className="h-8 w-8 text-primary" />,
       title: "Dịch vụ xin thị thực",
       description: "Hỗ trợ xin thị thực du lịch, công tác, sinh viên cho hơn 50 quốc gia với tỷ lệ thành công 98%",
       route: "/visa-services",
-      category: "visa-services"
+      category: "visa-services",
+      backgroundImage: "https://images.unsplash.com/photo-1569154941061-e231b4725ef1?w=400&h=300"
     },
     {
       icon: <GraduationCap className="h-8 w-8 text-secondary" />,
       title: "Tư vấn du học", 
       description: "Tư vấn chọn trường, chương trình học, hỗ trợ hồ sơ và học bổng tại Nhật, Mỹ, Canada, Châu Âu",
       route: "/study-abroad",
-      category: "study-abroad"
+      category: "study-abroad",
+      backgroundImage: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?w=400&h=300"
     },
     {
       icon: <Languages className="h-8 w-8 text-accent" />,
       title: "Đào tạo tiếng Nhật",
       description: "Khóa học tiếng Nhật từ cơ bản đến nâng cao, luyện thi JLPT với giảng viên bản ngữ",
       route: "/japanese-training",
-      category: "japanese-training"
+      category: "japanese-training",
+      backgroundImage: "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=400&h=300"
     },
     {
       icon: <Plane className="h-8 w-8 text-red-600" />,
       title: "Bán vé máy bay",
       description: "Vé máy bay giá tốt, đa dạng hãng hàng không, hỗ trợ 24/7 cho mọi hành trình của bạn",
       route: "/flight-tickets",
-      category: "flight-tickets"
+      category: "flight-tickets",
+      backgroundImage: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400&h=300"
     }
-  ];
+  ]);
 
   const reasons = [
     {
@@ -136,7 +153,9 @@ export default function Home() {
         title="Đối tác tin cậy cho"
         subtitle="giấc mơ toàn cầu"
         description="Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và vé máy bay với hơn 10 năm kinh nghiệm"
-        backgroundImage="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080"
+        backgroundImage={heroBgImage}
+        allowImageEdit={true}
+        onImageUpdate={setHeroBgImage}
         primaryAction={{
           text: "Tư vấn miễn phí ngay",
           onClick: handleContactClick
@@ -176,6 +195,8 @@ export default function Home() {
                 service={service}
                 category={service.category}
                 onServiceClick={() => handleServiceClick(service.route)}
+                allowImageEdit={true}
+                onServiceImageUpdate={(newImageUrl) => handleServiceImageUpdate(index, newImageUrl)}
               />
             ))}
           </div>
@@ -211,11 +232,17 @@ export default function Home() {
               </div>
             </div>
 
-            <div>
+            <div className="relative">
               <img 
-                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600" 
+                src={whyChooseImage} 
                 alt="Professional business team providing visa and international services" 
                 className="rounded-xl shadow-lg w-full h-auto" 
+              />
+              <ImageManager
+                imageUrl={whyChooseImage}
+                onImageUpdate={setWhyChooseImage}
+                imageType="why-choose-image"
+                className="absolute top-2 right-2"
               />
             </div>
           </div>

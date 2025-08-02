@@ -623,6 +623,101 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // UI Images Management API endpoints
+
+  // Get upload URL for UI images (stored in ui-images folder on R2)
+  app.post("/api/ui-images/upload", async (req, res) => {
+    try {
+      const { fileName, contentType, imageType } = req.body;
+      
+      if (!fileName || !contentType || !imageType) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // Generate unique filename to prevent conflicts
+      const timestamp = Date.now();
+      const uniqueFileName = `${imageType}-${timestamp}-${fileName}`;
+      
+      // Get upload URL to ui-images folder
+      const result = await multiR2Storage.getUploadUrl("primary", `ui-images/${uniqueFileName}`, contentType);
+      
+      if (result.success) {
+        res.json({
+          uploadURL: result.url,
+          provider: result.provider,
+          path: `ui-images/${uniqueFileName}`
+        });
+      } else {
+        res.status(500).json({ error: result.error || "Failed to get upload URL" });
+      }
+    } catch (error) {
+      console.error("Error getting UI image upload URL:", error);
+      res.status(500).json({ error: "Failed to get upload URL" });
+    }
+  });
+
+  // Update UI image metadata
+  app.put("/api/ui-images", async (req, res) => {
+    try {
+      const { imageUrl, imageType, altText, description } = req.body;
+      
+      if (!imageUrl || !imageType) {
+        return res.status(400).json({ error: "Missing required fields" });
+      }
+
+      // For UI images, we don't need to store in database, just return the image URL
+      // This can be extended later to store metadata if needed
+      
+      res.json({
+        imageUrl: imageUrl,
+        imageType: imageType,
+        altText: altText,
+        description: description,
+        success: true
+      });
+    } catch (error) {
+      console.error("Error updating UI image:", error);
+      res.status(500).json({ error: "Failed to update UI image" });
+    }
+  });
+
+  // Serve UI images from R2 storage
+  app.get("/ui-images/:fileName", async (req, res) => {
+    try {
+      const fileName = req.params.fileName;
+      
+      // Get download URL from R2
+      const downloadUrl = await multiR2Storage.getDownloadUrl("primary", `ui-images/${fileName}`);
+      
+      if (downloadUrl) {
+        // Proxy the image
+        try {
+          const imageResponse = await fetch(downloadUrl);
+          if (imageResponse.ok) {
+            const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+            res.set({
+              'Content-Type': contentType,
+              'Cache-Control': 'public, max-age=3600',
+              'Access-Control-Allow-Origin': '*'
+            });
+            
+            // Stream the image data
+            const imageBuffer = await imageResponse.arrayBuffer();
+            return res.send(Buffer.from(imageBuffer));
+          }
+        } catch (proxyError) {
+          console.error("Error proxying UI image:", proxyError);
+        }
+      }
+      
+      // Fallback to 404 if image not found
+      res.status(404).json({ error: "UI image not found" });
+    } catch (error) {
+      console.error("Error serving UI image:", error);
+      res.status(500).json({ error: "Failed to serve UI image" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

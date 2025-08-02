@@ -32,6 +32,16 @@ export const articles = pgTable("articles", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const uiImages = pgTable("ui_images", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  imageUrl: text("image_url").notNull(),
+  imageType: text("image_type").notNull(), // hero, service, testimonial, feature, ui
+  altText: text("alt_text"),
+  description: text("description"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -48,9 +58,17 @@ export const insertArticleSchema = createInsertSchema(articles).omit({
   createdAt: true,
 });
 
+export const insertUiImageSchema = createInsertSchema(uiImages).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type ContactRequest = typeof contactRequests.$inferSelect;
 export type InsertContactRequest = z.infer<typeof insertContactRequestSchema>;
 export type Article = typeof articles.$inferSelect;
 export type InsertArticle = z.infer<typeof insertArticleSchema>;
+export type UiImage = typeof uiImages.$inferSelect;
+export type InsertUiImage = z.infer<typeof insertUiImageSchema>;
