@@ -80,11 +80,7 @@ export function ServiceWithArticles({
 
       {/* Related Articles */}
       <div className="flex-1">
-        <div className="mb-6">
-          <h4 className="text-2xl font-bold text-gray-900 mb-2">
-            Bài viết về {getCategoryLabel(category)}
-          </h4>
-        </div>
+        
 
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
