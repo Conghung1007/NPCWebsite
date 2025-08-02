@@ -139,9 +139,8 @@ export default function VisaServices() {
           onClick: handleConsultation
         }}
       />
-
       {/* Visa Types & Countries */}
-      <section className="py-20 bg-white">
+      <section className="py-20 bg-white pt-[50px] pb-[50px]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 mb-16">
             <div>
@@ -179,7 +178,6 @@ export default function VisaServices() {
           </div>
         </div>
       </section>
-
       {/* Process Steps */}
       <section className="py-20 bg-neutral">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -199,7 +197,6 @@ export default function VisaServices() {
           </div>
         </div>
       </section>
-
       {/* Required Documents & FAQ */}
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -262,7 +259,6 @@ export default function VisaServices() {
           </div>
         </div>
       </section>
-
       {/* Articles Section */}
       <ArticleSection 
         category="visa-services"
