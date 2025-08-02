@@ -58,7 +58,7 @@ export class MultiR2StorageService {
       return {
         success: true,
         url: uploadURL,
-        path: `/objects/uploads/${fileName}`,
+        path: `/objects/${fileName}`,
         provider: "replit"
       };
     } catch (error) {
