@@ -122,6 +122,7 @@ export class MemStorage implements IStorage {
       ...insertArticle,
       id,
       imageUrl: insertArticle.imageUrl || null,
+      videoUrl: insertArticle.videoUrl ?? null,
       createdAt: new Date(),
     };
     this.articles.set(id, article);
