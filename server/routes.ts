@@ -5,6 +5,14 @@ import { insertContactRequestSchema, insertArticleSchema } from "@shared/schema"
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { multiR2Storage, type MediaUploadConfig, type FileInfo } from "./multiR2Storage";
+import { r2Manager, EXTERNAL_R2_CONFIGS } from "./r2Config";
+import multer from "multer";
+
+// Configure multer for file uploads
+const upload = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+});
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Users endpoint - for managers and admins
@@ -646,6 +654,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // UI Images Management API endpoints
 
+  // Server-side upload to R2 (avoids CORS issues)
+  app.post("/api/ui-images/server-upload", upload.single('file'), async (req, res) => {
+    try {
+      const file = req.file;
+      const { imageType, altText } = req.body;
+      
+      if (!file || !imageType) {
+        return res.status(400).json({ error: "Missing file or imageType" });
+      }
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const fileExtension = file.originalname.split('.').pop();
+      const uniqueFileName = `${imageType}-${timestamp}.${fileExtension}`;
+      const fullPath = `ui-images/${uniqueFileName}`;
+      
+      // Upload directly to R2 from server
+      const uploadUrl = await r2Manager.generateUploadUrl("primary", fullPath, 3600);
+      if (!uploadUrl) {
+        return res.status(500).json({ error: "Failed to generate upload URL" });
+      }
+      
+      // Upload file buffer to R2
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: file.buffer,
+        headers: {
+          'Content-Type': file.mimetype
+        }
+      });
+      
+      if (!uploadResponse.ok) {
+        return res.status(500).json({ error: "Upload to R2 failed" });
+      }
+      
+      // Generate public URL
+      const config = EXTERNAL_R2_CONFIGS.primary;
+      const publicUrl = `${config.endpoint}/${config.bucketName}/${fullPath}`;
+      
+      // Update UI images in storage
+      const currentImages = storage.getUIImages();
+      const updatedImages = {
+        ...currentImages,
+        [imageType]: {
+          url: publicUrl,
+          altText: altText || '',
+          lastUpdated: new Date().toISOString()
+        }
+      };
+      
+      storage.updateUIImages(updatedImages);
+      
+      res.json({
+        success: true,
+        imageUrl: publicUrl,
+        imageType: imageType
+      });
+      
+    } catch (error) {
+      console.error("Error in server upload:", error);
+      res.status(500).json({ error: "Server upload failed" });
+    }
+  });
+
   // Get upload URL for UI images (stored in ui-images folder on R2)
   app.post("/api/ui-images/upload", async (req, res) => {
     try {
@@ -662,7 +734,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get upload URL to ui-images folder
       const uploadConfig: MediaUploadConfig = {
         provider: config as "replit" | "primary" | "secondary",
-        folder: config === "replit" ? "uploads" : "ui-images",
+        folder: "ui-images",
         allowedTypes: ["image/*"],
         maxSizeBytes: 10 * 1024 * 1024 // 10MB
       };

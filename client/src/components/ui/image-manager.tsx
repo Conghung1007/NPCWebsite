@@ -115,86 +115,28 @@ export function ImageManager({
 
       const uploadData = await uploadResponse.json();
 
-      // Try upload to R2 first, fallback to Replit if CORS fails
-      let finalUploadUrl = uploadData.uploadURL;
-      let uploadSuccessful = false;
+      // Upload via server (to avoid CORS issues)
+      console.log('Uploading file via server...', file.name, file.type, file.size);
       
-      try {
-        console.log('Trying R2 upload to:', uploadData.uploadURL);
-        console.log('File type:', file.type, 'File size:', file.size);
-        
-        const uploadResult = await fetch(uploadData.uploadURL, {
-          method: 'PUT',
-          body: file,
-          headers: {
-            'Content-Type': file.type || 'image/jpeg'
-          },
-          mode: 'cors'
-        });
-
-        if (uploadResult.ok) {
-          uploadSuccessful = true;
-        } else {
-          throw new Error(`R2 upload failed with status: ${uploadResult.status}`);
-        }
-      } catch (r2Error) {
-        console.log('R2 upload failed, trying Replit storage...', r2Error);
-        
-        // Fallback to Replit storage
-        const replitUploadResponse = await fetch(`/api/ui-images/upload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            fileName: file.name,
-            contentType: file.type,
-            imageType: imageType,
-            config: "replit"
-          })
-        });
-        
-        if (!replitUploadResponse.ok) {
-          throw new Error('Failed to get Replit upload URL');
-        }
-        
-        const replitUploadData = await replitUploadResponse.json();
-        
-        const replitResult = await fetch(replitUploadData.uploadURL, {
-          method: 'PUT',
-          body: file,
-          headers: {
-            'Content-Type': file.type || 'image/jpeg'
-          }
-        });
-        
-        if (!replitResult.ok) {
-          throw new Error('Replit upload also failed');
-        }
-        
-        finalUploadUrl = replitUploadData.path || replitUploadData.uploadURL.split('?')[0];
-        uploadSuccessful = true;
-      }
-
-      if (!uploadSuccessful) {
-        throw new Error('All upload methods failed');
-      }
-
-      // Update image metadata
-      const updateResponse = await fetch(`/api/ui-images`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          imageUrl: finalUploadUrl, // Use the successful upload URL
-          imageType: imageType,
-          altText: altText
-        })
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('imageType', imageType);
+      formData.append('altText', altText);
+      
+      const serverUploadResponse = await fetch('/api/ui-images/server-upload', {
+        method: 'POST',
+        body: formData
       });
-
-      if (!updateResponse.ok) {
-        throw new Error('Failed to update image metadata');
+      
+      if (!serverUploadResponse.ok) {
+        throw new Error('Server upload failed');
       }
+      
+      const serverUploadData = await serverUploadResponse.json();
+      const finalUploadUrl = serverUploadData.imageUrl;
 
-      const updateData = await updateResponse.json();
-      onImageUpdate(updateData.imageUrl);
+      // Image metadata already updated in server upload
+      onImageUpdate(finalUploadUrl);
       setIsOpen(false);
       
       toast({
