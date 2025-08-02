@@ -42,7 +42,7 @@ export function ImageManager({
 
   // Fetch existing images from R2
   const { data: existingImages, isLoading: loadingImages } = useQuery<ExistingImage[]>({
-    queryKey: ["/api/ui-images"],
+    queryKey: ["/api/images/list"],
     retry: false,
   });
 
@@ -58,7 +58,7 @@ export function ImageManager({
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/ui-images"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/images/list"] });
       toast({
         title: "Thành công",
         description: "Đã xóa hình ảnh thành công",
@@ -123,6 +123,9 @@ export function ImageManager({
       onImageUpdate(finalUploadUrl);
       setIsOpen(false);
       
+      // Refresh the images list
+      queryClient.invalidateQueries({ queryKey: ["/api/images/list"] });
+      
       toast({
         title: "Thành công",
         description: "Hình ảnh đã được cập nhật"
@@ -171,6 +174,9 @@ export function ImageManager({
       onImageUpdate(updateData.imageUrl);
       setIsOpen(false);
       setPreviewUrl("");
+      
+      // Refresh the images list  
+      queryClient.invalidateQueries({ queryKey: ["/api/images/list"] });
       
       toast({
         title: "Thành công", 

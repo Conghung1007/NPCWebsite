@@ -272,6 +272,124 @@ export class MultiR2StorageService {
       };
     }
   }
+
+  // Upload file directly to R2 storage
+  async uploadFile(
+    fileBuffer: Buffer,
+    fileName: string,
+    contentType: string,
+    config: MediaUploadConfig
+  ): Promise<UploadResult> {
+    try {
+      const fullPath = `${config.folder}/${fileName}`;
+      
+      if (config.provider === "replit") {
+        // Use Replit object storage
+        return await this.uploadToReplit(fileBuffer, fullPath, contentType);
+      } else {
+        // Use external R2
+        return await this.uploadToExternalR2(fileBuffer, fullPath, contentType, config.provider);
+      }
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Upload failed"
+      };
+    }
+  }
+
+  // Upload to Replit object storage
+  private async uploadToReplit(fileBuffer: Buffer, filePath: string, contentType: string): Promise<UploadResult> {
+    try {
+      // Generate upload URL
+      const uploadResult = await this.getReplitUploadUrl(filePath);
+      if (!uploadResult.success || !uploadResult.url) {
+        return uploadResult;
+      }
+
+      // Upload file
+      const uploadResponse = await fetch(uploadResult.url, {
+        method: 'PUT',
+        body: fileBuffer,
+        headers: {
+          'Content-Type': contentType
+        }
+      });
+
+      if (!uploadResponse.ok) {
+        return {
+          success: false,
+          error: `Upload failed: ${uploadResponse.status}`
+        };
+      }
+
+      return {
+        success: true,
+        url: uploadResult.path,
+        path: uploadResult.path,
+        provider: "replit"
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Replit upload failed"
+      };
+    }
+  }
+
+  // Upload to external R2
+  private async uploadToExternalR2(fileBuffer: Buffer, filePath: string, contentType: string, provider: string): Promise<UploadResult> {
+    try {
+      const config = EXTERNAL_R2_CONFIGS[provider];
+      if (!config) {
+        return {
+          success: false,
+          error: `Provider ${provider} not found`
+        };
+      }
+
+      // Generate upload URL
+      const uploadUrl = await r2Manager.generateUploadUrl(provider, filePath, 3600);
+      if (!uploadUrl) {
+        return {
+          success: false,
+          error: "Failed to generate upload URL"
+        };
+      }
+
+      // Upload file
+      const uploadResponse = await fetch(uploadUrl, {
+        method: 'PUT',
+        body: fileBuffer,
+        headers: {
+          'Content-Type': contentType
+        }
+      });
+
+      if (!uploadResponse.ok) {
+        return {
+          success: false,
+          error: `Upload failed: ${uploadResponse.status}`
+        };
+      }
+
+      // Generate public URL
+      const publicUrl = `${config.endpoint}/${filePath}`;
+
+      return {
+        success: true,
+        url: publicUrl,
+        path: filePath,
+        provider: provider
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "External R2 upload failed"
+      };
+    }
+  }
 }
 
 export const multiR2Storage = new MultiR2StorageService();
