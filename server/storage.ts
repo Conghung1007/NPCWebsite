@@ -114,6 +114,30 @@ export class MemStorage implements IStorage {
         imageUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=400&fit=crop" as string | null,
         category: "visa-services",
         createdAt: new Date(Date.now() - 86400000 * 3)
+      },
+      {
+        id: randomUUID(),
+        title: "Visa Schengen - Khám phá 27 nước Châu Âu",
+        content: "Với một visa Schengen, bạn có thể tự do di chuyển giữa 27 quốc gia thành viên trong khu vực Schengen. Đây là lựa chọn tuyệt vời cho những ai muốn khám phá nhiều nước Châu Âu trong một chuyến đi duy nhất.",
+        imageUrl: "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=800&h=400&fit=crop" as string | null,
+        category: "visa-services",
+        createdAt: new Date(Date.now() - 86400000 * 4)
+      },
+      {
+        id: randomUUID(),
+        title: "Cập nhật quy định visa Mỹ mới nhất",
+        content: "Chính phủ Mỹ đã có những thay đổi quan trọng trong quy định thị thực năm 2024. Thời gian xét duyệt đã được rút ngắn và có thêm nhiều loại visa mới dành cho các ngành nghề chuyên môn cao, tạo thuận lợi cho người Việt Nam.",
+        imageUrl: "https://images.unsplash.com/photo-1542224566-6e85f2e6772f?w=800&h=400&fit=crop" as string | null,
+        category: "visa-services",
+        createdAt: new Date(Date.now() - 86400000 * 5)
+      },
+      {
+        id: randomUUID(),
+        title: "Visa transit - Khi nào cần và cách làm",
+        content: "Visa transit cần thiết khi bạn quá cảnh tại một số quốc gia trên đường đến điểm đến cuối cùng. Tìm hiểu khi nào cần visa transit và cách chuẩn bị hồ sơ phù hợp để tránh những rắc rối không mong muốn.",
+        imageUrl: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&h=400&fit=crop" as string | null,
+        category: "visa-services",
+        createdAt: new Date(Date.now() - 86400000 * 6)
       }
     ];
 
@@ -141,6 +165,30 @@ export class MemStorage implements IStorage {
         imageUrl: "https://images.unsplash.com/photo-1467269204594-9661b134dd2b?w=800&h=400&fit=crop" as string | null,
         category: "study-abroad",
         createdAt: new Date(Date.now() - 86400000 * 3)
+      },
+      {
+        id: randomUUID(),
+        title: "Du học Mỹ - Hệ thống giáo dục hàng đầu",
+        content: "Mỹ là điểm đến du học hàng đầu với nhiều trường đại học danh tiếng thế giới. Chúng tôi hỗ trợ sinh viên từ việc chọn trường, chuẩn bị hồ sơ, đến xin học bổng và visa F-1 để thực hiện ước mơ du học Mỹ.",
+        imageUrl: "https://images.unsplash.com/photo-1569950044794-e4bfcf66a5e4?w=800&h=400&fit=crop" as string | null,
+        category: "study-abroad",
+        createdAt: new Date(Date.now() - 86400000 * 4)
+      },
+      {
+        id: randomUUID(),
+        title: "Du học Úc - Môi trường học tập lý tưởng",
+        content: "Úc với môi trường học tập an toàn, chất lượng giáo dục cao và chính sách định cư thuận lợi đang trở thành lựa chọn hàng đầu của sinh viên Việt Nam. Nhiều trường đại học Úc nằm trong top thế giới với học bổng hấp dẫn.",
+        imageUrl: "https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800&h=400&fit=crop" as string | null,
+        category: "study-abroad",
+        createdAt: new Date(Date.now() - 86400000 * 5)
+      },
+      {
+        id: randomUUID(),
+        title: "Du học Singapore - Trung tâm giáo dục Đông Nam Á",
+        content: "Singapore với vị trí địa lý thuận lợi, nền giáo dục chất lượng cao và nhiều cơ hội việc làm sau tốt nghiệp là lựa chọn tuyệt vời cho du học sinh. Chi phí du học hợp lý và gần Việt Nam tạo thuận lợi cho gia đình.",
+        imageUrl: "https://images.unsplash.com/photo-1525625293386-3f8f99389edd?w=800&h=400&fit=crop" as string | null,
+        category: "study-abroad",
+        createdAt: new Date(Date.now() - 86400000 * 6)
       }
     ];
 
@@ -168,6 +216,30 @@ export class MemStorage implements IStorage {
         imageUrl: "https://images.unsplash.com/photo-1515378791036-0648a814c963?w=800&h=400&fit=crop" as string | null,
         category: "japanese-training",
         createdAt: new Date(Date.now() - 86400000 * 3)
+      },
+      {
+        id: randomUUID(),
+        title: "Luyện thi JLPT N2 - Nâng cao kỹ năng",
+        content: "Trình độ N2 là mục tiêu của nhiều người học tiếng Nhật để có thể làm việc tại Nhật Bản. Khóa học N2 tập trung vào kanji phức tạp, ngữ pháp nâng cao và kỹ năng đọc hiểu văn bản chuyên môn.",
+        imageUrl: "https://images.unsplash.com/photo-1513475382585-d06e58bcb0e0?w=800&h=400&fit=crop" as string | null,
+        category: "japanese-training",
+        createdAt: new Date(Date.now() - 86400000 * 4)
+      },
+      {
+        id: randomUUID(),
+        title: "Tiếng Nhật cho trẻ em - Học qua trò chơi",
+        content: "Khóa học tiếng Nhật dành riêng cho trẻ em từ 6-12 tuổi với phương pháp học qua trò chơi, hình ảnh và hoạt động vui nhộn. Giúp trẻ phát triển tự nhiên khả năng ngôn ngữ và tình yêu với văn hóa Nhật Bản.",
+        imageUrl: "https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=800&h=400&fit=crop" as string | null,
+        category: "japanese-training",
+        createdAt: new Date(Date.now() - 86400000 * 5)
+      },
+      {
+        id: randomUUID(),
+        title: "Kỹ năng phỏng vấn xin việc bằng tiếng Nhật",
+        content: "Chuẩn bị kỹ năng phỏng vấn bằng tiếng Nhật để gia tăng cơ hội xin việc thành công. Khóa học bao gồm cách trả lời câu hỏi phổ biến, ngôn ngữ cơ thể và cách thể hiện bản thân một cách ấn tượng.",
+        imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=800&h=400&fit=crop" as string | null,
+        category: "japanese-training",
+        createdAt: new Date(Date.now() - 86400000 * 6)
       }
     ];
 
@@ -195,6 +267,30 @@ export class MemStorage implements IStorage {
         imageUrl: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&h=400&fit=crop" as string | null,
         category: "flight-tickets",
         createdAt: new Date(Date.now() - 86400000 * 3)
+      },
+      {
+        id: randomUUID(),
+        title: "Khuyến mãi vé máy bay cuối năm - Tiết kiệm đến 50%",
+        content: "Mùa du lịch cuối năm đang đến gần, đây là thời điểm các hãng hàng không tung ra nhiều chương trình khuyến mãi hấp dẫn. Đặt vé sớm để nhận được ưu đãi tốt nhất cho chuyến du lịch của bạn.",
+        imageUrl: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&h=400&fit=crop" as string | null,
+        category: "flight-tickets",
+        createdAt: new Date(Date.now() - 86400000 * 4)
+      },
+      {
+        id: randomUUID(),
+        title: "Bảo hiểm du lịch khi mua vé máy bay",
+        content: "Bảo hiểm du lịch là sự bảo vệ quan trọng cho chuyến đi của bạn. Tìm hiểu các loại bảo hiểm phù hợp và cách mua bảo hiểm khi đặt vé máy bay để có chuyến đi an toàn và yên tâm nhất.",
+        imageUrl: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800&h=400&fit=crop" as string | null,
+        category: "flight-tickets",
+        createdAt: new Date(Date.now() - 86400000 * 5)
+      },
+      {
+        id: randomUUID(),
+        title: "Check-in online và chọn chỗ ngồi trên máy bay",
+        content: "Hướng dẫn chi tiết cách thực hiện check-in online, chọn chỗ ngồi yêu thích và in thẻ lên máy bay tại nhà. Tiết kiệm thời gian tại sân bay và có trải nghiệm bay thoải mái nhất.",
+        imageUrl: "https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=800&h=400&fit=crop" as string | null,
+        category: "flight-tickets",
+        createdAt: new Date(Date.now() - 86400000 * 6)
       }
     ];
 
