@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { ArrowLeft, PlusCircle, Eye } from "lucide-react";
+import { ArrowLeft, PlusCircle } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 
 const createArticleSchema = z.object({
@@ -196,49 +196,6 @@ export default function CreateArticle() {
                 </div>
               </form>
             </Form>
-          </CardContent>
-        </Card>
-        
-        {/* Preview Section */}
-        <Card className="mt-6">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Eye className="h-5 w-5" />
-              Xem trước bài viết
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {/* Title Preview */}
-              <div>
-                <h2 className="text-2xl font-bold text-gray-900">
-                  {form.watch("title") || "Tiêu đề bài viết sẽ hiển thị ở đây"}
-                </h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Danh mục: {form.watch("category") ? categoryOptions.find(cat => cat.value === form.watch("category"))?.label : "Chưa chọn danh mục"}
-                </p>
-              </div>
-              
-              {/* Content Preview */}
-              <div className="border-t pt-4">
-                <div className="prose prose-sm max-w-none">
-                  {form.watch("content") ? (
-                    <div dangerouslySetInnerHTML={{
-                      __html: form.watch("content")
-                        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-                        .replace(/!\[(.*?)\]\((.*?)\)/g, '<img src="$2" alt="$1" class="max-w-full h-auto rounded-lg my-2" />')
-                        .replace(/\[(.*?)\]\((.*?)\)/g, '<a href="$2" class="text-primary underline">$1</a>')
-                        .replace(/^- (.+)$/gm, '<li class="ml-4">$1</li>')
-                        .replace(/^\d+\. (.+)$/gm, '<li class="ml-4">$1</li>')
-                        .replace(/\n/g, '<br/>')
-                    }} />
-                  ) : (
-                    <p className="text-gray-500 italic">Nội dung bài viết sẽ hiển thị ở đây khi bạn nhập...</p>
-                  )}
-                </div>
-              </div>
-            </div>
           </CardContent>
         </Card>
       </div>
