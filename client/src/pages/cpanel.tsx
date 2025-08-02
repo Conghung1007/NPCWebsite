@@ -48,8 +48,8 @@ export function CpanelPage() {
     try {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
-      // Set default active tab based on user role
-      setActiveTab((parsedUser.role === "manager" || parsedUser.role === "admin") ? "users" : "messages");
+      // Set default active tab to messages for all users
+      setActiveTab("messages");
     } catch (error) {
       localStorage.removeItem("user");
       setLocation("/login");
@@ -240,6 +240,14 @@ export function CpanelPage() {
           {/* Left Sidebar - Navigation */}
           <div className="flex-shrink-0">
             <div className="space-y-2">
+              <Button 
+                variant={activeTab === "messages" ? "default" : "ghost"}
+                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
+                onClick={() => setActiveTab("messages")}
+              >
+                <MessageSquare className="w-5 h-5" />
+                Tin nhắn liên hệ
+              </Button>
               {canManageUsers && (
                 <Button 
                   variant={activeTab === "users" ? "default" : "ghost"}
@@ -250,14 +258,6 @@ export function CpanelPage() {
                   Quản lý người dùng
                 </Button>
               )}
-              <Button 
-                variant={activeTab === "messages" ? "default" : "ghost"}
-                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setActiveTab("messages")}
-              >
-                <MessageSquare className="w-5 h-5" />
-                Tin nhắn liên hệ
-              </Button>
             </div>
           </div>
 
