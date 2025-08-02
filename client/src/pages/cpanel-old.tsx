@@ -78,6 +78,8 @@ export function CpanelPage() {
     });
   };
 
+
+
   const handleSaveUser = async () => {
     if (!formData.username || !formData.password) {
       toast({
@@ -89,42 +91,56 @@ export function CpanelPage() {
     }
 
     try {
-      const url = editingUser ? `/api/users/${editingUser.id}` : "/api/users";
       const method = editingUser ? "PUT" : "POST";
+      const url = editingUser ? `/api/users/${editingUser.id}` : "/api/users";
+      
+      const requestData = {
+        ...formData,
+        role: editingUser ? editingUser.role : "admin" // Keep existing role for edit, default to admin for new
+      };
       
       const response = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          username: formData.username,
-          password: formData.password,
-          role: "admin", // Default role is admin
-        }),
+        body: JSON.stringify(requestData),
       });
-
+      
       if (response.ok) {
         toast({
           title: "Thành công",
           description: editingUser ? "Đã cập nhật người dùng" : "Đã thêm người dùng mới",
         });
-        refetchUsers();
         setEditingUser(null);
         setIsAddingUser(false);
         setFormData({ username: "", password: "" });
         setShowFormPassword(false);
+        refetchUsers();
       } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Có lỗi xảy ra");
+        throw new Error("Failed to save user");
       }
-    } catch (error: any) {
+    } catch (error) {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể lưu người dùng",
+        description: "Không thể lưu thông tin người dùng",
         variant: "destructive",
       });
     }
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUser(null);
+    setIsAddingUser(false);
+    setFormData({ username: "", password: "" });
+    setShowFormPassword(false);
+  };
+
+  const togglePasswordVisibility = (userId: string) => {
+    setShowPasswords(prev => ({
+      ...prev,
+      [userId]: !prev[userId]
+    }));
   };
 
   const handleDeleteUser = (userToDelete: UserType) => {
@@ -133,12 +149,12 @@ export function CpanelPage() {
 
   const confirmDeleteUser = async () => {
     if (!deleteConfirm.user) return;
-
+    
     try {
       const response = await fetch(`/api/users/${deleteConfirm.user.id}`, {
         method: "DELETE",
       });
-
+      
       if (response.ok) {
         toast({
           title: "Thành công",
@@ -276,6 +292,7 @@ export function CpanelPage() {
 
           {/* Right Content Area */}
           <div className="flex-1">
+
             {/* Users Content - For managers and admins */}
             {canManageUsers && activeTab === "users" && (
               <div className="space-y-6">
@@ -307,61 +324,58 @@ export function CpanelPage() {
                       <div className="mb-6 p-4 border rounded-lg bg-gray-50">
                         <h3 className="font-medium mb-4">
                           {editingUser ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}
+                          {!editingUser && <span className="text-sm text-gray-500 ml-2">(Vai trò mặc định: Admin)</span>}
                         </h3>
                         <div className="grid grid-cols-2 gap-4 mb-4">
                           <div>
-                            <label className="block text-sm font-medium mb-2">Tên đăng nhập</label>
+                            <label className="block text-sm font-medium mb-1">Tên đăng nhập</label>
                             <input
                               type="text"
-                              className="w-full px-3 py-2 border rounded-md"
                               value={formData.username}
-                              onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                              onChange={(e) => setFormData({ ...formData, username: e.target.value })}
+                              className="w-full px-3 py-2 border rounded-md"
                               placeholder="Nhập tên đăng nhập"
                             />
                           </div>
                           <div>
-                            <label className="block text-sm font-medium mb-2">Mật khẩu</label>
+                            <label className="block text-sm font-medium mb-1">
+                              {editingUser ? "Mật khẩu mới" : "Mật khẩu"}
+                            </label>
                             <div className="relative">
                               <input
                                 type={showFormPassword ? "text" : "password"}
-                                className="w-full px-3 py-2 border rounded-md pr-10"
                                 value={formData.password}
-                                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                                placeholder="Nhập mật khẩu"
+                                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                className="w-full px-3 py-2 pr-10 border rounded-md"
+                                placeholder={editingUser ? "Nhập mật khẩu mới" : "Nhập mật khẩu"}
                               />
-                              <button
+                              <Button
                                 type="button"
-                                className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                                size="sm"
+                                variant="ghost"
                                 onClick={() => setShowFormPassword(!showFormPassword)}
+                                className="absolute right-2 top-1/2 transform -translate-y-1/2 h-6 w-6 p-0"
                               >
                                 {showFormPassword ? (
-                                  <EyeOff className="w-4 h-4 text-gray-500" />
+                                  <EyeOff className="w-4 h-4" />
                                 ) : (
-                                  <Eye className="w-4 h-4 text-gray-500" />
+                                  <Eye className="w-4 h-4" />
                                 )}
-                              </button>
+                              </Button>
                             </div>
                           </div>
                         </div>
                         <div className="flex gap-2 justify-end">
-                          <Button 
-                            variant="outline" 
-                            onClick={() => {
-                              setEditingUser(null);
-                              setIsAddingUser(false);
-                              setFormData({ username: "", password: "" });
-                              setShowFormPassword(false);
-                            }}
-                          >
-                            Hủy
+                          <Button variant="outline" onClick={handleCancelEdit}>
+                            ❌ Hủy
                           </Button>
-                          <Button onClick={handleSaveUser}>
-                            {editingUser ? "Cập nhật" : "Thêm"}
+                          <Button onClick={handleSaveUser} className="bg-green-600 hover:bg-green-700">
+                            {editingUser ? "💾 Cập nhật người dùng" : "✅ Thêm người dùng"}
                           </Button>
                         </div>
                       </div>
                     )}
-
+                    
                     {usersLoading ? (
                       <div className="flex justify-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -371,8 +385,8 @@ export function CpanelPage() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Tên đăng nhập</TableHead>
-                            <TableHead>Vai trò</TableHead>
                             <TableHead>Mật khẩu</TableHead>
+                            <TableHead>Vai trò</TableHead>
                             <TableHead>Ngày tạo</TableHead>
                             <TableHead>Thao tác</TableHead>
                           </TableRow>
@@ -380,34 +394,35 @@ export function CpanelPage() {
                         <TableBody>
                           {users.map((userItem) => (
                             <TableRow key={userItem.id}>
-                              <TableCell className="font-medium flex items-center gap-2">
-                                <User className="w-4 h-4" />
-                                {userItem.username}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={userItem.role === "manager" ? "default" : "secondary"}>
-                                  {userItem.role}
-                                </Badge>
+                              <TableCell className="font-medium">
+                                <div className="flex items-center gap-2">
+                                  <User className="w-4 h-4" />
+                                  {userItem.username}
+                                </div>
                               </TableCell>
                               <TableCell>
                                 <div className="flex items-center gap-2">
-                                  <span className="font-mono text-sm">
-                                    {showPasswords[userItem.id] ? "123456" : "••••••"}
+                                  <span className="font-mono">
+                                    {showPasswords[userItem.id] ? userItem.password : "••••••••"}
                                   </span>
-                                  <button
-                                    onClick={() => setShowPasswords(prev => ({
-                                      ...prev,
-                                      [userItem.id]: !prev[userItem.id]
-                                    }))}
-                                    className="p-1 hover:bg-gray-100 rounded"
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => togglePasswordVisibility(userItem.id)}
+                                    className="h-6 w-6 p-0"
                                   >
                                     {showPasswords[userItem.id] ? (
-                                      <EyeOff className="w-4 h-4 text-gray-500" />
+                                      <EyeOff className="w-3 h-3" />
                                     ) : (
-                                      <Eye className="w-4 h-4 text-gray-500" />
+                                      <Eye className="w-3 h-3" />
                                     )}
-                                  </button>
+                                  </Button>
                                 </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={userItem.role === "admin" ? "default" : "secondary"}>
+                                  {userItem.role}
+                                </Badge>
                               </TableCell>
                               <TableCell>
                                 {new Date(userItem.createdAt).toLocaleDateString("vi-VN")}
@@ -462,130 +477,128 @@ export function CpanelPage() {
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
                       </div>
                     ) : (
-                      <>
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Tên</TableHead>
-                              <TableHead>Email</TableHead>
-                              <TableHead>Số điện thoại</TableHead>
-                              <TableHead>Dịch vụ</TableHead>
-                              <TableHead>Tin nhắn</TableHead>
-                              <TableHead>Ngày gửi</TableHead>
-                              <TableHead>Thao tác</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {currentMessages.map((message) => (
-                              <TableRow key={message.id}>
-                                <TableCell className="font-medium">
-                                  {message.name}
-                                </TableCell>
-                                <TableCell>{message.email}</TableCell>
-                                <TableCell>{message.phone}</TableCell>
-                                <TableCell>
-                                  <Badge variant="outline" className="text-sm">
-                                    {message.service || "Chưa chọn"}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="max-w-xs">
-                                  <div className="truncate" title={message.message}>
-                                    {message.message}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  {new Date(message.createdAt).toLocaleDateString("vi-VN")}
-                                </TableCell>
-                                <TableCell>
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleViewMessage(message)}
-                                      className="text-blue-600 hover:text-blue-700"
-                                    >
-                                      <Eye className="w-4 h-4" />
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleDeleteMessage(message)}
-                                      className="text-red-600 hover:text-red-700"
-                                    >
-                                      <Trash2 className="w-4 h-4" />
-                                    </Button>
-                                  </div>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                        
-                        {/* Pagination */}
-                        {totalPages > 1 && (
-                          <div className="flex items-center justify-between mt-6">
-                            <div className="text-sm text-muted-foreground">
-                              Hiển thị {startIndex + 1}-{Math.min(endIndex, sortedMessages.length)} trong tổng số {sortedMessages.length} tin nhắn
-                            </div>
-                            <div className="flex items-center space-x-2">
-                              {/* First Page */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePageChange(1)}
-                                disabled={currentPage === 1}
-                              >
-                                Đầu
-                              </Button>
-                              
-                              {/* Previous Page */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePageChange(currentPage - 1)}
-                                disabled={currentPage === 1}
-                              >
-                                Trước
-                              </Button>
-                              
-                              {/* Page Numbers */}
-                              <div className="flex items-center space-x-1">
-                                {getPageNumbers().map((page) => (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Tên</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Số điện thoại</TableHead>
+                            <TableHead>Dịch vụ</TableHead>
+                            <TableHead>Tin nhắn</TableHead>
+                            <TableHead>Ngày gửi</TableHead>
+                            <TableHead>Thao tác</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {currentMessages.map((message) => (
+                            <TableRow key={message.id}>
+                              <TableCell className="font-medium">
+                                {message.name}
+                              </TableCell>
+                              <TableCell>{message.email}</TableCell>
+                              <TableCell>{message.phone}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline">
+                                  {message.service}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="max-w-xs">
+                                <div className="truncate" title={message.message}>
+                                  {message.message}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                {new Date(message.createdAt).toLocaleDateString("vi-VN")}
+                              </TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
                                   <Button
-                                    key={page}
-                                    variant={currentPage === page ? "default" : "outline"}
                                     size="sm"
-                                    onClick={() => handlePageChange(page)}
-                                    className="w-10 h-8"
+                                    variant="outline"
+                                    onClick={() => handleViewMessage(message)}
+                                    className="text-blue-600 hover:text-blue-700"
                                   >
-                                    {page}
+                                    <Eye className="w-4 h-4" />
                                   </Button>
-                                ))}
-                              </div>
-                              
-                              {/* Next Page */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePageChange(currentPage + 1)}
-                                disabled={currentPage === totalPages}
-                              >
-                                Kế
-                              </Button>
-                              
-                              {/* Last Page */}
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handlePageChange(totalPages)}
-                                disabled={currentPage === totalPages}
-                              >
-                                Cuối
-                              </Button>
-                            </div>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleDeleteMessage(message)}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      
+                      {/* Pagination */}
+                      {totalPages > 1 && (
+                        <div className="flex items-center justify-between mt-6">
+                          <div className="text-sm text-muted-foreground">
+                            Hiển thị {startIndex + 1}-{Math.min(endIndex, sortedMessages.length)} trong tổng số {sortedMessages.length} tin nhắn
                           </div>
-                        )}
-                      </>
+                          <div className="flex items-center space-x-2">
+                            {/* First Page */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(1)}
+                              disabled={currentPage === 1}
+                            >
+                              Đầu
+                            </Button>
+                            
+                            {/* Previous Page */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(currentPage - 1)}
+                              disabled={currentPage === 1}
+                            >
+                              Trước
+                            </Button>
+                            
+                            {/* Page Numbers */}
+                            <div className="flex items-center space-x-1">
+                              {getPageNumbers().map((page) => (
+                                <Button
+                                  key={page}
+                                  variant={currentPage === page ? "default" : "outline"}
+                                  size="sm"
+                                  onClick={() => handlePageChange(page)}
+                                  className="w-10 h-8"
+                                >
+                                  {page}
+                                </Button>
+                              ))}
+                            </div>
+                            
+                            {/* Next Page */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(currentPage + 1)}
+                              disabled={currentPage === totalPages}
+                            >
+                              Kế
+                            </Button>
+                            
+                            {/* Last Page */}
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handlePageChange(totalPages)}
+                              disabled={currentPage === totalPages}
+                            >
+                              Cuối
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                     )}
                   </CardContent>
                 </Card>
@@ -691,5 +704,3 @@ export function CpanelPage() {
     </div>
   );
 }
-
-export default CpanelPage;
