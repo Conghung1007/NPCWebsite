@@ -57,7 +57,7 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
             {articles?.map((article) => {
               console.log('ArticleSection - Rendering article:', article);
               return (
-                <div key={article.id} className="w-full">
+                <div key={article.id} className="w-full h-full flex">
                   <ArticleCard
                     article={article}
                     onClick={() => {

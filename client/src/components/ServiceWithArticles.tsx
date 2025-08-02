@@ -178,10 +178,10 @@ export function ServiceWithArticles({
             {/* Grid layout with sliding window - keep same grid layout */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {categoryArticles.slice(currentIndex, currentIndex + 3).map((article) => (
-                <div key={article.id} className="w-full">
-                  <div className="w-full bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer">
+                <div key={article.id} className="w-full h-full flex">
+                  <div className="w-full h-full bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer flex flex-col">
                     {/* Image placeholder */}
-                    <div className="h-48 bg-gradient-to-br from-green-100 to-green-200 rounded-t-lg flex items-center justify-center">
+                    <div className="h-48 bg-gradient-to-br from-green-100 to-green-200 rounded-t-lg flex items-center justify-center flex-shrink-0">
                       {article.imageUrl ? (
                         <img 
                           src={article.imageUrl} 
@@ -195,7 +195,7 @@ export function ServiceWithArticles({
                       )}
                     </div>
                     
-                    <div className="p-6">
+                    <div className="p-6 flex flex-col flex-grow">
                       <Badge className={getCategoryColor(category)}>
                         {getCategoryLabel(category)}
                       </Badge>
@@ -203,11 +203,11 @@ export function ServiceWithArticles({
                         {article.title}
                       </h3>
                       
-                      <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-grow">
                         {article.content}
                       </p>
                       
-                      <div className="flex items-center justify-between">
+                      <div className="flex items-center justify-between mt-auto">
                         <div className="flex items-center text-gray-500 text-xs">
                           <Clock className="w-4 h-4 mr-1" />
                           {new Date(article.createdAt.toString()).toLocaleDateString("vi-VN")}
