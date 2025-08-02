@@ -1,25 +1,18 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { HeroSection } from "@/components/ui/hero-section";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArticleSection } from "@/components/ArticleSection";
 import { 
   DollarSign, 
   Plane, 
   Headphones, 
-  Smartphone,
-  PlaneTakeoff,
-  PlaneLanding,
-  CalendarDays,
-  Users
+  Smartphone
 } from "lucide-react";
 
 export default function FlightTickets() {
   const [, setLocation] = useLocation();
-  const [tripType, setTripType] = useState("round-trip");
 
   useEffect(() => {
     document.title = "Bán Vé Máy Bay - N&P Company";
@@ -99,11 +92,6 @@ export default function FlightTickets() {
     }
   ];
 
-  const handleSearchFlights = () => {
-    // In a real app, this would perform the flight search
-    alert("Tính năng tìm kiếm chuyến bay sẽ được tích hợp với API đặt vé");
-  };
-
   const handleContactClick = () => {
     setLocation("/contact");
   };
@@ -116,126 +104,14 @@ export default function FlightTickets() {
         description="Vé máy bay giá tốt nhất, đa dạng hãng hàng không, hỗ trợ tận tâm cho mọi chuyến đi của bạn"
         backgroundImage="https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080"
         primaryAction={{
-          text: "Tìm chuyến bay của bạn",
-          onClick: () => document.getElementById('search')?.scrollIntoView({ behavior: 'smooth' })
+          text: "Liên hệ đặt vé",
+          onClick: handleContactClick
         }}
         secondaryAction={{
           text: "Nhận báo giá",
           onClick: handleContactClick
         }}
       />
-
-      {/* Flight Search Interface */}
-      <section id="search" className="py-20 bg-neutral">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <Card>
-            <CardContent className="p-8">
-              <h3 className="text-xl font-semibold text-foreground mb-6 text-center">
-                Tìm kiếm chuyến bay
-              </h3>
-              
-              {/* Trip Type Selector */}
-              <div className="flex justify-center mb-6">
-                <div className="flex bg-muted rounded-lg p-1">
-                  <button 
-                    onClick={() => setTripType("round-trip")}
-                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                      tripType === "round-trip" 
-                        ? "bg-primary text-primary-foreground" 
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Khứ hồi
-                  </button>
-                  <button 
-                    onClick={() => setTripType("one-way")}
-                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                      tripType === "one-way" 
-                        ? "bg-primary text-primary-foreground" 
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Một chiều
-                  </button>
-                  <button 
-                    onClick={() => setTripType("multi-city")}
-                    className={`px-4 py-2 text-sm font-medium rounded-md transition-colors ${
-                      tripType === "multi-city" 
-                        ? "bg-primary text-primary-foreground" 
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    Nhiều thành phố
-                  </button>
-                </div>
-              </div>
-
-              <div className="grid md:grid-cols-4 gap-4 mb-6">
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Từ</label>
-                  <div className="relative">
-                    <Input 
-                      placeholder="Hà Nội (HAN)" 
-                      className="pl-10"
-                    />
-                    <PlaneTakeoff className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Đến</label>
-                  <div className="relative">
-                    <Input 
-                      placeholder="Tokyo (NRT)" 
-                      className="pl-10"
-                    />
-                    <PlaneLanding className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Ngày đi</label>
-                  <div className="relative">
-                    <Input 
-                      type="date" 
-                      className="pl-10"
-                    />
-                    <CalendarDays className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
-                  </div>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-foreground mb-2">Hành khách</label>
-                  <Select>
-                    <SelectTrigger>
-                      <div className="flex items-center">
-                        <Users className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <SelectValue placeholder="1 người lớn" />
-                      </div>
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="1">1 người lớn</SelectItem>
-                      <SelectItem value="2">2 người lớn</SelectItem>
-                      <SelectItem value="3">3 người lớn</SelectItem>
-                      <SelectItem value="4+">4+ người lớn</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              
-              <div className="text-center">
-                <Button 
-                  onClick={handleSearchFlights}
-                  className="btn-primary text-lg px-12 py-3"
-                >
-                  <Plane className="mr-2 h-5 w-5" />
-                  Tìm chuyến bay
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
 
       {/* Benefits & Airlines */}
       <section className="py-20 bg-white">
