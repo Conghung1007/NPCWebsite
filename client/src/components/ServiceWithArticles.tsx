@@ -137,113 +137,63 @@ export function ServiceWithArticles({
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="overflow-hidden h-[400px] flex flex-col">
-                <div className="w-full h-48 bg-gray-200 animate-pulse flex-shrink-0"></div>
-                <CardContent className="p-4 flex-1 flex flex-col">
-                  <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
-                  <div className="h-6 bg-gray-200 rounded animate-pulse mb-2"></div>
-                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4 flex-1"></div>
-                </CardContent>
-              </Card>
+              <div key={i} className="w-full">
+                <div className="w-full bg-white border border-gray-200 rounded-lg shadow-sm animate-pulse">
+                  <div className="h-48 bg-gray-200 rounded-t-lg"></div>
+                  <div className="p-6">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         ) : categoryArticles.length > 0 ? (
           <div>
-            {/* Navigation buttons and articles container */}
-            <div 
-              className="relative"
-              onMouseEnter={() => setIsHovered(true)}
-              onMouseLeave={() => setIsHovered(false)}
-            >
-              {/* Navigation buttons */}
-              {categoryArticles.length > articlesPerView && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="absolute -left-4 top-1/2 transform -translate-y-1/2 z-10 bg-white shadow-lg hover:shadow-xl"
-                    onClick={goToPrevious}
-                    disabled={currentIndex === 0}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="absolute -right-4 top-1/2 transform -translate-y-1/2 z-10 bg-white shadow-lg hover:shadow-xl"
-                    onClick={goToNext}
-                    disabled={currentIndex >= maxIndex}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </>
-              )}
-
-              {/* Articles carousel container */}
-              <div 
-                ref={scrollContainerRef}
-                className="overflow-hidden"
-              >
-                <div 
-                  className="flex transition-transform duration-300 ease-in-out"
-                  style={{
-                    transform: `translateX(-${currentIndex * (100 / articlesPerView)}%)`
-                  }}
-                >
-                  {categoryArticles.map((article) => (
-                    <div
-                      key={article.id}
-                      className="flex-shrink-0 px-3"
-                      style={{ width: `${100 / articlesPerView}%` }}
-                    >
-                      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer h-[400px] flex flex-col">
-                        <div className="relative w-full h-48 overflow-hidden flex-shrink-0">
-                          <img
-                            src={article.imageUrl || 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=300&fit=crop'}
-                            alt={article.title}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <div className="absolute top-3 left-3">
-                            <Badge className={getCategoryColor(category)}>
-                              {getCategoryLabel(category)}
-                            </Badge>
-                          </div>
+            {/* Simple grid layout like ArticleSection */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {categoryArticles.slice(0, 3).map((article) => (
+                <div key={article.id} className="w-full">
+                  <div className="w-full bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer">
+                    {/* Image placeholder */}
+                    <div className="h-48 bg-gradient-to-br from-green-100 to-green-200 rounded-t-lg flex items-center justify-center">
+                      {article.imageUrl ? (
+                        <img 
+                          src={article.imageUrl} 
+                          alt={article.title}
+                          className="w-full h-full object-cover rounded-t-lg"
+                        />
+                      ) : (
+                        <div className="text-green-600 text-4xl font-bold">
+                          {article.title.charAt(0)}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <div className="p-6">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+                        {article.title}
+                      </h3>
+                      
+                      <p className="text-gray-600 text-sm mb-4 line-clamp-3">
+                        {article.content}
+                      </p>
+                      
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center text-gray-500 text-xs">
+                          <Clock className="w-4 h-4 mr-1" />
+                          {new Date(article.createdAt.toString()).toLocaleDateString("vi-VN")}
                         </div>
                         
-                        <CardContent className="p-4 flex-1 flex flex-col">
-                          <div className="flex items-center text-sm text-gray-500 mb-3">
-                            <Clock className="w-4 h-4 mr-1" />
-                            <span>{new Date(article.createdAt || Date.now()).toLocaleDateString('vi-VN')}</span>
-                          </div>
-                          
-                          <h5 className="text-lg font-semibold text-gray-900 mb-3 group-hover:text-primary transition-colors line-clamp-2 flex-shrink-0">
-                            {article.title}
-                          </h5>
-                          
-                          <p className="text-gray-600 text-sm line-clamp-3 flex-1">
-                            {article.content.substring(0, 120)}...
-                          </p>
-                        </CardContent>
-                      </Card>
+                        <span className="text-green-600 hover:text-green-700 text-sm font-medium">
+                          Đọc thêm →
+                        </span>
+                      </div>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
-
-              {/* Dots indicator */}
-              {categoryArticles.length > articlesPerView && (
-                <div className="flex justify-center space-x-2 mt-4">
-                  {Array.from({ length: maxIndex + 1 }).map((_, index) => (
-                    <button
-                      key={index}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        index === currentIndex ? 'bg-primary' : 'bg-gray-300'
-                      }`}
-                      onClick={() => setCurrentIndex(index)}
-                    />
-                  ))}
-                </div>
-              )}
+              ))}
             </div>
             
             {/* View more articles link */}
