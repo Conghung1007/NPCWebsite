@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
@@ -41,10 +41,17 @@ export function ImageManager({
   const queryClient = useQueryClient();
 
   // Fetch existing images from R2
-  const { data: existingImages, isLoading: loadingImages } = useQuery<ExistingImage[]>({
+  const { data: existingImages, isLoading: loadingImages, error: imagesError } = useQuery<ExistingImage[]>({
     queryKey: ["/api/images/list"],
     retry: false,
   });
+
+  // Debug logging
+  React.useEffect(() => {
+    console.log('ImageManager - existingImages:', existingImages);
+    console.log('ImageManager - loadingImages:', loadingImages);
+    console.log('ImageManager - imagesError:', imagesError);
+  }, [existingImages, loadingImages, imagesError]);
 
   // Delete image mutation
   const deleteImageMutation = useMutation({
@@ -119,16 +126,15 @@ export function ImageManager({
       const serverUploadData = await serverUploadResponse.json();
       const finalUploadUrl = serverUploadData.imageUrl;
 
-      // Image metadata already updated in server upload
-      onImageUpdate(finalUploadUrl);
-      setIsOpen(false);
+      // Set as preview URL for user to confirm
+      setPreviewUrl(finalUploadUrl);
       
       // Refresh the images list
       queryClient.invalidateQueries({ queryKey: ["/api/images/list"] });
       
       toast({
         title: "Thành công",
-        description: "Hình ảnh đã được cập nhật"
+        description: "Hình ảnh đã được upload. Vui lòng bấm 'Cập nhật' để xác nhận."
       });
 
     } catch (error) {

@@ -136,7 +136,7 @@ export class MultiR2StorageService {
       providers.push({
         id: configName,
         name: `Cloudflare R2 (${configName})`,
-        status: isConfigured ? "configured" : "missing"
+        status: (isConfigured ? "available" : "missing") as "available" | "configured" | "missing"
       });
     });
 
