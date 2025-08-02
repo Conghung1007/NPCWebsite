@@ -76,12 +76,12 @@ export function ServiceWithArticles({
 
   // Auto-scroll functionality
   useEffect(() => {
-    if (categoryArticles.length <= articlesPerView || isHovered) return; // Don't auto-scroll if all articles fit or user is hovering
+    if (categoryArticles.length <= 3 || isHovered) return; // Don't auto-scroll if all articles fit or user is hovering
 
     const autoScrollInterval = setInterval(() => {
       setCurrentIndex(prev => {
         // If at the end, go back to beginning
-        if (prev >= maxIndex) {
+        if (prev >= categoryArticles.length - 3) {
           return 0;
         }
         // Otherwise, go to next
@@ -90,7 +90,7 @@ export function ServiceWithArticles({
     }, 30000); // 30 seconds
 
     return () => clearInterval(autoScrollInterval);
-  }, [categoryArticles.length, articlesPerView, maxIndex, isHovered]);
+  }, [categoryArticles.length, isHovered]);
 
   const getCategoryLabel = (category: string) => {
     const labels: Record<string, string> = {
@@ -150,10 +150,34 @@ export function ServiceWithArticles({
             ))}
           </div>
         ) : categoryArticles.length > 0 ? (
-          <div>
-            {/* Simple grid layout like ArticleSection */}
+          <div
+            className="relative"
+            onMouseEnter={() => setIsHovered(true)}
+            onMouseLeave={() => setIsHovered(false)}
+          >
+            {/* Navigation buttons - only show if more than 3 articles */}
+            {categoryArticles.length > 3 && (
+              <>
+                <button
+                  onClick={goToPrevious}
+                  disabled={currentIndex === 0}
+                  className="absolute -left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronLeft className="h-5 w-5 text-gray-600" />
+                </button>
+                <button
+                  onClick={goToNext}
+                  disabled={currentIndex >= categoryArticles.length - 3}
+                  className="absolute -right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="h-5 w-5 text-gray-600" />
+                </button>
+              </>
+            )}
+
+            {/* Grid layout with sliding window - keep same grid layout */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {categoryArticles.slice(0, 3).map((article) => (
+              {categoryArticles.slice(currentIndex, currentIndex + 3).map((article) => (
                 <div key={article.id} className="w-full">
                   <div className="w-full bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer">
                     {/* Image placeholder */}
@@ -172,7 +196,10 @@ export function ServiceWithArticles({
                     </div>
                     
                     <div className="p-6">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+                      <Badge className={getCategoryColor(category)}>
+                        {getCategoryLabel(category)}
+                      </Badge>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 mt-2">
                         {article.title}
                       </h3>
                       
@@ -195,6 +222,21 @@ export function ServiceWithArticles({
                 </div>
               ))}
             </div>
+
+            {/* Dots indicator - only show if more than 3 articles */}
+            {categoryArticles.length > 3 && (
+              <div className="flex justify-center space-x-2 mt-6">
+                {Array.from({ length: Math.max(1, categoryArticles.length - 2) }).map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentIndex(index)}
+                    className={`w-2 h-2 rounded-full transition-colors duration-200 ${
+                      index === currentIndex ? 'bg-primary' : 'bg-gray-300'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
             
             {/* View more articles link */}
             <div className="pt-6 text-center">
