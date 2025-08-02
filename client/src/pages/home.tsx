@@ -158,26 +158,37 @@ export default function Home() {
     }
   ];
 
-  const testimonials = [
+  const [testimonials, setTestimonials] = useState([
     {
+      id: 1,
       name: "Nguyễn Thu Hà",
       role: "Du học sinh Nhật Bản",
       content: "Nhờ N&P, tôi đã xin được visa du học Nhật Bản chỉ sau 2 tuần. Đội ngũ tư vấn rất chuyên nghiệp và hỗ trợ tận tình!",
       avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face"
     },
     {
+      id: 2,
       name: "Trần Minh Đức", 
       role: "Kỹ sư IT",
       content: "Khóa học tiếng Nhật tại N&P rất hiệu quả. Sau 6 tháng tôi đã vượt qua kỳ thi N3 JLPT với điểm cao!",
       avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
     },
     {
+      id: 3,
       name: "Lê Thị Mai",
       role: "Doanh nhân", 
       content: "Dịch vụ vé máy bay của N&P luôn có giá tốt và hỗ trợ tuyệt vời. Tôi đã sử dụng nhiều lần và rất hài lòng!",
       avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face"
     }
-  ];
+  ]);
+
+  const handleTestimonialAvatarUpdate = (testimonialId: number, newAvatar: string) => {
+    setTestimonials(prev => prev.map(testimonial => 
+      testimonial.id === testimonialId 
+        ? { ...testimonial, avatar: newAvatar }
+        : testimonial
+    ));
+  };
 
   const stats = [
     { number: "1000+", label: "Khách hàng tin tưởng" },
@@ -311,13 +322,15 @@ export default function Home() {
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">
-            {testimonials.map((testimonial, index) => (
+            {testimonials.map((testimonial) => (
               <TestimonialCard
-                key={index}
+                key={testimonial.id}
                 name={testimonial.name}
                 role={testimonial.role}
                 content={testimonial.content}
                 avatar={testimonial.avatar}
+                allowAvatarEdit={true}
+                onAvatarUpdate={(newAvatar) => handleTestimonialAvatarUpdate(testimonial.id, newAvatar)}
               />
             ))}
           </div>

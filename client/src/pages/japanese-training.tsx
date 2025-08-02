@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { HeroSection } from "@/components/ui/hero-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TestimonialCard } from "@/components/ui/testimonial-card";
 import { ArticleSection } from "@/components/ArticleSection";
+import { ImageManager } from "@/components/ui/image-manager";
 import { 
   Sprout, 
   TreePine, 
@@ -18,11 +19,16 @@ import {
   Laptop,
   Globe,
   CheckCircle,
-  Star
+  Star,
+  Edit
 } from "lucide-react";
 
 export default function JapaneseTraining() {
   const [, setLocation] = useLocation();
+  const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1528720208104-3d9bd03cc9d4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
+  const [classroomImage, setClassroomImage] = useState("https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600");
+  const [showHeroImageManager, setShowHeroImageManager] = useState(false);
+  const [showClassroomImageManager, setShowClassroomImageManager] = useState(false);
 
   useEffect(() => {
     document.title = "Đào Tạo Tiếng Nhật - N&P Company";
@@ -157,7 +163,9 @@ export default function JapaneseTraining() {
         title="Đào tạo tiếng Nhật"
         subtitle=""
         description="Học tiếng Nhật từ cơ bản đến nâng cao với giảng viên bản ngữ và phương pháp giảng dạy hiện đại"
-        backgroundImage="https://images.unsplash.com/photo-1528720208104-3d9bd03cc9d4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080"
+        backgroundImage={heroImage}
+        allowImageEdit={true}
+        onImageUpdate={setHeroImage}
         primaryAction={{
           text: "Xem lịch học",
           onClick: handleScheduleView
@@ -248,11 +256,27 @@ export default function JapaneseTraining() {
               </div>
             </div>
             
-            <div>
+            <div className="relative">
               <img 
-                src="https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600" 
+                src={classroomImage} 
                 alt="Japanese teacher with students in classroom" 
                 className="rounded-xl shadow-lg w-full h-auto" 
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowClassroomImageManager(true)}
+                className="absolute top-4 right-4 bg-white/80 hover:bg-white/90 text-gray-700"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Cập nhật ảnh
+              </Button>
+              <ImageManager
+                isOpen={showClassroomImageManager}
+                onClose={() => setShowClassroomImageManager(false)}
+                onImageUpdate={setClassroomImage}
+                imageType="japanese-classroom"
+                altText="Japanese classroom image"
               />
             </div>
           </div>

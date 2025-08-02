@@ -1,10 +1,11 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { HeroSection } from "@/components/ui/hero-section";
 import { ServiceCard } from "@/components/ui/service-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArticleSection } from "@/components/ArticleSection";
+import { ImageManager } from "@/components/ui/image-manager";
 import { 
   Plane, 
   Briefcase, 
@@ -15,7 +16,8 @@ import {
   FileText,
   Search,
   Send,
-  Award
+  Award,
+  Edit
 } from "lucide-react";
 import {
   Accordion,
@@ -26,6 +28,10 @@ import {
 
 export default function VisaServices() {
   const [, setLocation] = useLocation();
+  const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1578662996442-48f60103fc96?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
+  const [consultationImage, setConsultationImage] = useState("https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600");
+  const [showHeroImageManager, setShowHeroImageManager] = useState(false);
+  const [showConsultationImageManager, setShowConsultationImageManager] = useState(false);
 
   useEffect(() => {
     document.title = "Dịch Vụ Xin Thị Thực - N&P Company";
@@ -129,7 +135,9 @@ export default function VisaServices() {
         title="Dịch vụ xin thị thực"
         subtitle=""
         description="Chuyên gia hàng đầu về dịch vụ xin visa với tỷ lệ thành công 98% cho hơn 50 quốc gia trên thế giới"
-        backgroundImage="https://images.unsplash.com/photo-1578662996442-48f60103fc96?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080"
+        backgroundImage={heroImage}
+        allowImageEdit={true}
+        onImageUpdate={setHeroImage}
         primaryAction={{
           text: "Nhận tư vấn miễn phí",
           onClick: handleConsultation
@@ -143,11 +151,27 @@ export default function VisaServices() {
       <section className="py-20 bg-white pt-[60px] pb-[60px]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12 mb-16">
-            <div>
+            <div className="relative">
               <img 
-                src="https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600" 
+                src={consultationImage} 
                 alt="Professional visa processing office" 
                 className="rounded-xl shadow-lg w-full h-auto" 
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowConsultationImageManager(true)}
+                className="absolute top-4 right-4 bg-white/80 hover:bg-white/90 text-gray-700"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Cập nhật ảnh
+              </Button>
+              <ImageManager
+                isOpen={showConsultationImageManager}
+                onClose={() => setShowConsultationImageManager(false)}
+                onImageUpdate={setConsultationImage}
+                imageType="visa-consultation"
+                altText="Visa consultation image"
               />
             </div>
             <div>

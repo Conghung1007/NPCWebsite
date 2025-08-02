@@ -1,9 +1,10 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { HeroSection } from "@/components/ui/hero-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArticleSection } from "@/components/ArticleSection";
+import { ImageManager } from "@/components/ui/image-manager";
 import { 
   Search, 
   FileText, 
@@ -14,11 +15,16 @@ import {
   Eye,
   Heart,
   TrendingUp,
-  CheckCircle
+  CheckCircle,
+  Edit
 } from "lucide-react";
 
 export default function StudyAbroad() {
   const [, setLocation] = useLocation();
+  const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
+  const [studentsImage, setStudentsImage] = useState("https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=1000");
+  const [showHeroImageManager, setShowHeroImageManager] = useState(false);
+  const [showStudentsImageManager, setShowStudentsImageManager] = useState(false);
 
   useEffect(() => {
     document.title = "Tư Vấn Du Học - N&P Company";
@@ -124,7 +130,9 @@ export default function StudyAbroad() {
         title="Tư vấn du học"
         subtitle=""
         description="Mở rộng chân trời tri thức với các chương trình du học hàng đầu tại Nhật Bản, Hàn Quốc, Mỹ, Canada và Châu Âu"
-        backgroundImage="https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080"
+        backgroundImage={heroImage}
+        allowImageEdit={true}
+        onImageUpdate={setHeroImage}
         primaryAction={{
           text: "Khám phá lựa chọn học tập",
           onClick: handleConsultation
@@ -173,11 +181,27 @@ export default function StudyAbroad() {
               </Card>
             </div>
 
-            <div>
+            <div className="relative">
               <img 
-                src="https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=1000" 
+                src={studentsImage} 
                 alt="International students in university library" 
                 className="rounded-xl shadow-lg w-full h-auto mb-6" 
+              />
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowStudentsImageManager(true)}
+                className="absolute top-4 right-4 bg-white/80 hover:bg-white/90 text-gray-700"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Cập nhật ảnh
+              </Button>
+              <ImageManager
+                isOpen={showStudentsImageManager}
+                onClose={() => setShowStudentsImageManager(false)}
+                onImageUpdate={setStudentsImage}
+                imageType="study-abroad-students"
+                altText="Study abroad students image"
               />
               
               <Card>
