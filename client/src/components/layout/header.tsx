@@ -43,21 +43,23 @@ export function Header() {
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+        <div className="flex justify-between items-center h-20">
           <div className="flex items-center">
             <Link href="/" className="flex items-center">
+              <span className="text-base text-muted-foreground mr-2">Công ty TNHH</span>
               <span className="text-3xl font-bold text-primary">N&P</span>
-              <span className="ml-2 text-base text-muted-foreground">Công ty TNHH</span>
             </Link>
           </div>
 
           {/* Desktop Navigation */}
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-baseline space-x-4">
+          <div className="hidden md:flex flex-1 justify-center">
+            <div className="flex items-center space-x-8">
               {navigation.map((item) => (
                 <Link key={item.name} href={item.href}>
-                  <span className={`px-3 py-2 text-base font-medium transition-colors hover:text-primary ${
-                    location === item.href ? "text-primary" : "text-foreground"
+                  <span className={`px-4 py-2 text-base font-semibold transition-all duration-200 rounded-lg ${
+                    location === item.href 
+                      ? "text-white bg-primary shadow-md" 
+                      : "text-foreground hover:text-primary hover:bg-primary/10"
                   }`}>
                     {item.name}
                   </span>
@@ -90,7 +92,11 @@ export function Header() {
                   {navigation.map((item) => (
                     <Link key={item.name} href={item.href}>
                       <span 
-                        className="block px-3 py-2 text-lg font-medium hover:text-primary transition-colors"
+                        className={`block px-4 py-3 text-lg font-semibold rounded-lg transition-all ${
+                          location === item.href 
+                            ? "text-white bg-primary" 
+                            : "text-foreground hover:text-primary hover:bg-primary/10"
+                        }`}
                         onClick={() => setIsOpen(false)}
                       >
                         {item.name}
