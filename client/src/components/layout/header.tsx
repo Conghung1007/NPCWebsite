@@ -33,7 +33,7 @@ export function Header() {
 
   const navigation = [
     { name: "Trang chủ", href: "/" },
-    { name: "Dịch vụ\nxin thị thực", href: "/visa-services" },
+    { name: "Dịch vụ xin\nthị thực", href: "/visa-services" },
     { name: "Tư vấn\ndu học", href: "/study-abroad" },
     { name: "Đào tạo\ntiếng Nhật", href: "/japanese-training" },
     { name: "Bán vé\nmáy bay", href: "/flight-tickets" },
@@ -50,7 +50,7 @@ export function Header() {
                 <span className="text-lg text-muted-foreground">Công ty</span>
                 <span className="text-lg text-muted-foreground">TNHH</span>
               </div>
-              <span className="text-2xl font-bold text-primary">N&P</span>
+              <span className="text-4xl font-bold text-primary">N&P</span>
             </Link>
           </div>
 
@@ -59,7 +59,7 @@ export function Header() {
             <div className="flex items-center space-x-6">
               {navigation.map((item) => (
                 <Link key={item.name} href={item.href}>
-                  <span className={`px-4 py-2 text-base font-semibold transition-all duration-200 rounded-lg text-center leading-tight min-w-[110px] flex flex-col items-center justify-center h-12 ${
+                  <span className={`px-4 py-2 text-base font-semibold transition-all duration-200 rounded-lg text-center leading-tight min-w-[120px] flex flex-col items-center justify-center h-12 ${
                     location === item.href 
                       ? "text-white bg-primary shadow-md" 
                       : "text-foreground hover:text-primary hover:bg-primary/10"
