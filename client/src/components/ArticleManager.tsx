@@ -14,9 +14,7 @@ import {
   SelectValue 
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { ArticleMediaManager } from "./ArticleMediaManager";
-import { StorageProviderSelector } from "./StorageProviderSelector";
-import { ArticleImageUploader } from "./ArticleImageUploader";
+
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { 
@@ -40,8 +38,6 @@ interface ArticleFormData {
   title: string;
   content: string;
   category: string;
-  imageUrl?: string;
-  videoUrl?: string;
 }
 
 export function ArticleManager() {
@@ -52,7 +48,7 @@ export function ArticleManager() {
     content: "",
     category: ""
   });
-  const [selectedProvider, setSelectedProvider] = useState<string>("replit");
+
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -150,9 +146,7 @@ export function ArticleManager() {
     setFormData({
       title: "",
       content: "",
-      category: "",
-      imageUrl: "",
-      videoUrl: ""
+      category: ""
     });
     setIsEditing(false);
     setEditingArticle(null);
@@ -163,9 +157,7 @@ export function ArticleManager() {
     setFormData({
       title: article.title,
       content: article.content,
-      category: article.category,
-      imageUrl: article.imageUrl || "",
-      videoUrl: article.videoUrl || ""
+      category: article.category
     });
     setIsEditing(true);
   };
@@ -195,13 +187,7 @@ export function ArticleManager() {
     }
   };
 
-  const handleMediaChange = (imageUrl?: string, videoUrl?: string) => {
-    setFormData(prev => ({
-      ...prev,
-      imageUrl: imageUrl || "",
-      videoUrl: videoUrl || ""
-    }));
-  };
+
 
   const getCategoryLabel = (category: string) => {
     return categories.find(cat => cat.value === category)?.label || category;
@@ -261,19 +247,7 @@ export function ArticleManager() {
               />
             </div>
 
-            <StorageProviderSelector
-              selectedProvider={selectedProvider}
-              onProviderChange={setSelectedProvider}
-            />
 
-            <ArticleImageUploader storageProvider={selectedProvider} />
-
-            <ArticleMediaManager
-              onMediaChange={handleMediaChange}
-              initialImage={formData.imageUrl}
-              initialVideo={formData.videoUrl}
-              storageProvider={selectedProvider}
-            />
 
             <div className="flex gap-2">
               <Button 
