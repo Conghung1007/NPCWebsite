@@ -33,10 +33,10 @@ export function Header() {
 
   const navigation = [
     { name: "Trang chủ", href: "/" },
-    { name: "Dịch vụ xin thị thực", href: "/visa-services" },
-    { name: "Tư vấn du học", href: "/study-abroad" },
-    { name: "Đào tạo tiếng Nhật", href: "/japanese-training" },
-    { name: "Bán vé máy bay", href: "/flight-tickets" },
+    { name: "Dịch vụ\nxin thị thực", href: "/visa-services" },
+    { name: "Tư vấn\ndu học", href: "/study-abroad" },
+    { name: "Đào tạo\ntiếng Nhật", href: "/japanese-training" },
+    { name: "Bán vé\nmáy bay", href: "/flight-tickets" },
     { name: "Liên hệ", href: "/contact" }
   ];
 
@@ -45,26 +45,30 @@ export function Header() {
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center">
-            <Link href="/" className="flex flex-col items-start">
-              <span className="text-base text-muted-foreground">Công ty</span>
+            <Link href="/" className="flex flex-col items-start justify-center">
               <div className="flex items-center">
-                <span className="text-base text-muted-foreground mr-2">TNHH</span>
-                <span className="text-3xl font-bold text-primary">N&P</span>
+                <span className="text-base text-muted-foreground mr-2">Công ty</span>
+                <span className="text-base text-muted-foreground">TNHH</span>
               </div>
+              <span className="text-3xl font-bold text-primary">N&P</span>
             </Link>
           </div>
 
           {/* Desktop Navigation - Centered */}
           <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2">
-            <div className="flex items-center space-x-6">
+            <div className="flex items-center space-x-4">
               {navigation.map((item) => (
                 <Link key={item.name} href={item.href}>
-                  <span className={`px-4 py-2 text-base font-semibold transition-all duration-200 rounded-lg whitespace-nowrap ${
+                  <span className={`px-3 py-2 text-sm font-semibold transition-all duration-200 rounded-lg text-center leading-tight min-w-[85px] flex flex-col items-center justify-center h-12 ${
                     location === item.href 
                       ? "text-white bg-primary shadow-md" 
                       : "text-foreground hover:text-primary hover:bg-primary/10"
                   }`}>
-                    {item.name}
+                    {item.name.split('\n').map((line, index) => (
+                      <span key={index} className="block">
+                        {line}
+                      </span>
+                    ))}
                   </span>
                 </Link>
               ))}
@@ -95,14 +99,18 @@ export function Header() {
                   {navigation.map((item) => (
                     <Link key={item.name} href={item.href}>
                       <span 
-                        className={`block px-4 py-3 text-lg font-semibold rounded-lg transition-all ${
+                        className={`block px-4 py-3 text-lg font-semibold rounded-lg transition-all text-center ${
                           location === item.href 
                             ? "text-white bg-primary" 
                             : "text-foreground hover:text-primary hover:bg-primary/10"
                         }`}
                         onClick={() => setIsOpen(false)}
                       >
-                        {item.name}
+                        {item.name.split('\n').map((line, index) => (
+                          <span key={index} className="block">
+                            {line}
+                          </span>
+                        ))}
                       </span>
                     </Link>
                   ))}
