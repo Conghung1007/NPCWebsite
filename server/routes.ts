@@ -654,6 +654,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // UI Images Management API endpoints
 
+  // Get list of uploaded images from R2 storage
+  app.get("/api/images/list", async (req, res) => {
+    try {
+      const { provider = "primary" } = req.query;
+      const images = await multiR2Storage.listFiles(provider as string, "ui-images");
+      res.json(images);
+    } catch (error) {
+      console.error("Error listing images:", error);
+      res.status(500).json({ error: "Failed to list images" });
+    }
+  });
+
   // Get all UI images 
   app.get("/api/ui-images", async (req, res) => {
     try {
@@ -892,16 +904,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      // For UI images, we don't need to store in database, just return the image URL
-      // This can be extended later to store metadata if needed
-      
-      res.json({
-        imageUrl: imageUrl,
-        imageType: imageType,
-        altText: altText,
-        description: description,
-        success: true
+      // Update UI image in database
+      const updatedImage = await storage.updateUiImageByType(imageType, {
+        imageUrl,
+        altText: altText || null,
+        description: description || null
       });
+      
+      if (updatedImage) {
+        res.json(updatedImage);
+      } else {
+        res.status(404).json({ error: "UI image not found" });
+      }
     } catch (error) {
       console.error("Error updating UI image:", error);
       res.status(500).json({ error: "Failed to update UI image" });

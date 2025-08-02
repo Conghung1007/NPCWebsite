@@ -215,23 +215,45 @@ export function ImageManager({
     return parts[parts.length - 1];
   };
 
-  const handleConfirm = () => {
-    if (activeTab === "upload" && previewUrl) {
-      onImageUpdate(previewUrl);
-      setIsOpen(false);
-      setPreviewUrl("");
-      toast({
-        title: "Thành công",
-        description: "Đã cập nhật hình ảnh thành công",
-      });
-    } else if (activeTab === "existing" && selectedExistingImage) {
-      onImageUpdate(selectedExistingImage);
-      setIsOpen(false);
-      setSelectedExistingImage("");
-      toast({
-        title: "Thành công",
-        description: "Đã chọn hình ảnh thành công",
-      });
+  const handleConfirm = async () => {
+    if (activeTab === "existing" && selectedExistingImage) {
+      try {
+        setUploading(true);
+        
+        // Update the UI image in database
+        const updateResponse = await fetch(`/api/ui-images`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            imageUrl: selectedExistingImage,
+            imageType: imageType,
+            altText: altText
+          })
+        });
+
+        if (!updateResponse.ok) {
+          throw new Error('Failed to update image');
+        }
+
+        const updateData = await updateResponse.json();
+        onImageUpdate(updateData.imageUrl);
+        setIsOpen(false);
+        setSelectedExistingImage("");
+        
+        toast({
+          title: "Thành công",
+          description: "Đã chọn hình ảnh thành công",
+        });
+      } catch (error) {
+        console.error('Update error:', error);
+        toast({
+          title: "Lỗi",
+          description: "Không thể cập nhật hình ảnh",
+          variant: "destructive"
+        });
+      } finally {
+        setUploading(false);
+      }
     }
   };
 
@@ -368,6 +390,10 @@ export function ImageManager({
                               alt={image.name}
                               className="w-full h-24 object-cover rounded"
                               onClick={() => setSelectedExistingImage(image.url)}
+                              onError={(e) => {
+                                const target = e.target as HTMLImageElement;
+                                target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Ik0xMiAxNmMtMi4yMSAwLTQtMS43OS00LTRzMS43OS00IDQtNCA0IDEuNzkgNCA0LTEuNzkgNC00IDR6bTAtNmMtMS4xIDAtMiAuOS0yIDJzLjkgMiAyIDIgMi0uOSAyLTItLjktMi0yLTJ6IiBmaWxsPSIjOWNhM2FmIi8+Cjwvc3ZnPg==';
+                              }}
                             />
                             {selectedExistingImage === image.url && (
                               <div className="absolute top-1 right-1 bg-primary text-primary-foreground rounded-full p-1">
@@ -409,6 +435,10 @@ export function ImageManager({
                     src={selectedExistingImage}
                     alt="Selected image"
                     className="w-full h-32 object-cover rounded border"
+                    onError={(e) => {
+                      const target = e.target as HTMLImageElement;
+                      target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Ik0xMiAxNmMtMi4yMSAwLTQtMS43OS00LTRzMS43OS00IDQtNCA0IDEuNzkgNCA0LTEuNzkgNC00IDR6bTAtNmMtMS4xIDAtMiAuOS0yIDJzLjkgMiAyIDIgMi0uOSAyLTItLjktMi0yLTJ6IiBmaWxsPSIjOWNhM2FmIi8+Cjwvc3ZnPg==';
+                    }}
                   />
                 </div>
               )}
@@ -416,10 +446,10 @@ export function ImageManager({
               <div className="flex gap-2 pt-4">
                 <Button
                   onClick={handleConfirm}
-                  disabled={!selectedExistingImage}
+                  disabled={!selectedExistingImage || uploading}
                   className="flex-1"
                 >
-                  Chọn hình ảnh này
+                  {uploading ? "Đang cập nhật..." : "Chọn hình ảnh này"}
                 </Button>
                 <Button
                   variant="outline"
