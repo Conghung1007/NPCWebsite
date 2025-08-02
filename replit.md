@@ -7,6 +7,7 @@ The website serves as a comprehensive digital presence for N&P Company, featurin
 # User Preferences
 
 Preferred communication style: Simple, everyday language.
+Color scheme: Green theme (updated August 2025 - primary: hsl(142, 76%, 36%), accent: hsl(142, 69%, 58%))
 
 # System Architecture
 

@@ -13,8 +13,8 @@ export function Footer() {
     { name: "Trang chủ", href: "/" },
     { name: "Giới thiệu", href: "/about-us" },
     { name: "Liên hệ", href: "/contact" },
-    { name: "Tin tức", href: "#" },
-    { name: "FAQ", href: "#" }
+    { name: "Tin tức", href: "#news" },
+    { name: "FAQ", href: "#faq" }
   ];
 
   return (
@@ -30,13 +30,13 @@ export function Footer() {
               Đối tác tin cậy cho giấc mơ toàn cầu. Chuyên nghiệp - Uy tín - Hiệu quả.
             </p>
             <div className="flex space-x-4">
-              <a href="#" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+              <a href="#facebook" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
                 <Facebook className="h-5 w-5" />
               </a>
-              <a href="#" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+              <a href="#youtube" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
                 <Youtube className="h-5 w-5" />
               </a>
-              <a href="#" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
+              <a href="#linkedin" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
                 <Linkedin className="h-5 w-5" />
               </a>
             </div>
@@ -97,9 +97,9 @@ export function Footer() {
               © 2024 Công ty TNHH N&P. Tất cả quyền được bảo lưu.
             </div>
             <div className="flex space-x-6 text-sm text-gray-400">
-              <a href="#" className="hover:text-white transition-colors">Chính sách bảo mật</a>
-              <a href="#" className="hover:text-white transition-colors">Điều khoản dịch vụ</a>
-              <a href="#" className="hover:text-white transition-colors">Quy chế hoạt động</a>
+              <a href="#privacy" className="hover:text-white transition-colors">Chính sách bảo mật</a>
+              <a href="#terms" className="hover:text-white transition-colors">Điều khoản dịch vụ</a>
+              <a href="#regulations" className="hover:text-white transition-colors">Quy chế hoạt động</a>
             </div>
           </div>
         </div>
