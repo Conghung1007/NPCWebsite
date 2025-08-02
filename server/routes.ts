@@ -199,11 +199,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Title, content, and category are required" });
       }
 
+      // Extract first image from content for thumbnail
+      const imageMatch = content.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+      const imageUrl = imageMatch ? imageMatch[2] : null;
+
       const article = await storage.createArticle({
         title,
         content,
         category,
-        imageUrl: null,
+        imageUrl,
         videoUrl: null,
       });
 
@@ -273,7 +277,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Title, content, and category are required" });
       }
 
-      const updatedArticle = await storage.updateArticle(id, title, content, category);
+      // Extract first image from content for thumbnail
+      const imageMatch = content.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+      const imageUrl = imageMatch ? imageMatch[2] : null;
+
+      const updatedArticle = await storage.updateArticle(id, title, content, category, imageUrl);
 
       if (!updatedArticle) {
         return res.status(404).json({ 

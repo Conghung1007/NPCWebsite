@@ -22,7 +22,7 @@ export interface IStorage {
   getAllArticles(): Promise<Article[]>;
   getArticles(): Promise<Article[]>;
   getArticle(id: string): Promise<Article | undefined>;
-  updateArticle(id: string, title: string, content: string, category: string): Promise<Article | null>;
+  updateArticle(id: string, title: string, content: string, category: string, imageUrl?: string | null): Promise<Article | null>;
   deleteArticle(id: string): Promise<boolean>;
 }
 
@@ -150,7 +150,7 @@ export class MemStorage implements IStorage {
     return this.getAllArticles();
   }
 
-  async updateArticle(id: string, title: string, content: string, category: string): Promise<Article | null> {
+  async updateArticle(id: string, title: string, content: string, category: string, imageUrl?: string | null): Promise<Article | null> {
     const existingArticle = this.articles.get(id);
     if (!existingArticle) {
       return null;
@@ -161,6 +161,7 @@ export class MemStorage implements IStorage {
       title,
       content,
       category,
+      imageUrl: imageUrl !== undefined ? imageUrl : existingArticle.imageUrl,
       updatedAt: new Date()
     };
     
