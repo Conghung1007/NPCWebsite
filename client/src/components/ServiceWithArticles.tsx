@@ -65,7 +65,7 @@ export function ServiceWithArticles({
     <div className={`flex flex-col lg:flex-row items-start gap-8 ${isReversed ? 'lg:flex-row-reverse' : ''}`}>
       {/* Service Info */}
       <div className="flex-1 lg:max-w-md">
-        <div className="bg-white rounded-xl p-8 shadow-lg h-fit">
+        <div className="bg-white rounded-xl p-8 shadow-lg h-fit pt-[51px] pb-[51px]">
           <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
             {service.icon}
           </div>
@@ -77,7 +77,6 @@ export function ServiceWithArticles({
           </Button>
         </div>
       </div>
-
       {/* Related Articles */}
       <div className="flex-1">
         
