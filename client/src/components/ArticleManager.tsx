@@ -13,7 +13,9 @@ import {
   Plus,
   ArrowUpDown,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  ChevronUp,
+  ChevronDown
 } from "lucide-react";
 import type { Article } from "@shared/schema";
 import { useState } from "react";
@@ -30,7 +32,7 @@ export function ArticleManager() {
   const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const articlesPerPage = 6;
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title'>('newest');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title' | 'custom'>('newest');
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; article: Article | null }>({
     isOpen: false,
     article: null
@@ -72,6 +74,35 @@ export function ArticleManager() {
     }
   });
 
+  // Move article order mutation
+  const moveOrderMutation = useMutation({
+    mutationFn: async ({ id, direction }: { id: string; direction: 'up' | 'down' }) => {
+      const response = await fetch(`/api/articles/${id}/move`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ direction }),
+      });
+      if (!response.ok) throw new Error("Failed to move article");
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
+      toast({
+        title: "Thành công",
+        description: "Đã cập nhật thứ tự bài viết.",
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Lỗi",
+        description: "Không thể thay đổi thứ tự. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+    }
+  });
+
   const handleDelete = (article: Article) => {
     setDeleteConfirm({ isOpen: true, article });
   };
@@ -101,6 +132,8 @@ export function ArticleManager() {
         return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
       case 'title':
         return a.title.localeCompare(b.title, 'vi-VN');
+      case 'custom':
+        return (a.sortOrder || 0) - (b.sortOrder || 0);
       case 'newest':
       default:
         return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -129,12 +162,13 @@ export function ArticleManager() {
                 <ArrowUpDown className="w-4 h-4 text-gray-500" />
                 <select
                   value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'title')}
+                  onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'title' | 'custom')}
                   className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                 >
                   <option value="newest">Mới nhất</option>
                   <option value="oldest">Cũ nhất</option>
                   <option value="title">Theo tên</option>
+                  <option value="custom">Thứ tự tùy chỉnh</option>
                 </select>
               </div>
               <Link href="/create-article">
@@ -184,10 +218,33 @@ export function ArticleManager() {
                     </div>
                   </div>
                   <div className="flex gap-2">
+                    {sortBy === 'custom' && (
+                      <>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => moveOrderMutation.mutate({ id: article.id, direction: 'up' })}
+                          disabled={moveOrderMutation.isPending}
+                          title="Di chuyển lên"
+                        >
+                          <ChevronUp className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => moveOrderMutation.mutate({ id: article.id, direction: 'down' })}
+                          disabled={moveOrderMutation.isPending}
+                          title="Di chuyển xuống"
+                        >
+                          <ChevronDown className="w-4 h-4" />
+                        </Button>
+                      </>
+                    )}
                     <Link href={`/edit-article/${article.id}`}>
                       <Button
                         size="sm"
                         variant="outline"
+                        title="Chỉnh sửa"
                       >
                         <Edit2 className="w-4 h-4" />
                       </Button>
@@ -197,6 +254,7 @@ export function ArticleManager() {
                       variant="outline"
                       onClick={() => handleDelete(article)}
                       disabled={deleteMutation.isPending}
+                      title="Xóa bài viết"
                     >
                       <Trash2 className="w-4 h-4" />
                     </Button>

@@ -24,6 +24,7 @@ export interface IStorage {
   getArticle(id: string): Promise<Article | undefined>;
   updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null }): Promise<Article | null>;
   deleteArticle(id: string): Promise<boolean>;
+  moveArticleOrder(id: string, direction: 'up' | 'down'): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -124,6 +125,7 @@ export class MemStorage implements IStorage {
       id,
       imageUrl: insertArticle.imageUrl || null,
       videoUrl: insertArticle.videoUrl ?? null,
+      sortOrder: insertArticle.sortOrder || 0,
       createdAt: new Date(),
     };
     this.articles.set(id, article);
@@ -170,6 +172,38 @@ export class MemStorage implements IStorage {
 
   async deleteArticle(id: string): Promise<boolean> {
     return this.articles.delete(id);
+  }
+
+  async moveArticleOrder(id: string, direction: 'up' | 'down'): Promise<boolean> {
+    const article = this.articles.get(id);
+    if (!article) return false;
+
+    const allArticles = Array.from(this.articles.values());
+    const sortedArticles = allArticles.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    const currentIndex = sortedArticles.findIndex(a => a.id === id);
+    
+    if (currentIndex === -1) return false;
+    
+    let targetIndex: number;
+    if (direction === 'up' && currentIndex > 0) {
+      targetIndex = currentIndex - 1;
+    } else if (direction === 'down' && currentIndex < sortedArticles.length - 1) {
+      targetIndex = currentIndex + 1;
+    } else {
+      return false; // Can't move further
+    }
+
+    // Swap sort orders
+    const currentOrder = sortedArticles[currentIndex].sortOrder || 0;
+    const targetOrder = sortedArticles[targetIndex].sortOrder || 0;
+    
+    const updatedCurrent = { ...sortedArticles[currentIndex], sortOrder: targetOrder };
+    const updatedTarget = { ...sortedArticles[targetIndex], sortOrder: currentOrder };
+    
+    this.articles.set(updatedCurrent.id, updatedCurrent);
+    this.articles.set(updatedTarget.id, updatedTarget);
+    
+    return true;
   }
 
   private seedUsers(): void {
@@ -526,9 +560,13 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createArticle(insertArticle: InsertArticle): Promise<Article> {
+    const articleData = {
+      ...insertArticle,
+      sortOrder: insertArticle.sortOrder || 0
+    };
     const [article] = await db
       .insert(articles)
-      .values(insertArticle)
+      .values(articleData)
       .returning();
     return article;
   }
@@ -562,6 +600,45 @@ export class DatabaseStorage implements IStorage {
   async deleteArticle(id: string): Promise<boolean> {
     const result = await db.delete(articles).where(eq(articles.id, id));
     return (result.rowCount || 0) > 0;
+  }
+
+  async moveArticleOrder(id: string, direction: 'up' | 'down'): Promise<boolean> {
+    // Get the current article
+    const [currentArticle] = await db.select().from(articles).where(eq(articles.id, id));
+    if (!currentArticle) return false;
+
+    // Get all articles sorted by order
+    const allArticles = await db.select().from(articles);
+    const sortedArticles = allArticles.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    const currentIndex = sortedArticles.findIndex(a => a.id === id);
+    
+    if (currentIndex === -1) return false;
+    
+    let targetIndex: number;
+    if (direction === 'up' && currentIndex > 0) {
+      targetIndex = currentIndex - 1;
+    } else if (direction === 'down' && currentIndex < sortedArticles.length - 1) {
+      targetIndex = currentIndex + 1;
+    } else {
+      return false; // Can't move further
+    }
+
+    // Swap sort orders
+    const currentOrder = sortedArticles[currentIndex].sortOrder || 0;
+    const targetOrder = sortedArticles[targetIndex].sortOrder || 0;
+    
+    // Update both articles
+    await db
+      .update(articles)
+      .set({ sortOrder: targetOrder })
+      .where(eq(articles.id, sortedArticles[currentIndex].id));
+      
+    await db
+      .update(articles)
+      .set({ sortOrder: currentOrder })
+      .where(eq(articles.id, sortedArticles[targetIndex].id));
+    
+    return true;
   }
 }
 

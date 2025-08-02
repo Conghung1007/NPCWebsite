@@ -355,7 +355,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Move article order
+  app.patch("/api/articles/:id/move", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { direction } = req.body;
+      
+      if (!direction || !['up', 'down'].includes(direction)) {
+        return res.status(400).json({ 
+          success: false, 
+          message: "Direction must be 'up' or 'down'" 
+        });
+      }
 
+      const success = await storage.moveArticleOrder(id, direction);
+      
+      if (!success) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Không tìm thấy bài viết hoặc không thể di chuyển" 
+        });
+      }
+
+      res.json({ 
+        success: true, 
+        message: "Đã cập nhật thứ tự bài viết" 
+      });
+    } catch (error) {
+      console.error("Error moving article:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Không thể thay đổi thứ tự bài viết" 
+      });
+    }
+  });
 
   // Endpoint to serve uploaded objects from object storage  
   app.get("/objects/:objectPath(*)", async (req, res) => {
