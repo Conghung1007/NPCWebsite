@@ -333,33 +333,6 @@ export default function JapaneseTraining() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-accent text-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h3 className="text-2xl font-bold mb-4">
-            Bắt Đầu Học Tiếng Nhật Ngay Hôm Nay
-          </h3>
-          <p className="text-accent-foreground mb-6">
-            Đăng ký ngay để nhận ưu đãi và lớp học thử miễn phí
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              onClick={handleScheduleView}
-              className="bg-white text-accent hover:bg-white/90 text-lg px-8 py-3"
-            >
-              Xem Lịch Học
-            </Button>
-            <Button 
-              onClick={handleTrialClass}
-              variant="outline"
-              className="border-white text-white hover:bg-white hover:text-accent text-lg px-8 py-3"
-            >
-              Đăng Ký Lớp Thử Miễn Phí
-            </Button>
-          </div>
-        </div>
-      </section>
-
       {/* Articles Section */}
       <ArticleSection 
         category="japanese-training"

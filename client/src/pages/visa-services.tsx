@@ -233,30 +233,7 @@ export default function VisaServices() {
               </CardContent>
             </Card>
           </div>
-          
-          {/* CTA Section */}
-          <div className="text-center">
-            <h3 className="text-2xl font-bold text-foreground mb-4">
-              Sẵn Sàng Bắt Đầu Hành Trình?
-            </h3>
-            <p className="text-muted-foreground mb-6">
-              Liên hệ ngay để được tư vấn miễn phí về thủ tục xin visa
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button 
-                onClick={handleConsultation}
-                className="btn-primary text-lg px-8 py-3"
-              >
-                Nhận Tư Vấn Miễn Phí
-              </Button>
-              <Button 
-                onClick={handleConsultation}
-                className="btn-secondary text-lg px-8 py-3"
-              >
-                Nộp Đơn Ngay
-              </Button>
-            </div>
-          </div>
+
         </div>
       </section>
       {/* Articles Section */}
