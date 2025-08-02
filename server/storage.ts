@@ -24,6 +24,7 @@ export class MemStorage implements IStorage {
     this.users = new Map();
     this.contactRequests = new Map();
     this.articles = new Map();
+    this.seedUsers();
     this.seedArticles();
   }
 
@@ -39,7 +40,12 @@ export class MemStorage implements IStorage {
 
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
-    const user: User = { ...insertUser, id };
+    const user: User = { 
+      ...insertUser, 
+      id,
+      role: insertUser.role || "user",
+      createdAt: new Date()
+    };
     this.users.set(id, user);
     return user;
   }
@@ -67,6 +73,7 @@ export class MemStorage implements IStorage {
     const article: Article = {
       ...insertArticle,
       id,
+      imageUrl: insertArticle.imageUrl || null,
       createdAt: new Date(),
     };
     this.articles.set(id, article);
@@ -87,6 +94,50 @@ export class MemStorage implements IStorage {
 
   async getArticle(id: string): Promise<Article | undefined> {
     return this.articles.get(id);
+  }
+
+  private seedUsers(): void {
+    const defaultUsers = [
+      {
+        id: randomUUID(),
+        username: "manager1",
+        password: "123456",
+        role: "manager",
+        createdAt: new Date()
+      },
+      {
+        id: randomUUID(),
+        username: "manager2", 
+        password: "123456",
+        role: "manager",
+        createdAt: new Date()
+      },
+      {
+        id: randomUUID(),
+        username: "admin1",
+        password: "123456", 
+        role: "admin",
+        createdAt: new Date()
+      },
+      {
+        id: randomUUID(),
+        username: "admin2",
+        password: "123456",
+        role: "admin", 
+        createdAt: new Date()
+      },
+      {
+        id: randomUUID(),
+        username: "admin3",
+        password: "123456",
+        role: "admin",
+        createdAt: new Date()
+      }
+    ];
+
+    defaultUsers.forEach(user => {
+      this.users.set(user.id, user as User);
+    });
   }
 
   private seedArticles(): void {
