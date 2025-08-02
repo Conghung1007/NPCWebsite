@@ -665,6 +665,81 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Initialize default UI images with sample URLs
+  app.post("/api/ui-images/initialize", async (req, res) => {
+    try {
+      const defaultImages = [
+        {
+          imageType: "hero-banner",
+          imageUrl: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=2074&q=80",
+          altText: "Hero banner - Dịch vụ tư vấn du học và visa",
+          description: "Hình ảnh chính trên trang chủ"
+        },
+        {
+          imageType: "about-company",
+          imageUrl: "https://images.unsplash.com/photo-1560472354-b33ff0c44a43?ixlib=rb-4.0.3&auto=format&fit=crop&w=2126&q=80",
+          altText: "Về công ty N&P",
+          description: "Hình ảnh giới thiệu công ty"
+        },
+        {
+          imageType: "why-choose-us",
+          imageUrl: "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2084&q=80",
+          altText: "Tại sao chọn chúng tôi",
+          description: "Hình ảnh phần lợi ích dịch vụ"
+        },
+        {
+          imageType: "visa-service",
+          imageUrl: "https://images.unsplash.com/photo-1578662996442-48f60103fc96?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
+          altText: "Dịch vụ visa",
+          description: "Hình ảnh dịch vụ làm visa"
+        },
+        {
+          imageType: "study-abroad",
+          imageUrl: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
+          altText: "Du học",
+          description: "Hình ảnh dịch vụ tư vấn du học"
+        },
+        {
+          imageType: "japanese-training",
+          imageUrl: "https://images.unsplash.com/photo-1528164344705-47542687000d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2092&q=80",
+          altText: "Đào tạo tiếng Nhật",
+          description: "Hình ảnh khóa học tiếng Nhật"
+        },
+        {
+          imageType: "flight-tickets",
+          imageUrl: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=2074&q=80",
+          altText: "Vé máy bay",
+          description: "Hình ảnh dịch vụ bán vé máy bay"
+        },
+        {
+          imageType: "contact-banner",
+          imageUrl: "https://images.unsplash.com/photo-1497366216548-37526070297c?ixlib=rb-4.0.3&auto=format&fit=crop&w=2069&q=80",
+          altText: "Liên hệ chúng tôi",
+          description: "Hình ảnh banner trang liên hệ"
+        }
+      ];
+
+      const createdImages = [];
+      for (const imageData of defaultImages) {
+        // Check if image already exists
+        const existing = await storage.getUiImageByType(imageData.imageType);
+        if (!existing) {
+          const created = await storage.createUiImage(imageData);
+          createdImages.push(created);
+        }
+      }
+
+      res.json({
+        success: true,
+        message: `Đã tạo ${createdImages.length} hình ảnh mặc định`,
+        images: createdImages
+      });
+    } catch (error) {
+      console.error("Error initializing UI images:", error);
+      res.status(500).json({ error: "Failed to initialize UI images" });
+    }
+  });
+
   // Server-side upload to R2 (similar to article uploads)
   app.post("/api/ui-images/server-upload", upload.single('file'), async (req, res) => {
     try {
