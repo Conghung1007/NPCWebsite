@@ -3,7 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Image, Bold, Italic, Link2, List, ListOrdered } from "lucide-react";
+import { Image, Bold, Italic, Link2, List, ListOrdered, Upload } from "lucide-react";
+import { ImageUploader } from "./ImageUploader";
 
 interface RichTextEditorProps {
   value: string;
@@ -129,14 +130,14 @@ export function RichTextEditor({
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0"
-              title="Chèn hình ảnh"
+              title="Chèn hình ảnh từ URL"
             >
               <Image className="h-4 w-4" />
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-md">
             <DialogHeader>
-              <DialogTitle>Chèn hình ảnh</DialogTitle>
+              <DialogTitle>Chèn hình ảnh từ URL</DialogTitle>
             </DialogHeader>
             <div className="space-y-4">
               <div>
@@ -176,6 +177,40 @@ export function RichTextEditor({
             </div>
           </DialogContent>
         </Dialog>
+        
+        <ImageUploader
+          onImageUploaded={(url, alt) => {
+            const imageMarkdown = `![${alt || 'Hình ảnh'}](${url})`;
+            const textarea = textareaRef.current;
+            
+            if (textarea) {
+              const start = textarea.selectionStart;
+              const newText = 
+                value.substring(0, start) + 
+                imageMarkdown + 
+                value.substring(start);
+              
+              onChange(newText);
+              
+              // Focus back to textarea
+              setTimeout(() => {
+                textarea.focus();
+                textarea.setSelectionRange(start + imageMarkdown.length, start + imageMarkdown.length);
+              }, 100);
+            }
+          }}
+          triggerButton={
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              title="Tải lên hình ảnh"
+            >
+              <Upload className="h-4 w-4" />
+            </Button>
+          }
+        />
       </div>
 
       {/* Text Area */}

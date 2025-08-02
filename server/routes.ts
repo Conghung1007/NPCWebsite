@@ -214,6 +214,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Image upload endpoint
+  app.post("/api/upload/image", async (req, res) => {
+    try {
+      const { filename, contentType } = req.body;
+      
+      if (!filename || !contentType) {
+        return res.status(400).json({ message: "Filename and content type are required" });
+      }
+
+      // Validate content type
+      if (!contentType.startsWith('image/')) {
+        return res.status(400).json({ message: "Only image files are allowed" });
+      }
+
+      const objectStorageService = new ObjectStorageService();
+      const uploadUrl = await objectStorageService.getObjectEntityUploadURL();
+      
+      // Generate the final image URL that will be accessible
+      const imageUrl = uploadUrl.replace(/\?.*$/, ''); // Remove query parameters to get clean URL
+      const objectPath = imageUrl.split('/').slice(-2).join('/'); // Get the object path
+      const publicImageUrl = `/objects/${objectPath}`;
+
+      res.json({
+        uploadUrl,
+        imageUrl: publicImageUrl
+      });
+    } catch (error) {
+      console.error("Error generating upload URL:", error);
+      res.status(500).json({ message: "Failed to generate upload URL" });
+    }
+  });
+
   app.get("/api/articles/:id", async (req, res) => {
     try {
       const article = await storage.getArticle(req.params.id);
@@ -232,24 +264,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/articles", async (req, res) => {
+
+
+  // Endpoint to serve uploaded objects from object storage  
+  app.get("/objects/:objectPath(*)", async (req, res) => {
     try {
-      const articleData = insertArticleSchema.parse(req.body);
-      const article = await storage.createArticle(articleData);
-      res.json({ success: true, article });
+      const objectStorageService = new ObjectStorageService();
+      const objectFile = await objectStorageService.getObjectEntityFile(req.path);
+      objectStorageService.downloadObject(objectFile, res);
     } catch (error) {
-      if (error instanceof z.ZodError) {
-        res.status(400).json({ 
-          success: false, 
-          message: "Dữ liệu không hợp lệ", 
-          errors: error.errors 
-        });
-      } else {
-        res.status(500).json({ 
-          success: false, 
-          message: "Có lỗi xảy ra khi tạo bài viết" 
-        });
+      console.error("Error checking object access:", error);
+      if (error instanceof ObjectNotFoundError) {
+        return res.sendStatus(404);
       }
+      return res.sendStatus(500);
     }
   });
 
