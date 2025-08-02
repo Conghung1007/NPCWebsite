@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import { insertContactRequestSchema, insertArticleSchema } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
-import { multiR2Storage } from "./multiR2Storage";
+import { multiR2Storage, type MediaUploadConfig, type FileInfo } from "./multiR2Storage";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Users endpoint - for managers and admins
@@ -639,13 +639,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uniqueFileName = `${imageType}-${timestamp}-${fileName}`;
       
       // Get upload URL to ui-images folder
-      const result = await multiR2Storage.getUploadUrl(config, `ui-images/${uniqueFileName}`, contentType);
+      const uploadConfig: MediaUploadConfig = {
+        provider: config as "replit" | "primary" | "secondary",
+        folder: "ui-images",
+        allowedTypes: ["image/*"],
+        maxSizeBytes: 10 * 1024 * 1024 // 10MB
+      };
+      
+      const result = await multiR2Storage.getUploadUrl(uploadConfig);
       
       if (result.success) {
         res.json({
           uploadURL: result.url,
           provider: result.provider,
-          path: `ui-images/${uniqueFileName}`
+          path: result.path || `ui-images/${uniqueFileName}`,
+          fileName: uniqueFileName
         });
       } else {
         res.status(500).json({ error: result.error || "Failed to get upload URL" });
@@ -659,9 +667,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get existing UI images from R2
   app.get("/api/ui-images", async (req, res) => {
     try {
-      // For now, return empty array since we need to implement file listing
-      // This can be enhanced later with actual R2 listing functionality
-      res.json([]);
+      const { config = "primary" } = req.query;
+      const images = await multiR2Storage.listFiles(config as string, "ui-images/");
+      res.json(images);
     } catch (error) {
       console.error("Error listing UI images:", error);
       res.status(500).json({ error: "Failed to list images" });
@@ -672,9 +680,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.delete("/api/ui-images/:fileName", async (req, res) => {
     try {
       const { fileName } = req.params;
-      // For now, return success since delete functionality needs to be implemented
-      // This can be enhanced later with actual R2 delete functionality
-      res.json({ success: true, message: "Đã xóa hình ảnh thành công" });
+      const { config = "primary" } = req.query;
+      
+      const result = await multiR2Storage.deleteFile(config as string, `ui-images/${fileName}`);
+      
+      if (result.success) {
+        res.json({ success: true, message: "Đã xóa hình ảnh thành công" });
+      } else {
+        res.status(500).json({ error: result.error || "Failed to delete image" });
+      }
     } catch (error) {
       console.error("Error deleting UI image:", error);
       res.status(500).json({ error: "Failed to delete image" });

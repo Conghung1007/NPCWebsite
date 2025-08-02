@@ -16,6 +16,13 @@ export interface UploadResult {
   error?: string;
 }
 
+export interface FileInfo {
+  name: string;
+  url: string;
+  lastModified: string;
+  size: number;
+}
+
 export class MultiR2StorageService {
   
   // Get upload URL for different providers
@@ -129,7 +136,7 @@ export class MultiR2StorageService {
       providers.push({
         id: configName,
         name: `Cloudflare R2 (${configName})`,
-        status: (isConfigured ? "configured" : "missing") as "available" | "configured" | "missing"
+        status: isConfigured ? "configured" : "missing"
       });
     });
 
@@ -180,6 +187,90 @@ export class MultiR2StorageService {
     }
 
     return null;
+  }
+
+  // List files in a folder for a specific provider
+  async listFiles(provider: string, prefix: string = ""): Promise<FileInfo[]> {
+    try {
+      if (provider === "replit") {
+        // For Replit object storage, we can't easily list files without implementing listing
+        // Return empty array for now
+        return [];
+      }
+
+      const config = EXTERNAL_R2_CONFIGS[provider];
+      if (!config) {
+        throw new Error(`Provider ${provider} not found`);
+      }
+
+      const client = r2Manager.getClient(provider);
+      if (!client) {
+        throw new Error(`Client for provider ${provider} not available`);
+      }
+
+      // Use listObjectsV2 to get files from R2
+      const { ListObjectsV2Command } = await import("@aws-sdk/client-s3");
+      const command = new ListObjectsV2Command({
+        Bucket: config.bucketName,
+        Prefix: prefix,
+        MaxKeys: 100
+      });
+
+      const response = await client.send(command);
+      
+      if (!response.Contents) {
+        return [];
+      }
+
+      return response.Contents
+        .filter(obj => obj.Key && obj.Key !== prefix) // Exclude folder itself
+        .map(obj => ({
+          name: obj.Key!.split('/').pop() || obj.Key!,
+          url: `${config.endpoint}/${config.bucketName}/${obj.Key}`,
+          lastModified: obj.LastModified?.toISOString() || new Date().toISOString(),
+          size: obj.Size || 0
+        }));
+
+    } catch (error) {
+      console.error(`Error listing files for provider ${provider}:`, error);
+      return [];
+    }
+  }
+
+  // Delete a file from a specific provider
+  async deleteFile(provider: string, filePath: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      if (provider === "replit") {
+        // For Replit object storage, return success for now
+        return { success: true };
+      }
+
+      const config = EXTERNAL_R2_CONFIGS[provider];
+      if (!config) {
+        return { success: false, error: `Provider ${provider} not found` };
+      }
+
+      const client = r2Manager.getClient(provider);
+      if (!client) {
+        return { success: false, error: `Client for provider ${provider} not available` };
+      }
+
+      const { DeleteObjectCommand } = await import("@aws-sdk/client-s3");
+      const command = new DeleteObjectCommand({
+        Bucket: config.bucketName,
+        Key: filePath
+      });
+
+      await client.send(command);
+      return { success: true };
+
+    } catch (error) {
+      console.error(`Error deleting file ${filePath} from provider ${provider}:`, error);
+      return { 
+        success: false, 
+        error: error instanceof Error ? error.message : "Unknown error" 
+      };
+    }
   }
 }
 
