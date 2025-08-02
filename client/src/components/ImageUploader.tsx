@@ -8,9 +8,10 @@ import { useToast } from "@/hooks/use-toast";
 interface ImageUploaderProps {
   onImageUploaded: (imageUrl: string, altText?: string) => void;
   triggerButton?: React.ReactNode;
+  insertAtCursor?: boolean;
 }
 
-export function ImageUploader({ onImageUploaded, triggerButton }: ImageUploaderProps) {
+export function ImageUploader({ onImageUploaded, triggerButton, insertAtCursor = false }: ImageUploaderProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [altText, setAltText] = useState("");
@@ -147,6 +148,11 @@ export function ImageUploader({ onImageUploaded, triggerButton }: ImageUploaderP
           <DialogTitle>Tải lên hình ảnh</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
+          <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg">
+            <strong>💡 Mẹo:</strong> Hình ảnh sẽ được chèn vào vị trí con trỏ hiện tại trong văn bản. 
+            Hãy đặt con trỏ ở vị trí bạn muốn chèn hình trước khi tải lên.
+          </div>
+          
           {/* Drag and Drop Area */}
           <div
             className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${

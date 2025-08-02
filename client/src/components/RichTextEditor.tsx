@@ -107,8 +107,13 @@ export function RichTextEditor({
 
   return (
     <div className={className}>
+      {/* Instruction */}
+      <div className="bg-blue-50 p-2 text-xs text-gray-600 border rounded-t-md">
+        <strong>Mẹo:</strong> Đặt con trỏ chuột ở vị trí muốn chèn hình ảnh, sau đó nhấn nút tải lên hoặc chèn từ URL
+      </div>
+      
       {/* Toolbar */}
-      <div className="border border-b-0 rounded-t-md bg-gray-50 p-2 flex flex-wrap gap-1">
+      <div className="border border-b-0 bg-gray-50 p-2 flex flex-wrap gap-1">
         {formatButtons.map((button, index) => (
           <Button
             key={index}
@@ -185,17 +190,21 @@ export function RichTextEditor({
             
             if (textarea) {
               const start = textarea.selectionStart;
+              const end = textarea.selectionEnd;
+              
+              // Insert image at cursor position
               const newText = 
                 value.substring(0, start) + 
                 imageMarkdown + 
-                value.substring(start);
+                value.substring(end);
               
               onChange(newText);
               
-              // Focus back to textarea
+              // Focus back to textarea and position cursor after the inserted image
               setTimeout(() => {
                 textarea.focus();
-                textarea.setSelectionRange(start + imageMarkdown.length, start + imageMarkdown.length);
+                const newCursorPosition = start + imageMarkdown.length;
+                textarea.setSelectionRange(newCursorPosition, newCursorPosition);
               }, 100);
             }
           }}
@@ -205,11 +214,12 @@ export function RichTextEditor({
               variant="ghost"
               size="sm"
               className="h-8 w-8 p-0"
-              title="Tải lên hình ảnh"
+              title="Tải lên hình ảnh từ máy tính"
             >
               <Upload className="h-4 w-4" />
             </Button>
           }
+          insertAtCursor={true}
         />
       </div>
 
