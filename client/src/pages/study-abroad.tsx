@@ -197,28 +197,7 @@ export default function StudyAbroad() {
           </div>
         </div>
       </section>
-      {/* Success Stories */}
-      <section className="py-4 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-[0px] mb-[0px] pt-[20px] pb-[20px]">
-          <h3 className="text-2xl font-bold text-foreground text-center mb-8">
-            Câu chuyện thành công
-          </h3>
-          <div className="grid md:grid-cols-3 gap-8">
-            {successStories.map((story, index) => (
-              <div key={index} className="text-center">
-                <img 
-                  src={story.avatar} 
-                  alt={story.name}
-                  className="w-24 h-24 rounded-full mx-auto mb-4 object-cover" 
-                />
-                <h4 className="font-semibold text-foreground mb-2">{story.name}</h4>
-                <p className="text-secondary text-sm mb-2">{story.school}</p>
-                <p className="text-muted-foreground text-sm italic">"{story.content}"</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      
       {/* Why Choose N&P */}
       <section className="py-20 bg-gradient-to-r from-primary to-blue-700 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
