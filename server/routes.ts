@@ -157,6 +157,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete contact request
+  app.delete("/api/contact/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteContactRequest(id);
+      
+      if (deleted) {
+        res.json({ success: true, message: "Đã xóa tin nhắn thành công" });
+      } else {
+        res.status(404).json({ success: false, message: "Không tìm thấy tin nhắn" });
+      }
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Có lỗi xảy ra" });
+    }
+  });
+
   // Article routes
   app.get("/api/articles", async (req, res) => {
     try {

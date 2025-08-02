@@ -15,6 +15,7 @@ export interface IStorage {
   
   createContactRequest(request: InsertContactRequest): Promise<ContactRequest>;
   getContactRequests(): Promise<ContactRequest[]>;
+  deleteContactRequest(id: string): Promise<boolean>;
   
   createArticle(article: InsertArticle): Promise<Article>;
   getArticlesByCategory(category: string): Promise<Article[]>;
@@ -106,6 +107,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.contactRequests.values()).sort(
       (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
     );
+  }
+
+  async deleteContactRequest(id: string): Promise<boolean> {
+    return this.contactRequests.delete(id);
   }
 
   async createArticle(insertArticle: InsertArticle): Promise<Article> {
@@ -447,6 +452,11 @@ export class DatabaseStorage implements IStorage {
 
   async getContactRequests(): Promise<ContactRequest[]> {
     return await db.select().from(contactRequests);
+  }
+
+  async deleteContactRequest(id: string): Promise<boolean> {
+    const result = await db.delete(contactRequests).where(eq(contactRequests.id, id));
+    return (result.rowCount || 0) > 0;
   }
 
   async createArticle(insertArticle: InsertArticle): Promise<Article> {

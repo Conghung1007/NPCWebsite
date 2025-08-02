@@ -23,6 +23,14 @@ export function CpanelPage() {
     isOpen: false,
     user: null
   });
+  const [messageDetail, setMessageDetail] = useState<{ isOpen: boolean; message: any | null }>({
+    isOpen: false,
+    message: null
+  });
+  const [deleteMessageConfirm, setDeleteMessageConfirm] = useState<{ isOpen: boolean; message: any | null }>({
+    isOpen: false,
+    message: null
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -55,7 +63,7 @@ export function CpanelPage() {
   });
 
   // Fetch messages/contact requests
-  const { data: messages = [], isLoading: messagesLoading } = useQuery<ContactRequest[]>({
+  const { data: messages = [], isLoading: messagesLoading, refetch: refetchContactRequests } = useQuery<ContactRequest[]>({
     queryKey: ["/api/contact"],
     enabled: !!user,
   });
@@ -167,6 +175,46 @@ export function CpanelPage() {
 
   const cancelDeleteUser = () => {
     setDeleteConfirm({ isOpen: false, user: null });
+  };
+
+  const handleViewMessage = (message: any) => {
+    setMessageDetail({ isOpen: true, message });
+  };
+
+  const handleDeleteMessage = (message: any) => {
+    setDeleteMessageConfirm({ isOpen: true, message });
+  };
+
+  const confirmDeleteMessage = async () => {
+    if (!deleteMessageConfirm.message) return;
+    
+    try {
+      const response = await fetch(`/api/contact/${deleteMessageConfirm.message.id}`, {
+        method: "DELETE",
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Thành công",
+          description: "Đã xóa tin nhắn thành công",
+        });
+        refetchContactRequests();
+      } else {
+        throw new Error("Failed to delete message");
+      }
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa tin nhắn",
+        variant: "destructive",
+      });
+    } finally {
+      setDeleteMessageConfirm({ isOpen: false, message: null });
+    }
+  };
+
+  const cancelDeleteMessage = () => {
+    setDeleteMessageConfirm({ isOpen: false, message: null });
   };
 
   if (!user) {
@@ -409,6 +457,7 @@ export function CpanelPage() {
                             <TableHead>Dịch vụ</TableHead>
                             <TableHead>Tin nhắn</TableHead>
                             <TableHead>Ngày gửi</TableHead>
+                            <TableHead>Thao tác</TableHead>
                           </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -432,6 +481,26 @@ export function CpanelPage() {
                               <TableCell>
                                 {new Date(message.createdAt).toLocaleDateString("vi-VN")}
                               </TableCell>
+                              <TableCell>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleViewMessage(message)}
+                                    className="text-blue-600 hover:text-blue-700"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleDeleteMessage(message)}
+                                    className="text-red-600 hover:text-red-700"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </TableCell>
                             </TableRow>
                           ))}
                         </TableBody>
@@ -444,7 +513,7 @@ export function CpanelPage() {
           </div>
         </div>
 
-        {/* Delete Confirmation Dialog */}
+        {/* Delete User Confirmation Dialog */}
         <Dialog open={deleteConfirm.isOpen} onOpenChange={(open) => !open && cancelDeleteUser()}>
           <DialogContent>
             <DialogHeader>
@@ -461,6 +530,78 @@ export function CpanelPage() {
               </Button>
               <Button variant="destructive" onClick={confirmDeleteUser}>
                 Xóa người dùng
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Message Detail Dialog */}
+        <Dialog open={messageDetail.isOpen} onOpenChange={(open) => !open && setMessageDetail({ isOpen: false, message: null })}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Chi tiết tin nhắn</DialogTitle>
+            </DialogHeader>
+            {messageDetail.message && (
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Họ tên</label>
+                    <p className="text-sm bg-gray-50 p-2 rounded">{messageDetail.message.name}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Email</label>
+                    <p className="text-sm bg-gray-50 p-2 rounded">{messageDetail.message.email}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Số điện thoại</label>
+                    <p className="text-sm bg-gray-50 p-2 rounded">{messageDetail.message.phone}</p>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium mb-1">Dịch vụ quan tâm</label>
+                    <Badge variant="outline" className="text-sm">
+                      {messageDetail.message.service}
+                    </Badge>
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Nội dung tin nhắn</label>
+                  <div className="text-sm bg-gray-50 p-3 rounded min-h-[100px] whitespace-pre-wrap">
+                    {messageDetail.message.message}
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">Ngày gửi</label>
+                  <p className="text-sm bg-gray-50 p-2 rounded">
+                    {new Date(messageDetail.message.createdAt).toLocaleString("vi-VN")}
+                  </p>
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setMessageDetail({ isOpen: false, message: null })}>
+                Đóng
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Message Confirmation Dialog */}
+        <Dialog open={deleteMessageConfirm.isOpen} onOpenChange={(open) => !open && cancelDeleteMessage()}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Xác nhận xóa tin nhắn</DialogTitle>
+              <DialogDescription>
+                Bạn có chắc chắn muốn xóa tin nhắn từ "{deleteMessageConfirm.message?.name}" không?
+                <br />
+                <span className="text-red-600 font-medium">Hành động này không thể hoàn tác.</span>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={cancelDeleteMessage}>
+                Hủy
+              </Button>
+              <Button variant="destructive" onClick={confirmDeleteMessage}>
+                Xóa tin nhắn
               </Button>
             </DialogFooter>
           </DialogContent>
