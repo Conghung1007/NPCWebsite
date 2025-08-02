@@ -2,13 +2,14 @@ import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
-import { Menu, User, LogOut } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
+import { Menu, User, LogOut, Settings } from "lucide-react";
+import { type User as UserType } from "@shared/schema";
 
 export function Header() {
   const [location, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState<UserType | null>(null);
 
   // Check for logged in user on component mount and when localStorage changes
   useEffect(() => {
@@ -30,7 +31,7 @@ export function Header() {
     checkUser();
     
     // Listen for storage changes (login/logout in other tabs or components)
-    const handleStorageChange = (e) => {
+    const handleStorageChange = (e: StorageEvent) => {
       if (e.key === "user") {
         checkUser();
       }
@@ -150,6 +151,13 @@ export function Header() {
                   <DropdownMenuItem disabled>
                     <span className="font-medium">{user.role}</span>
                   </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link href="/cpanel" className="flex items-center">
+                      <Settings className="w-4 h-4 mr-2" />
+                      Control Panel
+                    </Link>
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="w-4 h-4 mr-2" />
                     Đăng xuất
@@ -211,6 +219,16 @@ export function Header() {
                             <br />
                             <span className="text-muted-foreground">({user.role})</span>
                           </div>
+                          <Link href="/cpanel" className="block">
+                            <Button 
+                              variant="outline" 
+                              className="w-full text-base" 
+                              onClick={() => setIsOpen(false)}
+                            >
+                              <Settings className="w-4 h-4 mr-2" />
+                              Control Panel
+                            </Button>
+                          </Link>
                           <Button 
                             variant="outline" 
                             className="w-full text-base" 

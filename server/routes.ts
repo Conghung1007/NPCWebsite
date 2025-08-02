@@ -5,6 +5,19 @@ import { insertContactRequestSchema, insertArticleSchema } from "@shared/schema"
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Users endpoint - for managers only
+  app.get("/api/users", async (req, res) => {
+    try {
+      const users = await storage.getAllUsers();
+      // Remove passwords from response
+      const safeUsers = users.map(({ password, ...user }) => user);
+      res.json(safeUsers);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi lấy danh sách người dùng" });
+    }
+  });
+
   // Authentication routes
   app.post("/api/auth/login", async (req, res) => {
     try {

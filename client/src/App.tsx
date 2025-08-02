@@ -12,6 +12,7 @@ import JapaneseTraining from "@/pages/japanese-training";
 import FlightTickets from "@/pages/flight-tickets";
 import Login from "@/pages/login";
 import Contact from "@/pages/contact";
+import { CpanelPage } from "@/pages/cpanel";
 
 function Router() {
   return (
@@ -24,6 +25,7 @@ function Router() {
         <Route path="/flight-tickets" component={FlightTickets} />
         <Route path="/login" component={Login} />
         <Route path="/contact" component={Contact} />
+        <Route path="/cpanel" component={CpanelPage} />
         {/* Fallback to 404 */}
         <Route component={NotFound} />
       </Switch>

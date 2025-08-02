@@ -6,6 +6,7 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   authenticateUser(username: string, password: string): Promise<User | null>;
+  getAllUsers(): Promise<User[]>;
   
   createContactRequest(request: InsertContactRequest): Promise<ContactRequest>;
   getContactRequests(): Promise<ContactRequest[]>;
@@ -57,6 +58,10 @@ export class MemStorage implements IStorage {
       return user;
     }
     return null;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
   }
 
   async createContactRequest(insertRequest: InsertContactRequest): Promise<ContactRequest> {
