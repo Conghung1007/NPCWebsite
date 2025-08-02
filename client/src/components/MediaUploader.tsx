@@ -108,7 +108,8 @@ export function MediaUploader({
             editFile: "Chỉnh sửa file",
             editing: "Đang chỉnh sửa %{file}",
             finishEditingFile: "Hoàn thành chỉnh sửa file",
-            saveChanges: "Lưu thay đổi"
+            saveChanges: "Lưu thay đổi",
+            cancelChanges: "Hủy thay đổi"
           }
         }}
       />

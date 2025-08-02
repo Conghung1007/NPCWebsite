@@ -511,7 +511,7 @@ export function CpanelPage() {
                                 <TableCell>{message.phone}</TableCell>
                                 <TableCell>
                                   <Badge variant="outline" className="text-sm">
-                                    {getServiceName(message.service)}
+                                    {getServiceName(message.service || "")}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="max-w-xs">
