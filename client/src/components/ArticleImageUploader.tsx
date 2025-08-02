@@ -93,8 +93,8 @@ export function ArticleImageUploader({ storageProvider }: ArticleImageUploaderPr
         <Alert>
           <AlertCircle className="w-4 h-4" />
           <AlertDescription>
-            Tính năng này sẽ tự động thêm hình ảnh mẫu cho các bài viết chưa có hình ảnh. 
-            Hình ảnh sẽ được upload lên <strong>{storageProvider === "replit" ? "Replit Object Storage" : `Cloudflare R2 (${storageProvider})`}</strong>.
+            Tính năng này sẽ tự động khôi phục và upload hình ảnh cho các bài viết hiện có. 
+            Hình ảnh sẽ được lưu trữ trên <strong>{storageProvider === "replit" ? "Replit Object Storage" : `Cloudflare R2 (${storageProvider})`}</strong>.
           </AlertDescription>
         </Alert>
 

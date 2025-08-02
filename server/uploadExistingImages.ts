@@ -44,7 +44,7 @@ async function downloadImage(url: string): Promise<Buffer> {
   return Buffer.from(arrayBuffer);
 }
 
-async function uploadImageToR2(imageBuffer: Buffer, fileName: string, provider = "replit"): Promise<string | null> {
+async function uploadImageToR2(imageBuffer: Buffer, fileName: string, provider: "replit" | "primary" | "secondary" = "replit"): Promise<string | null> {
   try {
     console.log(`Attempting to upload to provider: ${provider}`);
     
@@ -108,13 +108,13 @@ async function uploadImageToR2(imageBuffer: Buffer, fileName: string, provider =
   }
 }
 
-export async function uploadExistingArticleImages(provider = "replit") {
+async function uploadExistingArticleImages(provider: "replit" | "primary" | "secondary" = "replit") {
   try {
     console.log(`Starting upload of article images to ${provider}...`);
     
     // Get all articles
-    const articles = await storage.getArticles();
-    const articlesWithoutImages = articles.filter(article => !article.imageUrl);
+    const articles = await storage.getAllArticles();
+    const articlesWithoutImages = articles.filter((article: any) => !article.imageUrl);
     
     console.log(`Found ${articlesWithoutImages.length} articles without images`);
     
@@ -140,7 +140,7 @@ export async function uploadExistingArticleImages(provider = "replit") {
         
         if (uploadedPath) {
           // Update article with new image URL
-          await storage.updateArticle(article.id, {
+          await storage.updateArticle({
             ...article,
             imageUrl: uploadedPath
           });

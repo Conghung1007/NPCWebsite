@@ -186,46 +186,7 @@ export function StorageProviderSelector({
           ))}
         </div>
 
-        {providers.some(p => p.status === "missing") && (
-          <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-            <div className="flex items-center gap-2">
-              <Settings className="w-4 h-4 text-blue-600" />
-              <span className="text-sm text-blue-800 font-medium">
-                Hướng dẫn kết nối R2
-              </span>
-            </div>
-            <div className="text-sm text-blue-700 mt-2 space-y-2">
-              <p><strong>Bước 1:</strong> Mở Secrets trong Replit (Tools → Secrets)</p>
-              <p><strong>Bước 2:</strong> Thêm các key sau với giá trị từ Cloudflare R2:</p>
-              <ul className="text-xs text-blue-600 mt-2 space-y-1 ml-4">
-                <li>• R2_PRIMARY_ACCOUNT_ID = (Account ID từ Cloudflare)</li>
-                <li>• R2_PRIMARY_ACCESS_KEY_ID = (Access Key từ R2 Token)</li>
-                <li>• R2_PRIMARY_SECRET_ACCESS_KEY = (Secret Key từ R2 Token)</li>
-                <li>• R2_PRIMARY_BUCKET_NAME = (Tên bucket đã tạo)</li>
-                <li>• R2_PRIMARY_ENDPOINT = https://account-id.r2.cloudflarestorage.com</li>
-              </ul>
-              <p className="mt-2"><strong>Bước 3:</strong> Restart ứng dụng để áp dụng cấu hình</p>
-            </div>
-            <div className="mt-3 flex gap-2">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => window.open("https://dash.cloudflare.com/profile/api-tokens", "_blank")}
-              >
-                <ExternalLink className="w-3 h-3 mr-1" />
-                Tạo R2 Token
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={() => window.open("https://dash.cloudflare.com/r2", "_blank")}
-              >
-                <ExternalLink className="w-3 h-3 mr-1" />
-                Quản lý R2 Bucket
-              </Button>
-            </div>
-          </div>
-        )}
+
       </CardContent>
     </Card>
   );

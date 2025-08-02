@@ -20,7 +20,9 @@ export interface IStorage {
   createArticle(article: InsertArticle): Promise<Article>;
   getArticlesByCategory(category: string): Promise<Article[]>;
   getAllArticles(): Promise<Article[]>;
+  getArticles(): Promise<Article[]>;
   getArticle(id: string): Promise<Article | undefined>;
+  updateArticle(article: Article): Promise<Article>;
 }
 
 export class MemStorage implements IStorage {
@@ -140,6 +142,15 @@ export class MemStorage implements IStorage {
 
   async getArticle(id: string): Promise<Article | undefined> {
     return this.articles.get(id);
+  }
+
+  async getArticles(): Promise<Article[]> {
+    return this.getAllArticles();
+  }
+
+  async updateArticle(article: Article): Promise<Article> {
+    this.articles.set(article.id, article);
+    return article;
   }
 
   private seedUsers(): void {
