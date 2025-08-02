@@ -922,6 +922,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Proxy images from R2 storage
+  app.get("/api/proxy-image/:provider/:path(*)", async (req, res) => {
+    try {
+      const { provider, path } = req.params;
+      
+      if (provider === "replit") {
+        return res.status(404).json({ error: "Replit storage not supported yet" });
+      }
+
+      const config = EXTERNAL_R2_CONFIGS[provider as keyof typeof EXTERNAL_R2_CONFIGS];
+      if (!config) {
+        return res.status(404).json({ error: "Provider not found" });
+      }
+
+      // Generate presigned download URL
+      const downloadUrl = await multiR2Storage.getDownloadUrl(provider, path);
+      
+      if (!downloadUrl) {
+        return res.status(404).json({ error: "File not found or cannot generate download URL" });
+      }
+
+      // Fetch and proxy the image
+      const imageResponse = await fetch(downloadUrl);
+      
+      if (!imageResponse.ok) {
+        return res.status(404).json({ error: "Image not found" });
+      }
+
+      const contentType = imageResponse.headers.get('content-type') || 'image/jpeg';
+      const cacheControl = imageResponse.headers.get('cache-control') || 'public, max-age=3600';
+      
+      res.set({
+        'Content-Type': contentType,
+        'Cache-Control': cacheControl,
+        'Access-Control-Allow-Origin': '*'
+      });
+
+      // Stream the image
+      const imageBuffer = await imageResponse.arrayBuffer();
+      res.send(Buffer.from(imageBuffer));
+
+    } catch (error) {
+      console.error("Error proxying image:", error);
+      res.status(500).json({ error: "Failed to proxy image" });
+    }
+  });
+
   // Serve UI images from R2 storage
   app.get("/ui-images/:fileName", async (req, res) => {
     try {

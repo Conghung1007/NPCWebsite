@@ -157,7 +157,7 @@ export class MultiR2StorageService {
 
       // Generate presigned URL for download
       const downloadUrl = await r2Manager.generateDownloadUrl(provider, fileName, 3600);
-      console.log(`Generated R2 presigned URL: ${downloadUrl}`);
+      console.log(`Generated R2 presigned URL for ${fileName}: ${downloadUrl}`);
       return downloadUrl;
     } catch (error) {
       console.error(`Error getting download URL for ${provider}:`, error);
@@ -226,7 +226,7 @@ export class MultiR2StorageService {
         .filter(obj => obj.Key && obj.Key !== prefix) // Exclude folder itself
         .map(obj => ({
           name: obj.Key!.split('/').pop() || obj.Key!,
-          url: `${config.endpoint}/${config.bucketName}/${obj.Key}`,
+          url: `/api/proxy-image/${provider}/${obj.Key}`, // Use proxy endpoint
           lastModified: obj.LastModified?.toISOString() || new Date().toISOString(),
           size: obj.Size || 0
         }));

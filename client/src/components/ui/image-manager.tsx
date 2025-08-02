@@ -383,7 +383,7 @@ export function ImageManager({
                     <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                     <p className="text-sm text-muted-foreground mt-2">Đang tải danh sách hình ảnh...</p>
                   </div>
-                ) : existingImages && existingImages.length > 0 ? (
+                ) : existingImages && Array.isArray(existingImages) && existingImages.length > 0 ? (
                   <div className="grid grid-cols-2 gap-4 max-h-96 overflow-y-auto">
                     {existingImages.map((image, index) => (
                       <Card key={index} className={`cursor-pointer transition-all ${
@@ -397,8 +397,9 @@ export function ImageManager({
                               className="w-full h-24 object-cover rounded"
                               onClick={() => setSelectedExistingImage(image.url)}
                               onError={(e) => {
+                                console.error('Image load error for:', image.url);
                                 const target = e.target as HTMLImageElement;
-                                target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMjQiIGhlaWdodD0iMjQiIHZpZXdCb3g9IjAgMCAyNCAyNCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KPHJlY3Qgd2lkdGg9IjI0IiBoZWlnaHQ9IjI0IiBmaWxsPSIjZjNmNGY2Ii8+CjxwYXRoIGQ9Ik0xMiAxNmMtMi4yMSAwLTQtMS43OS00LTRzMS43OS00IDQtNCA0IDEuNzkgNCA0LTEuNzkgNC00IDR6bTAtNmMtMS4xIDAtMiAuOS0yIDJzLjkgMiAyIDIgMi0uOSAyLTItLjktMi0yLTJ6IiBmaWxsPSIjOWNhM2FmIi8+Cjwvc3ZnPg==';
+                                target.style.display = 'none';
                               }}
                             />
                             {selectedExistingImage === image.url && (
@@ -429,7 +430,14 @@ export function ImageManager({
                 ) : (
                   <div className="text-center py-8">
                     <ImageIcon className="h-12 w-12 text-muted-foreground mx-auto mb-2" />
-                    <p className="text-sm text-muted-foreground">Chưa có hình ảnh nào</p>
+                    <p className="text-sm text-muted-foreground">
+                      {existingImages === null ? "Đang tải hình ảnh..." : "Chưa có hình ảnh nào"}
+                    </p>
+                    {imagesError && (
+                      <p className="text-sm text-red-500 mt-2">
+                        Lỗi: {imagesError.toString()}
+                      </p>
+                    )}
                   </div>
                 )}
               </div>
