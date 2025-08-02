@@ -98,7 +98,7 @@ async function uploadImageToR2(imageBuffer: Buffer, fileName: string, provider: 
       }
     }
 
-    // For R2 storage, construct the public URL
+    // For R2 storage, construct the public URL using the original fileName
     const publicUrl = `/public-objects/article-images/${fileName}`;
     console.log("R2 public URL:", publicUrl);
     return publicUrl;
