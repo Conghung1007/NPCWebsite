@@ -127,25 +127,66 @@ export default function ArticleDetail() {
             {/* Article content */}
             <div className="prose prose-lg max-w-none">
               <div className="text-gray-700 leading-relaxed text-base md:text-lg">
-                {article.content.split('\n').map((line, index) => {
-                  // Handle images
-                  const imageMatch = line.match(/!\[([^\]]*)\]\(([^)]+)\)/);
-                  if (imageMatch) {
-                    return (
-                      <figure key={index} className="my-6 inline-block">
-                        <img 
-                          src={imageMatch[2]} 
-                          alt={imageMatch[1]} 
-                          className="max-w-full h-auto rounded-lg border shadow-sm block"
-                        />
-                        {imageMatch[1] && (
-                          <figcaption className="text-sm text-gray-500 mt-2 italic text-center px-2">
-                            {imageMatch[1]}
-                          </figcaption>
-                        )}
-                      </figure>
+                {(() => {
+                  let firstImageSkipped = false;
+                  return article.content.split('\n').map((line, index) => {
+                    // Handle images
+                    const imageMatch = line.match(/!\[([^\]]*)\]\(([^)]+)\)/);
+                    if (imageMatch) {
+                      // Skip the first image if it matches the header image
+                      if (!firstImageSkipped && article.imageUrl && imageMatch[2] === article.imageUrl) {
+                        firstImageSkipped = true;
+                        return null;
+                      }
+                      return (
+                        <figure key={index} className="my-6 inline-block">
+                          <img 
+                            src={imageMatch[2]} 
+                            alt={imageMatch[1]} 
+                            className="max-w-full h-auto rounded-lg border shadow-sm block"
+                          />
+                          {imageMatch[1] && (
+                            <figcaption className="text-sm text-gray-500 mt-2 italic text-center px-2">
+                              {imageMatch[1]}
+                            </figcaption>
+                          )}
+                        </figure>
+                      );
+                    }
+                    
+                    // Handle bold text
+                    line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                    
+                    // Handle italic text
+                    line = line.replace(/\*(.*?)\*/g, '<em>$1</em>');
+                    
+                    // Handle links
+                    line = line.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 underline hover:text-blue-800" target="_blank" rel="noopener noreferrer">$1</a>');
+                    
+                    // Handle lists
+                    if (line.startsWith('- ')) {
+                      return (
+                        <ul key={index} className="list-disc ml-6 mb-2">
+                          <li dangerouslySetInnerHTML={{ __html: line.substring(2) }} />
+                        </ul>
+                      );
+                    }
+                    
+                    if (/^\d+\.\s/.test(line)) {
+                      return (
+                        <ol key={index} className="list-decimal ml-6 mb-2">
+                          <li dangerouslySetInnerHTML={{ __html: line.replace(/^\d+\.\s/, '') }} />
+                        </ol>
+                      );
+                    }
+                    
+                    return line.trim() ? (
+                      <p key={index} dangerouslySetInnerHTML={{ __html: line }} />
+                    ) : (
+                      <br key={index} />
                     );
-                  }
+                  });
+                })()}
                   
                   // Handle bold text
                   line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
