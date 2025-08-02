@@ -17,7 +17,9 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
       if (!response.ok) {
         throw new Error('Failed to fetch articles');
       }
-      return response.json();
+      const data = await response.json();
+      console.log('ArticleSection - Fetched articles:', { category, articles: data });
+      return data;
     }
   });
 
@@ -52,22 +54,28 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {articles?.map((article) => (
-              <ArticleCard
-                key={article.id}
-                article={article}
-                onClick={() => {
-                  // In a real app, this would navigate to article detail page
-                  console.log('Navigate to article:', article.id);
-                }}
-              />
-            ))}
+            {articles?.map((article) => {
+              console.log('ArticleSection - Rendering article:', article);
+              return (
+                <ArticleCard
+                  key={article.id}
+                  article={article}
+                  onClick={() => {
+                    // In a real app, this would navigate to article detail page
+                    console.log('Navigate to article:', article.id);
+                  }}
+                />
+              );
+            })}
           </div>
         )}
 
         {!isLoading && (!articles || articles.length === 0) && (
           <div className="text-center py-8">
             <p className="text-muted-foreground">Chưa có bài viết nào trong danh mục này.</p>
+            <div className="text-xs text-gray-400 mt-2">
+              Debug: Category: {category}, Articles: {JSON.stringify(articles)}
+            </div>
           </div>
         )}
       </div>

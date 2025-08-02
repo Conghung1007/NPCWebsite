@@ -36,7 +36,7 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
               style={{
                 display: '-webkit-box',
                 WebkitLineClamp: 2,
-                WebkitBoxOrient: 'vertical'
+                WebkitBoxOrient: 'vertical' as const
               }}>
             {article.title}
           </h3>
@@ -45,7 +45,7 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
              style={{
                display: '-webkit-box',
                WebkitLineClamp: 3,
-               WebkitBoxOrient: 'vertical'
+               WebkitBoxOrient: 'vertical' as const
              }}>
             {article.content}
           </p>
