@@ -37,6 +37,7 @@ export function ServiceWithArticles({
 
   // State for carousel
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [isHovered, setIsHovered] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Filter articles by category
@@ -72,6 +73,24 @@ export function ServiceWithArticles({
   const goToNext = () => {
     setCurrentIndex(prev => Math.min(maxIndex, prev + 1));
   };
+
+  // Auto-scroll functionality
+  useEffect(() => {
+    if (categoryArticles.length <= articlesPerView || isHovered) return; // Don't auto-scroll if all articles fit or user is hovering
+
+    const autoScrollInterval = setInterval(() => {
+      setCurrentIndex(prev => {
+        // If at the end, go back to beginning
+        if (prev >= maxIndex) {
+          return 0;
+        }
+        // Otherwise, go to next
+        return prev + 1;
+      });
+    }, 30000); // 30 seconds
+
+    return () => clearInterval(autoScrollInterval);
+  }, [categoryArticles.length, articlesPerView, maxIndex, isHovered]);
 
   const getCategoryLabel = (category: string) => {
     const labels: Record<string, string> = {
@@ -131,7 +150,11 @@ export function ServiceWithArticles({
         ) : categoryArticles.length > 0 ? (
           <div>
             {/* Navigation buttons and articles container */}
-            <div className="relative">
+            <div 
+              className="relative"
+              onMouseEnter={() => setIsHovered(true)}
+              onMouseLeave={() => setIsHovered(false)}
+            >
               {/* Navigation buttons */}
               {categoryArticles.length > articlesPerView && (
                 <>
