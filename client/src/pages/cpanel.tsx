@@ -35,17 +35,17 @@ export function CpanelPage() {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
       // Set default active tab based on user role
-      setActiveTab(parsedUser.role === "manager" ? "users" : "messages");
+      setActiveTab((parsedUser.role === "manager" || parsedUser.role === "admin") ? "users" : "messages");
     } catch (error) {
       localStorage.removeItem("user");
       setLocation("/login");
     }
   }, [setLocation, toast]);
 
-  // Fetch users (only for managers)
+  // Fetch users (for managers and admins)
   const { data: users = [], isLoading: usersLoading, refetch: refetchUsers } = useQuery<UserType[]>({
     queryKey: ["/api/users"],
-    enabled: user?.role === "manager",
+    enabled: user?.role === "manager" || user?.role === "admin",
   });
 
   // Fetch messages/contact requests
@@ -156,6 +156,7 @@ export function CpanelPage() {
   }
 
   const isManager = user.role === "manager";
+  const canManageUsers = user.role === "manager" || user.role === "admin";
 
   return (
     <div className="min-h-screen bg-gray-50/50 py-8">
@@ -173,7 +174,7 @@ export function CpanelPage() {
           {/* Left Sidebar - Navigation */}
           <div className="flex-shrink-0">
             <div className="space-y-2">
-              {isManager && (
+              {canManageUsers && (
                 <Button 
                   variant={activeTab === "users" ? "default" : "ghost"}
                   className="justify-start flex items-center gap-2 h-12 px-4"
@@ -197,8 +198,8 @@ export function CpanelPage() {
           {/* Right Content Area */}
           <div className="flex-1">
 
-            {/* Users Content - Only for managers */}
-            {isManager && activeTab === "users" && (
+            {/* Users Content - For managers and admins */}
+            {canManageUsers && activeTab === "users" && (
               <div className="space-y-6">
                 <Card>
                   <CardHeader>
