@@ -969,6 +969,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Delete UI image from R2 storage
+  app.delete("/api/ui-images/:fileName", async (req, res) => {
+    try {
+      const fileName = req.params.fileName;
+      
+      // Delete from R2 storage
+      const deleteResult = await multiR2Storage.deleteFile("primary", `ui-images/${fileName}`);
+      
+      if (!deleteResult.success) {
+        console.error("Failed to delete from R2:", deleteResult.error);
+        return res.status(500).json({ 
+          error: "Failed to delete image from storage",
+          details: deleteResult.error 
+        });
+      }
+
+      // Note: We're not removing from database as this is a simple file manager
+      // If needed in the future, add database cleanup here
+      
+      res.json({ 
+        success: true, 
+        message: "Image deleted successfully from storage",
+        fileName: fileName
+      });
+      
+    } catch (error) {
+      console.error("Error deleting UI image:", error);
+      res.status(500).json({ error: "Failed to delete image" });
+    }
+  });
+
   // Serve UI images from R2 storage
   app.get("/ui-images/:fileName", async (req, res) => {
     try {

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -37,6 +38,7 @@ export function ImageManager({
   const [previewUrl, setPreviewUrl] = useState("");
   const [selectedExistingImage, setSelectedExistingImage] = useState<string>("");
   const [activeTab, setActiveTab] = useState("upload");
+  const [imageToDelete, setImageToDelete] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -66,12 +68,14 @@ export function ImageManager({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/images/list"] });
+      setImageToDelete(null);
       toast({
         title: "Thành công",
         description: "Đã xóa hình ảnh thành công",
       });
     },
     onError: (error) => {
+      setImageToDelete(null);
       toast({
         title: "Lỗi",
         description: "Không thể xóa hình ảnh",
@@ -79,6 +83,27 @@ export function ImageManager({
       });
     }
   });
+
+  const confirmDeleteImage = () => {
+    if (imageToDelete) {
+      deleteImageMutation.mutate(imageToDelete);
+    }
+  };
+
+  // Extract image name from URL
+  const getImageName = (url: string): string => {
+    if (url.startsWith('/api/proxy-image/')) {
+      // Extract from proxy URL: /api/proxy-image/primary/ui-images/filename
+      const parts = url.split('/');
+      return parts[parts.length - 1];
+    }
+    // Fallback for direct URLs
+    return url.split('/').pop() || url;
+  };
+
+
+
+
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -206,20 +231,14 @@ export function ImageManager({
     setIsOpen(false);
     setPreviewUrl("");
     setSelectedExistingImage("");
+    setImageToDelete(null);
     setUploading(false);
     setActiveTab("upload");
   };
 
-  const handleDeleteImage = async (fileName: string) => {
-    if (confirm("Bạn có chắc chắn muốn xóa hình ảnh này không?")) {
-      deleteImageMutation.mutate(fileName);
-    }
-  };
 
-  const getImageName = (url: string) => {
-    const parts = url.split('/');
-    return parts[parts.length - 1];
-  };
+
+
 
   const handleConfirm = async () => {
     if (activeTab === "existing" && selectedExistingImage) {
@@ -407,18 +426,43 @@ export function ImageManager({
                                 <Check className="h-3 w-3" />
                               </div>
                             )}
-                            <Button
-                              variant="destructive"
-                              size="sm"
-                              className="absolute top-1 left-1 h-6 w-6 p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                handleDeleteImage(getImageName(image.url));
-                              }}
-                              disabled={deleteImageMutation.isPending}
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="absolute top-1 left-1 h-6 w-6 p-0"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setImageToDelete(getImageName(image.url));
+                                  }}
+                                  disabled={deleteImageMutation.isPending}
+                                >
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Xác nhận xóa hình ảnh</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Bạn có chắc chắn muốn xóa hình ảnh "{image.name}"? 
+                                    Hành động này không thể hoàn tác và hình ảnh sẽ bị xóa vĩnh viễn từ hệ thống lưu trữ.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel onClick={() => setImageToDelete(null)}>
+                                    Hủy
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={confirmDeleteImage}
+                                    className="bg-red-600 hover:bg-red-700"
+                                    disabled={deleteImageMutation.isPending}
+                                  >
+                                    {deleteImageMutation.isPending ? "Đang xóa..." : "Xóa"}
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                           </div>
                           <p className="text-xs text-muted-foreground mt-1 truncate" title={image.name}>
                             {image.name}
