@@ -9,7 +9,7 @@ interface PaginationProps {
 }
 
 export function Pagination({ currentPage, totalPages, onPageChange, className = "" }: PaginationProps) {
-  if (totalPages <= 1) return null;
+  // Always show pagination controls when this component is used
 
   const getVisiblePages = () => {
     const delta = 2;

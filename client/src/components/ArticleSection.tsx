@@ -89,12 +89,12 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
               })}
             </div>
 
-            {/* Pagination */}
-            {totalPages > 1 && (
+            {/* Pagination - always show for service pages */}
+            {totalArticles > 0 && (
               <div className="mt-12">
                 <Pagination
                   currentPage={currentPage}
-                  totalPages={totalPages}
+                  totalPages={Math.max(1, totalPages)}
                   onPageChange={handlePageChange}
                 />
               </div>
