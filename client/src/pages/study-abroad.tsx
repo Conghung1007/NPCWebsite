@@ -242,31 +242,7 @@ export default function StudyAbroad() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-20 bg-neutral">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h3 className="text-2xl font-bold text-foreground mb-4">
-            Khám phá các lựa chọn học tập của bạn
-          </h3>
-          <p className="text-muted-foreground mb-6">
-            Bắt đầu hành trình du học của bạn ngay hôm nay
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button 
-              onClick={handleConsultation}
-              className="btn-primary text-lg px-8 py-3"
-            >
-              Khám Phá Lựa Chọn
-            </Button>
-            <Button 
-              onClick={handleConsultation}
-              className="btn-secondary text-lg px-8 py-3"
-            >
-              Đặt Lịch Tư Vấn Miễn Phí
-            </Button>
-          </div>
-        </div>
-      </section>
+
 
       {/* Articles Section */}
       <ArticleSection 
