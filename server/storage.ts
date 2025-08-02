@@ -526,6 +526,19 @@ export class DatabaseStorage implements IStorage {
     const [article] = await db.select().from(articles).where(eq(articles.id, id));
     return article || undefined;
   }
+
+  async getArticles(): Promise<Article[]> {
+    return this.getAllArticles();
+  }
+
+  async updateArticle(article: Article): Promise<Article> {
+    const [updatedArticle] = await db
+      .update(articles)
+      .set(article)
+      .where(eq(articles.id, article.id))
+      .returning();
+    return updatedArticle;
+  }
 }
 
 export const storage = new DatabaseStorage();
