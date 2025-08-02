@@ -193,7 +193,7 @@ export function ServiceWithArticles({
                   {categoryArticles.map((article) => (
                     <div
                       key={article.id}
-                      className="w-full lg:w-1/3 md:w-1/2 flex-shrink-0 px-3"
+                      className="flex-shrink-0 px-3"
                       style={{ width: `${100 / articlesPerView}%` }}
                     >
                       <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer h-[400px] flex flex-col">
