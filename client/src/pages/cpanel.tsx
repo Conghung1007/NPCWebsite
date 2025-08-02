@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
-import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff } from "lucide-react";
+import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2 } from "lucide-react";
 import { type User as UserType, type ContactRequest } from "@shared/schema";
 
 export function CpanelPage() {
@@ -123,6 +123,32 @@ export function CpanelPage() {
       ...prev,
       [userId]: !prev[userId]
     }));
+  };
+
+  const handleDeleteUser = async (userId: string) => {
+    if (!confirm("Bạn có chắc chắn muốn xóa người dùng này?")) return;
+    
+    try {
+      const response = await fetch(`/api/users/${userId}`, {
+        method: "DELETE",
+      });
+      
+      if (response.ok) {
+        toast({
+          title: "Thành công",
+          description: "Đã xóa người dùng thành công",
+        });
+        refetchUsers();
+      } else {
+        throw new Error("Failed to delete user");
+      }
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể xóa người dùng",
+        variant: "destructive",
+      });
+    }
   };
 
   if (!user) {
@@ -289,13 +315,25 @@ export function CpanelPage() {
                                 {new Date(userItem.createdAt).toLocaleDateString("vi-VN")}
                               </TableCell>
                               <TableCell>
-                                <Button
-                                  size="sm"
-                                  variant="outline"
-                                  onClick={() => handleEditUser(userItem)}
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
+                                <div className="flex gap-2">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => handleEditUser(userItem)}
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  {user?.role === "admin" && (
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleDeleteUser(userItem.id)}
+                                      className="text-red-600 hover:text-red-700"
+                                    >
+                                      <Trash2 className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </div>
                               </TableCell>
                             </TableRow>
                           ))}
