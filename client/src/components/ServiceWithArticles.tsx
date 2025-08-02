@@ -1,9 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, ArrowRight, ChevronLeft, ChevronRight } from "lucide-react";
+import { Clock, ArrowRight } from "lucide-react";
 import { Link } from "wouter";
-import { useState, useEffect, useRef } from "react";
 import type { Article } from "@shared/schema";
 
 interface ServiceWithArticlesProps {
@@ -35,50 +34,10 @@ export function ServiceWithArticles({
     queryKey: ['/api/articles'],
   });
 
-  // Filter articles by category and take first 5 for carousel
+  // Filter articles by category and take first 3
   const categoryArticles = allArticles
     .filter(article => article.category === category)
-    .slice(0, 5);
-
-  const [currentIndex, setCurrentIndex] = useState(0);
-  const intervalRef = useRef<NodeJS.Timeout>();
-
-  // Auto-scroll every 10 seconds
-  useEffect(() => {
-    if (categoryArticles.length > 1) {
-      intervalRef.current = setInterval(() => {
-        setCurrentIndex(prev => (prev + 1) % categoryArticles.length);
-      }, 10000);
-
-      return () => {
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current);
-        }
-      };
-    }
-  }, [categoryArticles.length]);
-
-  const nextSlide = () => {
-    setCurrentIndex(prev => (prev + 1) % categoryArticles.length);
-    // Reset auto-scroll timer
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(() => {
-        setCurrentIndex(prev => (prev + 1) % categoryArticles.length);
-      }, 10000);
-    }
-  };
-
-  const prevSlide = () => {
-    setCurrentIndex(prev => (prev - 1 + categoryArticles.length) % categoryArticles.length);
-    // Reset auto-scroll timer
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(() => {
-        setCurrentIndex(prev => (prev + 1) % categoryArticles.length);
-      }, 10000);
-    }
-  };
+    .slice(0, 3);
 
   const getCategoryLabel = (category: string) => {
     const labels: Record<string, string> = {
@@ -123,106 +82,55 @@ export function ServiceWithArticles({
         
 
         {isLoading ? (
-          <div className="relative">
-            <div className="overflow-hidden">
-              <div className="flex gap-6">
-                {[1, 2, 3].map((i) => (
-                  <Card key={i} className="overflow-hidden h-[400px] flex flex-col flex-shrink-0 w-80">
-                    <div className="w-full h-48 bg-gray-200 animate-pulse flex-shrink-0"></div>
-                    <CardContent className="p-4 flex-1 flex flex-col">
-                      <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
-                      <div className="h-6 bg-gray-200 rounded animate-pulse mb-2"></div>
-                      <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4 flex-1"></div>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="overflow-hidden h-[400px] flex flex-col">
+                <div className="w-full h-48 bg-gray-200 animate-pulse flex-shrink-0"></div>
+                <CardContent className="p-4 flex-1 flex flex-col">
+                  <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
+                  <div className="h-6 bg-gray-200 rounded animate-pulse mb-2"></div>
+                  <div className="h-4 bg-gray-200 rounded animate-pulse w-3/4 flex-1"></div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         ) : categoryArticles.length > 0 ? (
           <div>
-            {/* Horizontal Carousel */}
-            <div className="relative">
-              <div className="overflow-hidden">
-                <div 
-                  className="flex gap-6 transition-transform duration-500 ease-in-out"
-                  style={{ 
-                    transform: `translateX(-${currentIndex * (320 + 24)}px)` // 320px card width + 24px gap
-                  }}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {categoryArticles.map((article) => (
+                <Card 
+                  key={article.id}
+                  className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer h-[400px] flex flex-col"
                 >
-                  {categoryArticles.map((article) => (
-                    <Card 
-                      key={article.id}
-                      className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer h-[400px] flex flex-col flex-shrink-0 w-80"
-                    >
-                      <div className="relative w-full h-48 overflow-hidden flex-shrink-0">
-                        <img
-                          src={article.imageUrl || 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=300&fit=crop'}
-                          alt={article.title}
-                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                        />
-                        <div className="absolute top-3 left-3">
-                          <Badge className={getCategoryColor(category)}>
-                            {getCategoryLabel(category)}
-                          </Badge>
-                        </div>
-                      </div>
-                      
-                      <CardContent className="p-4 flex-1 flex flex-col">
-                        <div className="flex items-center text-sm text-gray-500 mb-3">
-                          <Clock className="w-4 h-4 mr-1" />
-                          <span>{new Date(article.createdAt || Date.now()).toLocaleDateString('vi-VN')}</span>
-                        </div>
-                        
-                        <h5 className="text-lg font-semibold text-gray-900 mb-3 group-hover:text-primary transition-colors line-clamp-2 flex-shrink-0">
-                          {article.title}
-                        </h5>
-                        
-                        <p className="text-gray-600 text-sm line-clamp-3 flex-1">
-                          {article.content.substring(0, 120)}...
-                        </p>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </div>
-
-              {/* Navigation Arrows */}
-              {categoryArticles.length > 1 && (
-                <>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="absolute left-0 top-1/2 -translate-y-1/2 -translate-x-4 bg-white/90 hover:bg-white shadow-lg"
-                    onClick={prevSlide}
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="icon"
-                    className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-4 bg-white/90 hover:bg-white shadow-lg"
-                    onClick={nextSlide}
-                  >
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                </>
-              )}
-
-              {/* Dots Indicator */}
-              {categoryArticles.length > 1 && (
-                <div className="flex justify-center mt-6 gap-2">
-                  {categoryArticles.map((_, index) => (
-                    <button
-                      key={index}
-                      className={`w-2 h-2 rounded-full transition-colors ${
-                        index === currentIndex ? 'bg-primary' : 'bg-gray-300'
-                      }`}
-                      onClick={() => setCurrentIndex(index)}
+                  <div className="relative w-full h-48 overflow-hidden flex-shrink-0">
+                    <img
+                      src={article.imageUrl || 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=300&fit=crop'}
+                      alt={article.title}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                     />
-                  ))}
-                </div>
-              )}
+                    <div className="absolute top-3 left-3">
+                      <Badge className={getCategoryColor(category)}>
+                        {getCategoryLabel(category)}
+                      </Badge>
+                    </div>
+                  </div>
+                  
+                  <CardContent className="p-4 flex-1 flex flex-col">
+                    <div className="flex items-center text-sm text-gray-500 mb-3">
+                      <Clock className="w-4 h-4 mr-1" />
+                      <span>{new Date(article.createdAt || Date.now()).toLocaleDateString('vi-VN')}</span>
+                    </div>
+                    
+                    <h5 className="text-lg font-semibold text-gray-900 mb-3 group-hover:text-primary transition-colors line-clamp-2 flex-shrink-0">
+                      {article.title}
+                    </h5>
+                    
+                    <p className="text-gray-600 text-sm line-clamp-3 flex-1">
+                      {article.content.substring(0, 120)}...
+                    </p>
+                  </CardContent>
+                </Card>
+              ))}
             </div>
             
             {/* View more articles link */}
