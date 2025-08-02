@@ -137,7 +137,7 @@ export function ServiceWithArticles({
         {isLoading ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="overflow-hidden">
+              <Card key={i} className="overflow-hidden h-[400px] flex flex-col">
                 <div className="w-full h-48 bg-gray-200 animate-pulse flex-shrink-0"></div>
                 <CardContent className="p-4 flex-1 flex flex-col">
                   <div className="h-4 bg-gray-200 rounded animate-pulse mb-2"></div>
@@ -196,7 +196,7 @@ export function ServiceWithArticles({
                       className="w-full lg:w-1/3 md:w-1/2 flex-shrink-0 px-3"
                       style={{ width: `${100 / articlesPerView}%` }}
                     >
-                      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer">
+                      <Card className="overflow-hidden hover:shadow-lg transition-all duration-300 group cursor-pointer h-[400px] flex flex-col">
                         <div className="relative w-full h-48 overflow-hidden flex-shrink-0">
                           <img
                             src={article.imageUrl || 'https://images.unsplash.com/photo-1557804506-669a67965ba0?w=400&h=300&fit=crop'}
@@ -210,17 +210,17 @@ export function ServiceWithArticles({
                           </div>
                         </div>
                         
-                        <CardContent className="p-4">
+                        <CardContent className="p-4 flex-1 flex flex-col">
                           <div className="flex items-center text-sm text-gray-500 mb-3">
                             <Clock className="w-4 h-4 mr-1" />
                             <span>{new Date(article.createdAt || Date.now()).toLocaleDateString('vi-VN')}</span>
                           </div>
                           
-                          <h5 className="text-lg font-semibold text-gray-900 mb-3 group-hover:text-primary transition-colors line-clamp-2">
+                          <h5 className="text-lg font-semibold text-gray-900 mb-3 group-hover:text-primary transition-colors line-clamp-2 flex-shrink-0">
                             {article.title}
                           </h5>
                           
-                          <p className="text-gray-600 text-sm line-clamp-3">
+                          <p className="text-gray-600 text-sm line-clamp-3 flex-1">
                             {article.content.substring(0, 120)}...
                           </p>
                         </CardContent>
