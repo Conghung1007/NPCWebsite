@@ -541,19 +541,17 @@ export function CpanelPage() {
                         </Table>
                         
                         {/* Pagination */}
-                        {totalPages > 1 && (
-                          <div className="mt-6">
-                            <div className="mb-4 text-center text-sm text-muted-foreground">
-                              Hiển thị {startIndex + 1}-{Math.min(endIndex, sortedMessages.length)} trong tổng số {sortedMessages.length} tin nhắn
-                            </div>
-                            <Pagination
-                              currentPage={currentPage}
-                              totalPages={totalPages}
-                              onPageChange={handlePageChange}
-                              className="justify-center"
-                            />
+                        <div className="mt-6">
+                          <div className="mb-4 text-center text-sm text-muted-foreground">
+                            Hiển thị {startIndex + 1}-{Math.min(endIndex, sortedMessages.length)} trong tổng số {sortedMessages.length} tin nhắn
                           </div>
-                        )}
+                          <Pagination
+                            currentPage={currentPage}
+                            totalPages={Math.max(totalPages, 1)}
+                            onPageChange={handlePageChange}
+                            className="justify-center"
+                          />
+                        </div>
                       </>
                     )}
                   </CardContent>
