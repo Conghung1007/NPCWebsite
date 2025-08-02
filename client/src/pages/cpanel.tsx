@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -13,6 +12,7 @@ import { type User as UserType, type ContactRequest } from "@shared/schema";
 export function CpanelPage() {
   const [, setLocation] = useLocation();
   const [user, setUser] = useState<UserType | null>(null);
+  const [activeTab, setActiveTab] = useState<string>("");
   const { toast } = useToast();
 
   useEffect(() => {
@@ -30,6 +30,8 @@ export function CpanelPage() {
     try {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
+      // Set default active tab based on user role
+      setActiveTab(parsedUser.role === "manager" ? "users" : "messages");
     } catch (error) {
       localStorage.removeItem("user");
       setLocation("/login");
@@ -66,97 +68,95 @@ export function CpanelPage() {
           </p>
         </div>
 
-        <Tabs defaultValue={isManager ? "users" : "messages"} className="w-full">
-          <div className="grid grid-cols-12 gap-8">
-            {/* Left Sidebar - Navigation */}
-            <div className="col-span-3">
-              <div className="space-y-2">
-                {isManager && (
-                  <TabsTrigger value="users" asChild>
-                    <Button 
-                      variant="ghost" 
-                      className="w-full justify-start flex items-center gap-2 h-12 data-[state=active]:bg-primary data-[state=active]:text-white"
-                    >
-                      <Users className="w-5 h-5" />
-                      Quản lý người dùng
-                    </Button>
-                  </TabsTrigger>
-                )}
-                <TabsTrigger value="messages" asChild>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full justify-start flex items-center gap-2 h-12 data-[state=active]:bg-primary data-[state=active]:text-white"
-                  >
-                    <MessageSquare className="w-5 h-5" />
-                    Tin nhắn liên hệ
-                  </Button>
-                </TabsTrigger>
-              </div>
-            </div>
-
-            {/* Right Content Area */}
-            <div className="col-span-9">
-
-              {/* Users Tab - Only for managers */}
+        <div className="grid grid-cols-12 gap-8">
+          {/* Left Sidebar - Navigation */}
+          <div className="col-span-3">
+            <div className="space-y-2">
               {isManager && (
-                <TabsContent value="users" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="flex items-center gap-2">
-                        <Shield className="w-5 h-5" />
-                        Danh sách người dùng
-                      </CardTitle>
-                      <CardDescription>
-                        Quản lý tất cả người dùng trong hệ thống
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      {usersLoading ? (
-                        <div className="flex justify-center py-8">
-                          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                        </div>
-                      ) : (
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>Tên đăng nhập</TableHead>
-                              <TableHead>Vai trò</TableHead>
-                              <TableHead>Ngày tạo</TableHead>
-                              <TableHead>Trạng thái</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {users.map((userItem) => (
-                              <TableRow key={userItem.id}>
-                                <TableCell className="font-medium">
-                                  <div className="flex items-center gap-2">
-                                    <User className="w-4 h-4" />
-                                    {userItem.username}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={userItem.role === "admin" ? "default" : "secondary"}>
-                                    {userItem.role}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell>
-                                  {new Date(userItem.createdAt).toLocaleDateString("vi-VN")}
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant="outline">Hoạt động</Badge>
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      )}
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                <Button 
+                  variant={activeTab === "users" ? "default" : "ghost"}
+                  className="w-full justify-start flex items-center gap-2 h-12"
+                  onClick={() => setActiveTab("users")}
+                >
+                  <Users className="w-5 h-5" />
+                  Quản lý người dùng
+                </Button>
               )}
+              <Button 
+                variant={activeTab === "messages" ? "default" : "ghost"}
+                className="w-full justify-start flex items-center gap-2 h-12"
+                onClick={() => setActiveTab("messages")}
+              >
+                <MessageSquare className="w-5 h-5" />
+                Tin nhắn liên hệ
+              </Button>
+            </div>
+          </div>
 
-              {/* Messages Tab - For all authenticated users */}
-              <TabsContent value="messages" className="space-y-6">
+          {/* Right Content Area */}
+          <div className="col-span-9">
+
+            {/* Users Content - Only for managers */}
+            {isManager && activeTab === "users" && (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="w-5 h-5" />
+                      Danh sách người dùng
+                    </CardTitle>
+                    <CardDescription>
+                      Quản lý tất cả người dùng trong hệ thống
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {usersLoading ? (
+                      <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Tên đăng nhập</TableHead>
+                            <TableHead>Vai trò</TableHead>
+                            <TableHead>Ngày tạo</TableHead>
+                            <TableHead>Trạng thái</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {users.map((userItem) => (
+                            <TableRow key={userItem.id}>
+                              <TableCell className="font-medium">
+                                <div className="flex items-center gap-2">
+                                  <User className="w-4 h-4" />
+                                  {userItem.username}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={userItem.role === "admin" ? "default" : "secondary"}>
+                                  {userItem.role}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {new Date(userItem.createdAt).toLocaleDateString("vi-VN")}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline">Hoạt động</Badge>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Messages Content - For all authenticated users */}
+            {activeTab === "messages" && (
+              <div className="space-y-6">
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
@@ -212,10 +212,10 @@ export function CpanelPage() {
                     )}
                   </CardContent>
                 </Card>
-              </TabsContent>
-            </div>
+              </div>
+            )}
           </div>
-        </Tabs>
+        </div>
       </div>
     </div>
   );
