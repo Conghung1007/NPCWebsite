@@ -132,18 +132,18 @@ export default function ArticleDetail() {
                   const imageMatch = line.match(/!\[([^\]]*)\]\(([^)]+)\)/);
                   if (imageMatch) {
                     return (
-                      <div key={index} className="my-6">
+                      <figure key={index} className="my-6 inline-block">
                         <img 
                           src={imageMatch[2]} 
                           alt={imageMatch[1]} 
-                          className="max-w-full h-auto rounded-lg border shadow-sm"
+                          className="max-w-full h-auto rounded-lg border shadow-sm block"
                         />
                         {imageMatch[1] && (
-                          <p className="text-sm text-gray-500 mt-2 italic text-center">
+                          <figcaption className="text-sm text-gray-500 mt-2 italic text-center px-2">
                             {imageMatch[1]}
-                          </p>
+                          </figcaption>
                         )}
-                      </div>
+                      </figure>
                     );
                   }
                   

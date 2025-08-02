@@ -226,19 +226,19 @@ export function RichTextEditor({
                 if (imageMatch) {
                   const altText = imageMatch[1];
                   return (
-                    <div key={index} className="my-4">
+                    <figure key={index} className="my-4 inline-block max-w-full">
                       <img 
                         src={imageMatch[2]} 
                         alt={altText} 
-                        className="max-w-full h-auto rounded border"
+                        className="max-w-full h-auto rounded border block"
                         style={{ maxHeight: '200px' }}
                       />
                       {altText && (
-                        <p className="text-sm text-gray-600 italic mt-2 text-center">
+                        <figcaption className="text-sm text-gray-600 italic mt-2 text-center px-2">
                           {altText}
-                        </p>
+                        </figcaption>
                       )}
-                    </div>
+                    </figure>
                   );
                 }
                 
