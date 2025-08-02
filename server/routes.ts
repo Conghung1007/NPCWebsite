@@ -904,18 +904,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
-      // Update UI image in database
-      const updatedImage = await storage.updateUiImageByType(imageType, {
+      // Try to update existing UI image first
+      let updatedImage = await storage.updateUiImageByType(imageType, {
         imageUrl,
         altText: altText || null,
         description: description || null
       });
       
-      if (updatedImage) {
-        res.json(updatedImage);
-      } else {
-        res.status(404).json({ error: "UI image not found" });
+      // If not found, create a new UI image
+      if (!updatedImage) {
+        console.log(`Creating new UI image for type: ${imageType}`);
+        updatedImage = await storage.createUiImage({
+          imageType,
+          imageUrl,
+          altText: altText || null,
+          description: description || null
+        });
       }
+      
+      res.json(updatedImage);
     } catch (error) {
       console.error("Error updating UI image:", error);
       res.status(500).json({ error: "Failed to update UI image" });
