@@ -213,7 +213,7 @@ export function ImageManager({
   return (
     <div className={className}>
       <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+        <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle>Quản lý hình ảnh</DialogTitle>
           </DialogHeader>
@@ -255,7 +255,7 @@ export function ImageManager({
 
               <TabsContent value="existing" className="flex-1 space-y-4 overflow-hidden">
                 <div className="space-y-2 h-full flex flex-col">
-                  <div className="flex-1 overflow-y-auto max-h-96">
+                  <div className="flex-1 overflow-y-auto max-h-[500px]">
                     {loadingImages ? (
                       <div className="text-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto" />
