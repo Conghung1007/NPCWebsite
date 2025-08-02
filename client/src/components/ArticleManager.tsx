@@ -1,29 +1,13 @@
-import { useState, useEffect } from "react";
 import { Link } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
 import { 
   FileText, 
   Edit2, 
   Trash2,
-  Save,
-  X,
   Plus
 } from "lucide-react";
 import type { Article } from "@shared/schema";
@@ -35,59 +19,13 @@ const categories = [
   { value: "flight-tickets", label: "Vé máy bay" }
 ];
 
-interface ArticleFormData {
-  title: string;
-  content: string;
-  category: string;
-}
-
 export function ArticleManager() {
-  const [isEditing, setIsEditing] = useState(false);
-  const [editingArticle, setEditingArticle] = useState<Article | null>(null);
-  const [formData, setFormData] = useState<ArticleFormData>({
-    title: "",
-    content: "",
-    category: ""
-  });
-
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
   // Fetch articles
   const { data: articles = [], isLoading, refetch } = useQuery<Article[]>({
     queryKey: ["/api/articles"],
-  });
-
-
-
-  // Update article mutation
-  const updateMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: Partial<ArticleFormData> }) => {
-      const response = await fetch(`/api/articles/${id}`, {
-        method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error("Failed to update article");
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Thành công",
-        description: "Bài viết đã được cập nhật thành công.",
-      });
-      resetForm();
-      queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Lỗi", 
-        description: "Không thể cập nhật bài viết. Vui lòng thử lại.",
-        variant: "destructive",
-      });
-    }
   });
 
   // Delete article mutation
@@ -115,133 +53,29 @@ export function ArticleManager() {
     }
   });
 
-  const resetForm = () => {
-    setFormData({
-      title: "",
-      content: "",
-      category: ""
-    });
-    setIsEditing(false);
-    setEditingArticle(null);
-  };
-
-  const handleEdit = (article: Article) => {
-    setEditingArticle(article);
-    setFormData({
-      title: article.title,
-      content: article.content,
-      category: article.category
-    });
-    setIsEditing(true);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.title || !formData.content || !formData.category) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng điền đầy đủ thông tin bắt buộc.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (editingArticle) {
-      updateMutation.mutate({ id: editingArticle.id, data: formData });
-    }
-  };
-
   const handleDelete = (article: Article) => {
     if (confirm(`Bạn có chắc chắn muốn xóa bài viết "${article.title}"?`)) {
       deleteMutation.mutate(article.id);
     }
   };
 
-
-
   const getCategoryLabel = (category: string) => {
     return categories.find(cat => cat.value === category)?.label || category;
   };
 
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('vi-VN');
+  };
+
   return (
     <div className="space-y-6">
-      {isEditing && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="w-5 h-5" />
-              Chỉnh sửa bài viết
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="title">Tiêu đề *</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="Nhập tiêu đề bài viết"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="category">Danh mục *</Label>
-                  <Select
-                    value={formData.category}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn danh mục" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.value} value={category.value}>
-                          {category.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
-              <div>
-                <Label htmlFor="content">Nội dung *</Label>
-                <Textarea
-                  id="content"
-                  value={formData.content}
-                  onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder="Nhập nội dung bài viết"
-                  rows={6}
-                  required
-                />
-              </div>
-
-              <div className="flex gap-2">
-                <Button 
-                  type="submit" 
-                  disabled={updateMutation.isPending}
-                  className="flex items-center gap-2"
-                >
-                  <Save className="w-4 h-4" />
-                  Cập nhật
-                </Button>
-                <Button type="button" variant="outline" onClick={resetForm}>
-                  <X className="w-4 h-4 mr-2" />
-                  Hủy
-                </Button>
-              </div>
-            </form>
-          </CardContent>
-        </Card>
-      )}
-
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle>Danh sách bài viết</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Quản lý bài viết
+            </CardTitle>
             <Link href="/create-article">
               <Button className="flex items-center gap-2">
                 <Plus className="w-4 h-4" />
@@ -252,62 +86,63 @@ export function ArticleManager() {
         </CardHeader>
         <CardContent>
           {isLoading ? (
-            <div className="space-y-3">
-              {[1, 2, 3].map((i) => (
-                <div key={i} className="p-4 border rounded-lg animate-pulse">
-                  <div className="h-4 bg-gray-200 rounded w-3/4 mb-2"></div>
-                  <div className="h-3 bg-gray-200 rounded w-1/2"></div>
-                </div>
-              ))}
+            <div className="text-center py-8">
+              <p>Đang tải danh sách bài viết...</p>
             </div>
           ) : articles.length === 0 ? (
-            <p className="text-center text-gray-500 py-8">Chưa có bài viết nào.</p>
+            <div className="text-center py-8 text-gray-500">
+              <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
+              <p>Chưa có bài viết nào</p>
+              <p className="text-sm">Nhấn nút "Tạo bài viết mới" để bắt đầu</p>
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {articles.map((article) => (
-                <div key={article.id} className="p-4 border rounded-lg hover:bg-gray-50">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <h3 className="font-semibold text-lg mb-1">{article.title}</h3>
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge variant="outline">
-                          {getCategoryLabel(article.category)}
-                        </Badge>
-                        <span className="text-sm text-gray-500">
-                          {new Date(article.createdAt).toLocaleDateString('vi-VN')}
-                        </span>
-                      </div>
-                      <p className="text-gray-600 text-sm line-clamp-2">
-                        {article.content.substring(0, 150)}...
+                <div
+                  key={article.id}
+                  className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h3 className="font-medium">{article.title}</h3>
+                      <Badge variant="secondary">
+                        {getCategoryLabel(article.category)}
+                      </Badge>
+                    </div>
+                    <div className="text-sm text-gray-600">
+                      <p className="mb-1">
+                        {article.content.substring(0, 100)}
+                        {article.content.length > 100 && "..."}
                       </p>
-                      {(article.imageUrl || article.videoUrl) && (
-                        <div className="flex items-center gap-2 mt-2">
-                          {article.imageUrl && (
-                            <Badge variant="secondary">Có hình ảnh</Badge>
-                          )}
-                          {article.videoUrl && (
-                            <Badge variant="secondary">Có video</Badge>
-                          )}
-                        </div>
+                      {article.createdAt && (
+                        <p className="text-xs">
+                          Được tạo: {formatDate(article.createdAt)}
+                        </p>
+                      )}
+                      {article.updatedAt && article.updatedAt !== article.createdAt && (
+                        <p className="text-xs">
+                          Cập nhật: {formatDate(article.updatedAt)}
+                        </p>
                       )}
                     </div>
-                    <div className="flex gap-2">
+                  </div>
+                  <div className="flex gap-2">
+                    <Link href={`/edit-article/${article.id}`}>
                       <Button
                         size="sm"
                         variant="outline"
-                        onClick={() => handleEdit(article)}
                       >
                         <Edit2 className="w-4 h-4" />
                       </Button>
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => handleDelete(article)}
-                        disabled={deleteMutation.isPending}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+                    </Link>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDelete(article)}
+                      disabled={deleteMutation.isPending}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
                   </div>
                 </div>
               ))}

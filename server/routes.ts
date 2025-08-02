@@ -264,6 +264,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.put("/api/articles/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { title, content, category } = req.body;
+      
+      if (!title || !content || !category) {
+        return res.status(400).json({ message: "Title, content, and category are required" });
+      }
+
+      const updatedArticle = await storage.updateArticle(id, {
+        title,
+        content,
+        category,
+      });
+
+      if (!updatedArticle) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Không tìm thấy bài viết" 
+        });
+      }
+
+      res.json({ article: updatedArticle });
+    } catch (error) {
+      console.error("Error updating article:", error);
+      res.status(500).json({ message: "Failed to update article" });
+    }
+  });
+
+  app.delete("/api/articles/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteArticle(id);
+      
+      if (deleted) {
+        res.json({ success: true, message: "Đã xóa bài viết thành công" });
+      } else {
+        res.status(404).json({ success: false, message: "Không tìm thấy bài viết" });
+      }
+    } catch (error) {
+      console.error("Error deleting article:", error);
+      res.status(500).json({ success: false, message: "Có lỗi xảy ra" });
+    }
+  });
+
 
 
   // Endpoint to serve uploaded objects from object storage  
