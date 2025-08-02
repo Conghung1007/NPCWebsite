@@ -9,18 +9,12 @@ export function Footer() {
     { name: "Bán vé máy bay", href: "/flight-tickets" }
   ];
 
-  const quickLinks = [
-    { name: "Trang chủ", href: "/" },
-    { name: "Giới thiệu", href: "/about-us" },
-    { name: "Liên hệ", href: "/contact" },
-    { name: "Tin tức", href: "#news" },
-    { name: "FAQ", href: "#faq" }
-  ];
+
 
   return (
     <footer className="bg-gray-900 text-white py-16">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid md:grid-cols-4 gap-8 mb-12">
+        <div className="grid md:grid-cols-3 gap-8 mb-12">
           <div>
             <div className="flex items-center mb-6">
               <span className="text-3xl font-bold text-primary mr-2">N&P</span>
@@ -57,20 +51,7 @@ export function Footer() {
             </ul>
           </div>
 
-          <div>
-            <h3 className="text-lg font-semibold mb-6">Liên kết nhanh</h3>
-            <ul className="space-y-3 text-gray-400">
-              {quickLinks.map((link) => (
-                <li key={link.href}>
-                  <Link href={link.href}>
-                    <span className="hover:text-white transition-colors cursor-pointer">
-                      {link.name}
-                    </span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
+
 
           <div>
             <h3 className="text-lg font-semibold mb-6">Liên hệ</h3>
