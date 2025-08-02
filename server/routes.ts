@@ -354,6 +354,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Endpoint to upload existing article images
+  app.post("/api/articles/upload-images", async (req, res) => {
+    try {
+      const { provider = "replit" } = req.body;
+      
+      const { uploadExistingArticleImages } = await import("./uploadExistingImages");
+      const uploadCount = await uploadExistingArticleImages(provider);
+      
+      res.json({ 
+        success: true, 
+        message: `Đã upload ${uploadCount} hình ảnh thành công`,
+        uploadCount 
+      });
+    } catch (error) {
+      console.error("Error uploading article images:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: "Failed to upload article images" 
+      });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }

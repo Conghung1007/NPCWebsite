@@ -17,6 +17,7 @@ import { useToast } from "@/hooks/use-toast";
 import { ArticleMediaManager } from "./ArticleMediaManager";
 import { StorageProviderSelector } from "./StorageProviderSelector";
 import { R2ConfigSetup } from "./R2ConfigSetup";
+import { ArticleImageUploader } from "./ArticleImageUploader";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { 
@@ -269,6 +270,8 @@ export function ArticleManager() {
             {selectedProvider !== "replit" && (
               <R2ConfigSetup />
             )}
+
+            <ArticleImageUploader storageProvider={selectedProvider} />
 
             <ArticleMediaManager
               onMediaChange={handleMediaChange}
