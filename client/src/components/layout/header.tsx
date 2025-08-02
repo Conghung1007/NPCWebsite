@@ -50,7 +50,7 @@ export function Header() {
                 <span className="text-base text-muted-foreground">Công ty</span>
                 <span className="text-base text-muted-foreground">TNHH</span>
               </div>
-              <span className="text-4xl font-bold text-primary">N&P</span>
+              <span className="text-5xl font-bold text-primary">N&P</span>
             </Link>
           </div>
 
