@@ -84,9 +84,6 @@ export function ServiceWithArticles({
           <h4 className="text-2xl font-bold text-gray-900 mb-2">
             Bài viết về {getCategoryLabel(category)}
           </h4>
-          <p className="text-gray-600">
-            Thông tin hữu ích và cập nhật mới nhất
-          </p>
         </div>
 
         {isLoading ? (
