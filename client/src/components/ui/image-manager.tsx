@@ -255,14 +255,14 @@ export function ImageManager({
 
               <TabsContent value="existing" className="flex-1 space-y-4 overflow-hidden">
                 <div className="space-y-2 h-full flex flex-col">
-                  <div className="flex-1 overflow-y-auto">
+                  <div className="flex-1 overflow-y-auto max-h-96">
                     {loadingImages ? (
                       <div className="text-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin mx-auto" />
                         <p className="text-sm text-muted-foreground mt-2">Đang tải danh sách hình ảnh...</p>
                       </div>
                     ) : existingImages && Array.isArray(existingImages) && existingImages.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-4 pr-2">
                         {existingImages.map((image, index) => (
                           <Card key={index} className={`image-card cursor-pointer transition-all ${
                             selectedExistingImage === image.url ? 'ring-2 ring-primary' : ''
@@ -338,24 +338,22 @@ export function ImageManager({
                     )}
                   </div>
                   
-                  {activeTab === "existing" && (
-                    <div className="flex gap-2 pt-4 border-t">
-                      <Button
-                        onClick={handleConfirm}
-                        disabled={uploading || !selectedExistingImage}
-                        className="flex-1"
-                      >
-                        {uploading ? "Đang cập nhật..." : "Cập nhật"}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={handleClose}
-                        disabled={uploading}
-                      >
-                        Hủy
-                      </Button>
-                    </div>
-                  )}
+                  <div className="flex gap-2 pt-4 border-t mt-auto">
+                    <Button
+                      onClick={handleConfirm}
+                      disabled={uploading || !selectedExistingImage}
+                      className="flex-1"
+                    >
+                      {uploading ? "Đang cập nhật..." : "Cập nhật"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      onClick={handleClose}
+                      disabled={uploading}
+                    >
+                      Hủy
+                    </Button>
+                  </div>
                 </div>
               </TabsContent>
             </Tabs>
