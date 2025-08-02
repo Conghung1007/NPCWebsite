@@ -42,21 +42,24 @@ export function Header() {
 
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center">
-            <Link href="/" className="flex items-center">
-              <span className="text-base text-muted-foreground mr-2">Công ty TNHH</span>
-              <span className="text-3xl font-bold text-primary">N&P</span>
+            <Link href="/" className="flex flex-col items-start">
+              <span className="text-base text-muted-foreground">Công ty</span>
+              <div className="flex items-center">
+                <span className="text-base text-muted-foreground mr-2">TNHH</span>
+                <span className="text-3xl font-bold text-primary">N&P</span>
+              </div>
             </Link>
           </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex flex-1 justify-center">
-            <div className="flex items-center space-x-8">
+          {/* Desktop Navigation - Centered */}
+          <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2">
+            <div className="flex items-center space-x-6">
               {navigation.map((item) => (
                 <Link key={item.name} href={item.href}>
-                  <span className={`px-4 py-2 text-base font-semibold transition-all duration-200 rounded-lg ${
+                  <span className={`px-4 py-2 text-base font-semibold transition-all duration-200 rounded-lg whitespace-nowrap ${
                     location === item.href 
                       ? "text-white bg-primary shadow-md" 
                       : "text-foreground hover:text-primary hover:bg-primary/10"
