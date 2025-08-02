@@ -91,10 +91,10 @@ export default function CreateArticle() {
         <div className="flex items-center gap-4 mb-8">
           <Button 
             variant="outline" 
-            onClick={() => window.history.back()}
+            onClick={() => setLocation("/cpanel")}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Quay lại
+            Quay lại quản lý bài viết
           </Button>
           <h1 className="text-3xl font-bold text-gray-900">
             Tạo bài viết mới
