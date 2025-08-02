@@ -11,6 +11,7 @@ interface InstructorCardProps {
   avatar: string;
   allowAvatarEdit?: boolean;
   onAvatarUpdate?: (newAvatar: string) => void;
+  imageType?: string;
 }
 
 export function InstructorCard({ 
@@ -19,7 +20,8 @@ export function InstructorCard({
   description, 
   avatar,
   allowAvatarEdit = false,
-  onAvatarUpdate
+  onAvatarUpdate,
+  imageType
 }: InstructorCardProps) {
   const [showImageManager, setShowImageManager] = useState(false);
   
@@ -50,7 +52,7 @@ export function InstructorCard({
                 onAvatarUpdate?.(newAvatar);
                 setShowImageManager(false);
               }}
-              imageType={`instructor-${name.toLowerCase().replace(/\s+/g, '-')}`}
+              imageType={imageType || `instructor-${name.toLowerCase().replace(/\s+/g, '-')}`}
               altText={`${name} avatar`}
             />
           )}

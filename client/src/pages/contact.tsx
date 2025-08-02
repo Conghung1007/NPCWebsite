@@ -3,6 +3,7 @@ import { HeroSection } from "@/components/ui/hero-section";
 import { ContactForm } from "@/components/ui/contact-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { useUiImages } from "@/hooks/useUiImages";
 import { 
   MapPin, 
   Phone, 
@@ -15,7 +16,16 @@ import {
 } from "lucide-react";
 
 export default function Contact() {
+  const { getImageByType, invalidateCache } = useUiImages();
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1423666639041-f56000c27a9a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
+
+  // Update hero image from database when available
+  useEffect(() => {
+    const dbHeroImage = getImageByType('contact-hero');
+    if (dbHeroImage) {
+      setHeroImage(dbHeroImage);
+    }
+  }, [getImageByType]);
 
   useEffect(() => {
     document.title = "Liên Hệ - N&P Company";
@@ -83,7 +93,10 @@ export default function Contact() {
         description="Sẵn sàng hỗ trợ bạn 24/7. Hãy liên hệ ngay để nhận tư vấn miễn phí!"
         backgroundImage={heroImage}
         allowImageEdit={true}
-        onImageUpdate={setHeroImage}
+        onImageUpdate={(newUrl) => {
+          setHeroImage(newUrl);
+          invalidateCache();
+        }}
       />
 
       {/* Contact Section */}

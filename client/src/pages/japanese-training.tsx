@@ -7,6 +7,7 @@ import { TestimonialCard } from "@/components/ui/testimonial-card";
 import { ArticleSection } from "@/components/ArticleSection";
 import { ImageManager } from "@/components/ui/image-manager";
 import { InstructorCard } from "@/components/ui/instructor-card";
+import { useUiImages } from "@/hooks/useUiImages";
 import { 
   Sprout, 
   TreePine, 
@@ -26,6 +27,7 @@ import {
 
 export default function JapaneseTraining() {
   const [, setLocation] = useLocation();
+  const { getImageByType, invalidateCache } = useUiImages();
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1528720208104-3d9bd03cc9d4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
   const [classroomImage, setClassroomImage] = useState("https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600");
   const [showHeroImageManager, setShowHeroImageManager] = useState(false);
@@ -38,6 +40,19 @@ export default function JapaneseTraining() {
       metaDescription.setAttribute('content', 'Khóa học tiếng Nhật từ cơ bản đến nâng cao, luyện thi JLPT với giảng viên bản ngữ. Phương pháp giảng dạy hiện đại, lớp học nhỏ.');
     }
   }, []);
+
+  // Update images from database when available
+  useEffect(() => {
+    const dbHeroImage = getImageByType('japanese-training-hero');
+    if (dbHeroImage) {
+      setHeroImage(dbHeroImage);
+    }
+    
+    const dbClassroomImage = getImageByType('japanese-classroom');
+    if (dbClassroomImage) {
+      setClassroomImage(dbClassroomImage);
+    }
+  }, [getImageByType]);
 
   const courseLevels = [
     {
@@ -138,12 +153,34 @@ export default function JapaneseTraining() {
     }
   ]);
 
+  // Update instructor avatars from database when available
+  useEffect(() => {
+    const dbYamadaAvatar = getImageByType('instructor-1');
+    const dbTanakaAvatar = getImageByType('instructor-2');
+    const dbMinhChauAvatar = getImageByType('instructor-3');
+    
+    setInstructors(prev => prev.map(instructor => {
+      let newAvatar = instructor.avatar;
+      
+      if (instructor.id === 1 && dbYamadaAvatar) {
+        newAvatar = dbYamadaAvatar;
+      } else if (instructor.id === 2 && dbTanakaAvatar) {
+        newAvatar = dbTanakaAvatar;
+      } else if (instructor.id === 3 && dbMinhChauAvatar) {
+        newAvatar = dbMinhChauAvatar;
+      }
+      
+      return { ...instructor, avatar: newAvatar };
+    }));
+  }, [getImageByType]);
+
   const handleInstructorAvatarUpdate = (instructorId: number, newAvatar: string) => {
     setInstructors(prev => prev.map(instructor => 
       instructor.id === instructorId 
         ? { ...instructor, avatar: newAvatar }
         : instructor
     ));
+    invalidateCache(); // Invalidate cache after update
   };
 
   const testimonials = [
@@ -177,7 +214,10 @@ export default function JapaneseTraining() {
         description="Học tiếng Nhật từ cơ bản đến nâng cao với giảng viên bản ngữ và phương pháp giảng dạy hiện đại"
         backgroundImage={heroImage}
         allowImageEdit={true}
-        onImageUpdate={setHeroImage}
+        onImageUpdate={(newUrl) => {
+          setHeroImage(newUrl);
+          invalidateCache();
+        }}
         primaryAction={{
           text: "Xem lịch học",
           onClick: handleScheduleView
@@ -360,6 +400,7 @@ export default function JapaneseTraining() {
                 avatar={instructor.avatar}
                 allowAvatarEdit={true}
                 onAvatarUpdate={(newAvatar) => handleInstructorAvatarUpdate(instructor.id, newAvatar)}
+                imageType={`instructor-${instructor.id}`}
               />
             ))}
           </div>
