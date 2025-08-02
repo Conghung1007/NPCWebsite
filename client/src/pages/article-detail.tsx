@@ -187,39 +187,6 @@ export default function ArticleDetail() {
                     );
                   });
                 })()}
-                  
-                  // Handle bold text
-                  line = line.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-                  
-                  // Handle italic text
-                  line = line.replace(/\*(.*?)\*/g, '<em>$1</em>');
-                  
-                  // Handle links
-                  line = line.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 underline hover:text-blue-800" target="_blank" rel="noopener noreferrer">$1</a>');
-                  
-                  // Handle lists
-                  if (line.startsWith('- ')) {
-                    return (
-                      <ul key={index} className="list-disc ml-6 mb-2">
-                        <li dangerouslySetInnerHTML={{ __html: line.substring(2) }} />
-                      </ul>
-                    );
-                  }
-                  
-                  if (/^\d+\.\s/.test(line)) {
-                    return (
-                      <ol key={index} className="list-decimal ml-6 mb-2">
-                        <li dangerouslySetInnerHTML={{ __html: line.replace(/^\d+\.\s/, '') }} />
-                      </ol>
-                    );
-                  }
-                  
-                  return line.trim() ? (
-                    <p key={index} className="mb-4" dangerouslySetInnerHTML={{ __html: line }} />
-                  ) : (
-                    <br key={index} />
-                  );
-                })}
               </div>
             </div>
 
