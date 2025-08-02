@@ -17,8 +17,6 @@ const createArticleSchema = z.object({
   title: z.string().min(1, "Tiêu đề không được để trống"),
   content: z.string().min(10, "Nội dung phải có ít nhất 10 ký tự"),
   category: z.string().min(1, "Vui lòng chọn danh mục"),
-  imageUrl: z.string().optional(),
-  videoUrl: z.string().optional(),
 });
 
 type CreateArticleForm = z.infer<typeof createArticleSchema>;
@@ -34,8 +32,6 @@ export default function CreateArticle() {
       title: "",
       content: "",
       category: "",
-      imageUrl: "",
-      videoUrl: "",
     },
   });
 
@@ -179,41 +175,7 @@ export default function CreateArticle() {
                   )}
                 />
 
-                {/* Image URL */}
-                <FormField
-                  control={form.control}
-                  name="imageUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>URL hình ảnh</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="https://example.com/image.jpg" 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
-                {/* Video URL */}
-                <FormField
-                  control={form.control}
-                  name="videoUrl"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>URL video</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="https://youtube.com/embed/..." 
-                          {...field} 
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
 
                 {/* Submit Button */}
                 <div className="flex gap-4 pt-6">

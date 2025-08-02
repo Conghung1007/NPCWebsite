@@ -193,7 +193,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/articles", async (req, res) => {
     try {
-      const { title, content, category, imageUrl, videoUrl } = req.body;
+      const { title, content, category } = req.body;
       
       if (!title || !content || !category) {
         return res.status(400).json({ message: "Title, content, and category are required" });
@@ -203,8 +203,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title,
         content,
         category,
-        imageUrl: imageUrl || null,
-        videoUrl: videoUrl || null,
+        imageUrl: null,
+        videoUrl: null,
       });
 
       res.status(201).json({ article });
