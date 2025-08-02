@@ -65,7 +65,7 @@ export function HeroSection({
               <Button 
                 onClick={secondaryAction.onClick}
                 variant="outline"
-                className="text-lg px-8 py-4 border-white text-white hover:bg-white hover:text-primary"
+                className="text-lg px-8 py-4 border-white text-primary bg-white hover:bg-white/90 hover:text-primary font-semibold"
               >
                 {secondaryAction.text}
               </Button>
