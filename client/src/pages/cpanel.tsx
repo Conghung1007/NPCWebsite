@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
@@ -17,6 +18,10 @@ export function CpanelPage() {
   const [isAddingUser, setIsAddingUser] = useState(false);
   const [formData, setFormData] = useState({ username: "", password: "" });
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
+  const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; user: UserType | null }>({
+    isOpen: false,
+    user: null
+  });
   const { toast } = useToast();
 
   useEffect(() => {
@@ -125,11 +130,15 @@ export function CpanelPage() {
     }));
   };
 
-  const handleDeleteUser = async (userId: string) => {
-    if (!confirm("Bạn có chắc chắn muốn xóa người dùng này?")) return;
+  const handleDeleteUser = (userToDelete: UserType) => {
+    setDeleteConfirm({ isOpen: true, user: userToDelete });
+  };
+
+  const confirmDeleteUser = async () => {
+    if (!deleteConfirm.user) return;
     
     try {
-      const response = await fetch(`/api/users/${userId}`, {
+      const response = await fetch(`/api/users/${deleteConfirm.user.id}`, {
         method: "DELETE",
       });
       
@@ -148,7 +157,13 @@ export function CpanelPage() {
         description: "Không thể xóa người dùng",
         variant: "destructive",
       });
+    } finally {
+      setDeleteConfirm({ isOpen: false, user: null });
     }
+  };
+
+  const cancelDeleteUser = () => {
+    setDeleteConfirm({ isOpen: false, user: null });
   };
 
   if (!user) {
@@ -328,7 +343,7 @@ export function CpanelPage() {
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() => handleDeleteUser(userItem.id)}
+                                      onClick={() => handleDeleteUser(userItem)}
                                       className="text-red-600 hover:text-red-700"
                                     >
                                       <Trash2 className="w-4 h-4" />
@@ -408,6 +423,28 @@ export function CpanelPage() {
             )}
           </div>
         </div>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={deleteConfirm.isOpen} onOpenChange={(open) => !open && cancelDeleteUser()}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Xác nhận xóa người dùng</DialogTitle>
+              <DialogDescription>
+                Bạn có chắc chắn muốn xóa người dùng "{deleteConfirm.user?.username}" không?
+                <br />
+                <span className="text-red-600 font-medium">Hành động này không thể hoàn tác.</span>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={cancelDeleteUser}>
+                Hủy
+              </Button>
+              <Button variant="destructive" onClick={confirmDeleteUser}>
+                Xóa người dùng
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
