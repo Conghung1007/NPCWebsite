@@ -40,8 +40,11 @@ export function ServiceWithArticles({
   const [isHovered, setIsHovered] = useState(false);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
 
-  // Filter articles by category
-  const categoryArticles = allArticles.filter(article => article.category === category);
+  // Filter articles by category and limit to 6 most recent
+  const categoryArticles = allArticles
+    .filter(article => article.category === category)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+    .slice(0, 6);
   
   // Number of articles to show at once (responsive)
   const getArticlesPerView = () => {
