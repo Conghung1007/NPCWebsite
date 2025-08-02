@@ -262,7 +262,7 @@ export function ImageManager({
                         <p className="text-sm text-muted-foreground mt-2">Đang tải danh sách hình ảnh...</p>
                       </div>
                     ) : existingImages && Array.isArray(existingImages) && existingImages.length > 0 ? (
-                      <div className="grid grid-cols-2 gap-4 pr-2">
+                      <div className="grid grid-cols-3 gap-3 pr-2">
                         {existingImages.map((image, index) => (
                           <Card key={index} className={`image-card cursor-pointer transition-all ${
                             selectedExistingImage === image.url ? 'ring-2 ring-primary' : ''
@@ -272,7 +272,7 @@ export function ImageManager({
                                 <img
                                   src={image.url}
                                   alt={image.name}
-                                  className="w-full h-24 object-cover rounded"
+                                  className="w-full h-20 object-cover rounded"
                                   onClick={() => setSelectedExistingImage(image.url)}
                                   onError={(e) => {
                                     console.error('Image load error for:', image.url);
