@@ -19,7 +19,6 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { 
   FileText, 
-  Plus, 
   Edit2, 
   Trash2,
   Save,
@@ -57,35 +56,7 @@ export function ArticleManager() {
     queryKey: ["/api/articles"],
   });
 
-  // Create article mutation
-  const createMutation = useMutation({
-    mutationFn: async (data: Omit<ArticleFormData, 'id'>) => {
-      const response = await fetch("/api/articles", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error("Failed to create article");
-      return response.json();
-    },
-    onSuccess: () => {
-      toast({
-        title: "Thành công",
-        description: "Bài viết đã được tạo thành công.",
-      });
-      resetForm();
-      queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
-    },
-    onError: (error) => {
-      toast({
-        title: "Lỗi",
-        description: "Không thể tạo bài viết. Vui lòng thử lại.",
-        variant: "destructive",
-      });
-    }
-  });
+
 
   // Update article mutation
   const updateMutation = useMutation({
@@ -176,8 +147,6 @@ export function ArticleManager() {
 
     if (editingArticle) {
       updateMutation.mutate({ id: editingArticle.id, data: formData });
-    } else {
-      createMutation.mutate(formData);
     }
   };
 
@@ -195,79 +164,77 @@ export function ArticleManager() {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <FileText className="w-5 h-5" />
-            {isEditing ? "Chỉnh sửa bài viết" : "Tạo bài viết mới"}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      {isEditing && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="w-5 h-5" />
+              Chỉnh sửa bài viết
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="title">Tiêu đề *</Label>
+                  <Input
+                    id="title"
+                    value={formData.title}
+                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                    placeholder="Nhập tiêu đề bài viết"
+                    required
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="category">Danh mục *</Label>
+                  <Select
+                    value={formData.category}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Chọn danh mục" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {categories.map((category) => (
+                        <SelectItem key={category.value} value={category.value}>
+                          {category.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div>
-                <Label htmlFor="title">Tiêu đề *</Label>
-                <Input
-                  id="title"
-                  value={formData.title}
-                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                  placeholder="Nhập tiêu đề bài viết"
+                <Label htmlFor="content">Nội dung *</Label>
+                <Textarea
+                  id="content"
+                  value={formData.content}
+                  onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+                  placeholder="Nhập nội dung bài viết"
+                  rows={6}
                   required
                 />
               </div>
-              <div>
-                <Label htmlFor="category">Danh mục *</Label>
-                <Select
-                  value={formData.category}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
+
+              <div className="flex gap-2">
+                <Button 
+                  type="submit" 
+                  disabled={updateMutation.isPending}
+                  className="flex items-center gap-2"
                 >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Chọn danh mục" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {categories.map((category) => (
-                      <SelectItem key={category.value} value={category.value}>
-                        {category.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-
-            <div>
-              <Label htmlFor="content">Nội dung *</Label>
-              <Textarea
-                id="content"
-                value={formData.content}
-                onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                placeholder="Nhập nội dung bài viết"
-                rows={6}
-                required
-              />
-            </div>
-
-
-
-            <div className="flex gap-2">
-              <Button 
-                type="submit" 
-                disabled={createMutation.isPending || updateMutation.isPending}
-                className="flex items-center gap-2"
-              >
-                <Save className="w-4 h-4" />
-                {isEditing ? "Cập nhật" : "Tạo bài viết"}
-              </Button>
-              {isEditing && (
+                  <Save className="w-4 h-4" />
+                  Cập nhật
+                </Button>
                 <Button type="button" variant="outline" onClick={resetForm}>
                   <X className="w-4 h-4 mr-2" />
                   Hủy
                 </Button>
-              )}
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+              </div>
+            </form>
+          </CardContent>
+        </Card>
+      )}
 
       <Card>
         <CardHeader>
