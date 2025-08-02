@@ -27,8 +27,8 @@ import {
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const [heroBgImage, setHeroBgImage] = useState("https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
-  const [whyChooseImage, setWhyChooseImage] = useState("https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600");
+  const [heroBgImage, setHeroBgImage] = useState("https://c440756f6e07264a7a4993e109430de2.r2.cloudflarestorage.com/npcompany/ui-images/e78e8bd4-3f85-4856-91bc-3d5b17f82ffa");
+  const [whyChooseImage, setWhyChooseImage] = useState("https://c440756f6e07264a7a4993e109430de2.r2.cloudflarestorage.com/npcompany/ui-images/e9493971-cf7d-43bb-84e5-16bd58d9812e");
 
   useEffect(() => {
     document.title = "N&P Company - Đối Tác Tin Cậy Cho Giấc Mơ Toàn Cầu";

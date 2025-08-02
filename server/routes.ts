@@ -623,6 +623,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Upload service images to R2
+  app.post("/api/upload-service-images", async (req, res) => {
+    try {
+      const { uploadServiceImages } = await import("./uploadServiceImages");
+      const result = await uploadServiceImages();
+      
+      res.json({ 
+        success: result.success, 
+        message: `Đã upload ${result.successCount}/4 hình ảnh service thành công`,
+        uploadCount: result.successCount,
+        results: result.results
+      });
+    } catch (error) {
+      console.error("Error uploading service images:", error);
+      res.status(500).json({ 
+        success: false, 
+        error: `Failed to upload service images: ${error instanceof Error ? error.message : "Unknown error"}` 
+      });
+    }
+  });
+
   // UI Images Management API endpoints
 
   // Get upload URL for UI images (stored in ui-images folder on R2)
