@@ -271,7 +271,7 @@ export default function StudyAbroad() {
       {/* Articles Section */}
       <ArticleSection 
         category="study-abroad"
-        title="Bài viết về du học"
+        title="Thông tin về du học"
         description="Thông tin hữu ích về du học và cuộc sống sinh viên tại các nước"
       />
     </div>

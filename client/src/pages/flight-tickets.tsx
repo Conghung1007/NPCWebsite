@@ -203,7 +203,7 @@ export default function FlightTickets() {
       {/* Articles Section */}
       <ArticleSection 
         category="flight-tickets"
-        title="Bài viết về vé máy bay"
+        title="Thông tin về vé máy bay"
         description="Mẹo đặt vé máy bay giá rẻ và thông tin hữu ích cho du lịch"
       />
     </div>

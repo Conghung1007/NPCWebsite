@@ -186,7 +186,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       res.status(500).json({ 
         success: false, 
-        message: "Không thể lấy danh sách bài viết" 
+        message: "Không thể lấy danh sách thông tin" 
       });
     }
   });
@@ -256,14 +256,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!article) {
         return res.status(404).json({ 
           success: false, 
-          message: "Không tìm thấy bài viết" 
+          message: "Không tìm thấy thông tin" 
         });
       }
       res.json(article);
     } catch (error) {
       res.status(500).json({ 
         success: false, 
-        message: "Không thể lấy bài viết" 
+        message: "Không thể lấy thông tin" 
       });
     }
   });
@@ -286,7 +286,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!updatedArticle) {
         return res.status(404).json({ 
           success: false, 
-          message: "Không tìm thấy bài viết" 
+          message: "Không tìm thấy thông tin để cập nhật" 
         });
       }
 
@@ -304,7 +304,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get article first to extract images before deleting
       const article = await storage.getArticle(id);
       if (!article) {
-        return res.status(404).json({ success: false, message: "Không tìm thấy bài viết" });
+        return res.status(404).json({ success: false, message: "Không tìm thấy thông tin để xóa" });
       }
 
       // Extract all image URLs from content and thumbnail
@@ -345,13 +345,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deleted = await storage.deleteArticle(id);
       
       if (deleted) {
-        res.json({ success: true, message: "Đã xóa bài viết và hình ảnh thành công" });
+        res.json({ success: true, message: "Đã xóa thông tin và hình ảnh thành công" });
       } else {
-        res.status(404).json({ success: false, message: "Không tìm thấy bài viết" });
+        res.status(404).json({ success: false, message: "Không tìm thấy thông tin" });
       }
     } catch (error) {
       console.error("Error deleting article:", error);
-      res.status(500).json({ success: false, message: "Có lỗi xảy ra khi xóa bài viết" });
+      res.status(500).json({ success: false, message: "Có lỗi xảy ra khi xóa thông tin" });
     }
   });
 
@@ -373,19 +373,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!success) {
         return res.status(404).json({ 
           success: false, 
-          message: "Không tìm thấy bài viết hoặc không thể di chuyển" 
+          message: "Không tìm thấy thông tin hoặc không thể di chuyển" 
         });
       }
 
       res.json({ 
         success: true, 
-        message: "Đã cập nhật thứ tự bài viết" 
+        message: "Đã cập nhật thứ tự thông tin" 
       });
     } catch (error) {
       console.error("Error moving article:", error);
       res.status(500).json({ 
         success: false, 
-        message: "Không thể thay đổi thứ tự bài viết" 
+        message: "Không thể thay đổi thứ tự thông tin" 
       });
     }
   });

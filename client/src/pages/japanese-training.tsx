@@ -363,7 +363,7 @@ export default function JapaneseTraining() {
       {/* Articles Section */}
       <ArticleSection 
         category="japanese-training"
-        title="Bài viết về tiếng Nhật"
+        title="Thông tin về tiếng Nhật"
         description="Mẹo học tiếng Nhật hiệu quả và thông tin về văn hóa Nhật Bản"
       />
     </div>

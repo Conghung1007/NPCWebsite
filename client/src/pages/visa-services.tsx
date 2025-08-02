@@ -266,7 +266,7 @@ export default function VisaServices() {
       {/* Articles Section */}
       <ArticleSection 
         category="visa-services"
-        title="Bài viết về dịch vụ visa"
+        title="Thông tin về dịch vụ visa"
         description="Thông tin hữu ích và cập nhật về thủ tục xin visa các quốc gia"
       />
     </div>
