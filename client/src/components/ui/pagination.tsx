@@ -44,73 +44,79 @@ export function Pagination({ currentPage, totalPages, onPageChange, className = 
   const visiblePages = getVisiblePages();
 
   return (
-    <div className={`flex items-center justify-center space-x-2 ${className}`}>
-      {/* First page button */}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => onPageChange(1)}
-        disabled={currentPage === 1}
-        className="h-9 px-3"
-      >
-        <ChevronsLeft className="h-4 w-4" />
-      </Button>
+    <div className={`flex items-center justify-between w-full ${className}`}>
+      {/* Left side: Previous and Next buttons */}
+      <div className="flex items-center space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage - 1)}
+          disabled={currentPage === 1}
+          className="h-9 px-3"
+        >
+          <ChevronLeft className="h-4 w-4 mr-1" />
+          Trang trước
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(currentPage + 1)}
+          disabled={currentPage === totalPages}
+          className="h-9 px-3"
+        >
+          Trang kế
+          <ChevronRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
 
-      {/* Previous page button */}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => onPageChange(currentPage - 1)}
-        disabled={currentPage === 1}
-        className="h-9 px-3"
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </Button>
+      {/* Center: Page numbers */}
+      <div className="flex items-center space-x-1">
+        {visiblePages.map((page, index) => {
+          if (page === "...") {
+            return (
+              <span key={`dots-${index}`} className="h-9 flex items-center px-3 text-gray-400">
+                ...
+              </span>
+            );
+          }
 
-      {/* Page numbers */}
-      {visiblePages.map((page, index) => {
-        if (page === "...") {
           return (
-            <span key={`dots-${index}`} className="h-9 flex items-center px-3 text-gray-400">
-              ...
-            </span>
+            <Button
+              key={page}
+              variant={currentPage === page ? "default" : "outline"}
+              size="sm"
+              onClick={() => onPageChange(page as number)}
+              className="h-9 px-3 min-w-[36px]"
+            >
+              {page}
+            </Button>
           );
-        }
+        })}
+      </div>
 
-        return (
-          <Button
-            key={page}
-            variant={currentPage === page ? "default" : "outline"}
-            size="sm"
-            onClick={() => onPageChange(page as number)}
-            className="h-9 px-3 min-w-[36px]"
-          >
-            {page}
-          </Button>
-        );
-      })}
-
-      {/* Next page button */}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => onPageChange(currentPage + 1)}
-        disabled={currentPage === totalPages}
-        className="h-9 px-3"
-      >
-        <ChevronRight className="h-4 w-4" />
-      </Button>
-
-      {/* Last page button */}
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => onPageChange(totalPages)}
-        disabled={currentPage === totalPages}
-        className="h-9 px-3"
-      >
-        <ChevronsRight className="h-4 w-4" />
-      </Button>
+      {/* Right side: First and Last page buttons */}
+      <div className="flex items-center space-x-2">
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(1)}
+          disabled={currentPage === 1}
+          className="h-9 px-3"
+        >
+          <ChevronsLeft className="h-4 w-4 mr-1" />
+          Trang đầu
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => onPageChange(totalPages)}
+          disabled={currentPage === totalPages}
+          className="h-9 px-3"
+        >
+          Trang cuối
+          <ChevronsRight className="h-4 w-4 ml-1" />
+        </Button>
+      </div>
     </div>
   );
 }
