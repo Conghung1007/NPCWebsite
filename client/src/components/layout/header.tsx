@@ -139,17 +139,7 @@ export function Header() {
             <Button variant="outline" size="sm" className="text-base">
               VI
             </Button>
-            {user && (
-              <Button 
-                onClick={() => setLocation("/create-article")} 
-                variant="outline"
-                size="sm"
-                className="flex items-center gap-2"
-              >
-                <PlusCircle className="h-4 w-4" />
-                Tạo bài viết
-              </Button>
-            )}
+
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
