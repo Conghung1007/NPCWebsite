@@ -44,7 +44,7 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
         <div className="flex items-center justify-between">
           <div className="flex items-center text-gray-500 text-xs">
             <Calendar className="w-4 h-4 mr-1" />
-            {formatDate(article.createdAt)}
+{formatDate(article.createdAt.toString())}
           </div>
           
           <span className="text-green-600 hover:text-green-700 text-sm font-medium">

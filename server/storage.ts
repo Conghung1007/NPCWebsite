@@ -34,6 +34,7 @@ export class MemStorage implements IStorage {
     this.articles = new Map();
     this.seedUsers();
     this.seedArticles();
+    console.log(`Seeded ${this.articles.size} articles`);
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -188,10 +189,18 @@ export class MemStorage implements IStorage {
   private seedArticles(): void {
     const visaArticles = [
       {
+        id: "b8626045-b352-42ef-a92d-9cc61658450b",
+        title: "Hướng dẫn xin visa du lịch Nhật Bản",
+        content: "Quy trình xin visa du lịch Nhật Bản đơn giản và nhanh chóng với N&P Company...",
+        imageUrl: null as string | null,
+        category: "visa-services",
+        createdAt: new Date("2025-08-02T05:14:15.817Z")
+      },
+      {
         id: randomUUID(),
         title: "Hướng dẫn xin visa du lịch Nhật Bản 2024",
         content: "Visa du lịch Nhật Bản là loại visa ngắn hạn cho phép bạn nhập cảnh vào Nhật Bản với mục đích du lịch, thăm thân, tham dự hội nghị... Thời gian lưu trú tối đa là 90 ngày. Để xin visa du lịch Nhật Bản, bạn cần chuẩn bị đầy đủ hồ sơ theo quy định của Lãnh sự quán Nhật Bản tại Việt Nam.",
-        imageUrl: "https://images.unsplash.com/photo-1493780474015-ba834fd0ce2f?w=800&h=400&fit=crop" as string | null,
+        imageUrl: null as string | null,
         category: "visa-services",
         createdAt: new Date(Date.now() - 86400000 * 1)
       },
@@ -239,10 +248,18 @@ export class MemStorage implements IStorage {
 
     const studyArticles = [
       {
+        id: "053842fe-3da6-4978-aba1-b6463c54a022",
+        title: "Du học Nhật Bản - Cơ hội vàng",
+        content: "Chương trình du học Nhật Bản với học bổng hấp dẫn và cơ hội việc làm cao...",
+        imageUrl: null as string | null,
+        category: "study-abroad",
+        createdAt: new Date("2025-08-02T05:14:15.817Z")
+      },
+      {
         id: randomUUID(),
         title: "Du học Nhật Bản - Cơ hội vàng năm 2024",
         content: "Nhật Bản với nền giáo dục chất lượng cao, môi trường học tập an toàn và nhiều cơ hội việc làm sau tốt nghiệp đang thu hút ngày càng nhiều sinh viên Việt Nam. Chúng tôi tư vấn miễn phí về các trường đại học, học phí và thủ tục du học Nhật Bản.",
-        imageUrl: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=800&h=400&fit=crop" as string | null,
+        imageUrl: null as string | null,
         category: "study-abroad",
         createdAt: new Date(Date.now() - 86400000 * 1)
       },
@@ -290,10 +307,18 @@ export class MemStorage implements IStorage {
 
     const japaneseArticles = [
       {
+        id: "ef59f661-131a-4e90-9d73-3e42d2791da4",
+        title: "Khóa học tiếng Nhật cơ bản",
+        content: "Học tiếng Nhật từ cơ bản đến nâng cao với giáo viên bản ngữ...",
+        imageUrl: null as string | null,
+        category: "japanese-training",
+        createdAt: new Date("2025-08-02T05:14:15.817Z")
+      },
+      {
         id: randomUUID(),
         title: "Khóa học tiếng Nhật N5 cơ bản",
         content: "Khóa học tiếng Nhật N5 dành cho người mới bắt đầu, giúp học viên nắm vững các kiến thức cơ bản về ngữ pháp, từ vựng và Hiragana, Katakana. Sau khóa học, học viên có thể đạt trình độ N5 theo tiêu chuẩn JLPT.",
-        imageUrl: "https://images.unsplash.com/photo-1528164344705-47542687000d?w=800&h=400&fit=crop" as string | null,
+        imageUrl: null as string | null,
         category: "japanese-training",
         createdAt: new Date(Date.now() - 86400000 * 1)
       },
@@ -341,10 +366,18 @@ export class MemStorage implements IStorage {
 
     const flightArticles = [
       {
+        id: "0d7da14f-ee17-43f5-b6c6-6442740ec9e4",
+        title: "Vé máy bay giá rẻ đi Nhật",
+        content: "Đặt vé máy bay đi Nhật Bản với giá ưu đãi nhất thị trường...",
+        imageUrl: null as string | null,
+        category: "flight-tickets",
+        createdAt: new Date("2025-08-02T05:14:15.817Z")
+      },
+      {
         id: randomUUID(),
         title: "Vé máy bay giá rẻ đi Nhật Bản tháng 3",
         content: "Tháng 3 là thời điểm lý tưởng để du lịch Nhật Bản với thời tiết ôn hòa và mùa hoa anh đào nở. Chúng tôi cung cấp vé máy bay giá rẻ từ các hãng hàng không uy tín như Vietnam Airlines, Jetstar, ANA với giá cả cạnh tranh nhất thị trường.",
-        imageUrl: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=800&h=400&fit=crop" as string | null,
+        imageUrl: null as string | null,
         category: "flight-tickets",
         createdAt: new Date(Date.now() - 86400000 * 1)
       },
@@ -390,7 +423,10 @@ export class MemStorage implements IStorage {
       }
     ];
 
-    [...visaArticles, ...studyArticles, ...japaneseArticles, ...flightArticles].forEach(article => {
+    const allArticles = [...visaArticles, ...studyArticles, ...japaneseArticles, ...flightArticles];
+    console.log(`Creating ${allArticles.length} articles`);
+    allArticles.forEach(article => {
+      console.log(`Adding article: ${article.title}`);
       this.articles.set(article.id, article as Article);
     });
   }
