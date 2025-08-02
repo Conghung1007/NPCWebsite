@@ -233,12 +233,12 @@ export function RichTextEditor({
       />
 
       {/* Preview section */}
-      {value.trim() && (
-        <div className="mt-4">
-          <h4 className="text-sm font-medium mb-2">Xem trước:</h4>
-          <div className="border rounded-md p-4 bg-gray-50 max-h-60 overflow-y-auto">
-            <div className="prose prose-sm max-w-none">
-              {value.split('\n').map((line, index) => {
+      <div className="mt-4">
+        <h4 className="text-sm font-medium mb-2">Xem trước:</h4>
+        <div className="border rounded-md p-4 bg-gray-50 max-h-60 overflow-y-auto">
+          <div className="prose prose-sm max-w-none">
+            {value.trim() ? (
+              value.split('\n').map((line, index) => {
                 // Handle images
                 const imageMatch = line.match(/!\[([^\]]*)\]\(([^)]+)\)/);
                 if (imageMatch) {
@@ -277,11 +277,13 @@ export function RichTextEditor({
                 ) : (
                   <br key={index} />
                 );
-              })}
-            </div>
+              })
+            ) : (
+              <p className="text-gray-500 italic">Nhập nội dung để xem trước...</p>
+            )}
           </div>
         </div>
-      )}
+      </div>
     </div>
   );
 }
