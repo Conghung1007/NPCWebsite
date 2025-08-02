@@ -10,6 +10,7 @@ Preferred communication style: Simple, everyday language.
 Color scheme: Green theme (updated August 2025 - primary: hsl(142, 76%, 36%), accent: hsl(142, 69%, 58%))
 Navigation: Service pages displayed directly in header (About Us page removed - August 2025)
 Typography: Increased font sizes throughout the site for better readability (August 2025)
+Storage: Multi-provider object storage system supporting Replit Object Storage and multiple Cloudflare R2 accounts (August 2025)
 
 # System Architecture
 
@@ -33,6 +34,8 @@ Typography: Increased font sizes throughout the site for better readability (Aug
 - **Database**: PostgreSQL (configured via DATABASE_URL environment variable)
 - **Storage Interface**: Abstract storage interface allowing for easy switching between in-memory and persistent storage
 - **Migrations**: Drizzle migrations configured in dedicated migrations directory
+- **Object Storage**: Multi-provider system supporting Replit Object Storage and external Cloudflare R2 accounts
+- **Media Upload**: Presigned URL-based upload system with configurable storage providers
 
 ## Authentication and Authorization
 - Currently using basic user schema with username/password fields
