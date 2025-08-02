@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { Pagination } from "@/components/ui/pagination";
 import { 
   FileText, 
   Edit2, 
@@ -11,6 +12,7 @@ import {
   Plus
 } from "lucide-react";
 import type { Article } from "@shared/schema";
+import { useState } from "react";
 
 const categories = [
   { value: "visa-services", label: "Dịch vụ visa" },
@@ -22,6 +24,8 @@ const categories = [
 export function ArticleManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const [currentPage, setCurrentPage] = useState(1);
+  const articlesPerPage = 6;
 
   // Fetch articles
   const { data: articles = [], isLoading, refetch } = useQuery<Article[]>({
@@ -43,6 +47,12 @@ export function ArticleManager() {
         description: "Bài viết đã được xóa thành công.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
+      // Reset to first page if current page becomes empty after deletion
+      const newTotal = sortedArticles.length - 1;
+      const newTotalPages = Math.ceil(newTotal / articlesPerPage);
+      if (currentPage > newTotalPages && newTotalPages > 0) {
+        setCurrentPage(newTotalPages);
+      }
     },
     onError: (error) => {
       toast({
@@ -65,6 +75,19 @@ export function ArticleManager() {
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN');
+  };
+
+  // Sort articles by newest first and calculate pagination
+  const sortedArticles = [...articles].sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  const totalPages = Math.ceil(sortedArticles.length / articlesPerPage);
+  const startIndex = (currentPage - 1) * articlesPerPage;
+  const endIndex = startIndex + articlesPerPage;
+  const currentArticles = sortedArticles.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
   };
 
   return (
@@ -97,7 +120,7 @@ export function ArticleManager() {
             </div>
           ) : (
             <div className="space-y-4">
-              {articles.map((article) => (
+              {currentArticles.map((article) => (
                 <div
                   key={article.id}
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
@@ -116,12 +139,7 @@ export function ArticleManager() {
                       </p>
                       {article.createdAt && (
                         <p className="text-xs">
-                          Được tạo: {formatDate(article.createdAt)}
-                        </p>
-                      )}
-                      {article.updatedAt && article.updatedAt !== article.createdAt && (
-                        <p className="text-xs">
-                          Cập nhật: {formatDate(article.updatedAt)}
+                          Được tạo: {formatDate(article.createdAt.toString())}
                         </p>
                       )}
                     </div>
@@ -146,6 +164,17 @@ export function ArticleManager() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+          
+          {/* Pagination */}
+          {totalPages > 1 && (
+            <div className="mt-6 flex justify-center">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
             </div>
           )}
         </CardContent>
