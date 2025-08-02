@@ -59,16 +59,22 @@ export function Header() {
             <div className="flex items-center space-x-3">
               {navigation.map((item) => (
                 <Link key={item.name} href={item.href}>
-                  <span className={`px-3 py-2 text-base font-semibold transition-all duration-200 rounded-lg text-center leading-tight min-w-[110px] flex flex-col items-center justify-center h-12 ${
-                    location === item.href 
-                      ? "text-white bg-primary shadow-md" 
-                      : "text-foreground hover:text-primary hover:bg-primary/10"
+                  <span className={`px-3 py-2 text-base font-semibold transition-all duration-200 rounded-lg text-center leading-tight flex flex-col items-center justify-center h-12 ${
+                    item.name === "Tư vấn\nmiễn phí" 
+                      ? "min-w-[140px] bg-primary text-white hover:bg-primary/90 shadow-md" 
+                      : location === item.href 
+                        ? "min-w-[110px] text-white bg-primary shadow-md" 
+                        : "min-w-[110px] text-foreground hover:text-primary hover:bg-primary/10"
                   }`}>
-                    {item.name.split('\n').map((line, index) => (
-                      <span key={index} className="block">
-                        {line}
-                      </span>
-                    ))}
+                    {item.name === "Tư vấn\nmiễn phí" ? (
+                      <span className="whitespace-nowrap">Tư vấn miễn phí</span>
+                    ) : (
+                      item.name.split('\n').map((line, index) => (
+                        <span key={index} className="block">
+                          {line}
+                        </span>
+                      ))
+                    )}
                   </span>
                 </Link>
               ))}
@@ -98,17 +104,23 @@ export function Header() {
                     <Link key={item.name} href={item.href}>
                       <span 
                         className={`block px-4 py-3 text-xl font-semibold rounded-lg transition-all text-center ${
-                          location === item.href 
-                            ? "text-white bg-primary" 
-                            : "text-foreground hover:text-primary hover:bg-primary/10"
+                          item.name === "Tư vấn\nmiễn phí" 
+                            ? "bg-primary text-white hover:bg-primary/90 shadow-md" 
+                            : location === item.href 
+                              ? "text-white bg-primary" 
+                              : "text-foreground hover:text-primary hover:bg-primary/10"
                         }`}
                         onClick={() => setIsOpen(false)}
                       >
-                        {item.name.split('\n').map((line, index) => (
-                          <span key={index} className="block">
-                            {line}
-                          </span>
-                        ))}
+                        {item.name === "Tư vấn\nmiễn phí" ? (
+                          <span>Tư vấn miễn phí</span>
+                        ) : (
+                          item.name.split('\n').map((line, index) => (
+                            <span key={index} className="block">
+                              {line}
+                            </span>
+                          ))
+                        )}
                       </span>
                     </Link>
                   ))}
