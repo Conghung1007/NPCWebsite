@@ -134,11 +134,10 @@ export default function StudyAbroad() {
           onClick: handleConsultation
         }}
       />
-
       {/* Services & Destinations */}
       <section className="py-4 bg-neutral">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-3 gap-8 mb-16">
+          <div className="grid lg:grid-cols-3 gap-8 mt-[60px] mb-[60px]">
             <div className="lg:col-span-2">
               <h3 className="text-2xl font-bold text-foreground mb-6">
                 Dịch vụ tư vấn du học toàn diện
@@ -198,7 +197,6 @@ export default function StudyAbroad() {
           </div>
         </div>
       </section>
-
       {/* Success Stories */}
       <section className="py-4 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -221,7 +219,6 @@ export default function StudyAbroad() {
           </div>
         </div>
       </section>
-
       {/* Why Choose N&P */}
       <section className="py-20 bg-gradient-to-r from-primary to-blue-700 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -241,9 +238,6 @@ export default function StudyAbroad() {
           </div>
         </div>
       </section>
-
-
-
       {/* Articles Section */}
       <ArticleSection 
         category="study-abroad"
