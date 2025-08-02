@@ -28,9 +28,9 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
     }
   });
 
-  // Sort articles by newest first before pagination
+  // Sort articles by custom order (sortOrder field)
   const sortedArticles = allArticles?.sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    (a.sortOrder || 0) - (b.sortOrder || 0)
   ) || [];
   
   // Calculate pagination

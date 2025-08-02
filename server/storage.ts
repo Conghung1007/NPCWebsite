@@ -22,7 +22,7 @@ export interface IStorage {
   getAllArticles(): Promise<Article[]>;
   getArticles(): Promise<Article[]>;
   getArticle(id: string): Promise<Article | undefined>;
-  updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null }): Promise<Article | null>;
+  updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number }): Promise<Article | null>;
   deleteArticle(id: string): Promise<boolean>;
   moveArticleOrder(id: string, direction: 'up' | 'down'): Promise<boolean>;
 }
@@ -152,7 +152,7 @@ export class MemStorage implements IStorage {
     return this.getAllArticles();
   }
 
-  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null }): Promise<Article | null> {
+  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number }): Promise<Article | null> {
     const existingArticle = this.articles.get(id);
     if (!existingArticle) {
       return null;
@@ -164,6 +164,7 @@ export class MemStorage implements IStorage {
       content: updateData.content,
       category: updateData.category,
       imageUrl: updateData.imageUrl !== undefined ? updateData.imageUrl : existingArticle.imageUrl,
+      sortOrder: updateData.sortOrder !== undefined ? updateData.sortOrder : existingArticle.sortOrder,
     };
     
     this.articles.set(id, updatedArticle);
@@ -588,7 +589,7 @@ export class DatabaseStorage implements IStorage {
     return this.getAllArticles();
   }
 
-  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null }): Promise<Article | null> {
+  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number }): Promise<Article | null> {
     const [updatedArticle] = await db
       .update(articles)
       .set(updateData)

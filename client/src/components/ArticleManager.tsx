@@ -32,7 +32,7 @@ export function ArticleManager() {
   const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const articlesPerPage = 6;
-  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title' | 'custom'>('newest');
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title' | 'custom'>('custom');
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; article: Article | null }>({
     isOpen: false,
     article: null
@@ -125,19 +125,9 @@ export function ArticleManager() {
     return new Date(dateString).toLocaleDateString('vi-VN');
   };
 
-  // Sort articles based on selected sort option
+  // Sort articles by custom order (sortOrder field)
   const sortedArticles = [...articles].sort((a, b) => {
-    switch (sortBy) {
-      case 'oldest':
-        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-      case 'title':
-        return a.title.localeCompare(b.title, 'vi-VN');
-      case 'custom':
-        return (a.sortOrder || 0) - (b.sortOrder || 0);
-      case 'newest':
-      default:
-        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-    }
+    return (a.sortOrder || 0) - (b.sortOrder || 0);
   });
   const totalPages = Math.ceil(sortedArticles.length / articlesPerPage);
   const startIndex = (currentPage - 1) * articlesPerPage;
@@ -157,27 +147,12 @@ export function ArticleManager() {
               <FileText className="w-5 h-5" />
               Quản lý bài viết
             </CardTitle>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-2">
-                <ArrowUpDown className="w-4 h-4 text-gray-500" />
-                <select
-                  value={sortBy}
-                  onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'title' | 'custom')}
-                  className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                >
-                  <option value="newest">Mới nhất</option>
-                  <option value="oldest">Cũ nhất</option>
-                  <option value="title">Theo tên</option>
-                  <option value="custom">Thứ tự tùy chỉnh</option>
-                </select>
-              </div>
-              <Link href="/create-article">
-                <Button className="flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Tạo bài viết mới
-                </Button>
-              </Link>
-            </div>
+            <Link href="/create-article">
+              <Button className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Tạo bài viết mới
+              </Button>
+            </Link>
           </div>
         </CardHeader>
         <CardContent>
@@ -218,28 +193,24 @@ export function ArticleManager() {
                     </div>
                   </div>
                   <div className="flex gap-2">
-                    {sortBy === 'custom' && (
-                      <>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => moveOrderMutation.mutate({ id: article.id, direction: 'up' })}
-                          disabled={moveOrderMutation.isPending}
-                          title="Di chuyển lên"
-                        >
-                          <ChevronUp className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => moveOrderMutation.mutate({ id: article.id, direction: 'down' })}
-                          disabled={moveOrderMutation.isPending}
-                          title="Di chuyển xuống"
-                        >
-                          <ChevronDown className="w-4 h-4" />
-                        </Button>
-                      </>
-                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => moveOrderMutation.mutate({ id: article.id, direction: 'up' })}
+                      disabled={moveOrderMutation.isPending}
+                      title="Di chuyển lên"
+                    >
+                      <ChevronUp className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => moveOrderMutation.mutate({ id: article.id, direction: 'down' })}
+                      disabled={moveOrderMutation.isPending}
+                      title="Di chuyển xuống"
+                    >
+                      <ChevronDown className="w-4 h-4" />
+                    </Button>
                     <Link href={`/edit-article/${article.id}`}>
                       <Button
                         size="sm"

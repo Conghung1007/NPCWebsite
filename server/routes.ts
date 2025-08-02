@@ -390,6 +390,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Reset article order - assign sortOrder based on creation date
+  app.post("/api/articles/reset-order", async (req, res) => {
+    try {
+      const allArticles = await storage.getAllArticles();
+      
+      // Sort by creation date (oldest first) and assign sortOrder
+      const sortedByDate = allArticles.sort((a, b) => 
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+      );
+      
+      // Update each article with new sortOrder
+      for (let i = 0; i < sortedByDate.length; i++) {
+        await storage.updateArticle(sortedByDate[i].id, {
+          title: sortedByDate[i].title,
+          content: sortedByDate[i].content,
+          category: sortedByDate[i].category,
+          imageUrl: sortedByDate[i].imageUrl,
+          sortOrder: i
+        });
+      }
+      
+      res.json({ 
+        success: true, 
+        message: `Đã cập nhật thứ tự cho ${sortedByDate.length} bài viết`,
+        updated: sortedByDate.length
+      });
+    } catch (error) {
+      console.error("Error resetting article order:", error);
+      res.status(500).json({ 
+        success: false, 
+        message: "Không thể cập nhật thứ tự bài viết" 
+      });
+    }
+  });
+
   // Endpoint to serve uploaded objects from object storage  
   app.get("/objects/:objectPath(*)", async (req, res) => {
     try {
