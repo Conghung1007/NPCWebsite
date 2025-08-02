@@ -227,7 +227,7 @@ export function CpanelPage() {
                           <Shield className="w-5 h-5" />
                           Danh sách người dùng
                         </CardTitle>
-                        <CardDescription>
+                        <CardDescription className="text-sm text-muted-foreground mt-[12px] mb-[12px]">
                           Quản lý tất cả người dùng trong hệ thống
                         </CardDescription>
                       </div>
