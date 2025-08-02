@@ -84,6 +84,9 @@ export function Header() {
                 Tư vấn miễn phí
               </Button>
             </Link>
+            <Button variant="outline" className="text-base">
+              Đăng nhập
+            </Button>
           </div>
 
           {/* Mobile menu button */}
@@ -114,12 +117,15 @@ export function Header() {
                       </span>
                     </Link>
                   ))}
-                  <div className="border-t pt-4">
+                  <div className="border-t pt-4 space-y-3">
                     <Link href="/contact">
                       <Button className="w-full btn-primary" onClick={() => setIsOpen(false)}>
                         Tư vấn miễn phí
                       </Button>
                     </Link>
+                    <Button variant="outline" className="w-full text-base" onClick={() => setIsOpen(false)}>
+                      Đăng nhập
+                    </Button>
                   </div>
                 </div>
               </SheetContent>
