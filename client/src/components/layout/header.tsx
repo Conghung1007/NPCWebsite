@@ -46,20 +46,20 @@ export function Header() {
         <div className="flex justify-between items-center h-20">
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-3">
-              <div className="flex flex-col items-start">
-                <span className="text-base text-muted-foreground">Công ty</span>
-                <span className="text-base text-muted-foreground">TNHH</span>
+              <div className="flex flex-col items-center justify-center">
+                <span className="text-lg text-muted-foreground">Công ty</span>
+                <span className="text-lg text-muted-foreground">TNHH</span>
               </div>
-              <span className="text-3xl font-bold text-primary">N&P</span>
+              <span className="text-2xl font-bold text-primary">N&P</span>
             </Link>
           </div>
 
           {/* Desktop Navigation - Centered */}
           <div className="hidden md:flex absolute left-1/2 transform -translate-x-1/2">
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-6">
               {navigation.map((item) => (
                 <Link key={item.name} href={item.href}>
-                  <span className={`px-4 py-2 text-base font-semibold transition-all duration-200 rounded-lg text-center leading-tight min-w-[95px] flex flex-col items-center justify-center h-12 ${
+                  <span className={`px-4 py-2 text-base font-semibold transition-all duration-200 rounded-lg text-center leading-tight min-w-[110px] flex flex-col items-center justify-center h-12 ${
                     location === item.href 
                       ? "text-white bg-primary shadow-md" 
                       : "text-foreground hover:text-primary hover:bg-primary/10"
