@@ -175,7 +175,7 @@ export default function FlightTickets() {
       {/* Popular Routes */}
       <section className="py-4 bg-neutral">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <h3 className="text-2xl font-bold text-foreground text-center mb-8">
+          <h3 className="text-2xl font-bold text-foreground text-center mb-10">
             Tuyến bay phổ biến
           </h3>
           <div className="grid md:grid-cols-3 gap-6">
