@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
+import { ArticleSection } from "@/components/ArticleSection";
 import { 
   DollarSign, 
   Plane, 
@@ -347,6 +348,13 @@ export default function FlightTickets() {
           </div>
         </div>
       </section>
+
+      {/* Articles Section */}
+      <ArticleSection 
+        category="flight-tickets"
+        title="Bài viết về vé máy bay"
+        description="Mẹo đặt vé máy bay giá rẻ và thông tin hữu ích cho du lịch"
+      />
     </div>
   );
 }

@@ -3,6 +3,7 @@ import { useLocation } from "wouter";
 import { HeroSection } from "@/components/ui/hero-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ArticleSection } from "@/components/ArticleSection";
 import { 
   Search, 
   FileText, 
@@ -266,6 +267,13 @@ export default function StudyAbroad() {
           </div>
         </div>
       </section>
+
+      {/* Articles Section */}
+      <ArticleSection 
+        category="study-abroad"
+        title="Bài viết về du học"
+        description="Thông tin hữu ích về du học và cuộc sống sinh viên tại các nước"
+      />
     </div>
   );
 }

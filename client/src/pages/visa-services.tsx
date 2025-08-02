@@ -4,6 +4,7 @@ import { HeroSection } from "@/components/ui/hero-section";
 import { ServiceCard } from "@/components/ui/service-card";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
+import { ArticleSection } from "@/components/ArticleSection";
 import { 
   Plane, 
   Briefcase, 
@@ -261,6 +262,13 @@ export default function VisaServices() {
           </div>
         </div>
       </section>
+
+      {/* Articles Section */}
+      <ArticleSection 
+        category="visa-services"
+        title="Bài viết về dịch vụ visa"
+        description="Thông tin hữu ích và cập nhật về thủ tục xin visa các quốc gia"
+      />
     </div>
   );
 }

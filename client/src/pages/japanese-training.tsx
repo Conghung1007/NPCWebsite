@@ -4,6 +4,7 @@ import { HeroSection } from "@/components/ui/hero-section";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { TestimonialCard } from "@/components/ui/testimonial-card";
+import { ArticleSection } from "@/components/ArticleSection";
 import { 
   Sprout, 
   TreePine, 
@@ -358,6 +359,13 @@ export default function JapaneseTraining() {
           </div>
         </div>
       </section>
+
+      {/* Articles Section */}
+      <ArticleSection 
+        category="japanese-training"
+        title="Bài viết về tiếng Nhật"
+        description="Mẹo học tiếng Nhật hiệu quả và thông tin về văn hóa Nhật Bản"
+      />
     </div>
   );
 }

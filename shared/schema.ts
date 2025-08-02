@@ -19,6 +19,15 @@ export const contactRequests = pgTable("contact_requests", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+export const articles = pgTable("articles", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  content: text("content").notNull(),
+  imageUrl: text("image_url"),
+  category: text("category").notNull(), // visa-services, study-abroad, japanese-training, flight-tickets
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -29,7 +38,14 @@ export const insertContactRequestSchema = createInsertSchema(contactRequests).om
   createdAt: true,
 });
 
+export const insertArticleSchema = createInsertSchema(articles).omit({
+  id: true,
+  createdAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type ContactRequest = typeof contactRequests.$inferSelect;
 export type InsertContactRequest = z.infer<typeof insertContactRequestSchema>;
+export type Article = typeof articles.$inferSelect;
+export type InsertArticle = z.infer<typeof insertArticleSchema>;

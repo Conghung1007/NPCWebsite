@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertContactRequestSchema } from "@shared/schema";
+import { insertContactRequestSchema, insertArticleSchema } from "@shared/schema";
 import { z } from "zod";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -41,6 +41,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false, 
         message: "Không thể lấy danh sách yêu cầu" 
       });
+    }
+  });
+
+  // Article routes
+  app.get("/api/articles", async (req, res) => {
+    try {
+      const category = req.query.category as string;
+      const articles = category 
+        ? await storage.getArticlesByCategory(category)
+        : await storage.getAllArticles();
+      res.json(articles);
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        message: "Không thể lấy danh sách bài viết" 
+      });
+    }
+  });
+
+  app.get("/api/articles/:id", async (req, res) => {
+    try {
+      const article = await storage.getArticle(req.params.id);
+      if (!article) {
+        return res.status(404).json({ 
+          success: false, 
+          message: "Không tìm thấy bài viết" 
+        });
+      }
+      res.json(article);
+    } catch (error) {
+      res.status(500).json({ 
+        success: false, 
+        message: "Không thể lấy bài viết" 
+      });
+    }
+  });
+
+  app.post("/api/articles", async (req, res) => {
+    try {
+      const articleData = insertArticleSchema.parse(req.body);
+      const article = await storage.createArticle(articleData);
+      res.json({ success: true, article });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ 
+          success: false, 
+          message: "Dữ liệu không hợp lệ", 
+          errors: error.errors 
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: "Có lỗi xảy ra khi tạo bài viết" 
+        });
+      }
     }
   });
 
