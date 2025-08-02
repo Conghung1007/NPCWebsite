@@ -197,83 +197,82 @@ export function ArticleManager() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle>Danh sách bài viết</CardTitle>
-            <Button 
-              onClick={() => setIsEditing(!isEditing)} 
-              className="flex items-center gap-2"
-            >
-              <Plus className="w-4 h-4" />
-              Tạo bài viết mới
-            </Button>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <FileText className="w-5 h-5" />
+            {isEditing ? "Chỉnh sửa bài viết" : "Tạo bài viết mới"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          {isEditing && (
-            <form onSubmit={handleSubmit} className="space-y-4 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <Label htmlFor="title">Tiêu đề *</Label>
-                  <Input
-                    id="title"
-                    value={formData.title}
-                    onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                    placeholder="Nhập tiêu đề bài viết"
-                    required
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="category">Danh mục *</Label>
-                  <Select
-                    value={formData.category}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn danh mục" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.value} value={category.value}>
-                          {category.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="content">Nội dung *</Label>
-                <Textarea
-                  id="content"
-                  value={formData.content}
-                  onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
-                  placeholder="Nhập nội dung bài viết"
-                  rows={6}
+                <Label htmlFor="title">Tiêu đề *</Label>
+                <Input
+                  id="title"
+                  value={formData.title}
+                  onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
+                  placeholder="Nhập tiêu đề bài viết"
                   required
                 />
               </div>
-
-              <div className="flex gap-2">
-                <Button 
-                  type="submit" 
-                  disabled={createMutation.isPending || updateMutation.isPending}
-                  className="flex items-center gap-2"
+              <div>
+                <Label htmlFor="category">Danh mục *</Label>
+                <Select
+                  value={formData.category}
+                  onValueChange={(value) => setFormData(prev => ({ ...prev, category: value }))}
                 >
-                  <Save className="w-4 h-4" />
-                  {editingArticle ? "Cập nhật" : "Tạo bài viết"}
-                </Button>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Chọn danh mục" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.map((category) => (
+                      <SelectItem key={category.value} value={category.value}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <Label htmlFor="content">Nội dung *</Label>
+              <Textarea
+                id="content"
+                value={formData.content}
+                onChange={(e) => setFormData(prev => ({ ...prev, content: e.target.value }))}
+                placeholder="Nhập nội dung bài viết"
+                rows={6}
+                required
+              />
+            </div>
+
+
+
+            <div className="flex gap-2">
+              <Button 
+                type="submit" 
+                disabled={createMutation.isPending || updateMutation.isPending}
+                className="flex items-center gap-2"
+              >
+                <Save className="w-4 h-4" />
+                {isEditing ? "Cập nhật" : "Tạo bài viết"}
+              </Button>
+              {isEditing && (
                 <Button type="button" variant="outline" onClick={resetForm}>
                   <X className="w-4 h-4 mr-2" />
                   Hủy
                 </Button>
-              </div>
-            </form>
-          )}
+              )}
+            </div>
+          </form>
         </CardContent>
       </Card>
 
       <Card>
+        <CardHeader>
+          <CardTitle>Danh sách bài viết</CardTitle>
+        </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="space-y-3">
