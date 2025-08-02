@@ -10,7 +10,10 @@ import {
   FileText, 
   Edit2, 
   Trash2,
-  Plus
+  Plus,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import type { Article } from "@shared/schema";
 import { useState } from "react";
@@ -27,6 +30,7 @@ export function ArticleManager() {
   const queryClient = useQueryClient();
   const [currentPage, setCurrentPage] = useState(1);
   const articlesPerPage = 6;
+  const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title'>('newest');
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; article: Article | null }>({
     isOpen: false,
     article: null
@@ -90,10 +94,18 @@ export function ArticleManager() {
     return new Date(dateString).toLocaleDateString('vi-VN');
   };
 
-  // Sort articles by newest first and calculate pagination
-  const sortedArticles = [...articles].sort((a, b) => 
-    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-  );
+  // Sort articles based on selected sort option
+  const sortedArticles = [...articles].sort((a, b) => {
+    switch (sortBy) {
+      case 'oldest':
+        return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+      case 'title':
+        return a.title.localeCompare(b.title, 'vi-VN');
+      case 'newest':
+      default:
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    }
+  });
   const totalPages = Math.ceil(sortedArticles.length / articlesPerPage);
   const startIndex = (currentPage - 1) * articlesPerPage;
   const endIndex = startIndex + articlesPerPage;
@@ -112,12 +124,26 @@ export function ArticleManager() {
               <FileText className="w-5 h-5" />
               Quản lý bài viết
             </CardTitle>
-            <Link href="/create-article">
-              <Button className="flex items-center gap-2">
-                <Plus className="w-4 h-4" />
-                Tạo bài viết mới
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2">
+                <ArrowUpDown className="w-4 h-4 text-gray-500" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'newest' | 'oldest' | 'title')}
+                  className="px-3 py-1 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <option value="newest">Mới nhất</option>
+                  <option value="oldest">Cũ nhất</option>
+                  <option value="title">Theo tên</option>
+                </select>
+              </div>
+              <Link href="/create-article">
+                <Button className="flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Tạo bài viết mới
+                </Button>
+              </Link>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

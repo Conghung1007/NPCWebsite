@@ -269,12 +269,12 @@ export function CpanelPage() {
           <div className="flex-shrink-0">
             <div className="space-y-2">
               <Button 
-                variant={activeTab === "messages" ? "default" : "ghost"}
+                variant={activeTab === "articles" ? "default" : "ghost"}
                 className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setActiveTab("messages")}
+                onClick={() => setActiveTab("articles")}
               >
-                <MessageSquare className="w-5 h-5" />
-                Tin nhắn liên hệ
+                <FileText className="w-5 h-5" />
+                Quản lý bài viết
               </Button>
               {canManageUsers && (
                 <Button 
@@ -287,12 +287,12 @@ export function CpanelPage() {
                 </Button>
               )}
               <Button 
-                variant={activeTab === "articles" ? "default" : "ghost"}
+                variant={activeTab === "messages" ? "default" : "ghost"}
                 className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setActiveTab("articles")}
+                onClick={() => setActiveTab("messages")}
               >
-                <FileText className="w-5 h-5" />
-                Quản lý bài viết
+                <MessageSquare className="w-5 h-5" />
+                Tin nhắn liên hệ
               </Button>
             </div>
           </div>
