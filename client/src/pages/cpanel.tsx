@@ -53,8 +53,17 @@ export function CpanelPage() {
     try {
       const parsedUser = JSON.parse(userData);
       setUser(parsedUser);
-      // Set default active tab to messages for all users
-      setActiveTab("messages");
+      
+      // Check URL parameters for tab
+      const urlParams = new URLSearchParams(window.location.search);
+      const tabParam = urlParams.get('tab');
+      
+      if (tabParam === 'articles') {
+        setActiveTab("articles");
+      } else {
+        // Set default active tab to messages for all users
+        setActiveTab("messages");
+      }
     } catch (error) {
       localStorage.removeItem("user");
       setLocation("/login");
