@@ -28,12 +28,17 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
     }
   });
 
+  // Sort articles by newest first before pagination
+  const sortedArticles = allArticles?.sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  ) || [];
+  
   // Calculate pagination
-  const totalArticles = allArticles?.length || 0;
+  const totalArticles = sortedArticles.length;
   const totalPages = Math.ceil(totalArticles / articlesPerPage);
   const startIndex = (currentPage - 1) * articlesPerPage;
   const endIndex = startIndex + articlesPerPage;
-  const articles = allArticles?.slice(startIndex, endIndex) || [];
+  const articles = sortedArticles.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
