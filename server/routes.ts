@@ -232,18 +232,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Object Storage endpoints for media upload
   
-  // Endpoint to serve public assets
+  // Endpoint to serve public assets from R2 storage
   app.get("/public-objects/:filePath(*)", async (req, res) => {
     const filePath = req.params.filePath;
-    const objectStorageService = new ObjectStorageService();
+    console.log(`Serving public object: ${filePath}`);
+    
     try {
+      // Check if it's an article image
+      if (filePath.startsWith("article-images/")) {
+        const fileName = filePath.replace("article-images/", "");
+        
+        // Try to get from external R2 first (primary)
+        const downloadUrl = await multiR2Storage.getDownloadUrl("primary", `article-images/${fileName}`);
+        
+        if (downloadUrl) {
+          console.log(`Redirecting to R2 URL: ${downloadUrl}`);
+          return res.redirect(downloadUrl);
+        }
+      }
+      
+      // Fallback to Replit object storage
+      const objectStorageService = new ObjectStorageService();
       const file = await objectStorageService.searchPublicObject(filePath);
       if (!file) {
+        console.log(`File not found: ${filePath}`);
         return res.status(404).json({ error: "File not found" });
       }
       objectStorageService.downloadObject(file, res);
     } catch (error) {
-      console.error("Error searching for public object:", error);
+      console.error("Error serving public object:", error);
       return res.status(500).json({ error: "Internal server error" });
     }
   });

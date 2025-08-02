@@ -136,6 +136,28 @@ export class MultiR2StorageService {
     return providers;
   }
 
+  // Get download URL for external R2 files using presigned URLs
+  async getDownloadUrl(provider: string, fileName: string): Promise<string | null> {
+    try {
+      if (provider === "replit") {
+        return null; // Use Replit object storage instead
+      }
+
+      const config = EXTERNAL_R2_CONFIGS[provider];
+      if (!config || !config.bucketName) {
+        return null;
+      }
+
+      // Generate presigned URL for download
+      const downloadUrl = await r2Manager.generateDownloadUrl(provider, fileName, 3600);
+      console.log(`Generated R2 presigned URL: ${downloadUrl}`);
+      return downloadUrl;
+    } catch (error) {
+      console.error(`Error getting download URL for ${provider}:`, error);
+      return null;
+    }
+  }
+
   // Get storage configuration for frontend
   getStorageConfig(provider: string) {
     if (provider === "replit") {
