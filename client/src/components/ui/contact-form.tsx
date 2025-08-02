@@ -85,7 +85,7 @@ export function ContactForm({ variant = "page", className = "" }: ContactFormPro
   ];
 
   return (
-    <div className={`${variant === "hero" ? "bg-primary text-white" : "bg-muted"} rounded-2xl p-8 ${className}`}>
+    <div className={`${variant === "hero" ? "bg-white/10 backdrop-blur-sm border border-white/20 text-white" : "bg-white border border-gray-200 shadow-lg"} rounded-2xl p-8 ${className}`}>
       <h3 className={`text-2xl font-bold mb-6 ${variant === "hero" ? "text-white" : "text-foreground"}`}>
         {variant === "hero" ? "Nhận tư vấn miễn phí" : "Gửi yêu cầu tư vấn"}
       </h3>
@@ -215,16 +215,17 @@ export function ContactForm({ variant = "page", className = "" }: ContactFormPro
                   <Checkbox
                     checked={field.value}
                     onCheckedChange={field.onChange}
+                    className={variant === "hero" ? "bg-white border-gray-300 data-[state=checked]:bg-primary data-[state=checked]:border-primary" : ""}
                   />
                 </FormControl>
                 <div className="space-y-1 leading-none">
                   <FormLabel className={`text-sm ${variant === "hero" ? "text-white" : "text-muted-foreground"}`}>
                     Tôi đồng ý với{" "}
-                    <a href="#" className={`${variant === "hero" ? "text-accent" : "text-primary"} hover:underline`}>
+                    <a href="#" className={`${variant === "hero" ? "text-yellow-200 font-medium" : "text-primary"} hover:underline`}>
                       điều khoản sử dụng
                     </a>{" "}
                     và{" "}
-                    <a href="#" className={`${variant === "hero" ? "text-accent" : "text-primary"} hover:underline`}>
+                    <a href="#" className={`${variant === "hero" ? "text-yellow-200 font-medium" : "text-primary"} hover:underline`}>
                       chính sách bảo mật
                     </a>{" "}
                     của N&P
