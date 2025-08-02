@@ -224,14 +224,20 @@ export function RichTextEditor({
                 // Handle images
                 const imageMatch = line.match(/!\[([^\]]*)\]\(([^)]+)\)/);
                 if (imageMatch) {
+                  const altText = imageMatch[1];
                   return (
-                    <div key={index} className="my-2">
+                    <div key={index} className="my-4">
                       <img 
                         src={imageMatch[2]} 
-                        alt={imageMatch[1]} 
+                        alt={altText} 
                         className="max-w-full h-auto rounded border"
                         style={{ maxHeight: '200px' }}
                       />
+                      {altText && (
+                        <p className="text-sm text-gray-600 italic mt-2 text-center">
+                          {altText}
+                        </p>
+                      )}
                     </div>
                   );
                 }
