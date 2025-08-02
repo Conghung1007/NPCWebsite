@@ -3,7 +3,7 @@ import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
-import { Menu, User, LogOut, Settings } from "lucide-react";
+import { Menu, User, LogOut, Settings, PlusCircle } from "lucide-react";
 import { type User as UserType } from "@shared/schema";
 
 export function Header() {
@@ -139,6 +139,17 @@ export function Header() {
             <Button variant="outline" size="sm" className="text-base">
               VI
             </Button>
+            {user && (
+              <Button 
+                onClick={() => setLocation("/create-article")} 
+                variant="outline"
+                size="sm"
+                className="flex items-center gap-2"
+              >
+                <PlusCircle className="h-4 w-4" />
+                Tạo bài viết
+              </Button>
+            )}
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>

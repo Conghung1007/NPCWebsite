@@ -13,6 +13,7 @@ import FlightTickets from "@/pages/flight-tickets";
 import Login from "@/pages/login";
 import Contact from "@/pages/contact";
 import ArticleDetail from "@/pages/article-detail";
+import CreateArticle from "@/pages/create-article";
 import { CpanelPage } from "@/pages/cpanel";
 
 function Router() {
@@ -27,6 +28,7 @@ function Router() {
         <Route path="/login" component={Login} />
         <Route path="/contact" component={Contact} />
         <Route path="/article/:id" component={ArticleDetail} />
+        <Route path="/create-article" component={CreateArticle} />
         <Route path="/cpanel" component={CpanelPage} />
         {/* Fallback to 404 */}
         <Route component={NotFound} />

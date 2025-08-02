@@ -191,6 +191,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/articles", async (req, res) => {
+    try {
+      const { title, content, category, imageUrl, videoUrl } = req.body;
+      
+      if (!title || !content || !category) {
+        return res.status(400).json({ message: "Title, content, and category are required" });
+      }
+
+      const article = await storage.createArticle({
+        title,
+        content,
+        category,
+        imageUrl: imageUrl || null,
+        videoUrl: videoUrl || null,
+      });
+
+      res.status(201).json({ article });
+    } catch (error) {
+      console.error("Error creating article:", error);
+      res.status(500).json({ message: "Failed to create article" });
+    }
+  });
+
   app.get("/api/articles/:id", async (req, res) => {
     try {
       const article = await storage.getArticle(req.params.id);

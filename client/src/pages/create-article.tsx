@@ -7,12 +7,11 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, PlusCircle } from "lucide-react";
-import { apiRequest } from "@/lib/queryClient";
+import { RichTextEditor } from "@/components/RichTextEditor";
 
 const createArticleSchema = z.object({
   title: z.string().min(1, "Tiêu đề không được để trống"),
@@ -42,10 +41,19 @@ export default function CreateArticle() {
 
   const createArticleMutation = useMutation({
     mutationFn: async (data: CreateArticleForm) => {
-      return apiRequest("/api/articles", {
+      const response = await fetch("/api/articles", {
         method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(data),
       });
+      
+      if (!response.ok) {
+        throw new Error("Có lỗi xảy ra khi tạo bài viết");
+      }
+      
+      return response.json();
     },
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
@@ -160,10 +168,10 @@ export default function CreateArticle() {
                     <FormItem>
                       <FormLabel>Nội dung bài viết *</FormLabel>
                       <FormControl>
-                        <Textarea 
-                          placeholder="Nhập nội dung bài viết..."
-                          className="min-h-[200px]"
-                          {...field} 
+                        <RichTextEditor
+                          value={field.value}
+                          onChange={field.onChange}
+                          placeholder="Nhập nội dung bài viết... Sử dụng các nút định dạng để tạo văn bản đẹp và chèn hình ảnh ở bất kỳ vị trí nào."
                         />
                       </FormControl>
                       <FormMessage />
