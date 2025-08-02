@@ -213,8 +213,8 @@ export default function Home() {
 
             <div>
               <img 
-                src="https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600" 
-                alt="Happy diverse group celebrating success" 
+                src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600" 
+                alt="Professional business team providing visa and international services" 
                 className="rounded-xl shadow-lg w-full h-auto" 
               />
             </div>
