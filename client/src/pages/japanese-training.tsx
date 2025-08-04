@@ -199,11 +199,11 @@ export default function JapaneseTraining() {
   ];
 
   const handleScheduleView = () => {
-    document.getElementById('schedule')?.scrollIntoView({ behavior: 'smooth' });
+    window.open("https://tnjs.vn/", "_blank");
   };
 
   const handleTrialClass = () => {
-    setLocation("/contact");
+    window.open("https://tnjs.vn/", "_blank");
   };
 
   return (
