@@ -1,5 +1,5 @@
-import { type User, type InsertUser, type ContactRequest, type InsertContactRequest, type Article, type InsertArticle, type UiImage, type InsertUiImage, type RegistrationRequest, type InsertRegistrationRequest } from "@shared/schema";
-import { users, contactRequests, articles, uiImages, registrationRequests } from "@shared/schema";
+import { type User, type InsertUser, type ContactRequest, type InsertContactRequest, type Article, type InsertArticle, type UiImage, type InsertUiImage, type RegistrationRequest, type InsertRegistrationRequest, type Exam, type InsertExam, type Question, type InsertQuestion, type ExamAttempt, type InsertExamAttempt } from "@shared/schema";
+import { users, contactRequests, articles, uiImages, registrationRequests, exams, questions, examAttempts } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -44,6 +44,25 @@ export interface IStorage {
   checkUsernameExists(username: string): Promise<boolean>;
   checkEmailExists(email: string): Promise<boolean>;
   checkPhoneExists(phone: string): Promise<boolean>;
+  
+  // Exam system methods
+  createExam(exam: InsertExam): Promise<Exam>;
+  getExam(id: string): Promise<Exam | undefined>;
+  getAllExams(): Promise<Exam[]>;
+  getActiveExams(): Promise<Exam[]>;
+  updateExam(id: string, updateData: Partial<InsertExam>): Promise<Exam | null>;
+  deleteExam(id: string): Promise<boolean>;
+  
+  createQuestion(question: InsertQuestion): Promise<Question>;
+  getQuestion(id: string): Promise<Question | undefined>;
+  getQuestionsByExamId(examId: string): Promise<Question[]>;
+  updateQuestion(id: string, updateData: Partial<InsertQuestion>): Promise<Question | null>;
+  deleteQuestion(id: string): Promise<boolean>;
+  
+  createExamAttempt(attempt: InsertExamAttempt): Promise<ExamAttempt>;
+  getExamAttempt(id: string): Promise<ExamAttempt | undefined>;
+  getExamAttemptsByUserId(userId: string): Promise<ExamAttempt[]>;
+  getExamAttemptsByExamId(examId: string): Promise<ExamAttempt[]>;
 }
 
 export class MemStorage implements IStorage {
@@ -52,6 +71,9 @@ export class MemStorage implements IStorage {
   private articles: Map<string, Article>;
   private uiImages: Map<string, UiImage>;
   private registrationRequests: Map<string, RegistrationRequest>;
+  private exams: Map<string, Exam>;
+  private questions: Map<string, Question>;
+  private examAttempts: Map<string, ExamAttempt>;
 
   constructor() {
     this.users = new Map();
@@ -59,9 +81,13 @@ export class MemStorage implements IStorage {
     this.articles = new Map();
     this.uiImages = new Map();
     this.registrationRequests = new Map();
+    this.exams = new Map();
+    this.questions = new Map();
+    this.examAttempts = new Map();
     this.seedUsers();
     this.seedArticles();
-    console.log(`Seeded ${this.articles.size} articles`);
+    this.seedExams();
+    console.log(`Seeded ${this.articles.size} articles and ${this.exams.size} exams`);
   }
 
   async getUser(id: string): Promise<User | undefined> {
@@ -951,6 +977,106 @@ export class DatabaseStorage implements IStorage {
     const [existingRequest] = await db.select().from(registrationRequests)
       .where(eq(registrationRequests.phone, phone));
     return !!existingRequest;
+  }
+
+  // Exam system methods
+  async createExam(examData: InsertExam): Promise<Exam> {
+    const [exam] = await db
+      .insert(exams)
+      .values({
+        ...examData,
+        id: randomUUID(),
+        createdAt: new Date(),
+      })
+      .returning();
+    return exam;
+  }
+
+  async getExam(id: string): Promise<Exam | undefined> {
+    const [exam] = await db.select().from(exams).where(eq(exams.id, id));
+    return exam;
+  }
+
+  async getAllExams(): Promise<Exam[]> {
+    return await db.select().from(exams);
+  }
+
+  async getActiveExams(): Promise<Exam[]> {
+    return await db.select().from(exams).where(eq(exams.isActive, true));
+  }
+
+  async updateExam(id: string, updateData: Partial<InsertExam>): Promise<Exam | null> {
+    const [exam] = await db
+      .update(exams)
+      .set(updateData)
+      .where(eq(exams.id, id))
+      .returning();
+    return exam || null;
+  }
+
+  async deleteExam(id: string): Promise<boolean> {
+    const result = await db.delete(exams).where(eq(exams.id, id));
+    return (result as any).rowCount > 0;
+  }
+
+  async createQuestion(questionData: InsertQuestion): Promise<Question> {
+    const [question] = await db
+      .insert(questions)
+      .values({
+        ...questionData,
+        id: randomUUID(),
+        createdAt: new Date(),
+      })
+      .returning();
+    return question;
+  }
+
+  async getQuestion(id: string): Promise<Question | undefined> {
+    const [question] = await db.select().from(questions).where(eq(questions.id, id));
+    return question;
+  }
+
+  async getQuestionsByExamId(examId: string): Promise<Question[]> {
+    return await db.select().from(questions).where(eq(questions.examId, examId));
+  }
+
+  async updateQuestion(id: string, updateData: Partial<InsertQuestion>): Promise<Question | null> {
+    const [question] = await db
+      .update(questions)
+      .set(updateData)
+      .where(eq(questions.id, id))
+      .returning();
+    return question || null;
+  }
+
+  async deleteQuestion(id: string): Promise<boolean> {
+    const result = await db.delete(questions).where(eq(questions.id, id));
+    return (result as any).rowCount > 0;
+  }
+
+  async createExamAttempt(attemptData: InsertExamAttempt): Promise<ExamAttempt> {
+    const [attempt] = await db
+      .insert(examAttempts)
+      .values({
+        ...attemptData,
+        id: randomUUID(),
+        completedAt: new Date(),
+      })
+      .returning();
+    return attempt;
+  }
+
+  async getExamAttempt(id: string): Promise<ExamAttempt | undefined> {
+    const [attempt] = await db.select().from(examAttempts).where(eq(examAttempts.id, id));
+    return attempt;
+  }
+
+  async getExamAttemptsByUserId(userId: string): Promise<ExamAttempt[]> {
+    return await db.select().from(examAttempts).where(eq(examAttempts.userId, userId));
+  }
+
+  async getExamAttemptsByExamId(examId: string): Promise<ExamAttempt[]> {
+    return await db.select().from(examAttempts).where(eq(examAttempts.examId, examId));
   }
 }
 

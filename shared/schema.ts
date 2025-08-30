@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, boolean, jsonb } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -57,6 +57,46 @@ export const registrationRequests = pgTable("registration_requests", {
   rejectionReason: text("rejection_reason"),
 });
 
+// Online exam system tables
+export const exams = pgTable("exams", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  title: text("title").notNull(),
+  description: text("description"),
+  isDemo: boolean("is_demo").default(false), // Demo exams don't require login
+  timeLimit: integer("time_limit").notNull(), // Time limit in minutes
+  questionCount: integer("question_count").notNull(), // Total questions to show
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  createdBy: varchar("created_by").notNull(), // Admin/Manager ID
+});
+
+export const questions = pgTable("questions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  examId: varchar("exam_id").notNull(),
+  questionText: text("question_text").notNull(),
+  questionType: text("question_type").notNull().default("multiple_choice"), // multiple_choice, true_false
+  imageUrl: text("image_url"), // Optional image for question
+  audioUrl: text("audio_url"), // Optional audio for question
+  options: jsonb("options").notNull(), // Array of answer options
+  correctAnswer: text("correct_answer").notNull(), // Index or value of correct answer
+  explanation: text("explanation"), // Optional explanation for answer
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const examAttempts = pgTable("exam_attempts", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  examId: varchar("exam_id").notNull(),
+  userId: varchar("user_id"), // Null for demo exams (anonymous)
+  userAnswers: jsonb("user_answers").notNull(), // User's answers mapped by question ID
+  score: integer("score").notNull(), // Final score
+  totalQuestions: integer("total_questions").notNull(),
+  correctAnswers: integer("correct_answers").notNull(),
+  timeSpent: integer("time_spent"), // Time spent in seconds
+  completedAt: timestamp("completed_at").defaultNow().notNull(),
+  questionOrder: jsonb("question_order").notNull(), // Randomized question order for this attempt
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   email: true,
@@ -111,6 +151,22 @@ export const insertUiImageSchema = createInsertSchema(uiImages).omit({
   updatedAt: true,
 });
 
+// Exam system schemas
+export const insertExamSchema = createInsertSchema(exams).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertQuestionSchema = createInsertSchema(questions).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertExamAttemptSchema = createInsertSchema(examAttempts).omit({
+  id: true,
+  completedAt: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 export type ContactRequest = typeof contactRequests.$inferSelect;
@@ -122,3 +178,11 @@ export type InsertUiImage = z.infer<typeof insertUiImageSchema>;
 export type RegistrationRequest = typeof registrationRequests.$inferSelect;
 export type InsertRegistrationRequest = z.infer<typeof insertRegistrationRequestSchema>;
 export type RegistrationFormData = z.infer<typeof registrationFormSchema>;
+
+// Exam system types
+export type Exam = typeof exams.$inferSelect;
+export type InsertExam = z.infer<typeof insertExamSchema>;
+export type Question = typeof questions.$inferSelect;
+export type InsertQuestion = z.infer<typeof insertQuestionSchema>;
+export type ExamAttempt = typeof examAttempts.$inferSelect;
+export type InsertExamAttempt = z.infer<typeof insertExamAttemptSchema>;

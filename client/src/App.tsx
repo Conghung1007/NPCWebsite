@@ -9,7 +9,9 @@ import Home from "@/pages/home";
 import VisaServices from "@/pages/visa-services";
 import StudyAbroad from "@/pages/study-abroad";
 import JapaneseTraining from "@/pages/japanese-training";
-import FlightTickets from "@/pages/flight-tickets";
+import OnlineExam from "@/pages/online-exam";
+import ExamTaking from "@/pages/exam-taking";
+import ExamResult from "@/pages/exam-result";
 import Login from "@/pages/login";
 import Register from "@/pages/register";
 import RegisterSuccess from "@/pages/register-success";
@@ -27,7 +29,9 @@ function Router() {
         <Route path="/visa-services" component={VisaServices} />
         <Route path="/study-abroad" component={StudyAbroad} />
         <Route path="/japanese-training" component={JapaneseTraining} />
-        <Route path="/flight-tickets" component={FlightTickets} />
+        <Route path="/online-exam" component={OnlineExam} />
+        <Route path="/exam/:examId" component={({ params }) => <ExamTaking examId={params.examId} />} />
+        <Route path="/exam-result/:attemptId" component={({ params }) => <ExamResult attemptId={params.attemptId} />} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
         <Route path="/register-success" component={RegisterSuccess} />

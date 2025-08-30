@@ -79,9 +79,9 @@ export function Header() {
       description: "Khóa học tiếng Nhật từ cơ bản đến nâng cao"
     },
     {
-      title: "Bán vé máy bay",
-      href: "/flight-tickets",
-      description: "Vé máy bay giá tốt, hỗ trợ 24/7"
+      title: "Thi thử trực tuyến",
+      href: "/online-exam",
+      description: "Kiểm tra trình độ với các đề thi thử"
     }
   ];
 
@@ -90,7 +90,7 @@ export function Header() {
     { name: "Dịch vụ xin\nthị thực", href: "/visa-services" },
     { name: "Tư vấn\ndu học", href: "/study-abroad" },
     { name: "Đào tạo\ntiếng Nhật", href: "/japanese-training" },
-    { name: "Bán vé\nmáy bay", href: "/flight-tickets" },
+    { name: "Thi thử\ntrực tuyến", href: "/online-exam" },
     { name: "Tư vấn\nmiễn phí", href: "/contact" }
   ];
 

@@ -313,6 +313,130 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Exam system endpoints
+  app.get("/api/exams", async (req, res) => {
+    try {
+      const exams = await storage.getActiveExams();
+      res.json(exams);
+    } catch (error) {
+      console.error("Error fetching exams:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi lấy danh sách đề thi" });
+    }
+  });
+
+  app.get("/api/exams/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const exam = await storage.getExam(id);
+      if (!exam) {
+        return res.status(404).json({ message: "Không tìm thấy đề thi" });
+      }
+      res.json(exam);
+    } catch (error) {
+      console.error("Error fetching exam:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi lấy thông tin đề thi" });
+    }
+  });
+
+  app.get("/api/exams/:id/questions", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const questions = await storage.getQuestionsByExamId(id);
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching questions:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi lấy câu hỏi" });
+    }
+  });
+
+  app.post("/api/exam-attempts", async (req, res) => {
+    try {
+      const { examId, userAnswers, timeSpent, questionOrder } = req.body;
+      const sessionUser = (req.session as any)?.user;
+      
+      // Get exam and questions
+      const exam = await storage.getExam(examId);
+      if (!exam) {
+        return res.status(404).json({ message: "Không tìm thấy đề thi" });
+      }
+
+      // For official exams, require authentication
+      if (!exam.isDemo && !sessionUser) {
+        return res.status(401).json({ message: "Cần đăng nhập để thi đề chính thức" });
+      }
+
+      const questions = await storage.getQuestionsByExamId(examId);
+      
+      // Calculate score
+      let correctAnswers = 0;
+      for (const question of questions) {
+        const userAnswer = userAnswers[question.id];
+        if (userAnswer === question.correctAnswer) {
+          correctAnswers++;
+        }
+      }
+
+      // Create exam attempt
+      const attempt = await storage.createExamAttempt({
+        examId,
+        userId: sessionUser?.id || null,
+        userAnswers,
+        score: correctAnswers,
+        totalQuestions: questions.length,
+        correctAnswers,
+        timeSpent,
+        questionOrder,
+      });
+
+      res.json(attempt);
+    } catch (error) {
+      console.error("Error submitting exam:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi nộp bài thi" });
+    }
+  });
+
+  app.get("/api/exam-attempts/:id", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const attempt = await storage.getExamAttempt(id);
+      if (!attempt) {
+        return res.status(404).json({ message: "Không tìm thấy kết quả thi" });
+      }
+      res.json(attempt);
+    } catch (error) {
+      console.error("Error fetching exam attempt:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi lấy kết quả thi" });
+    }
+  });
+
+  app.get("/api/exam-attempts/:id/details", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const attempt = await storage.getExamAttempt(id);
+      if (!attempt) {
+        return res.status(404).json({ message: "Không tìm thấy kết quả thi" });
+      }
+
+      const questions = await storage.getQuestionsByExamId(attempt.examId);
+      const questionOrder = attempt.questionOrder as string[];
+      
+      // Order questions according to the attempt's question order
+      const orderedQuestions = questionOrder.map(questionId => 
+        questions.find(q => q.id === questionId)
+      ).filter(Boolean);
+
+      const questionsWithAnswers = orderedQuestions.map(question => ({
+        question,
+        userAnswer: (attempt.userAnswers as Record<string, string>)[question.id],
+      }));
+
+      res.json(questionsWithAnswers);
+    } catch (error) {
+      console.error("Error fetching exam attempt details:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi lấy chi tiết kết quả thi" });
+    }
+  });
+
   // Authentication routes
   app.post("/api/auth/login", async (req, res) => {
     try {
