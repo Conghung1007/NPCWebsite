@@ -53,7 +53,6 @@ export function OnlineExamPage() {
   // Pagination handlers
   const handleDemoPageChange = (page: number) => {
     setDemoCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleOfficialPageChange = (page: number) => {
