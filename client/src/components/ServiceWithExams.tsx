@@ -157,7 +157,7 @@ export function ServiceWithExams({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {[1, 2, 3].map((i) => (
               <div key={i} className="w-full">
-                <div className="w-full bg-white border border-gray-200 rounded-lg shadow-sm animate-pulse">
+                <div className="w-full h-[400px] bg-white border border-gray-200 rounded-lg shadow-sm animate-pulse">
                   <div className="h-40 bg-gray-200 rounded-t-lg"></div>
                   <div className="p-5">
                     <div className="h-4 bg-gray-200 rounded mb-2"></div>
@@ -199,7 +199,7 @@ export function ServiceWithExams({
               {featuredExams.slice(currentIndex, currentIndex + 3).map((exam) => (
                 <div key={exam.id} className="w-full h-full flex">
                   <Link href={`/exam/${exam.id}`} className="w-full h-full">
-                    <div className="w-full h-full bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer flex flex-col">
+                    <div className="w-full h-[400px] bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer flex flex-col">
                       {/* Exam header */}
                       <div className="h-40 bg-gradient-to-br from-blue-100 to-blue-200 rounded-t-lg flex items-center justify-center flex-shrink-0 relative">
                         <div className="text-center">
