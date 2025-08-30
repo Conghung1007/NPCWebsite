@@ -670,7 +670,7 @@ export function CpanelPage() {
             )}
 
             {/* Registration Requests Content - For managers and admins */}
-            {canManageUsers && activeTab === "registrations" && (
+            {canManageRegistrations && activeTab === "registrations" && (
               <div className="space-y-6">
                 <Card>
                   <CardHeader>
