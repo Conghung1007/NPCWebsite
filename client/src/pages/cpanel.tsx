@@ -345,13 +345,23 @@ export function CpanelPage() {
           {/* Left Sidebar - Navigation */}
           <div className="flex-shrink-0">
             <div className="space-y-2">
+              {canManageUsers && (
+                <Button 
+                  variant={activeTab === "registrations" ? "default" : "ghost"}
+                  className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
+                  onClick={() => setActiveTab("registrations")}
+                >
+                  <Shield className="w-5 h-5" />
+                  Duyệt đăng ký
+                </Button>
+              )}
               <Button 
-                variant={activeTab === "messages" ? "default" : "ghost"}
+                variant={activeTab === "exams" ? "default" : "ghost"}
                 className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setActiveTab("messages")}
+                onClick={() => setActiveTab("exams")}
               >
-                <MessageSquare className="w-5 h-5" />
-                Tin nhắn liên hệ
+                <FileText className="w-5 h-5" />
+                Quản lý bài thi
               </Button>
               <Button 
                 variant={activeTab === "articles" ? "default" : "ghost"}
@@ -362,32 +372,22 @@ export function CpanelPage() {
                 Quản lý bài viết
               </Button>
               <Button 
-                variant={activeTab === "exams" ? "default" : "ghost"}
+                variant={activeTab === "messages" ? "default" : "ghost"}
                 className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setActiveTab("exams")}
+                onClick={() => setActiveTab("messages")}
               >
-                <FileText className="w-5 h-5" />
-                Quản lý bài thi
+                <MessageSquare className="w-5 h-5" />
+                Tin nhắn liên hệ
               </Button>
               {canManageUsers && (
-                <>
-                  <Button 
-                    variant={activeTab === "users" ? "default" : "ghost"}
-                    className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                    onClick={() => setActiveTab("users")}
-                  >
-                    <Users className="w-5 h-5" />
-                    Quản lý người dùng
-                  </Button>
-                  <Button 
-                    variant={activeTab === "registrations" ? "default" : "ghost"}
-                    className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                    onClick={() => setActiveTab("registrations")}
-                  >
-                    <Shield className="w-5 h-5" />
-                    Duyệt đăng ký
-                  </Button>
-                </>
+                <Button 
+                  variant={activeTab === "users" ? "default" : "ghost"}
+                  className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
+                  onClick={() => setActiveTab("users")}
+                >
+                  <Users className="w-5 h-5" />
+                  Quản lý người dùng
+                </Button>
               )}
             </div>
           </div>
