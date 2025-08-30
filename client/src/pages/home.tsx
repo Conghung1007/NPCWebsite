@@ -12,7 +12,7 @@ import {
   IdCard, 
   GraduationCap, 
   Languages, 
-  Plane,
+  BookOpen,
   Users,
   Heart,
   DollarSign,
@@ -32,18 +32,18 @@ export default function Home() {
   const { hasImageEditPermission } = useAuth();
   const [heroBgImage, setHeroBgImage] = useState("https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=2074&q=80");
   const [whyChooseImage, setWhyChooseImage] = useState("https://images.unsplash.com/photo-1521737604893-d14cc237f11d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2084&q=80");
-  const [uiImages, setUiImages] = useState({});
+  const [uiImages, setUiImages] = useState<Record<string, string>>({});
   const [showWhyChooseImageManager, setShowWhyChooseImageManager] = useState(false);
 
   useEffect(() => {
     document.title = "N&P Company - Đối Tác Tin Cậy Cho Giấc Mơ Toàn Cầu";
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'N&P - Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và vé máy bay với hơn 10 năm kinh nghiệm');
+      metaDescription.setAttribute('content', 'N&P - Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và hệ thống thi trực tuyến với hơn 10 năm kinh nghiệm');
     } else {
       const meta = document.createElement('meta');
       meta.name = 'description';
-      meta.content = 'N&P - Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và vé máy bay với hơn 10 năm kinh nghiệm';
+      meta.content = 'N&P - Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và hệ thống thi trực tuyến với hơn 10 năm kinh nghiệm';
       document.head.appendChild(meta);
     }
 
@@ -51,8 +51,8 @@ export default function Home() {
     fetch('/api/ui-images')
       .then(res => res.json())
       .then(images => {
-        const imageMap = {};
-        images.forEach(img => {
+        const imageMap: Record<string, string> = {};
+        images.forEach((img: any) => {
           imageMap[img.imageType] = img.imageUrl;
         });
         setUiImages(imageMap);
@@ -128,12 +128,12 @@ export default function Home() {
       backgroundImage: "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?w=400&h=300"
     },
     {
-      icon: <Plane className="h-8 w-8 text-red-600" />,
-      title: "Bán vé máy bay",
-      description: "Vé máy bay giá tốt, đa dạng hãng hàng không, hỗ trợ 24/7 cho mọi hành trình của bạn",
-      route: "/flight-tickets",
-      category: "flight-tickets",
-      backgroundImage: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?w=400&h=300"
+      icon: <BookOpen className="h-8 w-8 text-blue-600" />,
+      title: "Thi thử trực tuyến",
+      description: "Hệ thống thi trực tuyến với đề thi demo miễn phí và đề thi chính thức đánh giá năng lực tiếng Anh, tiếng Nhật",
+      route: "/online-exam",
+      category: "online-exam",
+      backgroundImage: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=300"
     }
   ]);
 
@@ -178,8 +178,8 @@ export default function Home() {
     {
       id: 3,
       name: "Lê Thị Mai",
-      role: "Doanh nhân", 
-      content: "Dịch vụ vé máy bay của N&P luôn có giá tốt và hỗ trợ tuyệt vời. Tôi đã sử dụng nhiều lần và rất hài lòng!",
+      role: "Giáo viên", 
+      content: "Hệ thống thi trực tuyến của N&P rất tiện lợi và chính xác. Tôi đã sử dụng để đánh giá trình độ tiếng Anh của học sinh và rất hài lòng!",
       avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face"
     }
   ]);
@@ -204,7 +204,7 @@ export default function Home() {
       <HeroSection
         title="Đối tác tin cậy cho"
         subtitle="giấc mơ toàn cầu"
-        description="Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và vé máy bay với hơn 10 năm kinh nghiệm"
+        description="Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và hệ thống thi trực tuyến với hơn 10 năm kinh nghiệm"
         backgroundImage={heroBgImage}
         allowImageEdit={hasImageEditPermission()}
         onImageUpdate={setHeroBgImage}

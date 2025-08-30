@@ -1,8 +1,8 @@
 # Overview
 
-This is a Vietnamese business website for N&P Company (Công ty TNHH N&P), a professional service company offering visa services, study abroad consulting, Japanese language training, and flight ticket sales. The application is built as a full-stack React application with Express.js backend, designed to showcase the company's four core services with a modern, professional interface.
+This is a Vietnamese business website for N&P Company (Công ty TNHH N&P), a professional service company offering visa services, study abroad consulting, Japanese language training, and online examination system. The application is built as a full-stack React application with Express.js backend, designed to showcase the company's four core services with a modern, professional interface.
 
-The website serves as a comprehensive digital presence for N&P Company, featuring service pages, contact forms, testimonials, and company information. It's designed to be mobile-responsive and SEO-friendly to attract potential customers seeking international services.
+The website serves as a comprehensive digital presence for N&P Company, featuring service pages, contact forms, testimonials, company information, and a complete online exam system. It's designed to be mobile-responsive and SEO-friendly to attract potential customers seeking international services and educational assessments.
 
 # User Preferences
 
