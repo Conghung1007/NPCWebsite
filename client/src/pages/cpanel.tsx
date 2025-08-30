@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { ArticleManager } from "@/components/ArticleManager";
+import { ExamManager } from "@/components/ExamManager";
 
 import { Pagination } from "@/components/ui/pagination";
 import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText, Image, Check, X } from "lucide-react";
@@ -766,37 +767,7 @@ export function CpanelPage() {
 
             {/* Exams Content - Available for all users */}
             {activeTab === "exams" && (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <CardTitle className="flex items-center gap-2">
-                          <FileText className="w-5 h-5" />
-                          Quản lý bài thi
-                        </CardTitle>
-                        <CardDescription>
-                          Tạo và quản lý các bài thi trực tuyến
-                        </CardDescription>
-                      </div>
-                      <Button 
-                        onClick={() => setLocation("/create-exam")}
-                        className="flex items-center gap-2"
-                      >
-                        <Plus className="w-4 h-4" />
-                        Tạo bài thi mới
-                      </Button>
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-center py-8 text-gray-500">
-                      <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                      <p className="text-lg font-medium mb-2">Sắp có tính năng quản lý bài thi</p>
-                      <p className="text-sm">Hiện tại bạn có thể tạo bài thi mới bằng cách nhấn nút "Tạo bài thi mới" ở trên</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
+              <ExamManager />
             )}
           </div>
         </div>
