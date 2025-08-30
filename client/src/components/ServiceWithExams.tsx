@@ -158,7 +158,7 @@ export function ServiceWithExams({
             {[1, 2, 3].map((i) => (
               <div key={i} className="w-full">
                 <div className="w-full bg-white border border-gray-200 rounded-lg shadow-sm animate-pulse">
-                  <div className="h-40 bg-gray-200 rounded-t-lg"></div>
+                  <div className="h-41 bg-gray-200 rounded-t-lg"></div>
                   <div className="p-5">
                     <div className="h-4 bg-gray-200 rounded mb-2"></div>
                     <div className="h-6 bg-gray-200 rounded mb-2"></div>
@@ -201,7 +201,7 @@ export function ServiceWithExams({
                   <Link href={`/exam/${exam.id}`} className="w-full h-full">
                     <div className="w-full h-full bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer flex flex-col">
                       {/* Exam header */}
-                      <div className="h-40 bg-gradient-to-br from-blue-100 to-blue-200 rounded-t-lg flex items-center justify-center flex-shrink-0 relative">
+                      <div className="h-41 bg-gradient-to-br from-blue-100 to-blue-200 rounded-t-lg flex items-center justify-center flex-shrink-0 relative">
                         <div className="text-center">
                           <BookOpen className="h-10 w-10 text-blue-600 mx-auto mb-3" />
                           <Badge className={`${exam.isDemo ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>

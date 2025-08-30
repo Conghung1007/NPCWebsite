@@ -182,7 +182,7 @@ export function ServiceWithArticles({
             {[1, 2, 3].map((i) => (
               <div key={i} className="w-full">
                 <div className="w-full bg-white border border-gray-200 rounded-lg shadow-sm animate-pulse">
-                  <div className="h-40 bg-gray-200 rounded-t-lg"></div>
+                  <div className="h-41 bg-gray-200 rounded-t-lg"></div>
                   <div className="p-5">
                     <div className="h-4 bg-gray-200 rounded mb-2"></div>
                     <div className="h-6 bg-gray-200 rounded mb-2"></div>
@@ -225,7 +225,7 @@ export function ServiceWithArticles({
                   <Link href={`/article/${article.id}`} className="w-full h-full">
                     <div className="w-full h-full bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer flex flex-col">
                       {/* Image placeholder */}
-                      <div className="h-40 bg-gradient-to-br from-green-100 to-green-200 rounded-t-lg flex items-center justify-center flex-shrink-0">
+                      <div className="h-41 bg-gradient-to-br from-green-100 to-green-200 rounded-t-lg flex items-center justify-center flex-shrink-0">
                         {article.imageUrl ? (
                           <img 
                             src={article.imageUrl} 
