@@ -5,6 +5,7 @@ import { setupVite, serveStatic, log } from "./vite";
 import { seedExamData } from "./seedExamData";
 
 
+
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
@@ -57,6 +58,8 @@ app.use((req, res, next) => {
   // Seed exam data in development
   if (app.get("env") === "development") {
     await seedExamData();
+    
+
   }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

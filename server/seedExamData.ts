@@ -4,6 +4,13 @@ export async function seedExamData() {
   try {
     console.log("Seeding exam data...");
 
+    // Check if there are already exams in the database
+    const existingExams = await storage.getAllExams();
+    if (existingExams.length > 0) {
+      console.log(`✓ Found ${existingExams.length} existing exams, skipping seed`);
+      return;
+    }
+
     // Create demo exam
     const demoExam = await storage.createExam({
       title: "Kiểm tra trình độ tiếng Anh cơ bản (Demo)",
