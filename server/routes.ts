@@ -1542,7 +1542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { id } = req.params;
-      const { title, description, isDemo, timeLimit, isActive, questions } = req.body;
+      const { title, description, isDemo, timeLimit, isActive } = req.body;
 
       if (!title || !timeLimit) {
         return res.status(400).json({ 
@@ -1550,66 +1550,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // If questions are provided, update them too
-      if (questions && Array.isArray(questions)) {
-        // First update the exam
-        const updatedExam = await storage.updateExam(id, {
-          title,
-          description: description || null,
-          isDemo: isDemo || false,
-          timeLimit,
-          questionCount: questions.length,
-          isActive: isActive !== undefined ? isActive : true,
-        });
+      const updatedExam = await storage.updateExam(id, {
+        title,
+        description: description || null,
+        isDemo: isDemo || false,
+        timeLimit,
+        isActive: isActive !== undefined ? isActive : true,
+      });
 
-        if (!updatedExam) {
-          return res.status(404).json({ message: "Exam not found" });
-        }
-
-        // Delete existing questions and create new ones
-        await storage.deleteQuestionsByExamId(id);
-        
-        const createdQuestions = [];
-        for (let i = 0; i < questions.length; i++) {
-          const questionData = questions[i];
-          const question = await storage.createQuestion({
-            examId: id,
-            questionText: questionData.questionText,
-            questionType: questionData.questionType || "multiple_choice",
-            imageUrl: questionData.imageUrl || null,
-            audioUrl: questionData.audioUrl || null,
-            options: questionData.options,
-            correctAnswer: questionData.correctAnswer,
-            explanation: questionData.explanation || null,
-            sortOrder: i,
-          });
-          createdQuestions.push(question);
-        }
-
-        res.json({
-          exam: updatedExam,
-          questions: createdQuestions,
-          message: "Exam updated successfully"
-        });
-      } else {
-        // Just update exam info
-        const updatedExam = await storage.updateExam(id, {
-          title,
-          description: description || null,
-          isDemo: isDemo || false,
-          timeLimit,
-          isActive: isActive !== undefined ? isActive : true,
-        });
-
-        if (!updatedExam) {
-          return res.status(404).json({ message: "Exam not found" });
-        }
-
-        res.json({
-          exam: updatedExam,
-          message: "Exam updated successfully"
-        });
+      if (!updatedExam) {
+        return res.status(404).json({ message: "Exam not found" });
       }
+
+      res.json({
+        exam: updatedExam,
+        message: "Exam updated successfully"
+      });
     } catch (error) {
       console.error("Error updating exam:", error);
       res.status(500).json({ message: "Failed to update exam" });
@@ -1635,18 +1591,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting exam:", error);
       res.status(500).json({ message: "Failed to delete exam" });
-    }
-  });
-
-  // Get questions for exam endpoint
-  app.get("/api/questions/:examId", async (req, res) => {
-    try {
-      const { examId } = req.params;
-      const questions = await storage.getQuestionsByExamId(examId);
-      res.json(questions);
-    } catch (error) {
-      console.error("Error fetching questions:", error);
-      res.status(500).json({ message: "Failed to fetch questions" });
     }
   });
 

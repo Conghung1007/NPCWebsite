@@ -58,7 +58,6 @@ export interface IStorage {
   getQuestionsByExamId(examId: string): Promise<Question[]>;
   updateQuestion(id: string, updateData: Partial<InsertQuestion>): Promise<Question | null>;
   deleteQuestion(id: string): Promise<boolean>;
-  deleteQuestionsByExamId(examId: string): Promise<void>;
   
   createExamAttempt(attempt: InsertExamAttempt): Promise<ExamAttempt>;
   getExamAttempt(id: string): Promise<ExamAttempt | undefined>;
@@ -107,8 +106,6 @@ export class MemStorage implements IStorage {
       ...insertUser, 
       id,
       role: insertUser.role || "user",
-      email: insertUser.email || null,
-      phone: insertUser.phone || null,
       createdAt: new Date()
     };
     this.users.set(id, user);
@@ -554,8 +551,6 @@ export class MemStorage implements IStorage {
     const uiImage: UiImage = {
       ...uiImageData,
       id,
-      description: uiImageData.description || null,
-      altText: uiImageData.altText || null,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -700,9 +695,6 @@ export class MemStorage implements IStorage {
     const exam: Exam = {
       ...insertExam,
       id,
-      description: insertExam.description || null,
-      isDemo: insertExam.isDemo || false,
-      isActive: insertExam.isActive || true,
       createdAt: new Date(),
     };
     this.exams.set(id, exam);
@@ -753,10 +745,6 @@ export class MemStorage implements IStorage {
     const question: Question = {
       ...insertQuestion,
       id,
-      questionType: insertQuestion.questionType || "multiple_choice",
-      imageUrl: insertQuestion.imageUrl || null,
-      audioUrl: insertQuestion.audioUrl || null,
-      explanation: insertQuestion.explanation || null,
       createdAt: new Date(),
     };
     this.questions.set(id, question);
@@ -770,7 +758,7 @@ export class MemStorage implements IStorage {
   async getQuestionsByExamId(examId: string): Promise<Question[]> {
     return Array.from(this.questions.values()).filter(
       question => question.examId === examId
-    ).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    ).sort((a, b) => a.sortOrder - b.sortOrder);
   }
 
   async updateQuestion(id: string, updateData: Partial<InsertQuestion>): Promise<Question | null> {
@@ -794,18 +782,11 @@ export class MemStorage implements IStorage {
     return this.questions.delete(id);
   }
 
-  async deleteQuestionsByExamId(examId: string): Promise<void> {
-    const examQuestions = Array.from(this.questions.values()).filter(q => q.examId === examId);
-    examQuestions.forEach(question => this.questions.delete(question.id));
-  }
-
   async createExamAttempt(insertAttempt: InsertExamAttempt): Promise<ExamAttempt> {
     const id = randomUUID();
     const attempt: ExamAttempt = {
       ...insertAttempt,
       id,
-      timeSpent: insertAttempt.timeSpent || null,
-      userId: insertAttempt.userId || null,
       completedAt: new Date(),
     };
     this.examAttempts.set(id, attempt);
@@ -1196,10 +1177,6 @@ export class DatabaseStorage implements IStorage {
   async deleteQuestion(id: string): Promise<boolean> {
     const result = await db.delete(questions).where(eq(questions.id, id));
     return (result as any).rowCount > 0;
-  }
-
-  async deleteQuestionsByExamId(examId: string): Promise<void> {
-    await db.delete(questions).where(eq(questions.examId, examId));
   }
 
   async createExamAttempt(attemptData: InsertExamAttempt): Promise<ExamAttempt> {

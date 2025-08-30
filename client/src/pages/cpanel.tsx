@@ -7,12 +7,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { ArticleManager } from "@/components/ArticleManager";
 
 import { Pagination } from "@/components/ui/pagination";
 import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText, Image, Check, X } from "lucide-react";
-import { type User as UserType, type ContactRequest, type RegistrationRequest, type Exam } from "@shared/schema";
+import { type User as UserType, type ContactRequest, type RegistrationRequest } from "@shared/schema";
 
 export function CpanelPage() {
   const [, setLocation] = useLocation();
@@ -38,7 +38,6 @@ export function CpanelPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const messagesPerPage = 9;
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   useEffect(() => {
     const userData = localStorage.getItem("user");
@@ -100,12 +99,6 @@ export function CpanelPage() {
   const { data: registrationRequests = [], isLoading: registrationsLoading, refetch: refetchRegistrations } = useQuery<RegistrationRequest[]>({
     queryKey: ["/api/registration-requests"],
     enabled: !!user && (user.role === "manager" || user.role === "admin"),
-  });
-
-  // Fetch exams
-  const { data: exams = [], isLoading: examsLoading, refetch: refetchExams } = useQuery<Exam[]>({
-    queryKey: ["/api/exams"],
-    enabled: !!user,
   });
 
   const handleEditUser = (userToEdit: UserType) => {
@@ -331,74 +324,6 @@ export function CpanelPage() {
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
-  };
-
-  // Toggle exam status mutation
-  const toggleExamStatusMutation = useMutation({
-    mutationFn: async (exam: Exam) => {
-      const response = await fetch(`/api/exams/${exam.id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: exam.title,
-          description: exam.description,
-          isDemo: exam.isDemo,
-          timeLimit: exam.timeLimit,
-          isActive: !exam.isActive,
-        }),
-      });
-      if (!response.ok) throw new Error("Failed to update exam");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
-      toast({
-        title: "Thành công",
-        description: "Đã cập nhật trạng thái bài thi",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Lỗi",
-        description: "Không thể cập nhật trạng thái bài thi",
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Delete exam mutation
-  const deleteExamMutation = useMutation({
-    mutationFn: async (examId: string) => {
-      const response = await fetch(`/api/exams/${examId}`, {
-        method: "DELETE",
-      });
-      if (!response.ok) throw new Error("Failed to delete exam");
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
-      toast({
-        title: "Thành công",
-        description: "Đã xóa bài thi",
-      });
-    },
-    onError: () => {
-      toast({
-        title: "Lỗi",
-        description: "Không thể xóa bài thi",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleToggleExamStatus = (exam: Exam) => {
-    toggleExamStatusMutation.mutate(exam);
-  };
-
-  const handleDeleteExam = (exam: Exam) => {
-    if (confirm(`Bạn có chắc chắn muốn xóa bài thi "${exam.title}"?`)) {
-      deleteExamMutation.mutate(exam.id);
-    }
   };
 
   return (
@@ -864,82 +789,11 @@ export function CpanelPage() {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {examsLoading ? (
-                      <div className="flex justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                      </div>
-                    ) : exams.length === 0 ? (
-                      <div className="text-center py-8 text-gray-500">
-                        <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
-                        <p className="text-lg font-medium mb-2">Chưa có bài thi nào</p>
-                        <p className="text-sm">Nhấn nút "Tạo bài thi mới" ở trên để bắt đầu tạo bài thi</p>
-                      </div>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Tiêu đề</TableHead>
-                            <TableHead>Loại</TableHead>
-                            <TableHead>Thời gian</TableHead>
-                            <TableHead>Số câu hỏi</TableHead>
-                            <TableHead>Trạng thái</TableHead>
-                            <TableHead>Ngày tạo</TableHead>
-                            <TableHead>Thao tác</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {exams.map((exam) => (
-                            <TableRow key={exam.id}>
-                              <TableCell className="font-medium">
-                                {exam.title}
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant={exam.isDemo ? "secondary" : "default"}>
-                                  {exam.isDemo ? "Demo" : "Chính thức"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>{exam.timeLimit} phút</TableCell>
-                              <TableCell>{exam.questionCount} câu</TableCell>
-                              <TableCell>
-                                <Badge variant={exam.isActive ? "default" : "secondary"}>
-                                  {exam.isActive ? "Kích hoạt" : "Tạm dừng"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {new Date(exam.createdAt).toLocaleDateString("vi-VN")}
-                              </TableCell>
-                              <TableCell>
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => setLocation(`/edit-exam/${exam.id}`)}
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleToggleExamStatus(exam)}
-                                    className={exam.isActive ? "text-orange-600 hover:text-orange-700" : "text-green-600 hover:text-green-700"}
-                                  >
-                                    {exam.isActive ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleDeleteExam(exam)}
-                                    className="text-red-600 hover:text-red-700"
-                                  >
-                                    <Trash2 className="w-4 h-4" />
-                                  </Button>
-                                </div>
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
+                    <div className="text-center py-8 text-gray-500">
+                      <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                      <p className="text-lg font-medium mb-2">Sắp có tính năng quản lý bài thi</p>
+                      <p className="text-sm">Hiện tại bạn có thể tạo bài thi mới bằng cách nhấn nút "Tạo bài thi mới" ở trên</p>
+                    </div>
                   </CardContent>
                 </Card>
               </div>
