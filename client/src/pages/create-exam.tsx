@@ -100,7 +100,7 @@ export default function CreateExam() {
         description: "Tạo bài thi thành công",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
-      setLocation("/cpanel");
+      setLocation("/cpanel?tab=exams");
     },
     onError: (error: any) => {
       toast({
@@ -150,11 +150,11 @@ export default function CreateExam() {
       <div className="mb-6">
         <Button
           variant="outline"
-          onClick={() => setLocation("/cpanel")}
+          onClick={() => setLocation("/cpanel?tab=exams")}
           className="mb-4"
         >
           <ArrowLeft className="w-4 h-4 mr-2" />
-          Quay lại Control Panel
+          Quay lại
         </Button>
         <h1 className="text-3xl font-bold text-gray-900">Tạo Bài Thi Mới</h1>
         <p className="text-gray-600 mt-2">Tạo bài thi với câu hỏi, hình ảnh và âm thanh</p>
