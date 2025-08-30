@@ -236,9 +236,6 @@ export default function CreateExam() {
                         <FormLabel>
                           Bài thi demo
                         </FormLabel>
-                        <p className="text-sm text-muted-foreground">
-                          Bài thi demo không yêu cầu đăng nhập
-                        </p>
                       </div>
                     </FormItem>
                   )}
