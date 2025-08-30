@@ -20,6 +20,7 @@ import ArticleDetail from "@/pages/article-detail";
 import CreateArticle from "@/pages/create-article";
 import EditArticle from "@/pages/edit-article";
 import CreateExam from "@/pages/create-exam";
+import EditExam from "@/pages/edit-exam";
 import { CpanelPage } from "@/pages/cpanel";
 
 function Router() {
@@ -41,6 +42,7 @@ function Router() {
         <Route path="/create-article" component={CreateArticle} />
         <Route path="/edit-article/:id" component={EditArticle} />
         <Route path="/create-exam" component={CreateExam} />
+        <Route path="/edit-exam/:id" component={({ params }) => <EditExam params={params} />} />
         <Route path="/cpanel" component={CpanelPage} />
         {/* Fallback to 404 */}
         <Route component={NotFound} />

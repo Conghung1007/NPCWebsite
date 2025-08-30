@@ -58,6 +58,7 @@ export interface IStorage {
   getQuestionsByExamId(examId: string): Promise<Question[]>;
   updateQuestion(id: string, updateData: Partial<InsertQuestion>): Promise<Question | null>;
   deleteQuestion(id: string): Promise<boolean>;
+  deleteQuestionsByExamId(examId: string): Promise<void>;
   
   createExamAttempt(attempt: InsertExamAttempt): Promise<ExamAttempt>;
   getExamAttempt(id: string): Promise<ExamAttempt | undefined>;
@@ -780,6 +781,11 @@ export class MemStorage implements IStorage {
 
   async deleteQuestion(id: string): Promise<boolean> {
     return this.questions.delete(id);
+  }
+
+  async deleteQuestionsByExamId(examId: string): Promise<void> {
+    const examQuestions = Array.from(this.questions.values()).filter(q => q.examId === examId);
+    examQuestions.forEach(question => this.questions.delete(question.id));
   }
 
   async createExamAttempt(insertAttempt: InsertExamAttempt): Promise<ExamAttempt> {
