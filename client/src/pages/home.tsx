@@ -7,6 +7,7 @@ import { TestimonialCard } from "@/components/ui/testimonial-card";
 import { ContactForm } from "@/components/ui/contact-form";
 import { Button } from "@/components/ui/button";
 import { ServiceWithArticles } from "@/components/ServiceWithArticles";
+import { ServiceWithExams } from "@/components/ServiceWithExams";
 import { ImageManager } from "@/components/ui/image-manager";
 import { 
   IdCard, 
@@ -241,16 +242,32 @@ export default function Home() {
           </div>
 
           <div className="space-y-20">
-            {services.map((service, index) => (
-              <ServiceWithArticles
-                key={index}
-                service={service}
-                category={service.category}
-                onServiceClick={() => handleServiceClick(service.route)}
-                allowImageEdit={hasImageEditPermission()}
-                onServiceImageUpdate={(newImageUrl) => handleServiceImageUpdate(index, newImageUrl)}
-              />
-            ))}
+            {services.map((service, index) => {
+              // Use ServiceWithExams for online exam service
+              if (service.category === 'online-exam') {
+                return (
+                  <ServiceWithExams
+                    key={index}
+                    service={service}
+                    onServiceClick={() => handleServiceClick(service.route)}
+                    allowImageEdit={hasImageEditPermission()}
+                    onServiceImageUpdate={(newImageUrl) => handleServiceImageUpdate(index, newImageUrl)}
+                  />
+                );
+              }
+              
+              // Use ServiceWithArticles for other services
+              return (
+                <ServiceWithArticles
+                  key={index}
+                  service={service}
+                  category={service.category}
+                  onServiceClick={() => handleServiceClick(service.route)}
+                  allowImageEdit={hasImageEditPermission()}
+                  onServiceImageUpdate={(newImageUrl) => handleServiceImageUpdate(index, newImageUrl)}
+                />
+              );
+            })}
           </div>
         </div>
       </section>
