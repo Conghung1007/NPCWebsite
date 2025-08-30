@@ -95,9 +95,9 @@ export default function EditExam({ params }: { params: { id: string } }) {
       }));
 
       form.reset({
-        title: examData.title,
+        title: examData.title || "",
         description: examData.description || "",
-        timeLimit: examData.timeLimit,
+        timeLimit: examData.timeLimit || 30,
         isDemo: examData.isDemo || false,
         questions: formattedQuestions,
       });
