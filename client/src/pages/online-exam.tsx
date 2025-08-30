@@ -99,7 +99,7 @@ export function OnlineExamPage() {
             <CardContent className="pt-6">
               <Play className="w-8 h-8 text-green-600 mx-auto mb-2" />
               <div className="text-2xl font-bold text-gray-900">{allDemoExams.length}</div>
-              <p className="text-sm text-gray-600">Đề demo miễn phí</p>
+              <p className="text-sm text-gray-600">Đề demo</p>
             </CardContent>
           </Card>
           <Card className="text-center">
@@ -123,7 +123,6 @@ export function OnlineExamPage() {
           <div className="flex items-center mb-6">
             <Play className="w-6 h-6 text-green-600 mr-2" />
             <h2 className="text-2xl font-bold text-gray-900">Đề thi demo</h2>
-            <Badge variant="secondary" className="ml-3">Miễn phí</Badge>
           </div>
           <p className="text-gray-600 mb-6">
             Thực hành ngay mà không cần đăng nhập. Phù hợp để làm quen với hệ thống và định dạng bài thi.
@@ -193,7 +192,6 @@ export function OnlineExamPage() {
           <div className="flex items-center mb-6">
             <Award className="w-6 h-6 text-blue-600 mr-2" />
             <h2 className="text-2xl font-bold text-gray-900">Đề thi chính thức</h2>
-            <Badge variant="secondary" className="ml-3">Cần đăng nhập</Badge>
           </div>
           <p className="text-gray-600 mb-6">
             Các đề thi chính thức với kết quả được lưu trữ và theo dõi. Cần đăng nhập để tham gia.
