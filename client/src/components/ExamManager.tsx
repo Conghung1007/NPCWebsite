@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Pagination } from "@/components/ui/pagination";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -21,6 +22,8 @@ export function ExamManager() {
     isOpen: false,
     exam: null
   });
+  const [currentPage, setCurrentPage] = useState(1);
+  const examsPerPage = 10;
   
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -44,6 +47,12 @@ export function ExamManager() {
       });
       setDeleteConfirm({ isOpen: false, exam: null });
       refetchExams();
+      // Reset to first page if current page becomes empty after deletion
+      const newTotal = exams.length - 1;
+      const newTotalPages = Math.ceil(newTotal / examsPerPage);
+      if (currentPage > newTotalPages && newTotalPages > 0) {
+        setCurrentPage(newTotalPages);
+      }
     },
     onError: (error: any) => {
       toast({
@@ -80,6 +89,19 @@ export function ExamManager() {
     return <Badge variant="default">Chính thức</Badge>;
   };
 
+  // Sort exams by newest first and calculate pagination
+  const sortedExams = [...exams].sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  const totalPages = Math.ceil(sortedExams.length / examsPerPage);
+  const startIndex = (currentPage - 1) * examsPerPage;
+  const endIndex = startIndex + examsPerPage;
+  const currentExams = sortedExams.slice(startIndex, endIndex);
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
   return (
     <div className="space-y-6">
       <Card>
@@ -109,7 +131,7 @@ export function ExamManager() {
             <div className="flex justify-center py-8">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
-          ) : exams.length === 0 ? (
+          ) : sortedExams.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
               <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
               <p className="text-lg font-medium mb-2">Chưa có bài thi nào</p>
@@ -128,7 +150,7 @@ export function ExamManager() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {exams.map((exam) => (
+                {currentExams.map((exam) => (
                   <TableRow key={exam.id}>
                     <TableCell className="font-medium">
                       <div className="flex items-center gap-2">
@@ -184,6 +206,21 @@ export function ExamManager() {
                 ))}
               </TableBody>
             </Table>
+          )}
+
+          {/* Pagination */}
+          {sortedExams.length > 0 && (
+            <div className="mt-6">
+              <div className="mb-4 text-center text-sm text-muted-foreground">
+                Hiển thị {startIndex + 1}-{Math.min(endIndex, sortedExams.length)} trong tổng số {sortedExams.length} bài thi
+              </div>
+              <Pagination
+                currentPage={currentPage}
+                totalPages={Math.max(totalPages, 1)}
+                onPageChange={handlePageChange}
+                className="justify-center"
+              />
+            </div>
           )}
         </CardContent>
       </Card>
