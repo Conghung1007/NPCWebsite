@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 import { HeroSection } from "@/components/ui/hero-section";
 import { ServiceCard } from "@/components/ui/service-card";
 import { TestimonialCard } from "@/components/ui/testimonial-card";
@@ -28,6 +29,7 @@ import {
 
 export default function Home() {
   const [, setLocation] = useLocation();
+  const { hasImageEditPermission } = useAuth();
   const [heroBgImage, setHeroBgImage] = useState("https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=2074&q=80");
   const [whyChooseImage, setWhyChooseImage] = useState("https://images.unsplash.com/photo-1521737604893-d14cc237f11d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2084&q=80");
   const [uiImages, setUiImages] = useState({});
@@ -204,7 +206,7 @@ export default function Home() {
         subtitle="giấc mơ toàn cầu"
         description="Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và vé máy bay với hơn 10 năm kinh nghiệm"
         backgroundImage={heroBgImage}
-        allowImageEdit={true}
+        allowImageEdit={hasImageEditPermission()}
         onImageUpdate={setHeroBgImage}
         primaryAction={{
           text: "Tư vấn miễn phí ngay",
@@ -245,7 +247,7 @@ export default function Home() {
                 service={service}
                 category={service.category}
                 onServiceClick={() => handleServiceClick(service.route)}
-                allowImageEdit={true}
+                allowImageEdit={hasImageEditPermission()}
                 onServiceImageUpdate={(newImageUrl) => handleServiceImageUpdate(index, newImageUrl)}
               />
             ))}
@@ -288,15 +290,17 @@ export default function Home() {
                 alt="Professional business team providing visa and international services" 
                 className="rounded-xl shadow-lg w-full h-auto" 
               />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowWhyChooseImageManager(true)}
-                className="absolute top-4 right-4 bg-white/80 hover:bg-white/90 text-gray-700"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Cập nhật ảnh
-              </Button>
+              {hasImageEditPermission() && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowWhyChooseImageManager(true)}
+                  className="absolute top-4 right-4 bg-white/80 hover:bg-white/90 text-gray-700"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Cập nhật ảnh
+                </Button>
+              )}
               <ImageManager
                 isOpen={showWhyChooseImageManager}
                 onClose={() => setShowWhyChooseImageManager(false)}
@@ -329,7 +333,7 @@ export default function Home() {
                 role={testimonial.role}
                 content={testimonial.content}
                 avatar={testimonial.avatar}
-                allowAvatarEdit={true}
+                allowAvatarEdit={hasImageEditPermission()}
                 onAvatarUpdate={(newAvatar) => handleTestimonialAvatarUpdate(testimonial.id, newAvatar)}
               />
             ))}

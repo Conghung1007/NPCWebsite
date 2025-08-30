@@ -15,6 +15,24 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Auth endpoint - returns current user information
+  app.get("/api/auth/user", async (req, res) => {
+    try {
+      // For now, return a mock manager user to test the permission system
+      // In a real app, this would get the user from session/JWT
+      const mockUser = {
+        id: "mock-user-id",
+        username: "manager",
+        role: "manager", // Change to "user", "manager", or "admin" to test different permissions
+        createdAt: new Date()
+      };
+      res.json(mockUser);
+    } catch (error) {
+      console.error("Error fetching current user:", error);
+      res.status(401).json({ message: "Unauthorized" });
+    }
+  });
+
   // Users endpoint - for managers and admins
   app.get("/api/users", async (req, res) => {
     try {

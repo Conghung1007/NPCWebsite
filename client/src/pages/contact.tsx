@@ -4,6 +4,7 @@ import { ContactForm } from "@/components/ui/contact-form";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useUiImages } from "@/hooks/useUiImages";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   MapPin, 
   Phone, 
@@ -17,6 +18,7 @@ import {
 
 export default function Contact() {
   const { getImageByType, invalidateCache } = useUiImages();
+  const { hasImageEditPermission } = useAuth();
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1423666639041-f56000c27a9a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
 
   // Update hero image from database when available
@@ -92,7 +94,7 @@ export default function Contact() {
         subtitle=""
         description="Sẵn sàng hỗ trợ bạn 24/7. Hãy liên hệ ngay để nhận tư vấn miễn phí!"
         backgroundImage={heroImage}
-        allowImageEdit={true}
+        allowImageEdit={hasImageEditPermission()}
         onImageUpdate={(newUrl) => {
           setHeroImage(newUrl);
           invalidateCache();

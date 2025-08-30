@@ -8,6 +8,7 @@ import { ArticleSection } from "@/components/ArticleSection";
 import { ImageManager } from "@/components/ui/image-manager";
 import { InstructorCard } from "@/components/ui/instructor-card";
 import { useUiImages } from "@/hooks/useUiImages";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   Sprout, 
   TreePine, 
@@ -28,6 +29,7 @@ import {
 export default function JapaneseTraining() {
   const [, setLocation] = useLocation();
   const { getImageByType, invalidateCache } = useUiImages();
+  const { hasImageEditPermission } = useAuth();
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1528720208104-3d9bd03cc9d4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
   const [classroomImage, setClassroomImage] = useState("https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600");
   const [showHeroImageManager, setShowHeroImageManager] = useState(false);
@@ -213,7 +215,7 @@ export default function JapaneseTraining() {
         subtitle=""
         description="Học tiếng Nhật từ cơ bản đến nâng cao với giảng viên bản ngữ và phương pháp giảng dạy hiện đại"
         backgroundImage={heroImage}
-        allowImageEdit={true}
+        allowImageEdit={hasImageEditPermission()}
         onImageUpdate={(newUrl) => {
           setHeroImage(newUrl);
           invalidateCache();
@@ -314,15 +316,17 @@ export default function JapaneseTraining() {
                 alt="Japanese teacher with students in classroom" 
                 className="rounded-xl shadow-lg w-full h-auto" 
               />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowClassroomImageManager(true)}
-                className="absolute top-4 right-4 bg-white/80 hover:bg-white/90 text-gray-700"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Cập nhật ảnh
-              </Button>
+              {hasImageEditPermission() && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowClassroomImageManager(true)}
+                  className="absolute top-4 right-4 bg-white/80 hover:bg-white/90 text-gray-700"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Cập nhật ảnh
+                </Button>
+              )}
               <ImageManager
                 isOpen={showClassroomImageManager}
                 onClose={() => setShowClassroomImageManager(false)}
@@ -398,7 +402,7 @@ export default function JapaneseTraining() {
                 title={instructor.title}
                 description={instructor.description}
                 avatar={instructor.avatar}
-                allowAvatarEdit={true}
+                allowAvatarEdit={hasImageEditPermission()}
                 onAvatarUpdate={(newAvatar) => handleInstructorAvatarUpdate(instructor.id, newAvatar)}
                 imageType={`instructor-${instructor.id}`}
               />
