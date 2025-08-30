@@ -79,7 +79,7 @@ export function ServiceWithExams({
     
     const interval = setInterval(() => {
       setCurrentIndex(prev => (prev >= maxIndex ? 0 : prev + 1));
-    }, 4000);
+    }, 3000);
     
     return () => clearInterval(interval);
   }, [isHovered, maxIndex, examsPerView, featuredExams.length]);

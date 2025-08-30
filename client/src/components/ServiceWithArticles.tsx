@@ -97,7 +97,7 @@ export function ServiceWithArticles({
         // Otherwise, go to next
         return prev + 1;
       });
-    }, 30000); // 30 seconds
+    }, 3000); // 3 seconds
 
     return () => clearInterval(autoScrollInterval);
   }, [categoryArticles.length, isHovered]);
