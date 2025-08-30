@@ -178,7 +178,7 @@ export function OnlineExamPage() {
           {allDemoExams.length > 0 && (
             <div className="mt-8">
               <div className="mb-4 text-center text-sm text-muted-foreground">
-                Hiển thị {demoStartIndex + 1}-{Math.min(demoEndIndex, allDemoExams.length)} trong tổng số {allDemoExams.length} đề demo
+                Trang {demoCurrentPage} trong {Math.max(demoTotalPages, 1)} trang ({allDemoExams.length} đề demo)
               </div>
               <Pagination
                 currentPage={demoCurrentPage}
@@ -283,7 +283,7 @@ export function OnlineExamPage() {
           {allOfficialExams.length > 0 && (
             <div className="mt-8">
               <div className="mb-4 text-center text-sm text-muted-foreground">
-                Hiển thị {officialStartIndex + 1}-{Math.min(officialEndIndex, allOfficialExams.length)} trong tổng số {allOfficialExams.length} đề chính thức
+                Trang {officialCurrentPage} trong {Math.max(officialTotalPages, 1)} trang ({allOfficialExams.length} đề chính thức)
               </div>
               <Pagination
                 currentPage={officialCurrentPage}
