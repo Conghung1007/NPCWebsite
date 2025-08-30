@@ -153,12 +153,14 @@ export function Header() {
                     <span className="font-medium">{user.role}</span>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link href="/cpanel" className="flex items-center">
-                      <Settings className="w-4 h-4 mr-2" />
-                      Control Panel
-                    </Link>
-                  </DropdownMenuItem>
+                  {(user.role === 'manager' || user.role === 'admin') && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/cpanel" className="flex items-center">
+                        <Settings className="w-4 h-4 mr-2" />
+                        Control Panel
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="w-4 h-4 mr-2" />
                     Đăng xuất
@@ -227,16 +229,18 @@ export function Header() {
                             <br />
                             <span className="text-muted-foreground">({user.role})</span>
                           </div>
-                          <Link href="/cpanel" className="block">
-                            <Button 
-                              variant="outline" 
-                              className="w-full text-base" 
-                              onClick={() => setIsOpen(false)}
-                            >
-                              <Settings className="w-4 h-4 mr-2" />
-                              Control Panel
-                            </Button>
-                          </Link>
+                          {(user.role === 'manager' || user.role === 'admin') && (
+                            <Link href="/cpanel" className="block">
+                              <Button 
+                                variant="outline" 
+                                className="w-full text-base" 
+                                onClick={() => setIsOpen(false)}
+                              >
+                                <Settings className="w-4 h-4 mr-2" />
+                                Control Panel
+                              </Button>
+                            </Link>
+                          )}
                           <Button 
                             variant="outline" 
                             className="w-full text-base" 

@@ -53,6 +53,18 @@ export function CpanelPage() {
     
     try {
       const parsedUser = JSON.parse(userData);
+      
+      // Check if user has permission to access Control Panel
+      if (parsedUser.role === 'user') {
+        toast({
+          title: "Không có quyền truy cập",
+          description: "Chỉ Manager và Admin mới có thể truy cập Control Panel.",
+          variant: "destructive",
+        });
+        setLocation("/");
+        return;
+      }
+      
       setUser(parsedUser);
       
       // Check URL parameters for tab
