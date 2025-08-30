@@ -425,10 +425,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         questions.find(q => q.id === questionId)
       ).filter(Boolean);
 
-      const questionsWithAnswers = orderedQuestions.map(question => ({
-        question,
-        userAnswer: (attempt.userAnswers as Record<string, string>)[question.id],
-      }));
+      const questionsWithAnswers = orderedQuestions.map(question => {
+        if (!question) return null;
+        return {
+          question,
+          userAnswer: (attempt.userAnswers as Record<string, string>)[question.id],
+        };
+      }).filter(Boolean);
 
       res.json(questionsWithAnswers);
     } catch (error) {
@@ -1390,6 +1393,204 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error serving UI image:", error);
       res.status(500).json({ error: "Failed to serve UI image" });
+    }
+  });
+
+  // Audio upload endpoint
+  app.post("/api/audio/upload", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { fileName, fileType, fileSize } = req.body;
+      
+      if (!fileName || !fileType || !fileSize) {
+        return res.status(400).json({ message: "File name, type, and size are required" });
+      }
+
+      // Validate audio file type
+      if (!fileType.startsWith('audio/')) {
+        return res.status(400).json({ message: "Only audio files are allowed" });
+      }
+
+      // Validate file size (max 10MB)
+      if (fileSize > 10 * 1024 * 1024) {
+        return res.status(400).json({ message: "File size cannot exceed 10MB" });
+      }
+
+      try {
+        // Generate upload URL using R2 storage
+        const timestamp = Date.now();
+        const fileExtension = fileName.split('.').pop() || 'mp3';
+        const objectKey = `audio/${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+        
+        const uploadUrl = await multiR2Storage.getUploadUrl("primary", objectKey);
+        const audioUrl = `/audio/${objectKey.replace('audio/', '')}`;
+
+        res.json({
+          uploadUrl,
+          audioUrl
+        });
+      } catch (error) {
+        console.error("Error generating audio upload URL:", error);
+        res.status(500).json({ message: "Failed to generate upload URL" });
+      }
+    } catch (error) {
+      console.error("Error handling audio upload:", error);
+      res.status(500).json({ message: "Failed to process audio upload request" });
+    }
+  });
+
+  // Audio download endpoint
+  app.get("/audio/:filename", async (req, res) => {
+    try {
+      const { filename } = req.params;
+      const objectKey = `audio/${filename}`;
+      
+      const downloadUrl = await multiR2Storage.getDownloadUrl("primary", objectKey);
+      
+      if (!downloadUrl) {
+        return res.status(404).json({ message: "Audio file not found" });
+      }
+
+      // Proxy the audio file
+      const audioResponse = await fetch(downloadUrl);
+      if (!audioResponse.ok) {
+        return res.status(404).json({ message: "Audio file not found" });
+      }
+
+      const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
+      const contentLength = audioResponse.headers.get('content-length');
+      
+      res.set({
+        'Content-Type': contentType,
+        'Content-Length': contentLength || '',
+        'Cache-Control': 'public, max-age=31536000', // 1 year cache
+      });
+
+      audioResponse.body?.pipe(res);
+    } catch (error) {
+      console.error("Error serving audio file:", error);
+      res.status(500).json({ message: "Failed to serve audio file" });
+    }
+  });
+
+  // Create exam endpoint
+  app.post("/api/exams", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { title, description, isDemo, timeLimit, questions } = req.body;
+
+      if (!title || !timeLimit || !questions || questions.length === 0) {
+        return res.status(400).json({ 
+          message: "Title, time limit, and at least one question are required" 
+        });
+      }
+
+      // Create the exam
+      const exam = await storage.createExam({
+        title,
+        description: description || null,
+        isDemo: isDemo || false,
+        timeLimit,
+        questionCount: questions.length,
+        isActive: true,
+        createdBy: sessionUser.id,
+      });
+
+      // Create questions for the exam
+      const createdQuestions = [];
+      for (let i = 0; i < questions.length; i++) {
+        const questionData = questions[i];
+        const question = await storage.createQuestion({
+          examId: exam.id,
+          questionText: questionData.questionText,
+          questionType: questionData.questionType || "multiple_choice",
+          imageUrl: questionData.imageUrl || null,
+          audioUrl: questionData.audioUrl || null,
+          options: questionData.options,
+          correctAnswer: questionData.correctAnswer,
+          explanation: questionData.explanation || null,
+          sortOrder: i,
+        });
+        createdQuestions.push(question);
+      }
+
+      res.json({
+        exam,
+        questions: createdQuestions,
+        message: "Exam created successfully"
+      });
+    } catch (error) {
+      console.error("Error creating exam:", error);
+      res.status(500).json({ message: "Failed to create exam" });
+    }
+  });
+
+  // Update exam endpoint
+  app.put("/api/exams/:id", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+      const { title, description, isDemo, timeLimit, isActive } = req.body;
+
+      if (!title || !timeLimit) {
+        return res.status(400).json({ 
+          message: "Title and time limit are required" 
+        });
+      }
+
+      const updatedExam = await storage.updateExam(id, {
+        title,
+        description: description || null,
+        isDemo: isDemo || false,
+        timeLimit,
+        isActive: isActive !== undefined ? isActive : true,
+      });
+
+      if (!updatedExam) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+
+      res.json({
+        exam: updatedExam,
+        message: "Exam updated successfully"
+      });
+    } catch (error) {
+      console.error("Error updating exam:", error);
+      res.status(500).json({ message: "Failed to update exam" });
+    }
+  });
+
+  // Delete exam endpoint
+  app.delete("/api/exams/:id", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+      const success = await storage.deleteExam(id);
+
+      if (!success) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+
+      res.json({ message: "Exam deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting exam:", error);
+      res.status(500).json({ message: "Failed to delete exam" });
     }
   });
 

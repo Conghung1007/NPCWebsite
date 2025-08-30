@@ -358,6 +358,14 @@ export function CpanelPage() {
                 <FileText className="w-5 h-5" />
                 Quản lý bài viết
               </Button>
+              <Button 
+                variant={activeTab === "exams" ? "default" : "ghost"}
+                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
+                onClick={() => setActiveTab("exams")}
+              >
+                <FileText className="w-5 h-5" />
+                Quản lý bài thi
+              </Button>
               {canManageUsers && (
                 <>
                   <Button 
@@ -751,6 +759,41 @@ export function CpanelPage() {
                         </TableBody>
                       </Table>
                     )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Exams Content - Available for all users */}
+            {activeTab === "exams" && (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <CardTitle className="flex items-center gap-2">
+                          <FileText className="w-5 h-5" />
+                          Quản lý bài thi
+                        </CardTitle>
+                        <CardDescription>
+                          Tạo và quản lý các bài thi trực tuyến
+                        </CardDescription>
+                      </div>
+                      <Button 
+                        onClick={() => setLocation("/create-exam")}
+                        className="flex items-center gap-2"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Tạo bài thi mới
+                      </Button>
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-center py-8 text-gray-500">
+                      <FileText className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                      <p className="text-lg font-medium mb-2">Sắp có tính năng quản lý bài thi</p>
+                      <p className="text-sm">Hiện tại bạn có thể tạo bài thi mới bằng cách nhấn nút "Tạo bài thi mới" ở trên</p>
+                    </div>
                   </CardContent>
                 </Card>
               </div>

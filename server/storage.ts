@@ -688,6 +688,131 @@ export class MemStorage implements IStorage {
     );
     return !!(existingUser || existingRequest);
   }
+
+  // Exam system methods
+  async createExam(insertExam: InsertExam): Promise<Exam> {
+    const id = randomUUID();
+    const exam: Exam = {
+      ...insertExam,
+      id,
+      createdAt: new Date(),
+    };
+    this.exams.set(id, exam);
+    return exam;
+  }
+
+  async getExam(id: string): Promise<Exam | undefined> {
+    return this.exams.get(id);
+  }
+
+  async getAllExams(): Promise<Exam[]> {
+    return Array.from(this.exams.values()).sort(
+      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
+    );
+  }
+
+  async getActiveExams(): Promise<Exam[]> {
+    return Array.from(this.exams.values()).filter(exam => exam.isActive);
+  }
+
+  async updateExam(id: string, updateData: Partial<InsertExam>): Promise<Exam | null> {
+    const existingExam = this.exams.get(id);
+    if (!existingExam) {
+      return null;
+    }
+
+    const updatedExam: Exam = {
+      ...existingExam,
+      ...updateData,
+      id,
+      createdAt: existingExam.createdAt,
+    };
+
+    this.exams.set(id, updatedExam);
+    return updatedExam;
+  }
+
+  async deleteExam(id: string): Promise<boolean> {
+    // Also delete related questions
+    const examQuestions = Array.from(this.questions.values()).filter(q => q.examId === id);
+    examQuestions.forEach(question => this.questions.delete(question.id));
+    
+    return this.exams.delete(id);
+  }
+
+  async createQuestion(insertQuestion: InsertQuestion): Promise<Question> {
+    const id = randomUUID();
+    const question: Question = {
+      ...insertQuestion,
+      id,
+      createdAt: new Date(),
+    };
+    this.questions.set(id, question);
+    return question;
+  }
+
+  async getQuestion(id: string): Promise<Question | undefined> {
+    return this.questions.get(id);
+  }
+
+  async getQuestionsByExamId(examId: string): Promise<Question[]> {
+    return Array.from(this.questions.values()).filter(
+      question => question.examId === examId
+    ).sort((a, b) => a.sortOrder - b.sortOrder);
+  }
+
+  async updateQuestion(id: string, updateData: Partial<InsertQuestion>): Promise<Question | null> {
+    const existingQuestion = this.questions.get(id);
+    if (!existingQuestion) {
+      return null;
+    }
+
+    const updatedQuestion: Question = {
+      ...existingQuestion,
+      ...updateData,
+      id,
+      createdAt: existingQuestion.createdAt,
+    };
+
+    this.questions.set(id, updatedQuestion);
+    return updatedQuestion;
+  }
+
+  async deleteQuestion(id: string): Promise<boolean> {
+    return this.questions.delete(id);
+  }
+
+  async createExamAttempt(insertAttempt: InsertExamAttempt): Promise<ExamAttempt> {
+    const id = randomUUID();
+    const attempt: ExamAttempt = {
+      ...insertAttempt,
+      id,
+      completedAt: new Date(),
+    };
+    this.examAttempts.set(id, attempt);
+    return attempt;
+  }
+
+  async getExamAttempt(id: string): Promise<ExamAttempt | undefined> {
+    return this.examAttempts.get(id);
+  }
+
+  async getExamAttemptsByUserId(userId: string): Promise<ExamAttempt[]> {
+    return Array.from(this.examAttempts.values()).filter(
+      attempt => attempt.userId === userId
+    ).sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime());
+  }
+
+  async getExamAttemptsByExamId(examId: string): Promise<ExamAttempt[]> {
+    return Array.from(this.examAttempts.values()).filter(
+      attempt => attempt.examId === examId
+    ).sort((a, b) => b.completedAt.getTime() - a.completedAt.getTime());
+  }
+
+  seedExams() {
+    // This method will be implemented by seedExamData.ts
+    console.log("seedExams called from MemStorage - exam seeding handled externally");
+  }
 }
 
 // Database Storage Implementation
