@@ -3,12 +3,16 @@ import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Pagination } from "@/components/ui/pagination";
 import { useQuery } from "@tanstack/react-query";
 import { Clock, Users, BookOpen, Award, Play, Lock } from "lucide-react";
 import { type Exam, type User } from "@shared/schema";
 
 export function OnlineExamPage() {
   const [user, setUser] = useState<User | null>(null);
+  const [demoCurrentPage, setDemoCurrentPage] = useState(1);
+  const [officialCurrentPage, setOfficialCurrentPage] = useState(1);
+  const examsPerPage = 6;
 
   // Check for logged in user
   useEffect(() => {
@@ -31,8 +35,31 @@ export function OnlineExamPage() {
   });
 
   // Separate demo and official exams
-  const demoExams = exams.filter(exam => exam.isDemo && exam.isActive);
-  const officialExams = exams.filter(exam => !exam.isDemo && exam.isActive);
+  const allDemoExams = exams.filter(exam => exam.isDemo && exam.isActive);
+  const allOfficialExams = exams.filter(exam => !exam.isDemo && exam.isActive);
+
+  // Calculate pagination for demo exams
+  const demoTotalPages = Math.ceil(allDemoExams.length / examsPerPage);
+  const demoStartIndex = (demoCurrentPage - 1) * examsPerPage;
+  const demoEndIndex = demoStartIndex + examsPerPage;
+  const demoExams = allDemoExams.slice(demoStartIndex, demoEndIndex);
+
+  // Calculate pagination for official exams
+  const officialTotalPages = Math.ceil(allOfficialExams.length / examsPerPage);
+  const officialStartIndex = (officialCurrentPage - 1) * examsPerPage;
+  const officialEndIndex = officialStartIndex + examsPerPage;
+  const officialExams = allOfficialExams.slice(officialStartIndex, officialEndIndex);
+
+  // Pagination handlers
+  const handleDemoPageChange = (page: number) => {
+    setDemoCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleOfficialPageChange = (page: number) => {
+    setOfficialCurrentPage(page);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   if (isLoading) {
     return (
@@ -73,14 +100,14 @@ export function OnlineExamPage() {
           <Card className="text-center">
             <CardContent className="pt-6">
               <Play className="w-8 h-8 text-green-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900">{demoExams.length}</div>
+              <div className="text-2xl font-bold text-gray-900">{allDemoExams.length}</div>
               <p className="text-sm text-gray-600">Đề demo miễn phí</p>
             </CardContent>
           </Card>
           <Card className="text-center">
             <CardContent className="pt-6">
               <Award className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-              <div className="text-2xl font-bold text-gray-900">{officialExams.length}</div>
+              <div className="text-2xl font-bold text-gray-900">{allOfficialExams.length}</div>
               <p className="text-sm text-gray-600">Đề chính thức</p>
             </CardContent>
           </Card>
@@ -144,6 +171,21 @@ export function OnlineExamPage() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+
+          {/* Demo Pagination */}
+          {allDemoExams.length > 0 && (
+            <div className="mt-8">
+              <div className="mb-4 text-center text-sm text-muted-foreground">
+                Hiển thị {demoStartIndex + 1}-{Math.min(demoEndIndex, allDemoExams.length)} trong tổng số {allDemoExams.length} đề demo
+              </div>
+              <Pagination
+                currentPage={demoCurrentPage}
+                totalPages={Math.max(demoTotalPages, 1)}
+                onPageChange={handleDemoPageChange}
+                className="justify-center"
+              />
             </div>
           )}
         </div>
@@ -234,6 +276,21 @@ export function OnlineExamPage() {
                   </CardContent>
                 </Card>
               ))}
+            </div>
+          )}
+
+          {/* Official Pagination */}
+          {allOfficialExams.length > 0 && (
+            <div className="mt-8">
+              <div className="mb-4 text-center text-sm text-muted-foreground">
+                Hiển thị {officialStartIndex + 1}-{Math.min(officialEndIndex, allOfficialExams.length)} trong tổng số {allOfficialExams.length} đề chính thức
+              </div>
+              <Pagination
+                currentPage={officialCurrentPage}
+                totalPages={Math.max(officialTotalPages, 1)}
+                onPageChange={handleOfficialPageChange}
+                className="justify-center"
+              />
             </div>
           )}
         </div>
