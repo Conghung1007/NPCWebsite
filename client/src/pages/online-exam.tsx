@@ -58,7 +58,6 @@ export function OnlineExamPage() {
 
   const handleOfficialPageChange = (page: number) => {
     setOfficialCurrentPage(page);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   if (isLoading) {
