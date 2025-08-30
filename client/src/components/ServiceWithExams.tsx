@@ -100,202 +100,184 @@ export function ServiceWithExams({
   };
 
   return (
-    <div className="group">
-      <div className="grid lg:grid-cols-2 gap-12 items-center">
-        {/* Service Description */}
-        <div className="order-2 lg:order-1">
-          <div className="flex items-center mb-4">
-            <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center mr-4">
+    <div className="flex flex-col lg:flex-row items-start gap-8">
+      {/* Service Info */}
+      <div className="flex-1 lg:max-w-md">
+        <div className="relative bg-white rounded-xl p-8 shadow-lg h-[400px] flex flex-col justify-between overflow-hidden">
+          {/* Background Image */}
+          {service.backgroundImage && (
+            <div className="absolute inset-0 opacity-5">
+              <img 
+                src={service.backgroundImage} 
+                alt={`${service.title} background`}
+                className="w-full h-full object-cover"
+              />
+            </div>
+          )}
+
+          {/* Image Manager Button */}
+          {allowImageEdit && (
+            <div className="absolute top-4 right-4 z-10">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setShowImageManager(true)}
+                className="bg-white/80 hover:bg-white/90 text-gray-700"
+              >
+                <Edit className="w-4 h-4 mr-2" />
+                Cập nhật ảnh
+              </Button>
+              <ImageManager
+                isOpen={showImageManager}
+                onClose={() => setShowImageManager(false)}
+                onImageUpdate={(newImageUrl) => onServiceImageUpdate?.(newImageUrl)}
+                imageType="online-exam"
+                altText={`${service.title} background image`}
+              />
+            </div>
+          )}
+
+          <div className="relative z-10">
+            <div className="w-16 h-16 bg-primary/10 rounded-xl flex items-center justify-center mb-6">
               {service.icon}
             </div>
-            <h3 className="text-3xl md:text-4xl font-bold text-foreground">
-              {service.title}
-            </h3>
+            <h3 className="text-3xl font-bold text-foreground mb-4">{service.title}</h3>
+            <p className="text-lg text-muted-foreground mb-6">{service.description}</p>
           </div>
-          
-          <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
-            {service.description}
-          </p>
-
-          <Button 
-            onClick={onServiceClick}
-            size="lg"
-            className="text-lg px-8 py-4 h-auto group/btn"
-            data-testid="button-service-exam"
-          >
+          <Button onClick={onServiceClick} className="relative z-10 w-full mt-auto">
             Xem tất cả đề thi
-            <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover/btn:translate-x-1" />
+            <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
-        </div>
-
-        {/* Service Image */}
-        <div 
-          className="order-1 lg:order-2 relative rounded-xl overflow-hidden bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-950 dark:to-indigo-900"
-          style={{
-            backgroundImage: service.backgroundImage ? `url(${service.backgroundImage})` : undefined,
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-            height: '400px'
-          }}
-        >
-          <div className="absolute inset-0 bg-black/20"></div>
-          {allowImageEdit && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowImageManager(true)}
-              className="absolute top-4 right-4 bg-white/80 hover:bg-white/90 text-gray-700 z-10"
-            >
-              <Edit className="w-4 h-4 mr-2" />
-              Cập nhật ảnh
-            </Button>
-          )}
-          
-          <ImageManager
-            isOpen={showImageManager}
-            onClose={() => setShowImageManager(false)}
-            onImageUpdate={onServiceImageUpdate || (() => {})}
-            imageType="online-exam"
-            altText="Online exam service image"
-          />
         </div>
       </div>
 
-      {/* Exams Section */}
-      {!isLoading && featuredExams.length > 0 && (
-        <div className="mt-16">
-          <div className="flex justify-between items-center mb-8">
-            <h4 className="text-2xl font-semibold text-foreground">
-              Đề thi nổi bật
-            </h4>
-            
-            {featuredExams.length > examsPerView && (
-              <div className="flex space-x-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={prevSlide}
-                  className="h-10 w-10"
-                  data-testid="button-prev-exam"
-                >
-                  <ChevronLeft className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={nextSlide}
-                  className="h-10 w-10"
-                  data-testid="button-next-exam"
-                >
-                  <ChevronRight className="h-4 w-4" />
-                </Button>
+      {/* Related Exams */}
+      <div className="flex-1">
+        {isLoading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="w-full">
+                <div className="w-full bg-white border border-gray-200 rounded-lg shadow-sm animate-pulse">
+                  <div className="h-48 bg-gray-200 rounded-t-lg"></div>
+                  <div className="p-6">
+                    <div className="h-4 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-6 bg-gray-200 rounded mb-2"></div>
+                    <div className="h-4 bg-gray-200 rounded w-3/4"></div>
+                  </div>
+                </div>
               </div>
-            )}
+            ))}
           </div>
-
-          <div 
-            className="relative overflow-hidden"
+        ) : featuredExams.length > 0 ? (
+          <div
+            className="relative"
             onMouseEnter={() => setIsHovered(true)}
             onMouseLeave={() => setIsHovered(false)}
           >
-            <div 
-              ref={scrollContainerRef}
-              className="flex transition-transform duration-500 ease-in-out gap-6"
-              style={{ 
-                transform: `translateX(-${currentIndex * (100 / examsPerView)}%)`,
-                width: `${(featuredExams.length / examsPerView) * 100}%`
-              }}
-            >
-              {featuredExams.map((exam) => (
-                <div 
-                  key={exam.id} 
-                  className="flex-shrink-0"
-                  style={{ width: `${100 / featuredExams.length}%` }}
+            {/* Navigation buttons - only show if more than 3 exams */}
+            {featuredExams.length > 3 && (
+              <>
+                <button
+                  onClick={prevSlide}
+                  disabled={currentIndex === 0}
+                  className="absolute -left-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  <Card className="h-full hover:shadow-lg transition-all duration-300 border-border/50 hover:border-primary/30">
-                    <CardContent className="p-6">
-                      <div className="flex items-start justify-between mb-4">
-                        <div className="flex items-center">
-                          <BookOpen className="h-5 w-5 text-primary mr-2" />
-                          <Badge className={`${exam.isDemo ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' : 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'}`}>
-                            {exam.isDemo ? 'Demo' : 'Chính thức'}
+                  <ChevronLeft className="h-5 w-5 text-gray-600" />
+                </button>
+                <button
+                  onClick={nextSlide}
+                  disabled={currentIndex >= featuredExams.length - 3}
+                  className="absolute -right-4 top-1/2 -translate-y-1/2 z-10 w-10 h-10 bg-white rounded-full shadow-lg border border-gray-200 flex items-center justify-center hover:shadow-xl transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <ChevronRight className="h-5 w-5 text-gray-600" />
+                </button>
+              </>
+            )}
+
+            {/* Grid layout with sliding window */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {featuredExams.slice(currentIndex, currentIndex + 3).map((exam) => (
+                <div key={exam.id} className="w-full h-full flex">
+                  <Link href={`/exam/${exam.id}`} className="w-full h-full">
+                    <div className="w-full h-full bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer flex flex-col">
+                      {/* Exam header */}
+                      <div className="h-48 bg-gradient-to-br from-blue-100 to-blue-200 rounded-t-lg flex items-center justify-center flex-shrink-0 relative">
+                        <div className="text-center">
+                          <BookOpen className="h-12 w-12 text-blue-600 mx-auto mb-2" />
+                          <Badge className={`${exam.isDemo ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
+                            {exam.isDemo ? 'Đề thi demo' : 'Đề thi chính thức'}
                           </Badge>
                         </div>
                       </div>
                       
-                      <h5 className="text-lg font-semibold text-foreground mb-3 line-clamp-2">
-                        {exam.title}
-                      </h5>
-                      
-                      <p className="text-muted-foreground text-sm mb-4 line-clamp-3">
-                        {exam.description}
-                      </p>
+                      <div className="p-6 flex flex-col flex-grow">
+                        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2">
+                          {exam.title}
+                        </h3>
+                        
+                        <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-grow">
+                          {exam.description}
+                        </p>
 
-                      <div className="flex items-center justify-between text-sm text-muted-foreground mb-4">
-                        <div className="flex items-center">
-                          <Timer className="h-4 w-4 mr-1" />
-                          <span>{formatTime(exam.timeLimit)}</span>
+                        <div className="mb-4 space-y-2">
+                          <div className="flex items-center text-gray-500 text-sm">
+                            <Timer className="w-4 h-4 mr-2" />
+                            <span>Thời gian: {formatTime(exam.timeLimit)}</span>
+                          </div>
+                          <div className="flex items-center text-gray-500 text-sm">
+                            <Users className="w-4 h-4 mr-2" />
+                            <span>Số câu hỏi: {exam.questionCount}</span>
+                          </div>
                         </div>
-                        <div className="flex items-center">
-                          <Users className="h-4 w-4 mr-1" />
-                          <span>{exam.questionCount} câu</span>
+                        
+                        <div className="flex items-center justify-between mt-auto">
+                          <div className="flex items-center text-gray-500 text-xs">
+                            <Clock className="w-4 h-4 mr-1" />
+                            {new Date(exam.createdAt.toString()).toLocaleDateString("vi-VN")}
+                          </div>
+                          
+                          <span className="text-blue-600 hover:text-blue-700 text-sm font-medium">
+                            {exam.isDemo ? 'Thi thử →' : 'Bắt đầu →'}
+                          </span>
                         </div>
                       </div>
-                      
-                      <Link href={`/exam/${exam.id}`} className="block">
-                        <Button 
-                          variant="outline" 
-                          className="w-full group/exam-btn"
-                          data-testid={`button-exam-${exam.id}`}
-                        >
-                          {exam.isDemo ? 'Thi thử ngay' : 'Bắt đầu thi'}
-                          <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover/exam-btn:translate-x-1" />
-                        </Button>
-                      </Link>
-                    </CardContent>
-                  </Card>
+                    </div>
+                  </Link>
                 </div>
               ))}
             </div>
-          </div>
 
-          {/* Pagination dots */}
-          {featuredExams.length > examsPerView && (
-            <div className="flex justify-center mt-6 space-x-2">
-              {Array.from({ length: maxIndex + 1 }).map((_, index) => (
-                <button
-                  key={index}
-                  onClick={() => setCurrentIndex(index)}
-                  className={`w-2 h-2 rounded-full transition-colors ${
-                    index === currentIndex ? 'bg-primary' : 'bg-muted-foreground/30'
-                  }`}
-                  data-testid={`dot-${index}`}
-                />
-              ))}
+            {/* Dots indicator - only show if more than 3 exams */}
+            {featuredExams.length > 3 && (
+              <div className="flex justify-center space-x-2 mt-6">
+                {Array.from({ length: Math.max(1, featuredExams.length - 2) }).map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setCurrentIndex(index)}
+                    className={`w-2 h-2 rounded-full transition-colors duration-200 ${
+                      index === currentIndex ? 'bg-primary' : 'bg-gray-300'
+                    }`}
+                  />
+                ))}
+              </div>
+            )}
+            
+            {/* View more exams link */}
+            <div className="pt-6 text-center">
+              <Link href={service.route}>
+                <button className="inline-flex items-center text-primary font-medium hover:text-primary/80 transition-colors">
+                  <span>Xem thêm đề thi trực tuyến</span>
+                  <ArrowRight className="w-4 h-4 ml-1" />
+                </button>
+              </Link>
             </div>
-          )}
-        </div>
-      )}
-
-      {isLoading && (
-        <div className="mt-16">
-          <h4 className="text-2xl font-semibold text-foreground mb-8">
-            Đề thi nổi bật
-          </h4>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-6">
-                  <div className="h-4 bg-muted rounded mb-4"></div>
-                  <div className="h-6 bg-muted rounded mb-3"></div>
-                  <div className="h-16 bg-muted rounded mb-4"></div>
-                  <div className="h-8 bg-muted rounded"></div>
-                </CardContent>
-              </Card>
-            ))}
           </div>
-        </div>
-      )}
+        ) : (
+          <div className="text-center py-8 text-gray-500">
+            <p>Chưa có đề thi nào</p>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
