@@ -160,14 +160,7 @@ export default function Login() {
             </p>
           </div>
           
-          {/* Demo accounts info */}
-          <div className="mt-6 p-4 bg-neutral rounded-lg">
-            <h4 className="text-sm font-medium text-foreground mb-2">Tài khoản demo:</h4>
-            <div className="text-xs text-muted-foreground space-y-1">
-              <p>• Manager: manager1 / 123456</p>
-              <p>• Admin: admin1 / 123456</p>
-            </div>
-          </div>
+
         </CardContent>
       </Card>
     </div>
