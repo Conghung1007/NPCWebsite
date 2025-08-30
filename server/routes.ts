@@ -18,26 +18,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth endpoint - returns current user information
   app.get("/api/auth/user", async (req, res) => {
     try {
-      // Check if user is authenticated (in real app, check session/JWT)
-      // For demo purposes, simulate no authentication by default
-      const isAuthenticated = false; // Set to true to test with manager permissions
+      // Check if user is authenticated via session
+      const sessionUser = (req.session as any)?.user;
       
-      if (!isAuthenticated) {
+      if (!sessionUser) {
         return res.status(401).json({ message: "Unauthorized" });
       }
       
-      // Mock authenticated user
-      const mockUser = {
-        id: "mock-user-id",
-        username: "manager",
-        role: "manager", // Change to "user", "manager", or "admin" to test different permissions
-        createdAt: new Date()
-      };
-      res.json(mockUser);
+      // Return user without password
+      const { password: _, ...userWithoutPassword } = sessionUser;
+      res.json(userWithoutPassword);
     } catch (error) {
       console.error("Error fetching current user:", error);
       res.status(401).json({ message: "Unauthorized" });
     }
+  });
+
+  // Logout endpoint
+  app.post("/api/auth/logout", (req, res) => {
+    (req.session as any).user = null;
+    req.session.destroy((err) => {
+      if (err) {
+        return res.status(500).json({ success: false, message: "Có lỗi xảy ra khi đăng xuất" });
+      }
+      res.json({ success: true, message: "Đăng xuất thành công" });
+    });
   });
 
   // Users endpoint - for managers and admins
@@ -131,6 +136,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const user = await storage.authenticateUser(username, password);
       
       if (user) {
+        // Store user in session
+        (req.session as any).user = user;
+        
         // Don't send password back to client
         const { password: _, ...userWithoutPassword } = user;
         res.json({
