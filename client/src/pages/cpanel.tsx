@@ -74,6 +74,8 @@ export function CpanelPage() {
       
       if (tabParam === 'articles') {
         setActiveTab("articles");
+      } else if (tabParam === 'exams') {
+        setActiveTab("exams");
       } else {
         // Set default active tab to messages for all users
         setActiveTab("messages");

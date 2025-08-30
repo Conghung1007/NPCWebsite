@@ -12,22 +12,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Edit, Trash2, FileText, Clock, Users, Eye } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, Clock, Users } from "lucide-react";
 import type { Exam } from "@shared/schema";
 
 export function ExamManager() {
   const [, setLocation] = useLocation();
-  const [editingExam, setEditingExam] = useState<Exam | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; exam: Exam | null }>({
     isOpen: false,
     exam: null
-  });
-  const [formData, setFormData] = useState({
-    title: "",
-    description: "",
-    timeLimit: 30,
-    isDemo: false,
-    isActive: true
   });
   
   const { toast } = useToast();
@@ -38,27 +30,7 @@ export function ExamManager() {
     queryKey: ["/api/exams"],
   });
 
-  // Update exam mutation
-  const updateExamMutation = useMutation({
-    mutationFn: async ({ id, data }: { id: string; data: any }) => {
-      return await apiRequest(`/api/exams/${id}`, "PUT", data);
-    },
-    onSuccess: () => {
-      toast({
-        title: "Thành công",
-        description: "Cập nhật bài thi thành công",
-      });
-      setEditingExam(null);
-      refetchExams();
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể cập nhật bài thi",
-        variant: "destructive",
-      });
-    },
-  });
+
 
   // Delete exam mutation
   const deleteExamMutation = useMutation({
@@ -82,34 +54,7 @@ export function ExamManager() {
     },
   });
 
-  const handleEditExam = (exam: Exam) => {
-    setEditingExam(exam);
-    setFormData({
-      title: exam.title,
-      description: exam.description || "",
-      timeLimit: exam.timeLimit,
-      isDemo: exam.isDemo || false,
-      isActive: exam.isActive !== false
-    });
-  };
 
-  const handleSaveExam = async () => {
-    if (!formData.title || !formData.timeLimit) {
-      toast({
-        title: "Lỗi",
-        description: "Vui lòng điền đầy đủ thông tin bắt buộc",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    if (!editingExam) return;
-
-    updateExamMutation.mutate({
-      id: editingExam.id,
-      data: formData
-    });
-  };
 
   const handleDeleteExam = (exam: Exam) => {
     setDeleteConfirm({ isOpen: true, exam });
@@ -219,16 +164,7 @@ export function ExamManager() {
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => setLocation(`/exam/${exam.id}`)}
-                          className="text-blue-600 hover:text-blue-700"
-                          data-testid={`button-view-${exam.id}`}
-                        >
-                          <Eye className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEditExam(exam)}
+                          onClick={() => setLocation(`/edit-exam/${exam.id}`)}
                           data-testid={`button-edit-${exam.id}`}
                         >
                           <Edit className="w-4 h-4" />
@@ -252,86 +188,7 @@ export function ExamManager() {
         </CardContent>
       </Card>
 
-      {/* Edit Exam Dialog */}
-      <Dialog open={!!editingExam} onOpenChange={(open) => !open && setEditingExam(null)}>
-        <DialogContent className="sm:max-w-[500px]">
-          <DialogHeader>
-            <DialogTitle>Chỉnh sửa bài thi</DialogTitle>
-            <DialogDescription>
-              Cập nhật thông tin bài thi
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label htmlFor="title">Tiêu đề *</Label>
-              <Input
-                id="title"
-                value={formData.title}
-                onChange={(e) => setFormData(prev => ({ ...prev, title: e.target.value }))}
-                placeholder="Nhập tiêu đề bài thi"
-                data-testid="input-edit-title"
-              />
-            </div>
-            <div>
-              <Label htmlFor="description">Mô tả</Label>
-              <Textarea
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
-                placeholder="Nhập mô tả bài thi (tùy chọn)"
-                rows={3}
-                data-testid="input-edit-description"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="timeLimit">Thời gian (phút) *</Label>
-                <Input
-                  id="timeLimit"
-                  type="number"
-                  min="1"
-                  value={formData.timeLimit}
-                  onChange={(e) => setFormData(prev => ({ ...prev, timeLimit: parseInt(e.target.value) }))}
-                  data-testid="input-edit-time-limit"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Cài đặt</Label>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="isDemo"
-                    checked={formData.isDemo}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isDemo: !!checked }))}
-                    data-testid="checkbox-edit-demo"
-                  />
-                  <Label htmlFor="isDemo" className="text-sm">Bài thi demo</Label>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Checkbox
-                    id="isActive"
-                    checked={formData.isActive}
-                    onCheckedChange={(checked) => setFormData(prev => ({ ...prev, isActive: !!checked }))}
-                    data-testid="checkbox-edit-active"
-                  />
-                  <Label htmlFor="isActive" className="text-sm">Kích hoạt</Label>
-                </div>
-              </div>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditingExam(null)}>
-              Hủy
-            </Button>
-            <Button 
-              onClick={handleSaveExam}
-              disabled={updateExamMutation.isPending}
-              data-testid="button-save-exam"
-            >
-              {updateExamMutation.isPending ? "Đang lưu..." : "Lưu thay đổi"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteConfirm.isOpen} onOpenChange={(open) => !open && cancelDeleteExam()}>
