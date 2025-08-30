@@ -250,17 +250,8 @@ export default function CreateExam() {
           {/* Questions */}
           <Card>
             <CardHeader>
-              <CardTitle className="flex justify-between items-center">
+              <CardTitle>
                 Câu Hỏi ({fields.length})
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={addQuestion}
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Thêm câu hỏi
-                </Button>
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
@@ -429,6 +420,19 @@ export default function CreateExam() {
                   </CardContent>
                 </Card>
               ))}
+              
+              {/* Add Question Button at the bottom */}
+              <div className="mt-6 flex justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={addQuestion}
+                  className="min-w-[200px]"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Thêm câu hỏi
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
