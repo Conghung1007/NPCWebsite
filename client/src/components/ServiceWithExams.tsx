@@ -158,7 +158,7 @@ export function ServiceWithExams({
             {[1, 2, 3].map((i) => (
               <div key={i} className="w-full">
                 <div className="w-full h-[400px] bg-white border border-gray-200 rounded-lg shadow-sm animate-pulse">
-                  <div className="h-40 bg-gray-200 rounded-t-lg"></div>
+                  <div className="h-32 bg-gray-200 rounded-t-lg"></div>
                   <div className="p-5">
                     <div className="h-4 bg-gray-200 rounded mb-2"></div>
                     <div className="h-6 bg-gray-200 rounded mb-2"></div>
@@ -201,32 +201,32 @@ export function ServiceWithExams({
                   <Link href={`/exam/${exam.id}`} className="w-full h-full">
                     <div className="w-full h-[400px] bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer flex flex-col">
                       {/* Exam header */}
-                      <div className="h-40 bg-gradient-to-br from-blue-100 to-blue-200 rounded-t-lg flex items-center justify-center flex-shrink-0 relative">
+                      <div className="h-32 bg-gradient-to-br from-blue-100 to-blue-200 rounded-t-lg flex items-center justify-center flex-shrink-0 relative">
                         <div className="text-center">
-                          <BookOpen className="h-10 w-10 text-blue-600 mx-auto mb-3" />
+                          <BookOpen className="h-8 w-8 text-blue-600 mx-auto mb-2" />
                           <Badge className={`${exam.isDemo ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
                             {exam.isDemo ? 'Đề demo' : 'Chính thức'}
                           </Badge>
                         </div>
                       </div>
                       
-                      <div className="p-5 flex flex-col flex-grow">
+                      <div className="p-5 flex flex-col flex-grow min-h-0">
                         <h3 className="text-lg font-semibold text-gray-900 mb-3 line-clamp-2">
                           {exam.title}
                         </h3>
                         
-                        <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-grow">
+                        <p className="text-gray-600 text-sm mb-4 line-clamp-4 flex-grow">
                           {exam.description}
                         </p>
 
-                        <div className="mb-4 space-y-2">
-                          <div className="flex items-center text-gray-500 text-sm">
-                            <Timer className="w-4 h-4 mr-2" />
-                            <span>Thời gian: {formatTime(exam.timeLimit)}</span>
+                        <div className="mb-3 space-y-1">
+                          <div className="flex items-center text-gray-500 text-xs">
+                            <Timer className="w-3 h-3 mr-1" />
+                            <span>{formatTime(exam.timeLimit)}</span>
                           </div>
-                          <div className="flex items-center text-gray-500 text-sm">
-                            <Users className="w-4 h-4 mr-2" />
-                            <span>Số câu hỏi: {exam.questionCount}</span>
+                          <div className="flex items-center text-gray-500 text-xs">
+                            <Users className="w-3 h-3 mr-1" />
+                            <span>{exam.questionCount} câu</span>
                           </div>
                         </div>
                         
