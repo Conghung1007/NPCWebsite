@@ -131,7 +131,7 @@ export function OnlineExamPage() {
             Thực hành ngay mà không cần đăng nhập. Phù hợp để làm quen với hệ thống và định dạng bài thi.
           </p>
           
-          {demoExams.length === 0 ? (
+          {allDemoExams.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">
                 <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
@@ -229,7 +229,7 @@ export function OnlineExamPage() {
             </Card>
           )}
           
-          {officialExams.length === 0 ? (
+          {allOfficialExams.length === 0 ? (
             <Card>
               <CardContent className="text-center py-12">
                 <Award className="w-12 h-12 text-gray-400 mx-auto mb-4" />
