@@ -11,8 +11,8 @@ import { useQuery } from "@tanstack/react-query";
 import { ArticleManager } from "@/components/ArticleManager";
 
 import { Pagination } from "@/components/ui/pagination";
-import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText, Image } from "lucide-react";
-import { type User as UserType, type ContactRequest } from "@shared/schema";
+import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText, Image, Check, X } from "lucide-react";
+import { type User as UserType, type ContactRequest, type RegistrationRequest } from "@shared/schema";
 
 export function CpanelPage() {
   const [, setLocation] = useLocation();
@@ -81,6 +81,12 @@ export function CpanelPage() {
   const { data: messages = [], isLoading: messagesLoading, refetch: refetchContactRequests } = useQuery<ContactRequest[]>({
     queryKey: ["/api/contact"],
     enabled: !!user,
+  });
+
+  // Fetch registration requests (for managers and admins)
+  const { data: registrationRequests = [], isLoading: registrationsLoading, refetch: refetchRegistrations } = useQuery<RegistrationRequest[]>({
+    queryKey: ["/api/registration-requests"],
+    enabled: !!user && (user.role === "manager" || user.role === "admin"),
   });
 
   const handleEditUser = (userToEdit: UserType) => {
@@ -222,6 +228,61 @@ export function CpanelPage() {
     setDeleteMessageConfirm({ isOpen: false, message: null });
   };
 
+  // Registration handlers
+  const handleApproveRegistration = async (requestId: string) => {
+    try {
+      const response = await fetch(`/api/registration-requests/${requestId}/approve`, {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Thành công",
+          description: "Đã duyệt đăng ký và tạo tài khoản",
+        });
+        refetchRegistrations();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Có lỗi xảy ra");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể duyệt đăng ký",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRejectRegistration = async (requestId: string, reason: string) => {
+    try {
+      const response = await fetch(`/api/registration-requests/${requestId}/reject`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ reason }),
+      });
+
+      if (response.ok) {
+        toast({
+          title: "Thành công",
+          description: "Đã từ chối đăng ký",
+        });
+        refetchRegistrations();
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Có lỗi xảy ra");
+      }
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: error.message || "Không thể từ chối đăng ký",
+        variant: "destructive",
+      });
+    }
+  };
+
   const getServiceName = (service: string) => {
     const serviceNames: Record<string, string> = {
       'visa-services': 'Dịch vụ Visa',
@@ -286,14 +347,24 @@ export function CpanelPage() {
                 Quản lý bài viết
               </Button>
               {canManageUsers && (
-                <Button 
-                  variant={activeTab === "users" ? "default" : "ghost"}
-                  className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                  onClick={() => setActiveTab("users")}
-                >
-                  <Users className="w-5 h-5" />
-                  Quản lý người dùng
-                </Button>
+                <>
+                  <Button 
+                    variant={activeTab === "users" ? "default" : "ghost"}
+                    className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
+                    onClick={() => setActiveTab("users")}
+                  >
+                    <Users className="w-5 h-5" />
+                    Quản lý người dùng
+                  </Button>
+                  <Button 
+                    variant={activeTab === "registrations" ? "default" : "ghost"}
+                    className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
+                    onClick={() => setActiveTab("registrations")}
+                  >
+                    <Shield className="w-5 h-5" />
+                    Duyệt đăng ký
+                  </Button>
+                </>
               )}
             </div>
           </div>
@@ -563,6 +634,110 @@ export function CpanelPage() {
                           />
                         </div>
                       </>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            )}
+
+            {/* Registration Requests Content - For managers and admins */}
+            {canManageUsers && activeTab === "registrations" && (
+              <div className="space-y-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Shield className="w-5 h-5" />
+                      Duyệt đăng ký tài khoản
+                    </CardTitle>
+                    <CardDescription>
+                      Xem và duyệt các yêu cầu đăng ký tài khoản mới
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {registrationsLoading ? (
+                      <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      </div>
+                    ) : registrationRequests.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Không có yêu cầu đăng ký nào
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Tên đăng nhập</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Số điện thoại</TableHead>
+                            <TableHead>Trạng thái</TableHead>
+                            <TableHead>Ngày đăng ký</TableHead>
+                            <TableHead>Thao tác</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {registrationRequests
+                            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                            .map((request) => (
+                            <TableRow key={request.id}>
+                              <TableCell className="font-medium">
+                                {request.username}
+                              </TableCell>
+                              <TableCell>{request.email}</TableCell>
+                              <TableCell>{request.phone}</TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant={
+                                    request.status === "pending" ? "default" :
+                                    request.status === "approved" ? "secondary" : 
+                                    "destructive"
+                                  }
+                                >
+                                  {request.status === "pending" ? "Chờ duyệt" :
+                                   request.status === "approved" ? "Đã duyệt" :
+                                   "Đã từ chối"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {new Date(request.createdAt).toLocaleDateString("vi-VN")}
+                              </TableCell>
+                              <TableCell>
+                                {request.status === "pending" && (
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => handleApproveRegistration(request.id)}
+                                      className="text-green-600 hover:text-green-700"
+                                    >
+                                      <Check className="w-4 h-4" />
+                                      Duyệt
+                                    </Button>
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      onClick={() => {
+                                        const reason = prompt("Lý do từ chối:");
+                                        if (reason) {
+                                          handleRejectRegistration(request.id, reason);
+                                        }
+                                      }}
+                                      className="text-red-600 hover:text-red-700"
+                                    >
+                                      <X className="w-4 h-4" />
+                                      Từ chối
+                                    </Button>
+                                  </div>
+                                )}
+                                {request.status === "rejected" && request.rejectionReason && (
+                                  <div className="text-sm text-red-600">
+                                    Lý do: {request.rejectionReason}
+                                  </div>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
                     )}
                   </CardContent>
                 </Card>

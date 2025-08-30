@@ -166,11 +166,18 @@ export function Header() {
                 </DropdownMenuContent>
               </DropdownMenu>
             ) : (
-              <Link href="/login">
-                <Button variant="outline" className="text-base">
-                  Đăng nhập
-                </Button>
-              </Link>
+              <div className="flex items-center space-x-2">
+                <Link href="/register">
+                  <Button variant="default" className="text-base">
+                    Đăng ký
+                  </Button>
+                </Link>
+                <Link href="/login">
+                  <Button variant="outline" className="text-base">
+                    Đăng nhập
+                  </Button>
+                </Link>
+              </div>
             )}
           </div>
 
@@ -243,11 +250,18 @@ export function Header() {
                           </Button>
                         </div>
                       ) : (
-                        <Link href="/login" className="flex-1">
-                          <Button variant="outline" className="w-full text-base" onClick={() => setIsOpen(false)}>
-                            Đăng nhập
-                          </Button>
-                        </Link>
+                        <div className="flex-1 space-y-2">
+                          <Link href="/register" className="block">
+                            <Button variant="default" className="w-full text-base" onClick={() => setIsOpen(false)}>
+                              Đăng ký
+                            </Button>
+                          </Link>
+                          <Link href="/login" className="block">
+                            <Button variant="outline" className="w-full text-base" onClick={() => setIsOpen(false)}>
+                              Đăng nhập
+                            </Button>
+                          </Link>
+                        </div>
                       )}
                     </div>
                   </div>

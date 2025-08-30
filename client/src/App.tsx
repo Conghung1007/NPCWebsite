@@ -11,6 +11,8 @@ import StudyAbroad from "@/pages/study-abroad";
 import JapaneseTraining from "@/pages/japanese-training";
 import FlightTickets from "@/pages/flight-tickets";
 import Login from "@/pages/login";
+import Register from "@/pages/register";
+import RegisterSuccess from "@/pages/register-success";
 import Contact from "@/pages/contact";
 import ArticleDetail from "@/pages/article-detail";
 import CreateArticle from "@/pages/create-article";
@@ -27,6 +29,8 @@ function Router() {
         <Route path="/japanese-training" component={JapaneseTraining} />
         <Route path="/flight-tickets" component={FlightTickets} />
         <Route path="/login" component={Login} />
+        <Route path="/register" component={Register} />
+        <Route path="/register-success" component={RegisterSuccess} />
         <Route path="/contact" component={Contact} />
         <Route path="/article/:id" component={ArticleDetail} />
         <Route path="/create-article" component={CreateArticle} />

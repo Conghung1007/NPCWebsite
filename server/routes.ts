@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertContactRequestSchema, insertArticleSchema } from "@shared/schema";
+import { insertContactRequestSchema, insertArticleSchema, registrationFormSchema } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { multiR2Storage, type MediaUploadConfig, type FileInfo } from "./multiR2Storage";
@@ -31,6 +31,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching current user:", error);
       res.status(401).json({ message: "Unauthorized" });
+    }
+  });
+
+  // Registration endpoint
+  app.post("/api/auth/register", async (req, res) => {
+    try {
+      // Validate form data
+      const formData = registrationFormSchema.parse(req.body);
+      
+      // Check for duplicates
+      const [usernameExists, emailExists, phoneExists] = await Promise.all([
+        storage.checkUsernameExists(formData.username.toLowerCase()),
+        storage.checkEmailExists(formData.email.toLowerCase()),
+        storage.checkPhoneExists(formData.phone)
+      ]);
+
+      if (usernameExists) {
+        return res.status(409).json({
+          success: false,
+          message: "Tên đăng nhập đã tồn tại"
+        });
+      }
+
+      if (emailExists) {
+        return res.status(409).json({
+          success: false,
+          message: "Email đã được sử dụng"
+        });
+      }
+
+      if (phoneExists) {
+        return res.status(409).json({
+          success: false,
+          message: "Số điện thoại đã được sử dụng"
+        });
+      }
+
+      // Create registration request
+      const registrationRequest = await storage.createRegistrationRequest({
+        username: formData.username.toLowerCase(),
+        email: formData.email.toLowerCase(),
+        phone: formData.phone,
+        password: formData.password, // In real app, hash this password
+      });
+
+      res.json({
+        success: true,
+        message: "Đăng ký thành công! Vui lòng chờ xác nhận từ nhân viên tư vấn trong vòng 48h."
+      });
+
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const firstError = error.errors[0];
+        res.status(400).json({
+          success: false,
+          message: firstError.message
+        });
+      } else {
+        console.error("Registration error:", error);
+        res.status(500).json({
+          success: false,
+          message: "Có lỗi xảy ra, vui lòng thử lại sau"
+        });
+      }
+    }
+  });
+
+  // Check availability endpoints
+  app.post("/api/auth/check-username", async (req, res) => {
+    try {
+      const { username } = req.body;
+      if (!username || username.length < 8 || username.length > 15) {
+        return res.status(400).json({ available: false, message: "Tên đăng nhập phải có từ 8-15 ký tự" });
+      }
+      
+      const exists = await storage.checkUsernameExists(username.toLowerCase());
+      res.json({ 
+        available: !exists, 
+        message: exists ? "Tên đăng nhập đã tồn tại" : "Tên đăng nhập có thể sử dụng"
+      });
+    } catch (error) {
+      res.status(500).json({ available: false, message: "Lỗi kiểm tra tên đăng nhập" });
+    }
+  });
+
+  app.post("/api/auth/check-email", async (req, res) => {
+    try {
+      const { email } = req.body;
+      if (!email) {
+        return res.status(400).json({ available: false, message: "Email không hợp lệ" });
+      }
+      
+      const exists = await storage.checkEmailExists(email.toLowerCase());
+      res.json({ 
+        available: !exists, 
+        message: exists ? "Email đã được sử dụng" : "Email có thể sử dụng"
+      });
+    } catch (error) {
+      res.status(500).json({ available: false, message: "Lỗi kiểm tra email" });
+    }
+  });
+
+  app.post("/api/auth/check-phone", async (req, res) => {
+    try {
+      const { phone } = req.body;
+      if (!phone) {
+        return res.status(400).json({ available: false, message: "Số điện thoại không hợp lệ" });
+      }
+      
+      const exists = await storage.checkPhoneExists(phone);
+      res.json({ 
+        available: !exists, 
+        message: exists ? "Số điện thoại đã được sử dụng" : "Số điện thoại có thể sử dụng"
+      });
+    } catch (error) {
+      res.status(500).json({ available: false, message: "Lỗi kiểm tra số điện thoại" });
     }
   });
 
@@ -118,6 +234,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting user:", error);
       res.status(500).json({ message: "Failed to delete user" });
+    }
+  });
+
+  // Registration requests endpoints
+  app.get("/api/registration-requests", async (req, res) => {
+    try {
+      const registrations = await storage.getAllRegistrationRequests();
+      res.json(registrations);
+    } catch (error) {
+      console.error("Error fetching registration requests:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi lấy danh sách đăng ký" });
+    }
+  });
+
+  app.post("/api/registration-requests/:id/approve", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const sessionUser = (req.session as any)?.user;
+      
+      if (!sessionUser) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      // Get registration request
+      const registrationRequest = await storage.getRegistrationRequest(id);
+      if (!registrationRequest || registrationRequest.status !== 'pending') {
+        return res.status(404).json({ message: "Registration request not found or already processed" });
+      }
+
+      // Create user account
+      const newUser = await storage.createUser({
+        username: registrationRequest.username,
+        email: registrationRequest.email,
+        phone: registrationRequest.phone,
+        password: registrationRequest.password, // In real app, this should be hashed
+        role: "user"
+      });
+
+      // Update registration request status
+      await storage.updateRegistrationRequestStatus(id, 'approved', sessionUser.id);
+
+      res.json({ 
+        success: true, 
+        message: "Đã duyệt đăng ký và tạo tài khoản thành công",
+        user: newUser
+      });
+    } catch (error) {
+      console.error("Error approving registration:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi duyệt đăng ký" });
+    }
+  });
+
+  app.post("/api/registration-requests/:id/reject", async (req, res) => {
+    try {
+      const { id } = req.params;
+      const { reason } = req.body;
+      const sessionUser = (req.session as any)?.user;
+      
+      if (!sessionUser) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const registrationRequest = await storage.getRegistrationRequest(id);
+      if (!registrationRequest || registrationRequest.status !== 'pending') {
+        return res.status(404).json({ message: "Registration request not found or already processed" });
+      }
+
+      await storage.updateRegistrationRequestStatus(id, 'rejected', sessionUser.id, reason);
+
+      res.json({ 
+        success: true, 
+        message: "Đã từ chối đăng ký" 
+      });
+    } catch (error) {
+      console.error("Error rejecting registration:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi từ chối đăng ký" });
     }
   });
 

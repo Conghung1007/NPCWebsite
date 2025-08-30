@@ -1,5 +1,5 @@
-import { type User, type InsertUser, type ContactRequest, type InsertContactRequest, type Article, type InsertArticle, type UiImage, type InsertUiImage } from "@shared/schema";
-import { users, contactRequests, articles, uiImages } from "@shared/schema";
+import { type User, type InsertUser, type ContactRequest, type InsertContactRequest, type Article, type InsertArticle, type UiImage, type InsertUiImage, type RegistrationRequest, type InsertRegistrationRequest } from "@shared/schema";
+import { users, contactRequests, articles, uiImages, registrationRequests } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -34,6 +34,16 @@ export interface IStorage {
   updateUiImageByType(imageType: string, updateData: Partial<InsertUiImage>): Promise<UiImage | null>;
   deleteUiImage(id: string): Promise<boolean>;
   getUiImageByType(imageType: string): Promise<UiImage | undefined>;
+  
+  // Registration request methods
+  createRegistrationRequest(request: InsertRegistrationRequest): Promise<RegistrationRequest>;
+  getAllRegistrationRequests(): Promise<RegistrationRequest[]>;
+  getRegistrationRequest(id: string): Promise<RegistrationRequest | undefined>;
+  updateRegistrationRequestStatus(id: string, status: 'approved' | 'rejected', reviewedBy: string, rejectionReason?: string): Promise<RegistrationRequest | null>;
+  deleteRegistrationRequest(id: string): Promise<boolean>;
+  checkUsernameExists(username: string): Promise<boolean>;
+  checkEmailExists(email: string): Promise<boolean>;
+  checkPhoneExists(phone: string): Promise<boolean>;
 }
 
 export class MemStorage implements IStorage {
@@ -41,12 +51,14 @@ export class MemStorage implements IStorage {
   private contactRequests: Map<string, ContactRequest>;
   private articles: Map<string, Article>;
   private uiImages: Map<string, UiImage>;
+  private registrationRequests: Map<string, RegistrationRequest>;
 
   constructor() {
     this.users = new Map();
     this.contactRequests = new Map();
     this.articles = new Map();
     this.uiImages = new Map();
+    this.registrationRequests = new Map();
     this.seedUsers();
     this.seedArticles();
     console.log(`Seeded ${this.articles.size} articles`);
@@ -571,6 +583,85 @@ export class MemStorage implements IStorage {
       (image) => image.imageType === imageType
     );
   }
+
+  // Registration request methods
+  async createRegistrationRequest(request: InsertRegistrationRequest): Promise<RegistrationRequest> {
+    const id = randomUUID();
+    const registrationRequest: RegistrationRequest = {
+      ...request,
+      id,
+      status: "pending",
+      createdAt: new Date(),
+      reviewedAt: null,
+      reviewedBy: null,
+      rejectionReason: null
+    };
+    this.registrationRequests.set(id, registrationRequest);
+    return registrationRequest;
+  }
+
+  async getAllRegistrationRequests(): Promise<RegistrationRequest[]> {
+    return Array.from(this.registrationRequests.values());
+  }
+
+  async getRegistrationRequest(id: string): Promise<RegistrationRequest | undefined> {
+    return this.registrationRequests.get(id);
+  }
+
+  async updateRegistrationRequestStatus(id: string, status: 'approved' | 'rejected', reviewedBy: string, rejectionReason?: string): Promise<RegistrationRequest | null> {
+    const request = this.registrationRequests.get(id);
+    if (!request) {
+      return null;
+    }
+
+    const updatedRequest: RegistrationRequest = {
+      ...request,
+      status,
+      reviewedAt: new Date(),
+      reviewedBy,
+      rejectionReason: rejectionReason || null
+    };
+
+    this.registrationRequests.set(id, updatedRequest);
+    return updatedRequest;
+  }
+
+  async deleteRegistrationRequest(id: string): Promise<boolean> {
+    return this.registrationRequests.delete(id);
+  }
+
+  async checkUsernameExists(username: string): Promise<boolean> {
+    // Check both existing users and pending registration requests
+    const existingUser = Array.from(this.users.values()).find(user => 
+      user.username.toLowerCase() === username.toLowerCase()
+    );
+    const existingRequest = Array.from(this.registrationRequests.values()).find(request => 
+      request.username.toLowerCase() === username.toLowerCase() && request.status === 'pending'
+    );
+    return !!(existingUser || existingRequest);
+  }
+
+  async checkEmailExists(email: string): Promise<boolean> {
+    // Check both existing users and pending registration requests
+    const existingUser = Array.from(this.users.values()).find(user => 
+      user.email?.toLowerCase() === email.toLowerCase()
+    );
+    const existingRequest = Array.from(this.registrationRequests.values()).find(request => 
+      request.email.toLowerCase() === email.toLowerCase() && request.status === 'pending'
+    );
+    return !!(existingUser || existingRequest);
+  }
+
+  async checkPhoneExists(phone: string): Promise<boolean> {
+    // Check both existing users and pending registration requests
+    const existingUser = Array.from(this.users.values()).find(user => 
+      user.phone === phone
+    );
+    const existingRequest = Array.from(this.registrationRequests.values()).find(request => 
+      request.phone === phone && request.status === 'pending'
+    );
+    return !!(existingUser || existingRequest);
+  }
 }
 
 // Database Storage Implementation
@@ -785,6 +876,81 @@ export class DatabaseStorage implements IStorage {
   async getUiImageByType(imageType: string): Promise<UiImage | undefined> {
     const [uiImage] = await db.select().from(uiImages).where(eq(uiImages.imageType, imageType));
     return uiImage || undefined;
+  }
+
+  // Registration request methods for DatabaseStorage
+  async createRegistrationRequest(request: InsertRegistrationRequest): Promise<RegistrationRequest> {
+    const [registrationRequest] = await db
+      .insert(registrationRequests)
+      .values(request)
+      .returning();
+    return registrationRequest;
+  }
+
+  async getAllRegistrationRequests(): Promise<RegistrationRequest[]> {
+    return await db.select().from(registrationRequests);
+  }
+
+  async getRegistrationRequest(id: string): Promise<RegistrationRequest | undefined> {
+    const [request] = await db.select().from(registrationRequests).where(eq(registrationRequests.id, id));
+    return request || undefined;
+  }
+
+  async updateRegistrationRequestStatus(
+    id: string, 
+    status: 'approved' | 'rejected', 
+    reviewedBy: string, 
+    rejectionReason?: string
+  ): Promise<RegistrationRequest | null> {
+    const [request] = await db
+      .update(registrationRequests)
+      .set({ 
+        status, 
+        reviewedBy, 
+        reviewedAt: new Date(),
+        rejectionReason: rejectionReason || null
+      })
+      .where(eq(registrationRequests.id, id))
+      .returning();
+    return request || null;
+  }
+
+  async deleteRegistrationRequest(id: string): Promise<boolean> {
+    const result = await db.delete(registrationRequests).where(eq(registrationRequests.id, id));
+    return (result.rowCount || 0) > 0;
+  }
+
+  async checkUsernameExists(username: string): Promise<boolean> {
+    // Check in users table
+    const [existingUser] = await db.select().from(users).where(eq(users.username, username));
+    if (existingUser) return true;
+
+    // Check in pending registration requests
+    const [existingRequest] = await db.select().from(registrationRequests)
+      .where(eq(registrationRequests.username, username));
+    return !!existingRequest;
+  }
+
+  async checkEmailExists(email: string): Promise<boolean> {
+    // Check in users table
+    const [existingUser] = await db.select().from(users).where(eq(users.email, email));
+    if (existingUser) return true;
+
+    // Check in pending registration requests
+    const [existingRequest] = await db.select().from(registrationRequests)
+      .where(eq(registrationRequests.email, email));
+    return !!existingRequest;
+  }
+
+  async checkPhoneExists(phone: string): Promise<boolean> {
+    // Check in users table
+    const [existingUser] = await db.select().from(users).where(eq(users.phone, phone));
+    if (existingUser) return true;
+
+    // Check in pending registration requests
+    const [existingRequest] = await db.select().from(registrationRequests)
+      .where(eq(registrationRequests.phone, phone));
+    return !!existingRequest;
   }
 }
 
