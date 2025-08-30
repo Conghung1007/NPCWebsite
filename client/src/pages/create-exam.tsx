@@ -225,18 +225,18 @@ export default function CreateExam() {
                   control={form.control}
                   name="isDemo"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-center space-x-3 space-y-0 rounded-md border p-3 h-10">
+                    <FormItem>
+                      <FormLabel>Loại bài thi</FormLabel>
                       <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
+                        <div className="flex items-center space-x-3 rounded-md border p-3 h-10">
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                          <span className="text-sm">Bài thi demo</span>
+                        </div>
                       </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Bài thi demo
-                        </FormLabel>
-                      </div>
+                      <FormMessage />
                     </FormItem>
                   )}
                 />
