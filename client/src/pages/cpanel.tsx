@@ -77,8 +77,12 @@ export function CpanelPage() {
       } else if (tabParam === 'exams') {
         setActiveTab("exams");
       } else {
-        // Set default active tab to messages for all users
-        setActiveTab("messages");
+        // Set default active tab based on user role
+        if (parsedUser.role === "manager" || parsedUser.role === "admin") {
+          setActiveTab("registrations");
+        } else {
+          setActiveTab("exams");
+        }
       }
     } catch (error) {
       localStorage.removeItem("user");
@@ -86,10 +90,15 @@ export function CpanelPage() {
     }
   }, [setLocation, toast]);
 
-  // Fetch users (for managers and admins)
+  // Define permissions based on user role
+  const isManager = user?.role === "manager";
+  const canManageUsers = user?.role === "manager"; // Only managers can manage users
+  const canManageRegistrations = user?.role === "manager" || user?.role === "admin";
+
+  // Fetch users (for managers only)
   const { data: users = [], isLoading: usersLoading, refetch: refetchUsers } = useQuery<UserType[]>({
     queryKey: ["/api/users"],
-    enabled: user?.role === "manager" || user?.role === "admin",
+    enabled: user?.role === "manager",
   });
 
   // Fetch messages/contact requests
@@ -101,7 +110,7 @@ export function CpanelPage() {
   // Fetch registration requests (for managers and admins)
   const { data: registrationRequests = [], isLoading: registrationsLoading, refetch: refetchRegistrations } = useQuery<RegistrationRequest[]>({
     queryKey: ["/api/registration-requests"],
-    enabled: !!user && (user.role === "manager" || user.role === "admin"),
+    enabled: !!user && canManageRegistrations,
   });
 
   const handleEditUser = (userToEdit: UserType) => {
@@ -313,9 +322,6 @@ export function CpanelPage() {
     return null; // Will redirect to login
   }
 
-  const isManager = user.role === "manager";
-  const canManageUsers = user.role === "manager" || user.role === "admin";
-
   // Sort messages by newest first and calculate pagination
   const sortedMessages = [...messages].sort((a, b) => 
     new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
@@ -345,7 +351,7 @@ export function CpanelPage() {
           {/* Left Sidebar - Navigation */}
           <div className="flex-shrink-0">
             <div className="space-y-2">
-              {canManageUsers && (
+              {canManageRegistrations && (
                 <Button 
                   variant={activeTab === "registrations" ? "default" : "ghost"}
                   className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
