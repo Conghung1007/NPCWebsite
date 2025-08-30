@@ -223,7 +223,7 @@ export function ServiceWithArticles({
               {categoryArticles.slice(currentIndex, currentIndex + 3).map((article) => (
                 <div key={article.id} className="w-full h-full flex">
                   <Link href={`/article/${article.id}`} className="w-full h-full">
-                    <div className="w-full h-[400px] bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer flex flex-col">
+                    <div className="w-full h-[400px] bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer flex flex-col">
                       {/* Image placeholder */}
                       <div className="h-32 bg-gradient-to-br from-green-100 to-green-200 rounded-t-lg flex items-center justify-center flex-shrink-0">
                         {article.imageUrl ? (
