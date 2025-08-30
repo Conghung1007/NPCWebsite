@@ -182,8 +182,8 @@ export function ServiceWithArticles({
             {[1, 2, 3].map((i) => (
               <div key={i} className="w-full">
                 <div className="w-full bg-white border border-gray-200 rounded-lg shadow-sm animate-pulse">
-                  <div className="h-48 bg-gray-200 rounded-t-lg"></div>
-                  <div className="p-6">
+                  <div className="h-36 bg-gray-200 rounded-t-lg"></div>
+                  <div className="p-4">
                     <div className="h-4 bg-gray-200 rounded mb-2"></div>
                     <div className="h-6 bg-gray-200 rounded mb-2"></div>
                     <div className="h-4 bg-gray-200 rounded w-3/4"></div>
@@ -225,7 +225,7 @@ export function ServiceWithArticles({
                   <Link href={`/article/${article.id}`} className="w-full h-full">
                     <div className="w-full h-full bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md transition-shadow duration-200 cursor-pointer flex flex-col">
                       {/* Image placeholder */}
-                      <div className="h-48 bg-gradient-to-br from-green-100 to-green-200 rounded-t-lg flex items-center justify-center flex-shrink-0">
+                      <div className="h-36 bg-gradient-to-br from-green-100 to-green-200 rounded-t-lg flex items-center justify-center flex-shrink-0">
                         {article.imageUrl ? (
                           <img 
                             src={article.imageUrl} 
@@ -239,15 +239,15 @@ export function ServiceWithArticles({
                         )}
                       </div>
                       
-                      <div className="p-6 flex flex-col flex-grow">
+                      <div className="p-4 flex flex-col flex-grow">
                         <Badge className={getCategoryColor(category)}>
                           {getCategoryLabel(category)}
                         </Badge>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2 line-clamp-2 mt-2">
+                        <h3 className="text-base font-semibold text-gray-900 mb-2 line-clamp-2 mt-2">
                           {article.title}
                         </h3>
                         
-                        <p className="text-gray-600 text-sm mb-4 line-clamp-3 flex-grow">
+                        <p className="text-gray-600 text-sm mb-3 line-clamp-2 flex-grow">
                           {article.content}
                         </p>
                         
