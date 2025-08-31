@@ -31,7 +31,7 @@ import {
 
 export default function Home() {
   const [, setLocation] = useLocation();
-  const { hasImageEditPermission } = useAuth();
+  const { user, hasImageEditPermission } = useAuth();
   const [heroBgImage, setHeroBgImage] = useState("https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=2074&q=80");
   const [whyChooseImage, setWhyChooseImage] = useState("https://images.unsplash.com/photo-1521737604893-d14cc237f11d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2084&q=80");
   const [uiImages, setUiImages] = useState<Record<string, string>>({});
@@ -72,6 +72,9 @@ export default function Home() {
     setEditingField(null);
     setEditValues({});
   };
+  
+  // Check if user has edit permissions (Manager or Admin)
+  const hasEditPermission = user?.role === 'manager' || user?.role === 'admin';
 
 
 
@@ -329,7 +332,7 @@ export default function Home() {
                 fieldName="heroTitle"
                 text={serviceTexts.heroTitle}
                 className="text-5xl lg:text-7xl font-bold text-white"
-                showEditButton={true}
+                showEditButton={hasEditPermission}
                 editingField={editingField}
                 editValues={editValues}
                 onEditStart={handleEditStart}
@@ -342,7 +345,7 @@ export default function Home() {
                   fieldName="heroSubtitle"
                   text={serviceTexts.heroSubtitle}
                   className="text-accent text-5xl lg:text-7xl font-bold"
-                  showEditButton={true}
+                  showEditButton={hasEditPermission}
                   editingField={editingField}
                   editValues={editValues}
                   onEditStart={handleEditStart}
@@ -357,7 +360,7 @@ export default function Home() {
                 text={serviceTexts.heroDescription}
                 className="text-xl lg:text-2xl text-blue-100"
                 multiline={true}
-                showEditButton={true}
+                showEditButton={hasEditPermission}
                 editingField={editingField}
                 editValues={editValues}
                 onEditStart={handleEditStart}
