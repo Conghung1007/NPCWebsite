@@ -44,6 +44,10 @@ export interface IStorage {
   checkUsernameExists(username: string): Promise<boolean>;
   checkEmailExists(email: string): Promise<boolean>;
   checkPhoneExists(phone: string): Promise<boolean>;
+  // These methods check only users table (for approval process)
+  checkUsernameExistsInUsers(username: string): Promise<boolean>;
+  checkEmailExistsInUsers(email: string): Promise<boolean>;
+  checkPhoneExistsInUsers(phone: string): Promise<boolean>;
   
   // Exam system methods
   createExam(exam: InsertExam): Promise<Exam>;
@@ -718,6 +722,28 @@ export class MemStorage implements IStorage {
     return !!existingRequest;
   }
 
+  // Methods that check only users table (for approval process)
+  async checkUsernameExistsInUsers(username: string): Promise<boolean> {
+    const existingUser = Array.from(this.users.values()).find(user => 
+      user.username.toLowerCase() === username.toLowerCase()
+    );
+    return !!existingUser;
+  }
+
+  async checkEmailExistsInUsers(email: string): Promise<boolean> {
+    const existingUser = Array.from(this.users.values()).find(user => 
+      user.email?.toLowerCase() === email.toLowerCase()
+    );
+    return !!existingUser;
+  }
+
+  async checkPhoneExistsInUsers(phone: string): Promise<boolean> {
+    const existingUser = Array.from(this.users.values()).find(user => 
+      user.phone === phone
+    );
+    return !!existingUser;
+  }
+
   // Exam system methods
   async createExam(insertExam: InsertExam): Promise<Exam> {
     const id = randomUUID();
@@ -1140,6 +1166,22 @@ export class DatabaseStorage implements IStorage {
         eq(registrationRequests.status, 'pending')
       ));
     return !!existingRequest;
+  }
+
+  // Methods that check only users table (for approval process)
+  async checkUsernameExistsInUsers(username: string): Promise<boolean> {
+    const [existingUser] = await db.select().from(users).where(eq(users.username, username));
+    return !!existingUser;
+  }
+
+  async checkEmailExistsInUsers(email: string): Promise<boolean> {
+    const [existingUser] = await db.select().from(users).where(eq(users.email, email));
+    return !!existingUser;
+  }
+
+  async checkPhoneExistsInUsers(phone: string): Promise<boolean> {
+    const [existingUser] = await db.select().from(users).where(eq(users.phone, phone));
+    return !!existingUser;
   }
 
   // Exam system methods

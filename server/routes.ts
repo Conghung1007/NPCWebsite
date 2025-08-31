@@ -265,9 +265,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Check for conflicts with existing users before creating the account
       const [usernameExists, emailExists, phoneExists] = await Promise.all([
-        storage.checkUsernameExists(registrationRequest.username),
-        storage.checkEmailExists(registrationRequest.email),
-        storage.checkPhoneExists(registrationRequest.phone)
+        storage.checkUsernameExistsInUsers(registrationRequest.username),
+        storage.checkEmailExistsInUsers(registrationRequest.email),
+        storage.checkPhoneExistsInUsers(registrationRequest.phone)
       ]);
 
       if (usernameExists) {
