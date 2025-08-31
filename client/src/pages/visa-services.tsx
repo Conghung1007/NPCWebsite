@@ -32,15 +32,52 @@ import {
 
 export default function VisaServices() {
   const [, setLocation] = useLocation();
-  const { hasImageEditPermission } = useAuth();
+  const { user, hasImageEditPermission } = useAuth();
+  const hasEditPermission = user?.role === 'manager' || user?.role === 'admin';
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1578662996442-48f60103fc96?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
   const [consultationImage, setConsultationImage] = useState("https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600");
   const [showHeroImageManager, setShowHeroImageManager] = useState(false);
   const [showConsultationImageManager, setShowConsultationImageManager] = useState(false);
   
+  // Text editing states
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
 
+  // Text editing handlers
+  const handleEditStart = (fieldName: string, currentValue: string) => {
+    setEditingField(fieldName);
+    setEditValues({ ...editValues, [fieldName]: currentValue });
+  };
 
+  const handleEditSave = (fieldName: string, value: string) => {
+    setEditValues({ ...editValues, [fieldName]: value });
+    setEditingField(null);
+  };
 
+  const handleEditCancel = () => {
+    setEditingField(null);
+    setEditValues({});
+  };
+
+  // Handle document text updates
+  const handleDocumentUpdate = (index: number, newValue: string) => {
+    const updatedDocs = [...requiredDocuments];
+    updatedDocs[index] = newValue;
+    setRequiredDocuments(updatedDocs);
+  };
+
+  // Handle FAQ updates
+  const handleFaqQuestionUpdate = (index: number, newValue: string) => {
+    const updatedFaqs = [...faqs];
+    updatedFaqs[index] = { ...updatedFaqs[index], question: newValue };
+    setFaqs(updatedFaqs);
+  };
+
+  const handleFaqAnswerUpdate = (index: number, newValue: string) => {
+    const updatedFaqs = [...faqs];
+    updatedFaqs[index] = { ...updatedFaqs[index], answer: newValue };
+    setFaqs(updatedFaqs);
+  };
 
   useEffect(() => {
     document.title = "Dịch Vụ Xin Thị Thực - N&P Company";
@@ -106,16 +143,16 @@ export default function VisaServices() {
     }
   ];
 
-  const requiredDocuments = [
+  const [requiredDocuments, setRequiredDocuments] = useState([
     "Hộ chiếu còn hạn tối thiểu 6 tháng",
     "Đơn xin visa đã điền đầy đủ", 
     "Ảnh 4x6 cm nền trắng (theo tiêu chuẩn)",
     "Chứng minh tài chính",
     "Bảo hiểm du lịch (tùy quốc gia)",
     "Giấy tờ khác theo yêu cầu riêng"
-  ];
+  ]);
 
-  const faqs = [
+  const [faqs, setFaqs] = useState([
     {
       question: "Thời gian xử lý visa là bao lâu?",
       answer: "Thông thường từ 5-15 ngày làm việc tùy thuộc vào quốc gia và loại visa. Chúng tôi sẽ thông báo chính xác thời gian cho từng trường hợp cụ thể."
@@ -132,7 +169,7 @@ export default function VisaServices() {
       question: "Tỷ lệ thành công của N&P như thế nào?",
       answer: "N&P có tỷ lệ thành công 98% nhờ quy trình chuyên nghiệp và kinh nghiệm nhiều năm. Chúng tôi cam kết hỗ trợ tối đa để hồ sơ của bạn được chấp thuận."
     }
-  ];
+  ]);
 
   const handleConsultation = () => {
     setLocation("/contact");
@@ -265,14 +302,14 @@ export default function VisaServices() {
           <h3 className="text-2xl font-bold text-foreground text-center mb-12">
             <EditableText 
               fieldName="visa-process-title"
-              text="Quy trình xin thị thực"
+              text={editValues["visa-process-title"] || "Quy trình xin thị thực"}
               className="text-2xl font-bold text-foreground"
-              showEditButton={false}
-              editingField={null}
-              editValues={{}}
-              onEditStart={() => {}}
-              onEditSave={() => {}}
-              onEditCancel={() => {}}
+              showEditButton={hasEditPermission}
+              editingField={editingField}
+              editValues={editValues}
+              onEditStart={handleEditStart}
+              onEditSave={handleEditSave}
+              onEditCancel={handleEditCancel}
             />
           </h3>
           <div className="grid md:grid-cols-5 gap-8">
@@ -297,21 +334,36 @@ export default function VisaServices() {
                 <h3 className="text-xl font-bold text-foreground mb-6">
                   <EditableText 
                     fieldName="visa-documents-title"
-                    text="Hồ Sơ Bắt Buộc"
+                    text={editValues["visa-documents-title"] || "Hồ Sơ Bắt Buộc"}
                     className="text-xl font-bold text-foreground"
                     showEditButton={false}
-                    editingField={null}
-                    editValues={{}}
-                    onEditStart={() => {}}
-                    onEditSave={() => {}}
-                    onEditCancel={() => {}}
+                    editingField={editingField}
+                    editValues={editValues}
+                    onEditStart={handleEditStart}
+                    onEditSave={handleEditSave}
+                    onEditCancel={handleEditCancel}
                   />
                 </h3>
                 <ul className="space-y-3">
                   {requiredDocuments.map((doc, index) => (
                     <li key={index} className="flex items-start">
                       <CheckCircle className="h-5 w-5 text-secondary mt-1 mr-3 flex-shrink-0" />
-                      <span className="text-muted-foreground">{doc}</span>
+                      <div className="text-muted-foreground flex-1">
+                        <EditableText
+                          fieldName={`visa-document-${index}`}
+                          text={doc}
+                          className="text-muted-foreground"
+                          showEditButton={hasEditPermission}
+                          editingField={editingField}
+                          editValues={editValues}
+                          onEditStart={handleEditStart}
+                          onEditSave={(fieldName, value) => {
+                            handleDocumentUpdate(index, value);
+                            handleEditSave(fieldName, value);
+                          }}
+                          onEditCancel={handleEditCancel}
+                        />
+                      </div>
                     </li>
                   ))}
                 </ul>
@@ -323,24 +375,51 @@ export default function VisaServices() {
                 <h3 className="text-xl font-bold text-foreground mb-6">
                   <EditableText 
                     fieldName="visa-faq-title"
-                    text="Câu Hỏi Thường Gặp"
+                    text={editValues["visa-faq-title"] || "Câu Hỏi Thường Gặp"}
                     className="text-xl font-bold text-foreground"
                     showEditButton={false}
-                    editingField={null}
-                    editValues={{}}
-                    onEditStart={() => {}}
-                    onEditSave={() => {}}
-                    onEditCancel={() => {}}
+                    editingField={editingField}
+                    editValues={editValues}
+                    onEditStart={handleEditStart}
+                    onEditSave={handleEditSave}
+                    onEditCancel={handleEditCancel}
                   />
                 </h3>
                 <Accordion type="single" collapsible className="w-full">
                   {faqs.map((faq, index) => (
                     <AccordionItem key={index} value={`item-${index}`}>
                       <AccordionTrigger className="text-left">
-                        {faq.question}
+                        <EditableText
+                          fieldName={`faq-question-${index}`}
+                          text={faq.question}
+                          className="text-left"
+                          showEditButton={hasEditPermission}
+                          editingField={editingField}
+                          editValues={editValues}
+                          onEditStart={handleEditStart}
+                          onEditSave={(fieldName, value) => {
+                            handleFaqQuestionUpdate(index, value);
+                            handleEditSave(fieldName, value);
+                          }}
+                          onEditCancel={handleEditCancel}
+                        />
                       </AccordionTrigger>
                       <AccordionContent>
-                        {faq.answer}
+                        <EditableText
+                          fieldName={`faq-answer-${index}`}
+                          text={faq.answer}
+                          className="text-muted-foreground"
+                          multiline={true}
+                          showEditButton={hasEditPermission}
+                          editingField={editingField}
+                          editValues={editValues}
+                          onEditStart={handleEditStart}
+                          onEditSave={(fieldName, value) => {
+                            handleFaqAnswerUpdate(index, value);
+                            handleEditSave(fieldName, value);
+                          }}
+                          onEditCancel={handleEditCancel}
+                        />
                       </AccordionContent>
                     </AccordionItem>
                   ))}
