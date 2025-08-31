@@ -80,7 +80,6 @@ export function ContactForm({ variant = "page", className = "" }: ContactFormPro
     { value: "visa", label: "Dịch vụ xin thị thực" },
     { value: "study-abroad", label: "Tư vấn du học" },
     { value: "japanese", label: "Đào tạo tiếng Nhật" },
-    { value: "flights", label: "Bán vé máy bay" },
     { value: "other", label: "Khác" },
   ];
 

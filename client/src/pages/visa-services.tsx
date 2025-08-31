@@ -191,12 +191,12 @@ export default function VisaServices() {
                   fieldName="visa-types-support-title"
                   text="Các loại thị thực chúng tôi hỗ trợ"
                   className="text-2xl font-bold text-foreground"
-                  showEditButton={true}
-                  editingField={editingField}
-                  editValues={editValues}
-                  onEditStart={handleEditStart}
-                  onEditSave={handleEditSave}
-                  onEditCancel={handleEditCancel}
+                  showEditButton={false}
+                  editingField={null}
+                  editValues={{}}
+                  onEditStart={() => {}}
+                  onEditSave={() => {}}
+                  onEditCancel={() => {}}
                 />
               </h3>
               <div className="grid grid-cols-2 gap-4 mb-8">
@@ -209,12 +209,12 @@ export default function VisaServices() {
                           fieldName={`visa-type-${index}-title`}
                           text={type.title}
                           className="font-medium text-foreground"
-                          showEditButton={true}
-                          editingField={editingField}
-                          editValues={editValues}
-                          onEditStart={handleEditStart}
-                          onEditSave={handleEditSave}
-                          onEditCancel={handleEditCancel}
+                          showEditButton={false}
+                          editingField={null}
+                          editValues={{}}
+                          onEditStart={() => {}}
+                          onEditSave={() => {}}
+                          onEditCancel={() => {}}
                         />
                       </span>
                       <p className="text-sm text-muted-foreground">
@@ -222,12 +222,12 @@ export default function VisaServices() {
                           fieldName={`visa-type-${index}-description`}
                           text={type.description}
                           className="text-sm text-muted-foreground"
-                          showEditButton={true}
-                          editingField={editingField}
-                          editValues={editValues}
-                          onEditStart={handleEditStart}
-                          onEditSave={handleEditSave}
-                          onEditCancel={handleEditCancel}
+                          showEditButton={false}
+                          editingField={null}
+                          editValues={{}}
+                          onEditStart={() => {}}
+                          onEditSave={() => {}}
+                          onEditCancel={() => {}}
                         />
                       </p>
                     </div>
@@ -240,12 +240,12 @@ export default function VisaServices() {
                   fieldName="visa-countries-title"
                   text="Quốc gia chuyên môn"
                   className="text-lg font-semibold text-foreground"
-                  showEditButton={true}
-                  editingField={editingField}
-                  editValues={editValues}
-                  onEditStart={handleEditStart}
-                  onEditSave={handleEditSave}
-                  onEditCancel={handleEditCancel}
+                  showEditButton={false}
+                  editingField={null}
+                  editValues={{}}
+                  onEditStart={() => {}}
+                  onEditSave={() => {}}
+                  onEditCancel={() => {}}
                 />
               </h4>
               <div className="flex flex-wrap gap-2 mb-6">
@@ -267,12 +267,12 @@ export default function VisaServices() {
               fieldName="visa-process-title"
               text="Quy trình xin thị thực"
               className="text-2xl font-bold text-foreground"
-              showEditButton={true}
-              editingField={editingField}
-              editValues={editValues}
-              onEditStart={handleEditStart}
-              onEditSave={handleEditSave}
-              onEditCancel={handleEditCancel}
+              showEditButton={false}
+              editingField={null}
+              editValues={{}}
+              onEditStart={() => {}}
+              onEditSave={() => {}}
+              onEditCancel={() => {}}
             />
           </h3>
           <div className="grid md:grid-cols-5 gap-8">
@@ -299,12 +299,12 @@ export default function VisaServices() {
                     fieldName="visa-documents-title"
                     text="Hồ Sơ Bắt Buộc"
                     className="text-xl font-bold text-foreground"
-                    showEditButton={true}
-                    editingField={editingField}
-                    editValues={editValues}
-                    onEditStart={handleEditStart}
-                    onEditSave={handleEditSave}
-                    onEditCancel={handleEditCancel}
+                    showEditButton={false}
+                    editingField={null}
+                    editValues={{}}
+                    onEditStart={() => {}}
+                    onEditSave={() => {}}
+                    onEditCancel={() => {}}
                   />
                 </h3>
                 <ul className="space-y-3">
@@ -325,7 +325,7 @@ export default function VisaServices() {
                     fieldName="visa-faq-title"
                     text="Câu Hỏi Thường Gặp"
                     className="text-xl font-bold text-foreground"
-                    showEditButton={true}
+                    showEditButton={false}
                     editingField={null}
                     editValues={{}}
                     onEditStart={() => {}}

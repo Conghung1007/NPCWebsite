@@ -51,7 +51,7 @@ export function TestimonialCard({
             ))}
           </div>
         </div>
-        <p className="text-muted-foreground mb-6 italic leading-relaxed">
+        <div className="text-muted-foreground mb-6 italic leading-relaxed">
           "<EditableText 
             fieldName={`testimonial-${id}-content`}
             text={content}
@@ -64,7 +64,7 @@ export function TestimonialCard({
             onEditSave={onEditSave}
             onEditCancel={onEditCancel}
           />"
-        </p>
+        </div>
         <div className="flex items-center">
           {avatar && (
             <div className="relative mr-4">
