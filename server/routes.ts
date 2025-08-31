@@ -1101,7 +1101,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           description: "Hình ảnh khóa học tiếng Nhật"
         },
         {
-          imageType: "flight-tickets",
+          imageType: "service",
           imageUrl: "https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=2074&q=80",
           altText: "Vé máy bay",
           description: "Hình ảnh dịch vụ bán vé máy bay"

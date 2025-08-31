@@ -24,7 +24,7 @@ const categories = [
   { value: "visa-services", label: "Dịch vụ visa" },
   { value: "study-abroad", label: "Tư vấn du học" },
   { value: "japanese-training", label: "Đào tạo tiếng Nhật" },
-  { value: "flight-tickets", label: "Vé máy bay" }
+
 ];
 
 export function ArticleManager() {

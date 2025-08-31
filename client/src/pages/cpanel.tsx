@@ -329,8 +329,8 @@ export function CpanelPage() {
       'visa-services': 'Dịch vụ Visa',
       'study-abroad': 'Du học',
       'japanese-training': 'Đào tạo tiếng Nhật',
-      'flight-tickets': 'Vé máy bay',
-      'flights': 'Vé máy bay'
+
+
     };
     return serviceNames[service] || service || 'Chưa chọn';
   };

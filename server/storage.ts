@@ -496,66 +496,9 @@ export class MemStorage implements IStorage {
       }
     ];
 
-    const flightArticles = [
-      {
-        id: "0d7da14f-ee17-43f5-b6c6-6442740ec9e4",
-        title: "Vé máy bay giá rẻ đi Nhật",
-        content: "Đặt vé máy bay đi Nhật Bản với giá ưu đãi nhất thị trường...",
-        imageUrl: null as string | null,
-        category: "flight-tickets",
-        createdAt: new Date("2025-08-02T05:14:15.817Z")
-      },
-      {
-        id: randomUUID(),
-        title: "Vé máy bay giá rẻ đi Nhật Bản tháng 3",
-        content: "Tháng 3 là thời điểm lý tưởng để du lịch Nhật Bản với thời tiết ôn hòa và mùa hoa anh đào nở. Chúng tôi cung cấp vé máy bay giá rẻ từ các hãng hàng không uy tín như Vietnam Airlines, Jetstar, ANA với giá cả cạnh tranh nhất thị trường.",
-        imageUrl: null as string | null,
-        category: "flight-tickets",
-        createdAt: new Date(Date.now() - 86400000 * 1)
-      },
-      {
-        id: randomUUID(),
-        title: "Hướng dẫn đặt vé máy bay online tiết kiệm",
-        content: "Việc đặt vé máy bay online đã trở nên phổ biến và tiện lợi. Chúng tôi chia sẻ những mẹo nhỏ để bạn có thể đặt được vé máy bay với giá tốt nhất, từ việc chọn thời điểm bay đến so sánh giá giữa các hãng hàng không.",
-        imageUrl: "https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=800&h=400&fit=crop" as string | null,
-        category: "flight-tickets",
-        createdAt: new Date(Date.now() - 86400000 * 2)
-      },
-      {
-        id: randomUUID(),
-        title: "Chính sách hành lý của các hãng hàng không",
-        content: "Mỗi hãng hàng không có quy định riêng về hành lý xách tay và ký gửi. Hiểu rõ các quy định này sẽ giúp bạn tránh được những phí phát sinh không mong muốn và chuẩn bị hành lý một cách hợp lý nhất.",
-        imageUrl: "https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=800&h=400&fit=crop" as string | null,
-        category: "flight-tickets",
-        createdAt: new Date(Date.now() - 86400000 * 3)
-      },
-      {
-        id: randomUUID(),
-        title: "Khuyến mãi vé máy bay cuối năm - Tiết kiệm đến 50%",
-        content: "Mùa du lịch cuối năm đang đến gần, đây là thời điểm các hãng hàng không tung ra nhiều chương trình khuyến mãi hấp dẫn. Đặt vé sớm để nhận được ưu đãi tốt nhất cho chuyến du lịch của bạn.",
-        imageUrl: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&h=400&fit=crop" as string | null,
-        category: "flight-tickets",
-        createdAt: new Date(Date.now() - 86400000 * 4)
-      },
-      {
-        id: randomUUID(),
-        title: "Bảo hiểm du lịch khi mua vé máy bay",
-        content: "Bảo hiểm du lịch là sự bảo vệ quan trọng cho chuyến đi của bạn. Tìm hiểu các loại bảo hiểm phù hợp và cách mua bảo hiểm khi đặt vé máy bay để có chuyến đi an toàn và yên tâm nhất.",
-        imageUrl: "https://images.unsplash.com/photo-1559827260-dc66d52bef19?w=800&h=400&fit=crop" as string | null,
-        category: "flight-tickets",
-        createdAt: new Date(Date.now() - 86400000 * 5)
-      },
-      {
-        id: randomUUID(),
-        title: "Check-in online và chọn chỗ ngồi trên máy bay",
-        content: "Hướng dẫn chi tiết cách thực hiện check-in online, chọn chỗ ngồi yêu thích và in thẻ lên máy bay tại nhà. Tiết kiệm thời gian tại sân bay và có trải nghiệm bay thoải mái nhất.",
-        imageUrl: "https://images.unsplash.com/photo-1556075798-4825dfaaf498?w=800&h=400&fit=crop" as string | null,
-        category: "flight-tickets",
-        createdAt: new Date(Date.now() - 86400000 * 6)
-      }
-    ];
 
-    const allArticles = [...visaArticles, ...studyArticles, ...japaneseArticles, ...flightArticles];
+
+    const allArticles = [...visaArticles, ...studyArticles, ...japaneseArticles];
     console.log(`Creating ${allArticles.length} articles`);
     allArticles.forEach(article => {
       console.log(`Adding article: ${article.title}`);

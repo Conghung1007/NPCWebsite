@@ -81,7 +81,7 @@ export default function CreateArticle() {
     { value: "visa-services", label: "Dịch vụ Visa" },
     { value: "study-abroad", label: "Du học" },
     { value: "japanese-training", label: "Đào tạo tiếng Nhật" },
-    { value: "flight-tickets", label: "Vé máy bay" },
+
   ];
 
   return (

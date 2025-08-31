@@ -62,7 +62,7 @@ export function AutoScrollingArticles({
       'visa-services': 'Visa',
       'study-abroad': 'Du học',
       'japanese-training': 'Tiếng Nhật',
-      'flight-tickets': 'Vé máy bay'
+
     };
     return labels[category] || category;
   };
@@ -72,7 +72,7 @@ export function AutoScrollingArticles({
       'visa-services': 'bg-blue-100 text-blue-800',
       'study-abroad': 'bg-purple-100 text-purple-800',
       'japanese-training': 'bg-orange-100 text-orange-800',
-      'flight-tickets': 'bg-red-100 text-red-800'
+
     };
     return colors[category] || 'bg-gray-100 text-gray-800';
   };

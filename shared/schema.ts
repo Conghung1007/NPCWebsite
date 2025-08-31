@@ -29,7 +29,7 @@ export const articles = pgTable("articles", {
   content: text("content").notNull(),
   imageUrl: text("image_url"),
   videoUrl: text("video_url"), // Add video URL field
-  category: text("category").notNull(), // visa-services, study-abroad, japanese-training, flight-tickets
+  category: text("category").notNull(), // visa-services, study-abroad, japanese-training
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
