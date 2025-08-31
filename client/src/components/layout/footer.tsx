@@ -43,7 +43,8 @@ export function Footer() {
               <span className="text-sm text-gray-400">Company</span>
             </div>
             <p className="text-gray-400 mb-6">
-              Đối tác tin cậy cho giấc mơ toàn cầu. Chuyên nghiệp - Uy tín - Hiệu quả.
+              Đối tác tin cậy cho giấc mơ toàn cầu.<br />
+              Chuyên nghiệp - Uy tín - Hiệu quả.
             </p>
             <div className="flex space-x-4">
               <a href="#facebook" className="w-10 h-10 bg-gray-800 rounded-full flex items-center justify-center hover:bg-primary transition-colors">
