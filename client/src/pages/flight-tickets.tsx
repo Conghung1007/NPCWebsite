@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArticleSection } from "@/components/ArticleSection";
 import { ImageManager } from "@/components/ui/image-manager";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   DollarSign, 
   Plane, 
@@ -15,6 +16,7 @@ import {
 
 export default function FlightTickets() {
   const [, setLocation] = useLocation();
+  const { hasImageEditPermission } = useAuth();
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
   const [flightImage, setFlightImage] = useState("https://images.unsplash.com/photo-1436491865332-7a61a109cc05?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600");
   const [showHeroImageManager, setShowHeroImageManager] = useState(false);
@@ -109,7 +111,7 @@ export default function FlightTickets() {
         subtitle=""
         description="Vé máy bay giá tốt nhất, đa dạng hãng hàng không, hỗ trợ tận tâm cho mọi chuyến đi của bạn"
         backgroundImage={heroImage}
-        allowImageEdit={true}
+        allowImageEdit={hasImageEditPermission}
         onImageUpdate={setHeroImage}
         primaryAction={{
           text: "Liên hệ đặt vé",
@@ -161,15 +163,17 @@ export default function FlightTickets() {
                 alt="Airplane taking off from runway" 
                 className="rounded-xl shadow-lg w-full h-auto mb-6" 
               />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowFlightImageManager(true)}
-                className="absolute top-4 right-4 bg-white/80 hover:bg-white/90 text-gray-700"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Cập nhật ảnh
-              </Button>
+              {hasImageEditPermission && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowFlightImageManager(true)}
+                  className="absolute top-4 right-4 bg-white/80 hover:bg-white/90 text-gray-700"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Cập nhật ảnh
+                </Button>
+              )}
               <ImageManager
                 isOpen={showFlightImageManager}
                 onClose={() => setShowFlightImageManager(false)}

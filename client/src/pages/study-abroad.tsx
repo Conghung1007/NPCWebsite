@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArticleSection } from "@/components/ArticleSection";
 import { ImageManager } from "@/components/ui/image-manager";
+import { useAuth } from "@/hooks/useAuth";
 import { 
   Search, 
   FileText, 
@@ -21,6 +22,7 @@ import {
 
 export default function StudyAbroad() {
   const [, setLocation] = useLocation();
+  const { hasImageEditPermission } = useAuth();
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
   const [studentsImage, setStudentsImage] = useState("https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=1000");
   const [showHeroImageManager, setShowHeroImageManager] = useState(false);
@@ -131,7 +133,7 @@ export default function StudyAbroad() {
         subtitle=""
         description="Mở rộng chân trời tri thức với các chương trình du học hàng đầu tại Nhật Bản, Hàn Quốc, Mỹ, Canada và Châu Âu"
         backgroundImage={heroImage}
-        allowImageEdit={true}
+        allowImageEdit={hasImageEditPermission}
         onImageUpdate={setHeroImage}
         primaryAction={{
           text: "Khám phá lựa chọn học tập",
@@ -187,15 +189,17 @@ export default function StudyAbroad() {
                 alt="International students in university library" 
                 className="rounded-xl shadow-lg w-full h-auto mb-6" 
               />
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setShowStudentsImageManager(true)}
-                className="absolute top-4 right-4 bg-white/80 hover:bg-white/90 text-gray-700"
-              >
-                <Edit className="w-4 h-4 mr-2" />
-                Cập nhật ảnh
-              </Button>
+              {hasImageEditPermission && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowStudentsImageManager(true)}
+                  className="absolute top-4 right-4 bg-white/80 hover:bg-white/90 text-gray-700"
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Cập nhật ảnh
+                </Button>
+              )}
               <ImageManager
                 isOpen={showStudentsImageManager}
                 onClose={() => setShowStudentsImageManager(false)}
