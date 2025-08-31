@@ -273,6 +273,7 @@ export function CpanelPage() {
           description: "Đã duyệt đăng ký và tạo tài khoản",
         });
         refetchRegistrations();
+        refetchUsers(); // Cập nhật danh sách users để hiển thị tài khoản mới được duyệt
       } else {
         const errorData = await response.json();
         throw new Error(errorData.message || "Có lỗi xảy ra");
