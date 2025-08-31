@@ -64,6 +64,8 @@ export default function VisaServices() {
     const updatedDocs = [...requiredDocuments];
     updatedDocs[index] = newValue;
     setRequiredDocuments(updatedDocs);
+    // Save to localStorage
+    localStorage.setItem('visa-required-documents', JSON.stringify(updatedDocs));
   };
 
   // Handle FAQ updates
@@ -71,12 +73,16 @@ export default function VisaServices() {
     const updatedFaqs = [...faqs];
     updatedFaqs[index] = { ...updatedFaqs[index], question: newValue };
     setFaqs(updatedFaqs);
+    // Save to localStorage
+    localStorage.setItem('visa-faqs', JSON.stringify(updatedFaqs));
   };
 
   const handleFaqAnswerUpdate = (index: number, newValue: string) => {
     const updatedFaqs = [...faqs];
     updatedFaqs[index] = { ...updatedFaqs[index], answer: newValue };
     setFaqs(updatedFaqs);
+    // Save to localStorage
+    localStorage.setItem('visa-faqs', JSON.stringify(updatedFaqs));
   };
 
   useEffect(() => {
@@ -143,33 +149,72 @@ export default function VisaServices() {
     }
   ];
 
-  const [requiredDocuments, setRequiredDocuments] = useState([
-    "Hộ chiếu còn hạn tối thiểu 6 tháng",
-    "Đơn xin visa đã điền đầy đủ", 
-    "Ảnh 4x6 cm nền trắng (theo tiêu chuẩn)",
-    "Chứng minh tài chính",
-    "Bảo hiểm du lịch (tùy quốc gia)",
-    "Giấy tờ khác theo yêu cầu riêng"
-  ]);
-
-  const [faqs, setFaqs] = useState([
-    {
-      question: "Thời gian xử lý visa là bao lâu?",
-      answer: "Thông thường từ 5-15 ngày làm việc tùy thuộc vào quốc gia và loại visa. Chúng tôi sẽ thông báo chính xác thời gian cho từng trường hợp cụ thể."
-    },
-    {
-      question: "Chi phí dịch vụ bao gồm những gì?",
-      answer: "Chi phí bao gồm tư vấn, kiểm tra hồ sơ, nộp đơn và theo dõi kết quả. Lệ phí lãnh sự được tính riêng theo quy định của từng quốc gia."
-    },
-    {
-      question: "Nếu bị từ chối có được hoàn phí?",
-      answer: "Lệ phí lãnh sự không hoàn lại theo quy định quốc tế. Chi phí dịch vụ có chính sách hoàn tiền theo cam kết trong hợp đồng."
-    },
-    {
-      question: "Tỷ lệ thành công của N&P như thế nào?",
-      answer: "N&P có tỷ lệ thành công 98% nhờ quy trình chuyên nghiệp và kinh nghiệm nhiều năm. Chúng tôi cam kết hỗ trợ tối đa để hồ sơ của bạn được chấp thuận."
+  // Load data from localStorage or use defaults
+  const [requiredDocuments, setRequiredDocuments] = useState(() => {
+    try {
+      const saved = localStorage.getItem('visa-required-documents');
+      return saved ? JSON.parse(saved) : [
+        "Hộ chiếu còn hạn tối thiểu 6 tháng",
+        "Đơn xin visa đã điền đầy đủ", 
+        "Ảnh 4x6 cm nền trắng (theo tiêu chuẩn)",
+        "Chứng minh tài chính",
+        "Bảo hiểm du lịch (tùy quốc gia)",
+        "Giấy tờ khác theo yêu cầu riêng"
+      ];
+    } catch {
+      return [
+        "Hộ chiếu còn hạn tối thiểu 6 tháng",
+        "Đơn xin visa đã điền đầy đủ", 
+        "Ảnh 4x6 cm nền trắng (theo tiêu chuẩn)",
+        "Chứng minh tài chính",
+        "Bảo hiểm du lịch (tùy quốc gia)",
+        "Giấy tờ khác theo yêu cầu riêng"
+      ];
     }
-  ]);
+  });
+
+  const [faqs, setFaqs] = useState(() => {
+    try {
+      const saved = localStorage.getItem('visa-faqs');
+      return saved ? JSON.parse(saved) : [
+        {
+          question: "Thời gian xử lý visa là bao lâu?",
+          answer: "Thông thường từ 5-15 ngày làm việc tùy thuộc vào quốc gia và loại visa. Chúng tôi sẽ thông báo chính xác thời gian cho từng trường hợp cụ thể."
+        },
+        {
+          question: "Chi phí dịch vụ bao gồm những gì?",
+          answer: "Chi phí bao gồm tư vấn, kiểm tra hồ sơ, nộp đơn và theo dõi kết quả. Lệ phí lãnh sự được tính riêng theo quy định của từng quốc gia."
+        },
+        {
+          question: "Nếu bị từ chối có được hoàn phí?",
+          answer: "Lệ phí lãnh sự không hoàn lại theo quy định quốc tế. Chi phí dịch vụ có chính sách hoàn tiền theo cam kết trong hợp đồng."
+        },
+        {
+          question: "Tỷ lệ thành công của N&P như thế nào?",
+          answer: "N&P có tỷ lệ thành công 98% nhờ quy trình chuyên nghiệp và kinh nghiệm nhiều năm. Chúng tôi cam kết hỗ trợ tối đa để hồ sơ của bạn được chấp thuận."
+        }
+      ];
+    } catch {
+      return [
+        {
+          question: "Thời gian xử lý visa là bao lâu?",
+          answer: "Thông thường từ 5-15 ngày làm việc tùy thuộc vào quốc gia và loại visa. Chúng tôi sẽ thông báo chính xác thời gian cho từng trường hợp cụ thể."
+        },
+        {
+          question: "Chi phí dịch vụ bao gồm những gì?",
+          answer: "Chi phí bao gồm tư vấn, kiểm tra hồ sơ, nộp đơn và theo dõi kết quả. Lệ phí lãnh sự được tính riêng theo quy định của từng quốc gia."
+        },
+        {
+          question: "Nếu bị từ chối có được hoàn phí?",
+          answer: "Lệ phí lãnh sự không hoàn lại theo quy định quốc tế. Chi phí dịch vụ có chính sách hoàn tiền theo cam kết trong hợp đồng."
+        },
+        {
+          question: "Tỷ lệ thành công của N&P như thế nào?",
+          answer: "N&P có tỷ lệ thành công 98% nhờ quy trình chuyên nghiệp và kinh nghiệm nhiều năm. Chúng tôi cam kết hỗ trợ tối đa để hồ sơ của bạn được chấp thuận."
+        }
+      ];
+    }
+  });
 
   const handleConsultation = () => {
     setLocation("/contact");
