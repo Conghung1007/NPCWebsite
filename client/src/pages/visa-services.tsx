@@ -33,6 +33,13 @@ import {
 export default function VisaServices() {
   const [, setLocation] = useLocation();
   const { user, hasImageEditPermission } = useAuth();
+  
+  // Force scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
   const hasEditPermission = user?.role === 'manager' || user?.role === 'admin';
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1578662996442-48f60103fc96?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
   const [consultationImage, setConsultationImage] = useState("https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600");

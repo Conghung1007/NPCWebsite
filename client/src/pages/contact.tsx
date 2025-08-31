@@ -23,6 +23,13 @@ export default function Contact() {
   const { hasImageEditPermission } = useAuth();
   const { data: contactInfos = [] } = useContactInfo();
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1423666639041-f56000c27a9a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
+  
+  // Force scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
 
   // Update hero image from database when available
   useEffect(() => {

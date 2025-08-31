@@ -26,6 +26,13 @@ import {
 export default function StudyAbroad() {
   const [, setLocation] = useLocation();
   const { hasImageEditPermission, user } = useAuth();
+  
+  // Force scroll to top when component mounts
+  useEffect(() => {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, []);
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
   const [studentsImage, setStudentsImage] = useState("https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=1000");
   const [showHeroImageManager, setShowHeroImageManager] = useState(false);
