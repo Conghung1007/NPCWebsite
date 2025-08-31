@@ -57,8 +57,17 @@ export default function Home() {
   };
 
   const handleEditSave = (fieldName: string, value: string) => {
-    // Update service texts if it's a service field
-    if (value && Object.keys(serviceTexts).includes(fieldName)) {
+    // Hero section fields that should update serviceTexts
+    const heroFields = ['heroTitle', 'heroSubtitle', 'heroDescription'];
+    
+    // Service-related fields 
+    const serviceFields = ['services-title', 'services-description', 'testimonials-title', 'testimonials-description'];
+    
+    // Why choose us fields
+    const whyChooseFields = ['why-choose-title', 'why-choose-description'];
+    
+    // Update service texts if it's a service field or hero field
+    if (value && (Object.keys(serviceTexts).includes(fieldName) || heroFields.includes(fieldName))) {
       handleServiceTextUpdate(fieldName, value);
     }
     
@@ -160,37 +169,47 @@ export default function Home() {
 
   // State for editable service content with localStorage persistence
   const [serviceTexts, setServiceTexts] = useState(() => {
+    const defaultServiceTexts = {
+      heroTitle: "Đối tác tin cậy cho",
+      heroSubtitle: "giấc mơ toàn cầu", 
+      heroDescription: "Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và hệ thống thi trực tuyến với hơn 10 năm kinh nghiệm",
+      visaTitle: "Dịch vụ xin thị thực",
+      visaDescription: "Hỗ trợ xin thị thực du lịch, công tác, sinh viên cho hơn 50 quốc gia với tỷ lệ thành công 98%",
+      studyTitle: "Tư vấn du học",
+      studyDescription: "Tư vấn chọn trường, chương trình học, hỗ trợ hồ sơ và học bổng tại Nhật, Mỹ, Canada, Châu Âu",
+      japaneseTitle: "Đào tạo tiếng Nhật",
+      japaneseDescription: "Khóa học tiếng Nhật từ cơ bản đến nâng cao, luyện thi JLPT với giảng viên bản ngữ",
+      examTitle: "Thi thử trực tuyến",
+      examDescription: "Hệ thống thi trực tuyến với đề thi demo miễn phí và đề thi chính thức đánh giá năng lực tiếng Anh, tiếng Nhật"
+    };
+    
     try {
       const saved = localStorage.getItem('home-service-texts');
       console.log('Loading home-service-texts from localStorage:', saved);
-      return saved ? JSON.parse(saved) : {
-        heroTitle: "Đối tác tin cậy cho",
-        heroSubtitle: "giấc mơ toàn cầu", 
-        heroDescription: "Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và hệ thống thi trực tuyến với hơn 10 năm kinh nghiệm",
-        visaTitle: "Dịch vụ xin thị thực",
-        visaDescription: "Hỗ trợ xin thị thực du lịch, công tác, sinh viên cho hơn 50 quốc gia với tỷ lệ thành công 98%",
-        studyTitle: "Tư vấn du học",
-        studyDescription: "Tư vấn chọn trường, chương trình học, hỗ trợ hồ sơ và học bổng tại Nhật, Mỹ, Canada, Châu Âu",
-        japaneseTitle: "Đào tạo tiếng Nhật",
-        japaneseDescription: "Khóa học tiếng Nhật từ cơ bản đến nâng cao, luyện thi JLPT với giảng viên bản ngữ",
-        examTitle: "Thi thử trực tuyến",
-        examDescription: "Hệ thống thi trực tuyến với đề thi demo miễn phí và đề thi chính thức đánh giá năng lực tiếng Anh, tiếng Nhật"
-      };
+      const savedServiceTexts = saved ? JSON.parse(saved) : defaultServiceTexts;
+      
+      // Check if we have editValues from localStorage that should override serviceTexts
+      const savedEditValues = localStorage.getItem('home-edit-values');
+      if (savedEditValues) {
+        try {
+          const editValues = JSON.parse(savedEditValues);
+          console.log('Merging editValues into serviceTexts:', editValues);
+          // Merge editValues that are hero fields into serviceTexts
+          const heroFields = ['heroTitle', 'heroSubtitle', 'heroDescription'];
+          heroFields.forEach(field => {
+            if (editValues[field]) {
+              savedServiceTexts[field] = editValues[field];
+            }
+          });
+        } catch (e) {
+          console.error('Failed to parse editValues:', e);
+        }
+      }
+      
+      return savedServiceTexts;
     } catch (error) {
       console.error('Failed to load home service texts from localStorage:', error);
-      return {
-        heroTitle: "Đối tác tin cậy cho",
-        heroSubtitle: "giấc mơ toàn cầu", 
-        heroDescription: "Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và hệ thống thi trực tuyến với hơn 10 năm kinh nghiệm",
-        visaTitle: "Dịch vụ xin thị thực",
-        visaDescription: "Hỗ trợ xin thị thực du lịch, công tác, sinh viên cho hơn 50 quốc gia với tỷ lệ thành công 98%",
-        studyTitle: "Tư vấn du học",
-        studyDescription: "Tư vấn chọn trường, chương trình học, hỗ trợ hồ sơ và học bổng tại Nhật, Mỹ, Canada, Châu Âu",
-        japaneseTitle: "Đào tạo tiếng Nhật",
-        japaneseDescription: "Khóa học tiếng Nhật từ cơ bản đến nâng cao, luyện thi JLPT với giảng viên bản ngữ",
-        examTitle: "Thi thử trực tuyến",
-        examDescription: "Hệ thống thi trực tuyến với đề thi demo miễn phí và đề thi chính thức đánh giá năng lực tiếng Anh, tiếng Nhật"
-      };
+      return defaultServiceTexts;
     }
   });
 
