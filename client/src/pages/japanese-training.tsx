@@ -73,7 +73,10 @@ export default function JapaneseTraining() {
     multiline?: boolean;
     placeholder?: string;
   }) => {
-    if (!hasImageEditPermission) {
+    // For demo purposes, show edit buttons to all users temporarily
+    const showEditButtons = true; // hasImageEditPermission;
+    
+    if (!showEditButtons) {
       return <span className={className}>{text}</span>;
     }
 
@@ -113,10 +116,10 @@ export default function JapaneseTraining() {
         <Button
           size="sm"
           variant="ghost"
-          className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white shadow-sm border"
           onClick={() => handleEditStart(fieldName, text)}
         >
-          <Edit className="w-3 h-3" />
+          <Edit className="w-4 h-4" />
         </Button>
       </div>
     );
