@@ -32,11 +32,34 @@ import {
 export default function JapaneseTraining() {
   const [, setLocation] = useLocation();
   const { getImageByType, invalidateCache } = useUiImages();
-  const { hasImageEditPermission } = useAuth();
+  const { hasImageEditPermission, user } = useAuth();
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1528720208104-3d9bd03cc9d4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
   const [classroomImage, setClassroomImage] = useState("https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600");
   const [showHeroImageManager, setShowHeroImageManager] = useState(false);
   const [showClassroomImageManager, setShowClassroomImageManager] = useState(false);
+  
+  // EditableText state management
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
+  
+  const handleEditStart = (fieldName: string, currentValue: string) => {
+    setEditingField(fieldName);
+    setEditValues({ ...editValues, [fieldName]: currentValue });
+  };
+
+  const handleEditSave = (fieldName: string, value: string) => {
+    console.log(`Saving field ${fieldName} with value:`, value);
+    setEditValues({ ...editValues, [fieldName]: value });
+    setEditingField(null);
+  };
+
+  const handleEditCancel = () => {
+    setEditingField(null);
+    setEditValues({});
+  };
+  
+  // Check if user has edit permissions (Manager or Admin)
+  const hasEditPermission = user?.role === 'manager' || user?.role === 'admin';
   
 
 
@@ -306,12 +329,12 @@ export default function JapaneseTraining() {
                   fieldName="japanese-teaching-method-title"
                   text="Phương pháp giảng dạy"
                   className="text-2xl font-bold text-foreground"
-                  showEditButton={false}
-                  editingField={null}
-                  editValues={{}}
-                  onEditStart={() => {}}
-                  onEditSave={() => {}}
-                  onEditCancel={() => {}}
+                  showEditButton={hasEditPermission}
+                  editingField={editingField}
+                  editValues={editValues}
+                  onEditStart={handleEditStart}
+                  onEditSave={handleEditSave}
+                  onEditCancel={handleEditCancel}
                 />
               </h3>
               <div className="space-y-4">
@@ -368,12 +391,12 @@ export default function JapaneseTraining() {
                   fieldName="japanese-schedule-title"
                   text="Lịch học linh hoạt"
                   className="text-2xl font-bold text-foreground"
-                  showEditButton={false}
-                  editingField={null}
-                  editValues={{}}
-                  onEditStart={() => {}}
-                  onEditSave={() => {}}
-                  onEditCancel={() => {}}
+                  showEditButton={hasEditPermission}
+                  editingField={editingField}
+                  editValues={editValues}
+                  onEditStart={handleEditStart}
+                  onEditSave={handleEditSave}
+                  onEditCancel={handleEditCancel}
                 />
               </h3>
               <Card>
@@ -401,12 +424,12 @@ export default function JapaneseTraining() {
                   fieldName="japanese-testimonials-title"
                   text="Học viên nói gì"
                   className="text-2xl font-bold text-foreground"
-                  showEditButton={false}
-                  editingField={null}
-                  editValues={{}}
-                  onEditStart={() => {}}
-                  onEditSave={() => {}}
-                  onEditCancel={() => {}}
+                  showEditButton={hasEditPermission}
+                  editingField={editingField}
+                  editValues={editValues}
+                  onEditStart={handleEditStart}
+                  onEditSave={handleEditSave}
+                  onEditCancel={handleEditCancel}
                 />
               </h3>
               <div className="space-y-4">
@@ -427,12 +450,12 @@ export default function JapaneseTraining() {
                           text={testimonial.content}
                           className="text-muted-foreground text-sm italic"
                           multiline={true}
-                          showEditButton={false}
-                          editingField={null}
-                          editValues={{}}
-                          onEditStart={() => {}}
-                          onEditSave={() => {}}
-                          onEditCancel={() => {}}
+                          showEditButton={hasEditPermission}
+                          editingField={editingField}
+                          editValues={editValues}
+                          onEditStart={handleEditStart}
+                          onEditSave={handleEditSave}
+                          onEditCancel={handleEditCancel}
                         />"
                       </p>
                     </CardContent>
@@ -452,12 +475,12 @@ export default function JapaneseTraining() {
               fieldName="japanese-instructors-title"
               text="Đội ngũ giảng viên"
               className="text-2xl font-bold text-foreground"
-              showEditButton={false}
-              editingField={null}
-              editValues={{}}
-              onEditStart={() => {}}
-              onEditSave={() => {}}
-              onEditCancel={() => {}}
+              showEditButton={hasEditPermission}
+              editingField={editingField}
+              editValues={editValues}
+              onEditStart={handleEditStart}
+              onEditSave={handleEditSave}
+              onEditCancel={handleEditCancel}
             />
           </h3>
           <div className="grid md:grid-cols-3 gap-8">

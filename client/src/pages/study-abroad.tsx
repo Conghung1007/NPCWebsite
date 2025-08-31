@@ -25,11 +25,34 @@ import {
 
 export default function StudyAbroad() {
   const [, setLocation] = useLocation();
-  const { hasImageEditPermission } = useAuth();
+  const { hasImageEditPermission, user } = useAuth();
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
   const [studentsImage, setStudentsImage] = useState("https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=1000");
   const [showHeroImageManager, setShowHeroImageManager] = useState(false);
   const [showStudentsImageManager, setShowStudentsImageManager] = useState(false);
+  
+  // EditableText state management
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
+  
+  const handleEditStart = (fieldName: string, currentValue: string) => {
+    setEditingField(fieldName);
+    setEditValues({ ...editValues, [fieldName]: currentValue });
+  };
+
+  const handleEditSave = (fieldName: string, value: string) => {
+    console.log(`Saving field ${fieldName} with value:`, value);
+    setEditValues({ ...editValues, [fieldName]: value });
+    setEditingField(null);
+  };
+
+  const handleEditCancel = () => {
+    setEditingField(null);
+    setEditValues({});
+  };
+  
+  // Check if user has edit permissions (Manager or Admin)
+  const hasEditPermission = user?.role === 'manager' || user?.role === 'admin';
   
 
 
@@ -161,12 +184,12 @@ export default function StudyAbroad() {
                   fieldName="study-abroad-services-title"
                   text="Dịch vụ tư vấn du học toàn diện"
                   className="text-2xl font-bold text-foreground"
-                  showEditButton={true}
-                  editingField={null}
-                  editValues={{}}
-                  onEditStart={() => {}}
-                  onEditSave={() => {}}
-                  onEditCancel={() => {}}
+                  showEditButton={hasEditPermission}
+                  editingField={editingField}
+                  editValues={editValues}
+                  onEditStart={handleEditStart}
+                  onEditSave={handleEditSave}
+                  onEditCancel={handleEditCancel}
                 />
               </h3>
               <div className="grid md:grid-cols-2 gap-6 mb-8">
@@ -181,12 +204,12 @@ export default function StudyAbroad() {
                           fieldName={`study-service-${index}-title`}
                           text={service.title}
                           className="font-semibold text-foreground"
-                          showEditButton={true}
-                          editingField={null}
-                          editValues={{}}
-                          onEditStart={() => {}}
-                          onEditSave={() => {}}
-                          onEditCancel={() => {}}
+                          showEditButton={hasEditPermission}
+                          editingField={editingField}
+                          editValues={editValues}
+                          onEditStart={handleEditStart}
+                          onEditSave={handleEditSave}
+                          onEditCancel={handleEditCancel}
                         />
                       </h4>
                       <p className="text-muted-foreground text-sm">
@@ -195,12 +218,12 @@ export default function StudyAbroad() {
                           text={service.description}
                           className="text-muted-foreground text-sm"
                           multiline={true}
-                          showEditButton={true}
-                          editingField={null}
-                          editValues={{}}
-                          onEditStart={() => {}}
-                          onEditSave={() => {}}
-                          onEditCancel={() => {}}
+                          showEditButton={hasEditPermission}
+                          editingField={editingField}
+                          editValues={editValues}
+                          onEditStart={handleEditStart}
+                          onEditSave={handleEditSave}
+                          onEditCancel={handleEditCancel}
                         />
                       </p>
                     </div>
@@ -257,6 +280,12 @@ export default function StudyAbroad() {
                       fieldName="study-why-np-title"
                       text="Tại sao du học với N&P?"
                       className="font-semibold text-foreground"
+                      showEditButton={hasEditPermission}
+                      editingField={editingField}
+                      editValues={editValues}
+                      onEditStart={handleEditStart}
+                      onEditSave={handleEditSave}
+                      onEditCancel={handleEditCancel}
                     />
                   </h4>
                   <ul className="space-y-3 text-sm text-muted-foreground">
@@ -282,6 +311,12 @@ export default function StudyAbroad() {
               fieldName="study-why-choose-title"
               text="Tại Sao Nên Du Học Với N&P?"
               className="text-2xl font-bold text-white"
+              showEditButton={hasEditPermission}
+              editingField={editingField}
+              editValues={editValues}
+              onEditStart={handleEditStart}
+              onEditSave={handleEditSave}
+              onEditCancel={handleEditCancel}
             />
           </h3>
           <div className="grid md:grid-cols-3 gap-8">
