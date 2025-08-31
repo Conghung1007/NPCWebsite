@@ -24,6 +24,22 @@ img, video, iframe, object, embed {
   max-width: 100vw;
 }
 
+/* Ensure sticky header works properly on all devices */
+header[class*="sticky"] {
+  position: -webkit-sticky;
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+/* Additional mobile safari fixes for sticky positioning */
+@supports (-webkit-touch-callout: none) {
+  header[class*="sticky"] {
+    position: -webkit-sticky;
+    position: sticky;
+  }
+}
+
 @layer utilities {
   .line-clamp-2 {
     display: -webkit-box;

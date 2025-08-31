@@ -69,7 +69,7 @@ export function Header() {
   ];
 
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50 w-full max-w-full overflow-x-hidden">
+    <header className="bg-white shadow-sm sticky top-0 z-50 w-full max-w-full overflow-x-hidden backdrop-blur-sm bg-white/95">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative w-full">
         <div className="flex justify-between items-center h-16 sm:h-20 w-full max-w-full">
           <div className="flex items-center">
