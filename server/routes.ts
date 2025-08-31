@@ -253,7 +253,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const sessionUser = (req.session as any)?.user;
       
+      console.log("Approval attempt - Session user:", sessionUser?.username, "Role:", sessionUser?.role);
+      
       if (!sessionUser) {
+        console.log("Approval failed: No session user");
         return res.status(401).json({ message: "Unauthorized" });
       }
 
