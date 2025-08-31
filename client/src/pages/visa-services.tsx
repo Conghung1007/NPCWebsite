@@ -400,46 +400,40 @@ export default function VisaServices() {
                                 autoFocus
                                 onClick={(e) => e.stopPropagation()}
                               />
-                              <Button
-                                variant="ghost" 
-                                size="sm"
+                              <div
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   const newValue = editValues[`faq-question-${index}`] || faq.question;
                                   handleFaqQuestionUpdate(index, newValue);
                                   handleEditSave(`faq-question-${index}`, newValue);
                                 }}
-                                className="text-green-600 hover:text-green-700"
+                                className="p-1 text-green-600 hover:text-green-700 hover:bg-green-50 rounded cursor-pointer"
                               >
                                 <Check className="h-3 w-3" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="sm" 
+                              </div>
+                              <div
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleEditCancel();
                                 }}
-                                className="text-red-600 hover:text-red-700"
+                                className="p-1 text-red-600 hover:text-red-700 hover:bg-red-50 rounded cursor-pointer"
                               >
                                 <X className="h-3 w-3" />
-                              </Button>
+                              </div>
                             </div>
                           ) : (
                             <>
                               <span className="flex-1">{faq.question}</span>
                               {hasEditPermission && (
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
+                                <div
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     handleEditStart(`faq-question-${index}`, faq.question);
                                   }}
-                                  className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                  className="ml-2 p-1 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-gray-100 rounded cursor-pointer"
                                 >
                                   <Edit className="h-3 w-3" />
-                                </Button>
+                                </div>
                               )}
                             </>
                           )}
