@@ -33,13 +33,6 @@ export default function JapaneseTraining() {
   const [, setLocation] = useLocation();
   const { getImageByType, invalidateCache } = useUiImages();
   const { hasImageEditPermission, user } = useAuth();
-  
-  // Force scroll to top when component mounts
-  useEffect(() => {
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, []);
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1528720208104-3d9bd03cc9d4?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
   const [classroomImage, setClassroomImage] = useState("https://images.unsplash.com/photo-1571019613454-1cb2f99b2d8b?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600");
   const [showHeroImageManager, setShowHeroImageManager] = useState(false);

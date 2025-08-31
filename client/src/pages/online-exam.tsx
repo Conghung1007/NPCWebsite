@@ -13,13 +13,6 @@ export function OnlineExamPage() {
   const [demoCurrentPage, setDemoCurrentPage] = useState(1);
   const [officialCurrentPage, setOfficialCurrentPage] = useState(1);
   const examsPerPage = 6;
-  
-  // Force scroll to top when component mounts
-  useEffect(() => {
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
-  }, []);
 
   // Check for logged in user
   useEffect(() => {

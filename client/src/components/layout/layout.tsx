@@ -15,67 +15,15 @@ export function Layout({ children }: LayoutProps) {
 
   // Scroll to top when route changes
   useEffect(() => {
-    // Most aggressive scroll to top approach
-    const forceScrollToTop = () => {
-      // Method 1: Standard window scroll
-      window.scrollTo(0, 0);
-      
-      // Method 2: Document element scroll
-      if (document.documentElement) {
-        document.documentElement.scrollTop = 0;
-      }
-      
-      // Method 3: Body scroll
-      if (document.body) {
-        document.body.scrollTop = 0;
-      }
-      
-      // Method 4: Manual element manipulation
-      const allScrollableElements = document.querySelectorAll('*');
-      allScrollableElements.forEach(element => {
-        if (element.scrollTop && element.scrollTop > 0) {
-          element.scrollTop = 0;
-        }
-      });
-      
-      // Method 5: History manipulation for SPA
-      if (window.history && window.history.scrollRestoration) {
-        window.history.scrollRestoration = 'manual';
-      }
-      
-      // Method 6: Scroll to header specifically
-      const header = document.getElementById('page-header');
-      if (header) {
-        header.scrollIntoView({ block: 'start', behavior: 'instant' });
-      }
-      
-      // Method 7: Additional scroll reset methods
-      try {
-        // Reset scroll for iOS Safari
-        document.querySelector('html')?.scrollTo(0, 0);
-        document.querySelector('body')?.scrollTo(0, 0);
-      } catch (e) {
-        // Ignore errors
-      }
-    };
-
-    // Execute multiple times with different timing
-    forceScrollToTop();
-    requestAnimationFrame(forceScrollToTop);
-    setTimeout(forceScrollToTop, 1);
-    setTimeout(forceScrollToTop, 10);
-    setTimeout(forceScrollToTop, 50);
-    setTimeout(forceScrollToTop, 100);
-    setTimeout(forceScrollToTop, 200);
+    // Use multiple methods to ensure scroll to top works on all devices
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
     
-    // Update scroll tracking
+    // Then smooth scroll to ensure it's at the very top
     setTimeout(() => {
-      const handleScroll = () => {
-        const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
-        setShowScrollTop(scrollTop > 300);
-      };
-      handleScroll();
-    }, 250);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 50);
   }, [location]);
 
   useEffect(() => {
@@ -105,31 +53,22 @@ export function Layout({ children }: LayoutProps) {
   }, []);
 
   const scrollToTop = () => {
-    // Force immediate scroll first
+    // Multiple scroll methods for maximum compatibility
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
     
-    // Then smooth scroll for better UX
-    setTimeout(() => {
-      window.scrollTo({
-        top: 0,
-        behavior: 'smooth'
-      });
-    }, 10);
-    
-    // Ensure we're at the top
-    setTimeout(() => {
-      window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
-    }, 500);
+    // Smooth scroll for better UX
+    window.scrollTo({
+      top: 0,
+      behavior: 'smooth'
+    });
   };
 
   return (
-    <div className="min-h-screen flex flex-col overflow-x-hidden max-w-full">
+    <div className="min-h-screen flex flex-col">
       <Header />
-      <main className="flex-1 overflow-x-hidden max-w-full">
+      <main className="flex-1">
         {children}
       </main>
       <Footer />
