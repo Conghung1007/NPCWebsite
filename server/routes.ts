@@ -176,7 +176,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new user
   app.post("/api/users", async (req, res) => {
     try {
-      const { username, password, role } = req.body;
+      const { username, email, phone, password, role } = req.body;
       
       if (!username || !password || !role) {
         return res.status(400).json({ message: "Missing required fields" });
@@ -188,7 +188,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(409).json({ message: "Username already exists" });
       }
 
-      const newUser = await storage.createUser({ username: username.toLowerCase(), password, role });
+      const newUser = await storage.createUser({ 
+        username: username.toLowerCase(), 
+        email: email || null,
+        phone: phone || null,
+        password, 
+        role 
+      });
       const { password: _, ...userWithoutPassword } = newUser;
       res.status(201).json(userWithoutPassword);
     } catch (error) {
@@ -201,13 +207,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/users/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const { username, password, role } = req.body;
+      const { username, email, phone, password, role } = req.body;
       
       if (!username || !password || !role) {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      const updatedUser = await storage.updateUser(id, { username: username.toLowerCase(), password, role });
+      const updatedUser = await storage.updateUser(id, { 
+        username: username.toLowerCase(), 
+        email: email || null,
+        phone: phone || null,
+        password, 
+        role 
+      });
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }

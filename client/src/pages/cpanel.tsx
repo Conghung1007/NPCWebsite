@@ -21,7 +21,7 @@ export function CpanelPage() {
   const [activeTab, setActiveTab] = useState<string>("");
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [isAddingUser, setIsAddingUser] = useState(false);
-  const [formData, setFormData] = useState({ username: "", password: "" });
+  const [formData, setFormData] = useState({ username: "", email: "", phone: "", password: "" });
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [showFormPassword, setShowFormPassword] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; user: UserType | null }>({
@@ -117,6 +117,8 @@ export function CpanelPage() {
     setEditingUser(userToEdit);
     setFormData({
       username: userToEdit.username,
+      email: userToEdit.email || "",
+      phone: userToEdit.phone || "",
       password: "", // Don't show existing password
     });
   };
@@ -142,6 +144,8 @@ export function CpanelPage() {
         },
         body: JSON.stringify({
           username: formData.username,
+          email: formData.email || null,
+          phone: formData.phone || null,
           password: formData.password,
           role: "admin", // Default role is admin
         }),
@@ -155,7 +159,7 @@ export function CpanelPage() {
         refetchUsers();
         setEditingUser(null);
         setIsAddingUser(false);
-        setFormData({ username: "", password: "" });
+        setFormData({ username: "", email: "", phone: "", password: "" });
         setShowFormPassword(false);
       } else {
         const errorData = await response.json();
@@ -449,6 +453,26 @@ export function CpanelPage() {
                             />
                           </div>
                           <div>
+                            <label className="block text-sm font-medium mb-2">Email</label>
+                            <input
+                              type="email"
+                              className="w-full px-3 py-2 border rounded-md"
+                              value={formData.email}
+                              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                              placeholder="Nhập email (không bắt buộc)"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-sm font-medium mb-2">Số điện thoại</label>
+                            <input
+                              type="tel"
+                              className="w-full px-3 py-2 border rounded-md"
+                              value={formData.phone}
+                              onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                              placeholder="Nhập số điện thoại (không bắt buộc)"
+                            />
+                          </div>
+                          <div>
                             <label className="block text-sm font-medium mb-2">Mật khẩu</label>
                             <div className="relative">
                               <input
@@ -478,7 +502,7 @@ export function CpanelPage() {
                             onClick={() => {
                               setEditingUser(null);
                               setIsAddingUser(false);
-                              setFormData({ username: "", password: "" });
+                              setFormData({ username: "", email: "", phone: "", password: "" });
                               setShowFormPassword(false);
                             }}
                           >
@@ -500,6 +524,8 @@ export function CpanelPage() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Tên đăng nhập</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Số điện thoại</TableHead>
                             <TableHead>Vai trò</TableHead>
                             <TableHead>Mật khẩu</TableHead>
                             <TableHead>Ngày tạo</TableHead>
@@ -512,6 +538,16 @@ export function CpanelPage() {
                               <TableCell className="font-medium flex items-center gap-2">
                                 <User className="w-4 h-4" />
                                 {userItem.username}
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm text-gray-600">
+                                  {userItem.email || "Chưa có"}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm text-gray-600">
+                                  {userItem.phone || "Chưa có"}
+                                </span>
                               </TableCell>
                               <TableCell>
                                 <Badge variant={userItem.role === "manager" ? "default" : "secondary"}>
