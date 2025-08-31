@@ -306,12 +306,12 @@ export default function JapaneseTraining() {
                   fieldName="japanese-teaching-method-title"
                   text="Phương pháp giảng dạy"
                   className="text-2xl font-bold text-foreground"
-                  showEditButton={true}
-                  editingField={editingField}
-                  editValues={editValues}
-                  onEditStart={handleEditStart}
-                  onEditSave={handleEditSave}
-                  onEditCancel={handleEditCancel}
+                  showEditButton={false}
+                  editingField={null}
+                  editValues={{}}
+                  onEditStart={() => {}}
+                  onEditSave={() => {}}
+                  onEditCancel={() => {}}
                 />
               </h3>
               <div className="space-y-4">
@@ -368,6 +368,12 @@ export default function JapaneseTraining() {
                   fieldName="japanese-schedule-title"
                   text="Lịch học linh hoạt"
                   className="text-2xl font-bold text-foreground"
+                  showEditButton={false}
+                  editingField={null}
+                  editValues={{}}
+                  onEditStart={() => {}}
+                  onEditSave={() => {}}
+                  onEditCancel={() => {}}
                 />
               </h3>
               <Card>
@@ -395,6 +401,12 @@ export default function JapaneseTraining() {
                   fieldName="japanese-testimonials-title"
                   text="Học viên nói gì"
                   className="text-2xl font-bold text-foreground"
+                  showEditButton={false}
+                  editingField={null}
+                  editValues={{}}
+                  onEditStart={() => {}}
+                  onEditSave={() => {}}
+                  onEditCancel={() => {}}
                 />
               </h3>
               <div className="space-y-4">
@@ -415,6 +427,12 @@ export default function JapaneseTraining() {
                           text={testimonial.content}
                           className="text-muted-foreground text-sm italic"
                           multiline={true}
+                          showEditButton={false}
+                          editingField={null}
+                          editValues={{}}
+                          onEditStart={() => {}}
+                          onEditSave={() => {}}
+                          onEditCancel={() => {}}
                         />"
                       </p>
                     </CardContent>
@@ -434,6 +452,12 @@ export default function JapaneseTraining() {
               fieldName="japanese-instructors-title"
               text="Đội ngũ giảng viên"
               className="text-2xl font-bold text-foreground"
+              showEditButton={false}
+              editingField={null}
+              editValues={{}}
+              onEditStart={() => {}}
+              onEditSave={() => {}}
+              onEditCancel={() => {}}
             />
           </h3>
           <div className="grid md:grid-cols-3 gap-8">
