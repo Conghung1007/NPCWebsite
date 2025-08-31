@@ -183,12 +183,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Check if username already exists
-      const existingUser = await storage.getUserByUsername(username);
+      const existingUser = await storage.getUserByUsername(username.toLowerCase());
       if (existingUser) {
         return res.status(409).json({ message: "Username already exists" });
       }
 
-      const newUser = await storage.createUser({ username, password, role });
+      const newUser = await storage.createUser({ username: username.toLowerCase(), password, role });
       const { password: _, ...userWithoutPassword } = newUser;
       res.status(201).json(userWithoutPassword);
     } catch (error) {
@@ -207,7 +207,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Missing required fields" });
       }
 
-      const updatedUser = await storage.updateUser(id, { username, password, role });
+      const updatedUser = await storage.updateUser(id, { username: username.toLowerCase(), password, role });
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
@@ -452,7 +452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const user = await storage.authenticateUser(username, password);
+      const user = await storage.authenticateUser(username.toLowerCase(), password);
       
       if (user) {
         // Store user in session
