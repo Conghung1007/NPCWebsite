@@ -281,8 +281,20 @@ export default function VisaServices() {
                   <div key={index} className="flex items-center p-4 bg-neutral rounded-lg">
                     {type.icon}
                     <div className="ml-3">
-                      <span className="font-medium text-foreground">{type.title}</span>
-                      <p className="text-sm text-muted-foreground">{type.description}</p>
+                      <span className="font-medium text-foreground">
+                        <EditableText 
+                          fieldName={`visa-type-${index}-title`}
+                          text={type.title}
+                          className="font-medium text-foreground"
+                        />
+                      </span>
+                      <p className="text-sm text-muted-foreground">
+                        <EditableText 
+                          fieldName={`visa-type-${index}-description`}
+                          text={type.description}
+                          className="text-sm text-muted-foreground"
+                        />
+                      </p>
                     </div>
                   </div>
                 ))}

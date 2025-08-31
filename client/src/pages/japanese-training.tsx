@@ -486,7 +486,14 @@ export default function JapaneseTraining() {
                         </div>
                         <span className="font-medium text-foreground">{testimonial.name}</span>
                       </div>
-                      <p className="text-muted-foreground text-sm italic">"{testimonial.content}"</p>
+                      <p className="text-muted-foreground text-sm italic">
+                        "<EditableText 
+                          fieldName={`japanese-testimonial-${index}`}
+                          text={testimonial.content}
+                          className="text-muted-foreground text-sm italic"
+                          multiline={true}
+                        />"
+                      </p>
                     </CardContent>
                   </Card>
                 ))}

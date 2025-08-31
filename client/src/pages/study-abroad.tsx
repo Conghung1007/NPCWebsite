@@ -240,7 +240,11 @@ export default function StudyAbroad() {
           <div className="grid lg:grid-cols-3 gap-8 mt-[60px] mb-[60px]">
             <div className="lg:col-span-2">
               <h3 className="text-2xl font-bold text-foreground mb-6">
-                Dịch vụ tư vấn du học toàn diện
+                <EditableText 
+                  fieldName="study-abroad-services-title"
+                  text="Dịch vụ tư vấn du học toàn diện"
+                  className="text-2xl font-bold text-foreground"
+                />
               </h3>
               <div className="grid md:grid-cols-2 gap-6 mb-8">
                 {services.map((service, index) => (
@@ -249,8 +253,21 @@ export default function StudyAbroad() {
                       {service.icon}
                     </div>
                     <div>
-                      <h4 className="font-semibold text-foreground mb-2">{service.title}</h4>
-                      <p className="text-muted-foreground text-sm">{service.description}</p>
+                      <h4 className="font-semibold text-foreground mb-2">
+                        <EditableText 
+                          fieldName={`study-service-${index}-title`}
+                          text={service.title}
+                          className="font-semibold text-foreground"
+                        />
+                      </h4>
+                      <p className="text-muted-foreground text-sm">
+                        <EditableText 
+                          fieldName={`study-service-${index}-description`}
+                          text={service.description}
+                          className="text-muted-foreground text-sm"
+                          multiline={true}
+                        />
+                      </p>
                     </div>
                   </div>
                 ))}
