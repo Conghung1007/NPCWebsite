@@ -298,10 +298,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/registration-requests/:id/reject", async (req, res) => {
+  app.delete("/api/registration-requests/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const { reason } = req.body;
       const sessionUser = (req.session as any)?.user;
       
       if (!sessionUser) {
@@ -309,19 +308,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const registrationRequest = await storage.getRegistrationRequest(id);
-      if (!registrationRequest || registrationRequest.status !== 'pending') {
-        return res.status(404).json({ message: "Registration request not found or already processed" });
+      if (!registrationRequest) {
+        return res.status(404).json({ message: "Registration request not found" });
       }
 
-      await storage.updateRegistrationRequestStatus(id, 'rejected', sessionUser.id, reason);
+      await storage.deleteRegistrationRequest(id);
 
       res.json({ 
         success: true, 
-        message: "Đã từ chối đăng ký" 
+        message: "Đã xóa yêu cầu đăng ký" 
       });
     } catch (error) {
-      console.error("Error rejecting registration:", error);
-      res.status(500).json({ message: "Có lỗi xảy ra khi từ chối đăng ký" });
+      console.error("Error deleting registration:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi xóa yêu cầu đăng ký" });
     }
   });
 

@@ -282,20 +282,16 @@ export function CpanelPage() {
     }
   };
 
-  const handleRejectRegistration = async (requestId: string, reason: string) => {
+  const handleDeleteRegistration = async (requestId: string) => {
     try {
-      const response = await fetch(`/api/registration-requests/${requestId}/reject`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ reason }),
+      const response = await fetch(`/api/registration-requests/${requestId}`, {
+        method: "DELETE",
       });
 
       if (response.ok) {
         toast({
           title: "Thành công",
-          description: "Đã từ chối đăng ký",
+          description: "Đã xóa yêu cầu đăng ký",
         });
         refetchRegistrations();
       } else {
@@ -305,7 +301,7 @@ export function CpanelPage() {
     } catch (error: any) {
       toast({
         title: "Lỗi",
-        description: error.message || "Không thể từ chối đăng ký",
+        description: error.message || "Không thể xóa yêu cầu đăng ký",
         variant: "destructive",
       });
     }
@@ -781,21 +777,15 @@ export function CpanelPage() {
                                       size="sm"
                                       variant="outline"
                                       onClick={() => {
-                                        const reason = prompt("Lý do từ chối:");
-                                        if (reason) {
-                                          handleRejectRegistration(request.id, reason);
+                                        if (window.confirm("Bạn có chắc chắn muốn xóa yêu cầu đăng ký này không?")) {
+                                          handleDeleteRegistration(request.id);
                                         }
                                       }}
                                       className="text-red-600 hover:text-red-700"
                                     >
                                       <X className="w-4 h-4" />
-                                      Từ chối
+                                      Xóa
                                     </Button>
-                                  </div>
-                                )}
-                                {request.status === "rejected" && request.rejectionReason && (
-                                  <div className="text-sm text-red-600">
-                                    Lý do: {request.rejectionReason}
                                   </div>
                                 )}
                               </TableCell>
