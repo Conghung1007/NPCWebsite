@@ -13,10 +13,7 @@ export function useCreateContactInfo() {
   
   return useMutation({
     mutationFn: async (contactInfo: InsertContactInfo) => {
-      return apiRequest("/api/contact-info", {
-        method: "POST",
-        body: JSON.stringify(contactInfo),
-      });
+      return apiRequest("POST", "/api/contact-info", contactInfo);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contact-info"] });
@@ -29,10 +26,7 @@ export function useUpdateContactInfo() {
   
   return useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<InsertContactInfo> }) => {
-      return apiRequest(`/api/contact-info/${id}`, {
-        method: "PUT",
-        body: JSON.stringify(data),
-      });
+      return apiRequest("PUT", `/api/contact-info/${id}`, data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contact-info"] });
@@ -45,9 +39,7 @@ export function useDeleteContactInfo() {
   
   return useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/contact-info/${id}`, {
-        method: "DELETE",
-      });
+      return apiRequest("DELETE", `/api/contact-info/${id}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contact-info"] });
@@ -60,9 +52,7 @@ export function useSeedContactInfo() {
   
   return useMutation({
     mutationFn: async () => {
-      return apiRequest("/api/contact-info/seed", {
-        method: "POST",
-      });
+      return apiRequest("POST", "/api/contact-info/seed");
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/contact-info"] });
