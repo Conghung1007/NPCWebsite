@@ -52,6 +52,17 @@ export default function Home() {
     if (value && Object.keys(serviceTexts).includes(fieldName)) {
       handleServiceTextUpdate(fieldName, value);
     }
+    
+    // Update testimonial if it's a testimonial field
+    if (fieldName.startsWith('testimonial-')) {
+      const parts = fieldName.split('-');
+      if (parts.length >= 3) {
+        const testimonialId = parseInt(parts[1]);
+        const field = parts[2];
+        handleTestimonialTextUpdate(testimonialId, field, value);
+      }
+    }
+    
     console.log(`Saving field ${fieldName} with value:`, value);
     setEditValues({ ...editValues, [fieldName]: value });
     setEditingField(null);
@@ -258,6 +269,14 @@ export default function Home() {
     setTestimonials(prev => prev.map(testimonial => 
       testimonial.id === testimonialId 
         ? { ...testimonial, avatar: newAvatar }
+        : testimonial
+    ));
+  };
+
+  const handleTestimonialTextUpdate = (testimonialId: number, field: string, value: string) => {
+    setTestimonials(prev => prev.map(testimonial => 
+      testimonial.id === testimonialId 
+        ? { ...testimonial, [field]: value }
         : testimonial
     ));
   };
@@ -548,12 +567,20 @@ export default function Home() {
             {testimonials.map((testimonial) => (
               <TestimonialCard
                 key={testimonial.id}
+                id={testimonial.id}
                 name={testimonial.name}
                 role={testimonial.role}
                 content={testimonial.content}
                 avatar={testimonial.avatar}
                 allowAvatarEdit={hasImageEditPermission}
                 onAvatarUpdate={(newAvatar) => handleTestimonialAvatarUpdate(testimonial.id, newAvatar)}
+                allowTextEdit={true}
+                onTextUpdate={(field, value) => handleTestimonialTextUpdate(testimonial.id, field, value)}
+                editingField={editingField}
+                editValues={editValues}
+                onEditStart={handleEditStart}
+                onEditSave={handleEditSave}
+                onEditCancel={handleEditCancel}
               />
             ))}
           </div>

@@ -2,9 +2,11 @@ import { useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ImageManager } from "@/components/ui/image-manager";
+import { EditableText } from "@/components/ui/editable-text";
 import { Star, Edit } from "lucide-react";
 
 interface TestimonialCardProps {
+  id: number;
   name: string;
   role: string;
   content: string;
@@ -12,16 +14,31 @@ interface TestimonialCardProps {
   rating?: number;
   allowAvatarEdit?: boolean;
   onAvatarUpdate?: (newAvatar: string) => void;
+  allowTextEdit?: boolean;
+  onTextUpdate?: (field: string, value: string) => void;
+  editingField?: string | null;
+  editValues?: Record<string, string>;
+  onEditStart?: (fieldName: string, currentValue: string) => void;
+  onEditSave?: (fieldName: string, value: string) => void;
+  onEditCancel?: () => void;
 }
 
 export function TestimonialCard({ 
+  id,
   name, 
   role, 
   content, 
   avatar,
   rating = 5,
   allowAvatarEdit = false,
-  onAvatarUpdate
+  onAvatarUpdate,
+  allowTextEdit = false,
+  onTextUpdate,
+  editingField,
+  editValues,
+  onEditStart,
+  onEditSave,
+  onEditCancel
 }: TestimonialCardProps) {
   const [showImageManager, setShowImageManager] = useState(false);
   return (
@@ -35,7 +52,18 @@ export function TestimonialCard({
           </div>
         </div>
         <p className="text-muted-foreground mb-6 italic leading-relaxed">
-          "{content}"
+          "<EditableText 
+            fieldName={`testimonial-${id}-content`}
+            text={content}
+            className="text-muted-foreground italic"
+            multiline={true}
+            showEditButton={allowTextEdit}
+            editingField={editingField}
+            editValues={editValues}
+            onEditStart={onEditStart}
+            onEditSave={onEditSave}
+            onEditCancel={onEditCancel}
+          />"
         </p>
         <div className="flex items-center">
           {avatar && (
@@ -70,8 +98,32 @@ export function TestimonialCard({
             </div>
           )}
           <div>
-            <div className="font-semibold text-foreground">{name}</div>
-            <div className="text-sm text-muted-foreground">{role}</div>
+            <div className="font-semibold text-foreground">
+              <EditableText 
+                fieldName={`testimonial-${id}-name`}
+                text={name}
+                className="font-semibold text-foreground"
+                showEditButton={allowTextEdit}
+                editingField={editingField}
+                editValues={editValues}
+                onEditStart={onEditStart}
+                onEditSave={onEditSave}
+                onEditCancel={onEditCancel}
+              />
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <EditableText 
+                fieldName={`testimonial-${id}-role`}
+                text={role}
+                className="text-sm text-muted-foreground"
+                showEditButton={allowTextEdit}
+                editingField={editingField}
+                editValues={editValues}
+                onEditStart={onEditStart}
+                onEditSave={onEditSave}
+                onEditCancel={onEditCancel}
+              />
+            </div>
           </div>
         </div>
       </CardContent>
