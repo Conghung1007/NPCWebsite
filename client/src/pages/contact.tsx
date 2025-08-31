@@ -196,21 +196,10 @@ export default function Contact() {
 
       
 
-      {/* Office Hours & Additional Info */}
-      <section className="py-16 bg-white">
+      {/* Additional Info */}
+      <section className="py-16 bg-green-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-8 text-center">
-            <div>
-              <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Clock className="h-8 w-8 text-primary" />
-              </div>
-              <h4 className="font-semibold text-foreground mb-2">Giờ làm việc</h4>
-              <p className="text-muted-foreground text-sm">
-                Thứ 2 - Thứ 6: 8:00 - 18:00<br />
-                Thứ 7 - Chủ nhật: 8:00 - 17:00
-              </p>
-            </div>
-            
+          <div className="grid md:grid-cols-2 gap-8 text-center">
             <div>
               <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                 <Phone className="h-8 w-8 text-secondary" />
