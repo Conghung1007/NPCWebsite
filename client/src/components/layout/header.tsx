@@ -169,14 +169,14 @@ export function Header() {
               </DropdownMenu>
             ) : (
               <div className="flex items-center space-x-2">
-                <Link href="/register">
-                  <Button variant="default" className="text-base">
-                    Đăng ký
-                  </Button>
-                </Link>
                 <Link href="/login">
                   <Button variant="outline" className="text-base">
                     Đăng nhập
+                  </Button>
+                </Link>
+                <Link href="/register">
+                  <Button variant="outline" className="text-base">
+                    Đăng ký
                   </Button>
                 </Link>
               </div>
