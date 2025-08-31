@@ -329,6 +329,12 @@ export default function Home() {
                 fieldName="heroTitle"
                 text={serviceTexts.heroTitle}
                 className="text-5xl lg:text-7xl font-bold text-white"
+                showEditButton={true}
+                editingField={editingField}
+                editValues={editValues}
+                onEditStart={handleEditStart}
+                onEditSave={handleEditSave}
+                onEditCancel={handleEditCancel}
               />
               <br />
               <span className="text-accent">
@@ -336,6 +342,12 @@ export default function Home() {
                   fieldName="heroSubtitle"
                   text={serviceTexts.heroSubtitle}
                   className="text-accent text-5xl lg:text-7xl font-bold"
+                  showEditButton={true}
+                  editingField={editingField}
+                  editValues={editValues}
+                  onEditStart={handleEditStart}
+                  onEditSave={handleEditSave}
+                  onEditCancel={handleEditCancel}
                 />
               </span>
             </h1>
@@ -345,6 +357,12 @@ export default function Home() {
                 text={serviceTexts.heroDescription}
                 className="text-xl lg:text-2xl text-blue-100"
                 multiline={true}
+                showEditButton={true}
+                editingField={editingField}
+                editValues={editValues}
+                onEditStart={handleEditStart}
+                onEditSave={handleEditSave}
+                onEditCancel={handleEditCancel}
               />
             </div>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
@@ -387,6 +405,12 @@ export default function Home() {
                 fieldName="services-title"
                 text="Dịch vụ chuyên nghiệp"
                 className="text-4xl md:text-5xl font-bold text-foreground"
+                showEditButton={true}
+                editingField={editingField}
+                editValues={editValues}
+                onEditStart={handleEditStart}
+                onEditSave={handleEditSave}
+                onEditCancel={handleEditCancel}
               />
             </h2>
             <div className="text-2xl text-muted-foreground max-w-3xl mx-auto">
@@ -395,6 +419,12 @@ export default function Home() {
                 text="Chúng tôi cung cấp giải pháp toàn diện cho mọi nhu cầu du lịch, học tập và phát triển sự nghiệp quốc tế của bạn"
                 className="text-2xl text-muted-foreground"
                 multiline={true}
+                showEditButton={true}
+                editingField={editingField}
+                editValues={editValues}
+                onEditStart={handleEditStart}
+                onEditSave={handleEditSave}
+                onEditCancel={handleEditCancel}
               />
             </div>
           </div>
@@ -551,6 +581,12 @@ export default function Home() {
                 fieldName="testimonials-title"
                 text="Khách hàng nói gì về chúng tôi"
                 className="text-4xl md:text-5xl font-bold text-foreground"
+                showEditButton={true}
+                editingField={editingField}
+                editValues={editValues}
+                onEditStart={handleEditStart}
+                onEditSave={handleEditSave}
+                onEditCancel={handleEditCancel}
               />
             </h2>
             <div className="text-2xl text-muted-foreground">
@@ -559,6 +595,12 @@ export default function Home() {
                 text="Hàng nghìn câu chuyện thành công từ khách hàng tin tưởng N&P"
                 className="text-2xl text-muted-foreground"
                 multiline={true}
+                showEditButton={true}
+                editingField={editingField}
+                editValues={editValues}
+                onEditStart={handleEditStart}
+                onEditSave={handleEditSave}
+                onEditCancel={handleEditCancel}
               />
             </div>
           </div>
