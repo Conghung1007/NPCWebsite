@@ -15,43 +15,67 @@ export function Layout({ children }: LayoutProps) {
 
   // Scroll to top when route changes
   useEffect(() => {
-    // Immediate scroll to top using multiple methods for maximum compatibility
-    const scrollToTopImmediate = () => {
+    // Most aggressive scroll to top approach
+    const forceScrollToTop = () => {
+      // Method 1: Standard window scroll
       window.scrollTo(0, 0);
-      document.documentElement.scrollTop = 0;
-      document.body.scrollTop = 0;
       
-      // Force scroll for iOS Safari and other stubborn browsers
-      const html = document.documentElement;
-      const body = document.body;
-      html.scrollTop = 0;
-      body.scrollTop = 0;
+      // Method 2: Document element scroll
+      if (document.documentElement) {
+        document.documentElement.scrollTop = 0;
+      }
       
-      // Try window.pageYOffset reset
-      try {
-        if (window.pageYOffset > 0) {
-          window.scrollTo(0, 0);
+      // Method 3: Body scroll
+      if (document.body) {
+        document.body.scrollTop = 0;
+      }
+      
+      // Method 4: Manual element manipulation
+      const allScrollableElements = document.querySelectorAll('*');
+      allScrollableElements.forEach(element => {
+        if (element.scrollTop && element.scrollTop > 0) {
+          element.scrollTop = 0;
         }
+      });
+      
+      // Method 5: History manipulation for SPA
+      if (window.history && window.history.scrollRestoration) {
+        window.history.scrollRestoration = 'manual';
+      }
+      
+      // Method 6: Scroll to header specifically
+      const header = document.getElementById('page-header');
+      if (header) {
+        header.scrollIntoView({ block: 'start', behavior: 'instant' });
+      }
+      
+      // Method 7: Additional scroll reset methods
+      try {
+        // Reset scroll for iOS Safari
+        document.querySelector('html')?.scrollTo(0, 0);
+        document.querySelector('body')?.scrollTo(0, 0);
       } catch (e) {
-        console.log('pageYOffset scroll failed:', e);
+        // Ignore errors
       }
     };
 
-    // Execute immediately
-    scrollToTopImmediate();
+    // Execute multiple times with different timing
+    forceScrollToTop();
+    requestAnimationFrame(forceScrollToTop);
+    setTimeout(forceScrollToTop, 1);
+    setTimeout(forceScrollToTop, 10);
+    setTimeout(forceScrollToTop, 50);
+    setTimeout(forceScrollToTop, 100);
+    setTimeout(forceScrollToTop, 200);
     
-    // Execute again after a small delay to ensure all components have rendered
-    setTimeout(scrollToTopImmediate, 10);
-    setTimeout(scrollToTopImmediate, 100);
-    
-    // Force update scroll position tracking
+    // Update scroll tracking
     setTimeout(() => {
       const handleScroll = () => {
         const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
         setShowScrollTop(scrollTop > 300);
       };
       handleScroll();
-    }, 150);
+    }, 250);
   }, [location]);
 
   useEffect(() => {
