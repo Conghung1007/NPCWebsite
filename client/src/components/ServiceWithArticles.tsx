@@ -1,9 +1,8 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Clock, ArrowRight, ChevronLeft, ChevronRight, Edit, Check, X } from "lucide-react";
+import { EditableText } from "@/components/ui/editable-text";
+import { Clock, ArrowRight, ChevronLeft, ChevronRight, Edit } from "lucide-react";
 import { Link } from "wouter";
 import { useState, useRef, useEffect } from "react";
 import type { Article } from "@shared/schema";
@@ -59,8 +58,9 @@ export function ServiceWithArticles({
     setEditValues({ ...editValues, [fieldName]: currentValue });
   };
 
-  const handleEditSave = (fieldName: string) => {
-    console.log(`Saving field ${fieldName} with value:`, editValues[fieldName]);
+  const handleEditSave = (fieldName: string, value: string) => {
+    console.log(`Saving field ${fieldName} with value:`, value);
+    setEditValues({ ...editValues, [fieldName]: value });
     setEditingField(null);
   };
 
@@ -69,72 +69,7 @@ export function ServiceWithArticles({
     setEditValues({});
   };
 
-  // EditableText component
-  const EditableText = ({ 
-    fieldName, 
-    text, 
-    className = "", 
-    multiline = false, 
-    placeholder = "" 
-  }: {
-    fieldName: string;
-    text: string;
-    className?: string;
-    multiline?: boolean;
-    placeholder?: string;
-  }) => {
-    const showEditButtons = true; // Demo mode
-    
-    if (!showEditButtons) {
-      return <span className={className}>{text}</span>;
-    }
 
-    if (editingField === fieldName) {
-      return (
-        <div className="flex items-center gap-2 w-full">
-          {multiline ? (
-            <Textarea
-              defaultValue={editValues[fieldName] || text}
-              onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
-              placeholder={placeholder}
-              className={`flex-1 ${className}`}
-              autoFocus
-              key={fieldName}
-            />
-          ) : (
-            <Input
-              defaultValue={editValues[fieldName] || text}
-              onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
-              placeholder={placeholder}
-              className={`flex-1 ${className}`}
-              autoFocus
-              key={fieldName}
-            />
-          )}
-          <Button size="sm" onClick={() => handleEditSave(fieldName)}>
-            <Check className="w-4 h-4" />
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleEditCancel}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="group relative inline-block w-full">
-        <span className={className}>{text}</span>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white shadow-sm border"
-          onClick={() => handleEditStart(fieldName, text)}
-        >
-          <Edit className="w-4 h-4" />
-        </Button>
-      </div>
-    );
-  };
 
   // Filter articles by category and limit to 6 most recent
   const categoryArticles = allArticles
@@ -258,6 +193,12 @@ export function ServiceWithArticles({
                 fieldName={`${category}-title`}
                 text={service.title}
                 className="text-3xl font-bold text-foreground"
+                showEditButton={true}
+                editingField={editingField}
+                editValues={editValues}
+                onEditStart={handleEditStart}
+                onEditSave={handleEditSave}
+                onEditCancel={handleEditCancel}
               />
             </h3>
             <div className="text-lg text-muted-foreground mb-6">
@@ -266,6 +207,12 @@ export function ServiceWithArticles({
                 text={service.description}
                 className="text-lg text-muted-foreground"
                 multiline={true}
+                showEditButton={true}
+                editingField={editingField}
+                editValues={editValues}
+                onEditStart={handleEditStart}
+                onEditSave={handleEditSave}
+                onEditCancel={handleEditCancel}
               />
             </div>
           </div>
