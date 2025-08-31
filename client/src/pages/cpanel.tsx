@@ -521,7 +521,7 @@ export function CpanelPage() {
                               <TableCell>
                                 <div className="flex items-center gap-2">
                                   <span className="font-mono text-sm">
-                                    {showPasswords[userItem.id] ? "123456" : "••••••"}
+                                    {showPasswords[userItem.id] ? userItem.password : "••••••"}
                                   </span>
                                   <button
                                     onClick={() => setShowPasswords(prev => ({
