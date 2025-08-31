@@ -263,6 +263,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Registration request not found or already processed" });
       }
 
+      // Check for conflicts with existing users before creating the account
+      const [usernameExists, emailExists, phoneExists] = await Promise.all([
+        storage.checkUsernameExists(registrationRequest.username),
+        storage.checkEmailExists(registrationRequest.email),
+        storage.checkPhoneExists(registrationRequest.phone)
+      ]);
+
+      if (usernameExists) {
+        return res.status(409).json({ 
+          success: false, 
+          message: "Không thể duyệt: Tên đăng nhập đã tồn tại trong hệ thống" 
+        });
+      }
+
+      if (emailExists) {
+        return res.status(409).json({ 
+          success: false, 
+          message: "Không thể duyệt: Email đã được sử dụng trong hệ thống" 
+        });
+      }
+
+      if (phoneExists) {
+        return res.status(409).json({ 
+          success: false, 
+          message: "Không thể duyệt: Số điện thoại đã được sử dụng trong hệ thống" 
+        });
+      }
+
       // Create user account
       const newUser = await storage.createUser({
         username: registrationRequest.username, // Already lowercase from registration
