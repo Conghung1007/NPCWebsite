@@ -79,7 +79,7 @@ export default function Login() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+      <Card className="w-full max-w-md min-h-[500px]">
         <CardHeader className="text-center space-y-2">
           <CardTitle className="text-2xl font-bold text-foreground">
             Đăng nhập
@@ -152,10 +152,10 @@ export default function Login() {
             <p className="text-sm text-muted-foreground">
               Chưa có tài khoản?{" "}
               <button
-                onClick={() => setLocation("/contact")}
+                onClick={() => setLocation("/register")}
                 className="text-primary hover:text-primary/80 font-medium"
               >
-                Liên hệ admin
+                Đăng ký
               </button>
             </p>
           </div>
