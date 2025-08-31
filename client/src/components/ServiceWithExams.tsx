@@ -186,12 +186,12 @@ export function ServiceWithExams({
                 text={service.description}
                 className="text-lg text-muted-foreground"
                 multiline={true}
-                showEditButton={false}
-                editingField={null}
-                editValues={{}}
-                onEditStart={() => {}}
-                onEditSave={() => {}}
-                onEditCancel={() => {}}
+                showEditButton={true}
+                editingField={editingField}
+                editValues={editValues}
+                onEditStart={handleEditStart}
+                onEditSave={handleEditSave}
+                onEditCancel={handleEditCancel}
               />
             </div>
           </div>
