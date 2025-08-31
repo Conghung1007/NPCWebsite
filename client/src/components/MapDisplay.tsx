@@ -40,7 +40,7 @@ export function MapDisplay({ className = "" }: MapDisplayProps) {
       <iframe
         src={embedUrl}
         width="100%"
-        height="400"
+        height="500"
         style={{ border: 0 }}
         allowFullScreen={true}
         loading="lazy"
