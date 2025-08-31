@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation } from "wouter";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -16,6 +16,11 @@ import { registrationFormSchema, type RegistrationFormData } from "@shared/schem
 export default function Register() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  // Cuộn lên đầu trang khi component mount
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, []);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
