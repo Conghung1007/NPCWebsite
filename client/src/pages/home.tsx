@@ -39,7 +39,16 @@ export default function Home() {
   
   // Text editing states
   const [editingField, setEditingField] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<Record<string, string>>({});
+  const [editValues, setEditValues] = useState<Record<string, string>>(() => {
+    try {
+      const saved = localStorage.getItem('home-edit-values');
+      console.log('Loading home-edit-values from localStorage:', saved);
+      return saved ? JSON.parse(saved) : {};
+    } catch (error) {
+      console.error('Failed to load home edit values from localStorage:', error);
+      return {};
+    }
+  });
 
   // Editable text handler functions
   const handleEditStart = (fieldName: string, currentValue: string) => {
@@ -64,7 +73,11 @@ export default function Home() {
     }
     
     console.log(`Saving field ${fieldName} with value:`, value);
-    setEditValues({ ...editValues, [fieldName]: value });
+    const updatedEditValues = { ...editValues, [fieldName]: value };
+    setEditValues(updatedEditValues);
+    // Save to localStorage
+    console.log('Saving home-edit-values to localStorage:', updatedEditValues);
+    localStorage.setItem('home-edit-values', JSON.stringify(updatedEditValues));
     setEditingField(null);
   };
 
