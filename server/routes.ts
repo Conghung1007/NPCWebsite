@@ -265,8 +265,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create user account
       const newUser = await storage.createUser({
-        username: registrationRequest.username,
-        email: registrationRequest.email,
+        username: registrationRequest.username, // Already lowercase from registration
+        email: registrationRequest.email, // Already lowercase from registration
         phone: registrationRequest.phone,
         password: registrationRequest.password, // In real app, this should be hashed
         role: "user"
