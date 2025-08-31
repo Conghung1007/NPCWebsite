@@ -33,25 +33,43 @@ export function EditableText({
   const [isEditing, setIsEditing] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const cursorPositionRef = useRef<number>(0);
   
   useEffect(() => {
     if (editingField === fieldName) {
       setIsEditing(true);
-      setLocalValue(editValues[fieldName] || text);
+      const initialValue = editValues[fieldName] || text;
+      setLocalValue(initialValue);
+      cursorPositionRef.current = initialValue.length;
       
-      // Focus and position cursor at end
-      setTimeout(() => {
+      // Focus and position cursor at end after DOM update
+      const timeoutId = setTimeout(() => {
         const element = multiline ? textareaRef.current : inputRef.current;
         if (element) {
           element.focus();
-          const length = element.value.length;
-          element.setSelectionRange(length, length);
+          element.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current);
         }
-      }, 10);
+      }, 50);
+      
+      return () => clearTimeout(timeoutId);
     } else {
       setIsEditing(false);
     }
   }, [editingField, fieldName, text, multiline, editValues]);
+  
+  // Preserve cursor position on value change
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const element = e.target;
+    cursorPositionRef.current = element.selectionStart || 0;
+    setLocalValue(element.value);
+    
+    // Restore cursor position after state update
+    requestAnimationFrame(() => {
+      if (element) {
+        element.setSelectionRange(cursorPositionRef.current, cursorPositionRef.current);
+      }
+    });
+  };
   
   if (!showEditButton) {
     return <span className={className}>{text}</span>;
@@ -79,7 +97,7 @@ export function EditableText({
           <textarea
             ref={textareaRef}
             value={localValue}
-            onChange={(e) => setLocalValue(e.target.value)}
+            onChange={handleInputChange}
             placeholder={placeholder}
             className={`flex-1 border border-primary rounded-md px-2 py-1 resize-none ${className}`}
             onKeyDown={(e) => {
@@ -97,7 +115,7 @@ export function EditableText({
             ref={inputRef}
             type="text"
             value={localValue}
-            onChange={(e) => setLocalValue(e.target.value)}
+            onChange={handleInputChange}
             placeholder={placeholder}
             className={`flex-1 border border-primary rounded-md px-2 py-1 ${className}`}
             onKeyDown={(e) => {
