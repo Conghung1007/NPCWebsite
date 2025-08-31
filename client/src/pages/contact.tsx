@@ -200,27 +200,63 @@ export default function Contact() {
       <section className="py-16 bg-green-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-8 text-center">
-            <div>
-              <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Phone className="h-8 w-8 text-secondary" />
-              </div>
-              <h4 className="font-semibold text-foreground mb-2">Hotline 24/7</h4>
-              <p className="text-muted-foreground text-sm">
-                Luôn sẵn sàng hỗ trợ bạn<br />
-                mọi lúc, mọi nơi
-              </p>
-            </div>
+            {/* Dynamic Hotline Info */}
+            {(() => {
+              const hotlineInfo = contactInfos.find(info => info.type === "hotline" && info.isActive);
+              return hotlineInfo ? (
+                <div>
+                  <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Phone className="h-8 w-8 text-secondary" />
+                  </div>
+                  <h4 className="font-semibold text-foreground mb-2">{hotlineInfo.title}</h4>
+                  <div className="text-muted-foreground text-sm">
+                    {hotlineInfo.content.map((phone, index) => (
+                      <div key={index}>{phone}</div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="w-16 h-16 bg-secondary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Phone className="h-8 w-8 text-secondary" />
+                  </div>
+                  <h4 className="font-semibold text-foreground mb-2">Hotline 24/7</h4>
+                  <p className="text-muted-foreground text-sm">
+                    Luôn sẵn sàng hỗ trợ bạn<br />
+                    mọi lúc, mọi nơi
+                  </p>
+                </div>
+              );
+            })()}
             
-            <div>
-              <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Mail className="h-8 w-8 text-accent" />
-              </div>
-              <h4 className="font-semibold text-foreground mb-2">Phản hồi nhanh</h4>
-              <p className="text-muted-foreground text-sm">
-                Email được trả lời<br />
-                trong vòng 2 giờ
-              </p>
-            </div>
+            {/* Dynamic Email Info */}
+            {(() => {
+              const emailInfo = contactInfos.find(info => info.type === "email" && info.isActive);
+              return emailInfo ? (
+                <div>
+                  <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Mail className="h-8 w-8 text-accent" />
+                  </div>
+                  <h4 className="font-semibold text-foreground mb-2">{emailInfo.title}</h4>
+                  <div className="text-muted-foreground text-sm">
+                    {emailInfo.content.map((email, index) => (
+                      <div key={index}>{email}</div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <div className="w-16 h-16 bg-accent/10 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <Mail className="h-8 w-8 text-accent" />
+                  </div>
+                  <h4 className="font-semibold text-foreground mb-2">Phản hồi nhanh</h4>
+                  <p className="text-muted-foreground text-sm">
+                    Email được trả lời<br />
+                    trong vòng 2 giờ
+                  </p>
+                </div>
+              );
+            })()}
           </div>
         </div>
       </section>
