@@ -387,39 +387,82 @@ export default function VisaServices() {
                 </h3>
                 <Accordion type="single" collapsible className="w-full">
                   {faqs.map((faq, index) => (
-                    <AccordionItem key={index} value={`item-${index}`}>
+                    <AccordionItem key={index} value={`item-${index}`} className="group">
                       <AccordionTrigger className="text-left">
-                        <EditableText
-                          fieldName={`faq-question-${index}`}
-                          text={faq.question}
-                          className="text-left"
-                          showEditButton={hasEditPermission}
-                          editingField={editingField}
-                          editValues={editValues}
-                          onEditStart={handleEditStart}
-                          onEditSave={(fieldName, value) => {
-                            handleFaqQuestionUpdate(index, value);
-                            handleEditSave(fieldName, value);
-                          }}
-                          onEditCancel={handleEditCancel}
-                        />
+                        <div className="flex items-center justify-between w-full">
+                          {editingField === `faq-question-${index}` ? (
+                            <div className="flex-1 flex items-center gap-2">
+                              <input
+                                type="text"
+                                value={editValues[`faq-question-${index}`] || faq.question}
+                                onChange={(e) => setEditValues({...editValues, [`faq-question-${index}`]: e.target.value})}
+                                className="flex-1 px-2 py-1 border rounded text-sm"
+                                autoFocus
+                                onClick={(e) => e.stopPropagation()}
+                              />
+                              <Button
+                                variant="ghost" 
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const newValue = editValues[`faq-question-${index}`] || faq.question;
+                                  handleFaqQuestionUpdate(index, newValue);
+                                  handleEditSave(`faq-question-${index}`, newValue);
+                                }}
+                                className="text-green-600 hover:text-green-700"
+                              >
+                                <Check className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm" 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleEditCancel();
+                                }}
+                                className="text-red-600 hover:text-red-700"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <>
+                              <span className="flex-1">{faq.question}</span>
+                              {hasEditPermission && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleEditStart(`faq-question-${index}`, faq.question);
+                                  }}
+                                  className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </div>
                       </AccordionTrigger>
                       <AccordionContent>
-                        <EditableText
-                          fieldName={`faq-answer-${index}`}
-                          text={faq.answer}
-                          className="text-muted-foreground"
-                          multiline={true}
-                          showEditButton={hasEditPermission}
-                          editingField={editingField}
-                          editValues={editValues}
-                          onEditStart={handleEditStart}
-                          onEditSave={(fieldName, value) => {
-                            handleFaqAnswerUpdate(index, value);
-                            handleEditSave(fieldName, value);
-                          }}
-                          onEditCancel={handleEditCancel}
-                        />
+                        <div className="pt-2">
+                          <EditableText
+                            fieldName={`faq-answer-${index}`}
+                            text={faq.answer}
+                            className="text-muted-foreground"
+                            multiline={true}
+                            showEditButton={hasEditPermission}
+                            editingField={editingField}
+                            editValues={editValues}
+                            onEditStart={handleEditStart}
+                            onEditSave={(fieldName, value) => {
+                              handleFaqAnswerUpdate(index, value);
+                              handleEditSave(fieldName, value);
+                            }}
+                            onEditCancel={handleEditCancel}
+                          />
+                        </div>
                       </AccordionContent>
                     </AccordionItem>
                   ))}
