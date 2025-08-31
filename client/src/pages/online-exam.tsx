@@ -209,14 +209,14 @@ export function OnlineExamPage() {
                     </div>
                   </div>
                   <div className="flex space-x-2">
-                    <Link href="/register">
-                      <Button variant="outline" className="border-blue-600 text-blue-600 hover:bg-blue-600 hover:text-white">
-                        Đăng ký
-                      </Button>
-                    </Link>
                     <Link href="/login">
                       <Button className="bg-blue-600 hover:bg-blue-700">
                         Đăng nhập
+                      </Button>
+                    </Link>
+                    <Link href="/register">
+                      <Button className="bg-blue-600 hover:bg-blue-700">
+                        Đăng ký
                       </Button>
                     </Link>
                   </div>
