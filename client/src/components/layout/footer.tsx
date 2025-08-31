@@ -6,7 +6,7 @@ export function Footer() {
     { name: "Dịch vụ xin thị thực", href: "/visa-services" },
     { name: "Tư vấn du học", href: "/study-abroad" },
     { name: "Đào tạo tiếng Nhật", href: "/japanese-training" },
-    { name: "Bán vé máy bay", href: "/flight-tickets" }
+    { name: "Thi thử trực tuyến", href: "/online-exam" }
   ];
 
 
