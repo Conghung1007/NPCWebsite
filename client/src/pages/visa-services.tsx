@@ -65,6 +65,7 @@ export default function VisaServices() {
     updatedDocs[index] = newValue;
     setRequiredDocuments(updatedDocs);
     // Save to localStorage
+    console.log('Saving visa-required-documents to localStorage:', updatedDocs);
     localStorage.setItem('visa-required-documents', JSON.stringify(updatedDocs));
   };
 
@@ -74,6 +75,7 @@ export default function VisaServices() {
     updatedFaqs[index] = { ...updatedFaqs[index], question: newValue };
     setFaqs(updatedFaqs);
     // Save to localStorage
+    console.log('Saving FAQ questions to localStorage:', updatedFaqs);
     localStorage.setItem('visa-faqs', JSON.stringify(updatedFaqs));
   };
 
@@ -82,6 +84,7 @@ export default function VisaServices() {
     updatedFaqs[index] = { ...updatedFaqs[index], answer: newValue };
     setFaqs(updatedFaqs);
     // Save to localStorage
+    console.log('Saving FAQ answers to localStorage:', updatedFaqs);
     localStorage.setItem('visa-faqs', JSON.stringify(updatedFaqs));
   };
 
@@ -153,6 +156,7 @@ export default function VisaServices() {
   const [requiredDocuments, setRequiredDocuments] = useState(() => {
     try {
       const saved = localStorage.getItem('visa-required-documents');
+      console.log('Loading visa-required-documents from localStorage:', saved);
       return saved ? JSON.parse(saved) : [
         "Hộ chiếu còn hạn tối thiểu 6 tháng",
         "Đơn xin visa đã điền đầy đủ", 
@@ -176,6 +180,7 @@ export default function VisaServices() {
   const [faqs, setFaqs] = useState(() => {
     try {
       const saved = localStorage.getItem('visa-faqs');
+      console.log('Loading visa-faqs from localStorage:', saved);
       return saved ? JSON.parse(saved) : [
         {
           question: "Thời gian xử lý visa là bao lâu?",
@@ -390,7 +395,7 @@ export default function VisaServices() {
                   />
                 </h3>
                 <ul className="space-y-3">
-                  {requiredDocuments.map((doc, index) => (
+                  {requiredDocuments.map((doc: string, index: number) => (
                     <li key={index} className="flex items-start">
                       <CheckCircle className="h-5 w-5 text-secondary mt-1 mr-3 flex-shrink-0" />
                       <div className="text-muted-foreground flex-1">
@@ -431,7 +436,7 @@ export default function VisaServices() {
                   />
                 </h3>
                 <Accordion type="single" collapsible className="w-full">
-                  {faqs.map((faq, index) => (
+                  {faqs.map((faq: {question: string, answer: string}, index: number) => (
                     <AccordionItem key={index} value={`item-${index}`} className="group">
                       <AccordionTrigger className="text-left">
                         <div className="flex items-center justify-between w-full">
