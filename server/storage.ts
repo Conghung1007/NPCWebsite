@@ -1,7 +1,7 @@
 import { type User, type InsertUser, type ContactRequest, type InsertContactRequest, type Article, type InsertArticle, type UiImage, type InsertUiImage, type RegistrationRequest, type InsertRegistrationRequest, type Exam, type InsertExam, type Question, type InsertQuestion, type ExamAttempt, type InsertExamAttempt } from "@shared/schema";
 import { users, contactRequests, articles, uiImages, registrationRequests, exams, questions, examAttempts } from "@shared/schema";
 import { db } from "./db";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -677,27 +677,45 @@ export class MemStorage implements IStorage {
   }
 
   async checkUsernameExists(username: string): Promise<boolean> {
-    // Only check existing users, not registration requests
+    // Check existing users
     const existingUser = Array.from(this.users.values()).find(user => 
       user.username.toLowerCase() === username.toLowerCase()
     );
-    return !!existingUser;
+    if (existingUser) return true;
+
+    // Check pending registration requests to prevent duplicate registrations
+    const existingRequest = Array.from(this.registrationRequests.values()).find(request => 
+      request.username.toLowerCase() === username.toLowerCase() && request.status === 'pending'
+    );
+    return !!existingRequest;
   }
 
   async checkEmailExists(email: string): Promise<boolean> {
-    // Only check existing users, not registration requests
+    // Check existing users
     const existingUser = Array.from(this.users.values()).find(user => 
       user.email?.toLowerCase() === email.toLowerCase()
     );
-    return !!existingUser;
+    if (existingUser) return true;
+
+    // Check pending registration requests to prevent duplicate registrations
+    const existingRequest = Array.from(this.registrationRequests.values()).find(request => 
+      request.email.toLowerCase() === email.toLowerCase() && request.status === 'pending'
+    );
+    return !!existingRequest;
   }
 
   async checkPhoneExists(phone: string): Promise<boolean> {
-    // Only check existing users, not registration requests
+    // Check existing users
     const existingUser = Array.from(this.users.values()).find(user => 
       user.phone === phone
     );
-    return !!existingUser;
+    if (existingUser) return true;
+
+    // Check pending registration requests to prevent duplicate registrations
+    const existingRequest = Array.from(this.registrationRequests.values()).find(request => 
+      request.phone === phone && request.status === 'pending'
+    );
+    return !!existingRequest;
   }
 
   // Exam system methods
@@ -1083,21 +1101,45 @@ export class DatabaseStorage implements IStorage {
   }
 
   async checkUsernameExists(username: string): Promise<boolean> {
-    // Only check existing users, not registration requests
+    // Check existing users
     const [existingUser] = await db.select().from(users).where(eq(users.username, username));
-    return !!existingUser;
+    if (existingUser) return true;
+
+    // Check pending registration requests to prevent duplicate registrations
+    const [existingRequest] = await db.select().from(registrationRequests)
+      .where(and(
+        eq(registrationRequests.username, username),
+        eq(registrationRequests.status, 'pending')
+      ));
+    return !!existingRequest;
   }
 
   async checkEmailExists(email: string): Promise<boolean> {
-    // Only check existing users, not registration requests
+    // Check existing users
     const [existingUser] = await db.select().from(users).where(eq(users.email, email));
-    return !!existingUser;
+    if (existingUser) return true;
+
+    // Check pending registration requests to prevent duplicate registrations
+    const [existingRequest] = await db.select().from(registrationRequests)
+      .where(and(
+        eq(registrationRequests.email, email),
+        eq(registrationRequests.status, 'pending')
+      ));
+    return !!existingRequest;
   }
 
   async checkPhoneExists(phone: string): Promise<boolean> {
-    // Only check existing users, not registration requests
+    // Check existing users
     const [existingUser] = await db.select().from(users).where(eq(users.phone, phone));
-    return !!existingUser;
+    if (existingUser) return true;
+
+    // Check pending registration requests to prevent duplicate registrations
+    const [existingRequest] = await db.select().from(registrationRequests)
+      .where(and(
+        eq(registrationRequests.phone, phone),
+        eq(registrationRequests.status, 'pending')
+      ));
+    return !!existingRequest;
   }
 
   // Exam system methods
