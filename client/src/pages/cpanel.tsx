@@ -550,7 +550,7 @@ export function CpanelPage() {
                                   >
                                     <Edit className="w-4 h-4" />
                                   </Button>
-                                  {user?.role === "manager" && userItem.role === "admin" && (
+                                  {user?.role === "manager" && (userItem.role === "admin" || userItem.role === "user") && (
                                     <Button
                                       size="sm"
                                       variant="outline"
