@@ -1,65 +1,39 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Menu, User, LogOut, Settings } from "lucide-react";
-import { type User as UserType } from "@shared/schema";
+import { useAuth } from "@/hooks/useAuth";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 
 export function Header() {
   const [location, setLocation] = useLocation();
   const [isOpen, setIsOpen] = useState(false);
-  const [user, setUser] = useState<UserType | null>(null);
+  const { user, isAuthenticated } = useAuth();
+  const queryClient = useQueryClient();
 
-  // Check for logged in user on component mount and when localStorage changes
-  useEffect(() => {
-    const checkUser = () => {
-      const userData = localStorage.getItem("user");
-      if (userData) {
-        try {
-          setUser(JSON.parse(userData));
-        } catch (error) {
-          console.error("Error parsing user data:", error);
-          localStorage.removeItem("user");
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
-    };
-
-    checkUser();
-    
-    // Listen for storage changes (login/logout in other tabs or components)
-    const handleStorageChange = (e: StorageEvent) => {
-      if (e.key === "user") {
-        checkUser();
-      }
-    };
-
-    window.addEventListener("storage", handleStorageChange);
-    
-    // Also listen for custom events for same-tab updates
-    const handleUserChange = () => {
-      checkUser();
-    };
-    
-    window.addEventListener("userChange", handleUserChange);
-    
-    return () => {
-      window.removeEventListener("storage", handleStorageChange);
-      window.removeEventListener("userChange", handleUserChange);
-    };
-  }, []);
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/auth/logout");
+    },
+    onSuccess: () => {
+      // Clear all queries in cache
+      queryClient.clear();
+      setLocation("/");
+    },
+    onError: (error) => {
+      console.error("Logout error:", error);
+      // Even if logout API fails, clear cache and redirect
+      queryClient.clear();
+      setLocation("/");
+    }
+  });
 
   const handleLogout = () => {
-    localStorage.removeItem("user");
-    setUser(null);
-    
-    // Trigger event for same-tab updates
-    window.dispatchEvent(new CustomEvent("userChange"));
-    
-    setLocation("/");
+    logoutMutation.mutate();
   };
 
   const services = [
