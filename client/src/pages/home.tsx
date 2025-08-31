@@ -383,7 +383,7 @@ export default function Home() {
   ];
 
   return (
-    <div>
+    <div className="w-full max-w-full overflow-x-hidden">
       {/* Hero Section */}
       <section className="relative hero-gradient text-white overflow-hidden">
         {heroBgImage && (

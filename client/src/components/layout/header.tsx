@@ -69,9 +69,9 @@ export function Header() {
   ];
 
   return (
-    <header className="bg-white shadow-sm sticky top-0 z-50">
-      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        <div className="flex justify-between items-center h-16 sm:h-20">
+    <header className="bg-white shadow-sm sticky top-0 z-50 w-full max-w-full overflow-x-hidden">
+      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative w-full">
+        <div className="flex justify-between items-center h-16 sm:h-20 w-full max-w-full">
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2 sm:space-x-3">
               <div className="flex flex-col items-center justify-center">

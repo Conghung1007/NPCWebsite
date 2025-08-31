@@ -118,7 +118,7 @@ export default function Contact() {
   ];
 
   return (
-    <div>
+    <div className="w-full max-w-full overflow-x-hidden">
       <HeroSection
         title="Liên hệ với chúng tôi"
         subtitle=""

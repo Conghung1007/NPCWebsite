@@ -40,7 +40,7 @@ export function HeroSection({
     onImageUpdate?.(newImageUrl);
   };
   return (
-    <section className="relative hero-gradient text-white overflow-hidden">
+    <section className="relative hero-gradient text-white overflow-hidden w-full max-w-full">
       {currentBgImage && (
         <div className="absolute inset-0">
           <img 
@@ -73,7 +73,7 @@ export function HeroSection({
         </div>
       )}
       
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24 xl:py-32">
+      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-20 lg:py-24 xl:py-32 w-full">
         <div className="text-center">
           <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl font-bold mb-4 sm:mb-6 leading-tight">
             {title}

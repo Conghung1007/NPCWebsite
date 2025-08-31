@@ -170,7 +170,7 @@ export default function StudyAbroad() {
   };
 
   return (
-    <div>
+    <div className="w-full max-w-full overflow-x-hidden">
       <HeroSection
         title="Tư vấn du học"
         subtitle=""
