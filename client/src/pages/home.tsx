@@ -91,19 +91,21 @@ export default function Home() {
         <div className="flex items-center gap-2 w-full">
           {multiline ? (
             <Textarea
-              value={editValues[fieldName] || text}
+              defaultValue={editValues[fieldName] || text}
               onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
               placeholder={placeholder}
               className={`flex-1 ${className}`}
               autoFocus
+              key={fieldName}
             />
           ) : (
             <Input
-              value={editValues[fieldName] || text}
+              defaultValue={editValues[fieldName] || text}
               onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
               placeholder={placeholder}
               className={`flex-1 ${className}`}
               autoFocus
+              key={fieldName}
             />
           )}
           <Button size="sm" onClick={() => handleEditSave(fieldName)}>
@@ -432,24 +434,8 @@ export default function Home() {
                                service.category === 'japanese-training' ? 'japanese' :
                                'exam';
               
-              const editableService = {
-                ...service,
-                title: (
-                  <EditableText 
-                    fieldName={`${serviceKey}Title`}
-                    text={serviceTexts[`${serviceKey}Title` as keyof typeof serviceTexts]}
-                    className="text-3xl lg:text-4xl font-bold text-foreground"
-                  />
-                ),
-                description: (
-                  <EditableText 
-                    fieldName={`${serviceKey}Description`}
-                    text={serviceTexts[`${serviceKey}Description` as keyof typeof serviceTexts]}
-                    className="text-xl text-muted-foreground"
-                    multiline={true}
-                  />
-                )
-              };
+              // Just pass the service as-is, components will handle EditableText internally
+              const editableService = service;
               
               // Use ServiceWithExams for online exam service
               if (service.category === 'online-exam') {
