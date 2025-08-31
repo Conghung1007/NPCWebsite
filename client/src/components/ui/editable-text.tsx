@@ -145,7 +145,7 @@ export function EditableText({
         <Button
           size="sm"
           variant="ghost"
-          className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white shadow-sm border"
+          className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-all duration-200 bg-primary/10 hover:bg-primary/20 text-primary hover:text-primary border border-primary/30 hover:border-primary/50 shadow-md hover:shadow-lg"
           onClick={handleStartEdit}
         >
           <Edit className="w-4 h-4" />
