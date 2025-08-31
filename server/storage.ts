@@ -87,10 +87,10 @@ export class MemStorage implements IStorage {
     this.seedUsers();
     this.seedArticles();
     this.seedExams();
-    // Clear any lingering registration requests for clean testing
-    this.registrationRequests.clear();
     console.log(`Seeded ${this.articles.size} articles and ${this.exams.size} exams`);
   }
+
+
 
   async getUser(id: string): Promise<User | undefined> {
     return this.users.get(id);
