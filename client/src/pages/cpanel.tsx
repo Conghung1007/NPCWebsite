@@ -10,9 +10,10 @@ import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { ArticleManager } from "@/components/ArticleManager";
 import { ExamManager } from "@/components/ExamManager";
+import { ContactInfoManager } from "@/components/ContactInfoManager";
 
 import { Pagination } from "@/components/ui/pagination";
-import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText, Image, Check, X } from "lucide-react";
+import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText, Image, Check, X, MapPin } from "lucide-react";
 import { type User as UserType, type ContactRequest, type RegistrationRequest } from "@shared/schema";
 
 export function CpanelPage() {
@@ -393,6 +394,14 @@ export function CpanelPage() {
               >
                 <FileText className="w-5 h-5" />
                 Quản lý bài viết
+              </Button>
+              <Button 
+                variant={activeTab === "contact-info" ? "default" : "ghost"}
+                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
+                onClick={() => setActiveTab("contact-info")}
+              >
+                <MapPin className="w-5 h-5" />
+                Thông tin liên hệ
               </Button>
               <Button 
                 variant={activeTab === "messages" ? "default" : "ghost"}
@@ -881,6 +890,11 @@ export function CpanelPage() {
             {/* Exams Content - Available for all users */}
             {activeTab === "exams" && (
               <ExamManager />
+            )}
+
+            {/* Contact Info Content - Admin/Manager only */}
+            {activeTab === "contact-info" && (
+              <ContactInfoManager />
             )}
           </div>
         </div>

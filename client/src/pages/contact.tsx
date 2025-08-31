@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useUiImages } from "@/hooks/useUiImages";
 import { useAuth } from "@/hooks/useAuth";
+import { useContactInfo } from "@/hooks/useContactInfo";
 import { 
   MapPin, 
   Phone, 
@@ -19,6 +20,7 @@ import {
 export default function Contact() {
   const { getImageByType, invalidateCache } = useUiImages();
   const { hasImageEditPermission } = useAuth();
+  const { data: contactInfos = [] } = useContactInfo();
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1423666639041-f56000c27a9a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
 
   // Update hero image from database when available
@@ -37,7 +39,25 @@ export default function Contact() {
     }
   }, []);
 
-  const contactInfo = [
+  // Helper function to get contact icon based on type
+  const getContactIcon = (type: string) => {
+    const iconClass = "h-6 w-6";
+    switch (type) {
+      case "main_office":
+        return <MapPin className={`${iconClass} text-primary`} />;
+      case "hotline":
+        return <Phone className={`${iconClass} text-secondary`} />;
+      case "email":
+        return <Mail className={`${iconClass} text-accent`} />;
+      case "business_hours":
+        return <Clock className={`${iconClass} text-red-600`} />;
+      default:
+        return <MapPin className={`${iconClass} text-primary`} />;
+    }
+  };
+
+  // Fallback contact info if database is empty
+  const fallbackContactInfo = [
     {
       icon: <MapPin className="h-6 w-6 text-primary" />,
       title: "Văn phòng chính",
@@ -59,6 +79,15 @@ export default function Contact() {
       content: ["T2-T6: 8:00 - 18:00", "T7-CN: 8:00 - 17:00"]
     }
   ];
+
+  // Use dynamic contact info if available, otherwise use fallback
+  const displayContactInfo = contactInfos.length > 0 
+    ? contactInfos.map(info => ({
+        icon: getContactIcon(info.type),
+        title: info.title,
+        content: info.content
+      }))
+    : fallbackContactInfo;
 
   const socialLinks = [
     {
@@ -116,7 +145,7 @@ export default function Contact() {
                 <CardContent className="p-6">
                   <h4 className="font-semibold text-foreground mb-4">Thông tin liên hệ</h4>
                   <div className="space-y-4">
-                    {contactInfo.map((info, index) => (
+                    {displayContactInfo.map((info, index) => (
                       <div key={index} className="flex items-start">
                         <div className="flex-shrink-0 mr-4 mt-1">
                           {info.icon}

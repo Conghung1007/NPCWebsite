@@ -1,5 +1,5 @@
-import { type User, type InsertUser, type ContactRequest, type InsertContactRequest, type Article, type InsertArticle, type UiImage, type InsertUiImage, type RegistrationRequest, type InsertRegistrationRequest, type Exam, type InsertExam, type Question, type InsertQuestion, type ExamAttempt, type InsertExamAttempt } from "@shared/schema";
-import { users, contactRequests, articles, uiImages, registrationRequests, exams, questions, examAttempts } from "@shared/schema";
+import { type User, type InsertUser, type ContactRequest, type InsertContactRequest, type ContactInfo, type InsertContactInfo, type Article, type InsertArticle, type UiImage, type InsertUiImage, type RegistrationRequest, type InsertRegistrationRequest, type Exam, type InsertExam, type Question, type InsertQuestion, type ExamAttempt, type InsertExamAttempt } from "@shared/schema";
+import { users, contactRequests, contactInfo, articles, uiImages, registrationRequests, exams, questions, examAttempts } from "@shared/schema";
 import { db } from "./db";
 import { eq } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -16,6 +16,13 @@ export interface IStorage {
   createContactRequest(request: InsertContactRequest): Promise<ContactRequest>;
   getContactRequests(): Promise<ContactRequest[]>;
   deleteContactRequest(id: string): Promise<boolean>;
+  
+  // Contact Info methods
+  createContactInfo(contactInfo: InsertContactInfo): Promise<ContactInfo>;
+  getContactInfo(): Promise<ContactInfo[]>;
+  getContactInfoById(id: string): Promise<ContactInfo | undefined>;
+  updateContactInfo(id: string, updateData: Partial<InsertContactInfo>): Promise<ContactInfo | null>;
+  deleteContactInfo(id: string): Promise<boolean>;
   
   createArticle(article: InsertArticle): Promise<Article>;
   getArticlesByCategory(category: string): Promise<Article[]>;
@@ -1166,6 +1173,40 @@ export class DatabaseStorage implements IStorage {
 
   async getExamAttemptsByExamId(examId: string): Promise<ExamAttempt[]> {
     return await db.select().from(examAttempts).where(eq(examAttempts.examId, examId));
+  }
+
+  // Contact Info methods for DatabaseStorage
+  async createContactInfo(contactInfoData: InsertContactInfo): Promise<ContactInfo> {
+    const [newContactInfo] = await db
+      .insert(contactInfo)
+      .values(contactInfoData)
+      .returning();
+    return newContactInfo;
+  }
+
+  async getContactInfo(): Promise<ContactInfo[]> {
+    return await db.select().from(contactInfo)
+      .where(eq(contactInfo.isActive, true))
+      .orderBy(contactInfo.displayOrder);
+  }
+
+  async getContactInfoById(id: string): Promise<ContactInfo | undefined> {
+    const [result] = await db.select().from(contactInfo).where(eq(contactInfo.id, id));
+    return result || undefined;
+  }
+
+  async updateContactInfo(id: string, updateData: Partial<InsertContactInfo>): Promise<ContactInfo | null> {
+    const [updatedContactInfo] = await db
+      .update(contactInfo)
+      .set(updateData)
+      .where(eq(contactInfo.id, id))
+      .returning();
+    return updatedContactInfo || null;
+  }
+
+  async deleteContactInfo(id: string): Promise<boolean> {
+    const result = await db.delete(contactInfo).where(eq(contactInfo.id, id));
+    return (result.rowCount || 0) > 0;
   }
 }
 

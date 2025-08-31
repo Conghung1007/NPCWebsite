@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertContactRequestSchema, insertArticleSchema, registrationFormSchema } from "@shared/schema";
+import { insertContactRequestSchema, insertArticleSchema, registrationFormSchema, ContactInfo, InsertContactInfo } from "@shared/schema";
 import { z } from "zod";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { multiR2Storage, type MediaUploadConfig, type FileInfo } from "./multiR2Storage";
@@ -1622,6 +1622,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting exam:", error);
       res.status(500).json({ message: "Failed to delete exam" });
+    }
+  });
+
+  // Contact Info endpoints
+  // Get all contact info (public)
+  app.get("/api/contact-info", async (req, res) => {
+    try {
+      const contactInfos = await storage.getContactInfo();
+      res.json(contactInfos);
+    } catch (error) {
+      console.error("Error fetching contact info:", error);
+      res.status(500).json({ message: "Failed to fetch contact info" });
+    }
+  });
+
+  // Create contact info (admin/manager only)
+  app.post("/api/contact-info", requireImageEditPermission, async (req, res) => {
+    try {
+      const contactInfoData: InsertContactInfo = req.body;
+      const newContactInfo = await storage.createContactInfo(contactInfoData);
+      res.status(201).json(newContactInfo);
+    } catch (error) {
+      console.error("Error creating contact info:", error);
+      res.status(500).json({ message: "Failed to create contact info" });
+    }
+  });
+
+  // Update contact info (admin/manager only)
+  app.put("/api/contact-info/:id", requireImageEditPermission, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const contactInfoData: Partial<InsertContactInfo> = req.body;
+      contactInfoData.updatedAt = new Date();
+      
+      const updatedContactInfo = await storage.updateContactInfo(id, contactInfoData);
+      if (!updatedContactInfo) {
+        return res.status(404).json({ message: "Contact info not found" });
+      }
+      res.json(updatedContactInfo);
+    } catch (error) {
+      console.error("Error updating contact info:", error);
+      res.status(500).json({ message: "Failed to update contact info" });
+    }
+  });
+
+  // Delete contact info (admin/manager only)
+  app.delete("/api/contact-info/:id", requireImageEditPermission, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const deleted = await storage.deleteContactInfo(id);
+      if (!deleted) {
+        return res.status(404).json({ message: "Contact info not found" });
+      }
+      res.json({ message: "Contact info deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting contact info:", error);
+      res.status(500).json({ message: "Failed to delete contact info" });
+    }
+  });
+
+  // Seed default contact info if none exists
+  app.post("/api/contact-info/seed", requireImageEditPermission, async (req, res) => {
+    try {
+      const existingContactInfo = await storage.getContactInfo();
+      if (existingContactInfo.length > 0) {
+        return res.status(400).json({ message: "Contact info already exists" });
+      }
+
+      const defaultContactInfo: InsertContactInfo[] = [
+        {
+          type: "main_office",
+          title: "Văn phòng chính",
+          content: ["123 Nguyễn Huệ, Quận 1, TP.HCM"],
+          displayOrder: 1,
+          isActive: true
+        },
+        {
+          type: "hotline",
+          title: "Hotline",
+          content: ["1900 1234 (24/7)", "028 3822 5678"],
+          displayOrder: 2,
+          isActive: true
+        },
+        {
+          type: "email",
+          title: "Email",
+          content: ["info@npcompany.vn", "support@npcompany.vn"],
+          displayOrder: 3,
+          isActive: true
+        },
+        {
+          type: "business_hours",
+          title: "Giờ hoạt động",
+          content: ["T2-T6: 8:00 - 18:00", "T7-CN: 8:00 - 17:00"],
+          displayOrder: 4,
+          isActive: true
+        }
+      ];
+
+      const createdContactInfo = await Promise.all(
+        defaultContactInfo.map(info => storage.createContactInfo(info))
+      );
+
+      res.status(201).json(createdContactInfo);
+    } catch (error) {
+      console.error("Error seeding contact info:", error);
+      res.status(500).json({ message: "Failed to seed contact info" });
     }
   });
 

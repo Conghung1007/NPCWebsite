@@ -169,6 +169,21 @@ export const insertExamAttemptSchema = createInsertSchema(examAttempts).omit({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+// Contact information table
+export const contactInfo = pgTable("contact_info", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  type: varchar("type").notNull(), // 'main_office', 'hotline', 'email', 'business_hours'
+  title: varchar("title").notNull(),
+  content: text("content").array().notNull().default(sql`'{}'::text[]`),
+  displayOrder: integer("display_order").default(0),
+  isActive: boolean("is_active").default(true),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export type ContactInfo = typeof contactInfo.$inferSelect;
+export type InsertContactInfo = typeof contactInfo.$inferInsert;
 export type ContactRequest = typeof contactRequests.$inferSelect;
 export type InsertContactRequest = z.infer<typeof insertContactRequestSchema>;
 export type Article = typeof articles.$inferSelect;

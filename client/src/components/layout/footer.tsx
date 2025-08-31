@@ -1,13 +1,35 @@
 import { Link } from "wouter";
 import { MapPin, Phone, Mail, Facebook, Youtube, Linkedin } from "lucide-react";
+import { useContactInfo } from "@/hooks/useContactInfo";
 
 export function Footer() {
+  const { data: contactInfos = [] } = useContactInfo();
+  
   const services = [
     { name: "Dịch vụ xin thị thực", href: "/visa-services" },
     { name: "Tư vấn du học", href: "/study-abroad" },
     { name: "Đào tạo tiếng Nhật", href: "/japanese-training" },
     { name: "Thi thử trực tuyến", href: "/online-exam" }
   ];
+
+  // Helper function to get contact info by type
+  const getContactByType = (type: string) => {
+    return contactInfos.find(info => info.type === type);
+  };
+
+  // Helper function to render contact icon based on type
+  const getContactIcon = (type: string) => {
+    switch (type) {
+      case "main_office":
+        return <MapPin className="h-5 w-5 mr-3 flex-shrink-0" />;
+      case "hotline":
+        return <Phone className="h-5 w-5 mr-3 flex-shrink-0" />;
+      case "email":
+        return <Mail className="h-5 w-5 mr-3 flex-shrink-0" />;
+      default:
+        return null;
+    }
+  };
 
 
 
@@ -56,18 +78,38 @@ export function Footer() {
           <div>
             <h3 className="text-lg font-semibold mb-6">Liên hệ</h3>
             <div className="space-y-3 text-gray-400">
-              <div className="flex items-center">
-                <MapPin className="h-5 w-5 mr-3 flex-shrink-0" />
-                <span className="text-sm">123 Nguyễn Huệ, Q1, TP.HCM</span>
-              </div>
-              <div className="flex items-center">
-                <Phone className="h-5 w-5 mr-3 flex-shrink-0" />
-                <span className="text-sm">1900 1234</span>
-              </div>
-              <div className="flex items-center">
-                <Mail className="h-5 w-5 mr-3 flex-shrink-0" />
-                <span className="text-sm">info@npcompany.vn</span>
-              </div>
+              {contactInfos.length > 0 ? (
+                contactInfos
+                  .filter(info => ["main_office", "hotline", "email"].includes(info.type))
+                  .map(info => (
+                    <div key={info.id} className="flex items-start">
+                      {getContactIcon(info.type)}
+                      <div className="flex flex-col">
+                        {info.content.map((item, index) => (
+                          <span key={index} className="text-sm">
+                            {item}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+              ) : (
+                // Fallback content if no contact info is available
+                <>
+                  <div className="flex items-center">
+                    <MapPin className="h-5 w-5 mr-3 flex-shrink-0" />
+                    <span className="text-sm">123 Nguyễn Huệ, Q1, TP.HCM</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Phone className="h-5 w-5 mr-3 flex-shrink-0" />
+                    <span className="text-sm">1900 1234</span>
+                  </div>
+                  <div className="flex items-center">
+                    <Mail className="h-5 w-5 mr-3 flex-shrink-0" />
+                    <span className="text-sm">info@npcompany.vn</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
