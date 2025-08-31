@@ -87,6 +87,8 @@ export class MemStorage implements IStorage {
     this.seedUsers();
     this.seedArticles();
     this.seedExams();
+    // Clear any lingering registration requests for clean testing
+    this.registrationRequests.clear();
     console.log(`Seeded ${this.articles.size} articles and ${this.exams.size} exams`);
   }
 
@@ -145,7 +147,7 @@ export class MemStorage implements IStorage {
     // Delete the user
     const userDeleted = this.users.delete(id);
     
-    // Also delete any pending registration request with the same username
+    // Also delete any registration request with the same username (regardless of status)
     const registrationToDelete = Array.from(this.registrationRequests.entries()).find(
       ([, request]) => request.username.toLowerCase() === user.username.toLowerCase()
     );
@@ -673,7 +675,7 @@ export class MemStorage implements IStorage {
   }
 
   async checkUsernameExists(username: string): Promise<boolean> {
-    // Check both existing users and pending registration requests
+    // Check both existing users and pending registration requests only
     const existingUser = Array.from(this.users.values()).find(user => 
       user.username.toLowerCase() === username.toLowerCase()
     );
@@ -684,7 +686,7 @@ export class MemStorage implements IStorage {
   }
 
   async checkEmailExists(email: string): Promise<boolean> {
-    // Check both existing users and pending registration requests
+    // Check both existing users and pending registration requests only
     const existingUser = Array.from(this.users.values()).find(user => 
       user.email?.toLowerCase() === email.toLowerCase()
     );
@@ -695,7 +697,7 @@ export class MemStorage implements IStorage {
   }
 
   async checkPhoneExists(phone: string): Promise<boolean> {
-    // Check both existing users and pending registration requests
+    // Check both existing users and pending registration requests only
     const existingUser = Array.from(this.users.values()).find(user => 
       user.phone === phone
     );

@@ -272,8 +272,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         role: "user"
       });
 
-      // Update registration request status
-      await storage.updateRegistrationRequestStatus(id, 'approved', sessionUser.id);
+      // Delete registration request after creating user successfully
+      await storage.deleteRegistrationRequest(id);
 
       res.json({ 
         success: true, 
