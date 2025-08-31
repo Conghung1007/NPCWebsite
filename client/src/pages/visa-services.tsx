@@ -440,22 +440,51 @@ export default function VisaServices() {
                         </div>
                       </AccordionTrigger>
                       <AccordionContent>
-                        <div className="pt-2">
-                          <EditableText
-                            fieldName={`faq-answer-${index}`}
-                            text={faq.answer}
-                            className="text-muted-foreground"
-                            multiline={true}
-                            showEditButton={hasEditPermission}
-                            editingField={editingField}
-                            editValues={editValues}
-                            onEditStart={handleEditStart}
-                            onEditSave={(fieldName, value) => {
-                              handleFaqAnswerUpdate(index, value);
-                              handleEditSave(fieldName, value);
-                            }}
-                            onEditCancel={handleEditCancel}
-                          />
+                        <div className="pt-2 relative group">
+                          {editingField === `faq-answer-${index}` ? (
+                            <div className="flex flex-col gap-2">
+                              <textarea
+                                value={editValues[`faq-answer-${index}`] || faq.answer}
+                                onChange={(e) => setEditValues({...editValues, [`faq-answer-${index}`]: e.target.value})}
+                                className="w-full px-3 py-2 border rounded text-muted-foreground resize-none"
+                                rows={4}
+                                autoFocus
+                              />
+                              <div className="flex gap-2">
+                                <div
+                                  onClick={() => {
+                                    const newValue = editValues[`faq-answer-${index}`] || faq.answer;
+                                    handleFaqAnswerUpdate(index, newValue);
+                                    handleEditSave(`faq-answer-${index}`, newValue);
+                                  }}
+                                  className="px-3 py-1 bg-green-600 text-white rounded cursor-pointer hover:bg-green-700 flex items-center gap-1"
+                                >
+                                  <Check className="h-3 w-3" />
+                                  Lưu
+                                </div>
+                                <div
+                                  onClick={handleEditCancel}
+                                  className="px-3 py-1 bg-red-600 text-white rounded cursor-pointer hover:bg-red-700 flex items-center gap-1"
+                                >
+                                  <X className="h-3 w-3" />
+                                  Hủy
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              <div className="text-muted-foreground">{faq.answer}</div>
+                              {hasEditPermission && (
+                                <div
+                                  onClick={() => handleEditStart(`faq-answer-${index}`, faq.answer)}
+                                  className="inline-flex items-center gap-1 mt-2 px-2 py-1 text-xs bg-gray-100 hover:bg-gray-200 rounded cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                                >
+                                  <Edit className="h-3 w-3" />
+                                  Chỉnh sửa
+                                </div>
+                              )}
+                            </>
+                          )}
                         </div>
                       </AccordionContent>
                     </AccordionItem>
