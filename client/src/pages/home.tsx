@@ -145,23 +145,48 @@ export default function Home() {
     );
   };
 
-  // State for editable service content
-  const [serviceTexts, setServiceTexts] = useState({
-    heroTitle: "Đối tác tin cậy cho",
-    heroSubtitle: "giấc mơ toàn cầu", 
-    heroDescription: "Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và hệ thống thi trực tuyến với hơn 10 năm kinh nghiệm",
-    visaTitle: "Dịch vụ xin thị thực",
-    visaDescription: "Hỗ trợ xin thị thực du lịch, công tác, sinh viên cho hơn 50 quốc gia với tỷ lệ thành công 98%",
-    studyTitle: "Tư vấn du học",
-    studyDescription: "Tư vấn chọn trường, chương trình học, hỗ trợ hồ sơ và học bổng tại Nhật, Mỹ, Canada, Châu Âu",
-    japaneseTitle: "Đào tạo tiếng Nhật",
-    japaneseDescription: "Khóa học tiếng Nhật từ cơ bản đến nâng cao, luyện thi JLPT với giảng viên bản ngữ",
-    examTitle: "Thi thử trực tuyến",
-    examDescription: "Hệ thống thi trực tuyến với đề thi demo miễn phí và đề thi chính thức đánh giá năng lực tiếng Anh, tiếng Nhật"
+  // State for editable service content with localStorage persistence
+  const [serviceTexts, setServiceTexts] = useState(() => {
+    try {
+      const saved = localStorage.getItem('home-service-texts');
+      console.log('Loading home-service-texts from localStorage:', saved);
+      return saved ? JSON.parse(saved) : {
+        heroTitle: "Đối tác tin cậy cho",
+        heroSubtitle: "giấc mơ toàn cầu", 
+        heroDescription: "Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và hệ thống thi trực tuyến với hơn 10 năm kinh nghiệm",
+        visaTitle: "Dịch vụ xin thị thực",
+        visaDescription: "Hỗ trợ xin thị thực du lịch, công tác, sinh viên cho hơn 50 quốc gia với tỷ lệ thành công 98%",
+        studyTitle: "Tư vấn du học",
+        studyDescription: "Tư vấn chọn trường, chương trình học, hỗ trợ hồ sơ và học bổng tại Nhật, Mỹ, Canada, Châu Âu",
+        japaneseTitle: "Đào tạo tiếng Nhật",
+        japaneseDescription: "Khóa học tiếng Nhật từ cơ bản đến nâng cao, luyện thi JLPT với giảng viên bản ngữ",
+        examTitle: "Thi thử trực tuyến",
+        examDescription: "Hệ thống thi trực tuyến với đề thi demo miễn phí và đề thi chính thức đánh giá năng lực tiếng Anh, tiếng Nhật"
+      };
+    } catch (error) {
+      console.error('Failed to load home service texts from localStorage:', error);
+      return {
+        heroTitle: "Đối tác tin cậy cho",
+        heroSubtitle: "giấc mơ toàn cầu", 
+        heroDescription: "Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và hệ thống thi trực tuyến với hơn 10 năm kinh nghiệm",
+        visaTitle: "Dịch vụ xin thị thực",
+        visaDescription: "Hỗ trợ xin thị thực du lịch, công tác, sinh viên cho hơn 50 quốc gia với tỷ lệ thành công 98%",
+        studyTitle: "Tư vấn du học",
+        studyDescription: "Tư vấn chọn trường, chương trình học, hỗ trợ hồ sơ và học bổng tại Nhật, Mỹ, Canada, Châu Âu",
+        japaneseTitle: "Đào tạo tiếng Nhật",
+        japaneseDescription: "Khóa học tiếng Nhật từ cơ bản đến nâng cao, luyện thi JLPT với giảng viên bản ngữ",
+        examTitle: "Thi thử trực tuyến",
+        examDescription: "Hệ thống thi trực tuyến với đề thi demo miễn phí và đề thi chính thức đánh giá năng lực tiếng Anh, tiếng Nhật"
+      };
+    }
   });
 
   const handleServiceTextUpdate = (fieldName: string, newValue: string) => {
-    setServiceTexts(prev => ({ ...prev, [fieldName]: newValue }));
+    const updatedTexts = { ...serviceTexts, [fieldName]: newValue };
+    setServiceTexts(updatedTexts);
+    // Save to localStorage
+    console.log('Saving home-service-texts to localStorage:', updatedTexts);
+    localStorage.setItem('home-service-texts', JSON.stringify(updatedTexts));
     
     // Also update the services array with the new text
     setServices(prevServices => 
@@ -244,29 +269,60 @@ export default function Home() {
     }
   ];
 
-  const [testimonials, setTestimonials] = useState([
-    {
-      id: 1,
-      name: "Nguyễn Thu Hà",
-      role: "Du học sinh Nhật Bản",
-      content: "Nhờ N&P, tôi đã xin được visa du học Nhật Bản chỉ sau 2 tuần. Đội ngũ tư vấn rất chuyên nghiệp và hỗ trợ tận tình!",
-      avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face"
-    },
-    {
-      id: 2,
-      name: "Trần Minh Đức", 
-      role: "Kỹ sư IT",
-      content: "Khóa học tiếng Nhật tại N&P rất hiệu quả. Sau 6 tháng tôi đã vượt qua kỳ thi N3 JLPT với điểm cao!",
-      avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
-    },
-    {
-      id: 3,
-      name: "Lê Thị Mai",
-      role: "Giáo viên", 
-      content: "Hệ thống thi trực tuyến của N&P rất tiện lợi và chính xác. Tôi đã sử dụng để đánh giá trình độ tiếng Anh của học sinh và rất hài lòng!",
-      avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face"
+  const [testimonials, setTestimonials] = useState(() => {
+    try {
+      const saved = localStorage.getItem('home-testimonials');
+      console.log('Loading home-testimonials from localStorage:', saved);
+      return saved ? JSON.parse(saved) : [
+        {
+          id: 1,
+          name: "Nguyễn Thu Hà",
+          role: "Du học sinh Nhật Bản",
+          content: "Nhờ N&P, tôi đã xin được visa du học Nhật Bản chỉ sau 2 tuần. Đội ngũ tư vấn rất chuyên nghiệp và hỗ trợ tận tình!",
+          avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face"
+        },
+        {
+          id: 2,
+          name: "Trần Minh Đức", 
+          role: "Kỹ sư IT",
+          content: "Khóa học tiếng Nhật tại N&P rất hiệu quả. Sau 6 tháng tôi đã vượt qua kỳ thi N3 JLPT với điểm cao!",
+          avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
+        },
+        {
+          id: 3,
+          name: "Lê Thị Mai",
+          role: "Giáo viên", 
+          content: "Hệ thống thi trực tuyến của N&P rất tiện lợi và chính xác. Tôi đã sử dụng để đánh giá trình độ tiếng Anh của học sinh và rất hài lòng!",
+          avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face"
+        }
+      ];
+    } catch (error) {
+      console.error('Failed to load home testimonials from localStorage:', error);
+      return [
+        {
+          id: 1,
+          name: "Nguyễn Thu Hà",
+          role: "Du học sinh Nhật Bản",
+          content: "Nhờ N&P, tôi đã xin được visa du học Nhật Bản chỉ sau 2 tuần. Đội ngũ tư vấn rất chuyên nghiệp và hỗ trợ tận tình!",
+          avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face"
+        },
+        {
+          id: 2,
+          name: "Trần Minh Đức", 
+          role: "Kỹ sư IT",
+          content: "Khóa học tiếng Nhật tại N&P rất hiệu quả. Sau 6 tháng tôi đã vượt qua kỳ thi N3 JLPT với điểm cao!",
+          avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face"
+        },
+        {
+          id: 3,
+          name: "Lê Thị Mai",
+          role: "Giáo viên", 
+          content: "Hệ thống thi trực tuyến của N&P rất tiện lợi và chính xác. Tôi đã sử dụng để đánh giá trình độ tiếng Anh của học sinh và rất hài lòng!",
+          avatar: "https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=150&h=150&fit=crop&crop=face"
+        }
+      ];
     }
-  ]);
+  });
 
   const handleTestimonialAvatarUpdate = (testimonialId: number, newAvatar: string) => {
     setTestimonials(prev => prev.map(testimonial => 
@@ -277,11 +333,15 @@ export default function Home() {
   };
 
   const handleTestimonialTextUpdate = (testimonialId: number, field: string, value: string) => {
-    setTestimonials(prev => prev.map(testimonial => 
+    const updatedTestimonials = testimonials.map(testimonial => 
       testimonial.id === testimonialId 
         ? { ...testimonial, [field]: value }
         : testimonial
-    ));
+    );
+    setTestimonials(updatedTestimonials);
+    // Save to localStorage
+    console.log('Saving home-testimonials to localStorage:', updatedTestimonials);
+    localStorage.setItem('home-testimonials', JSON.stringify(updatedTestimonials));
   };
 
   const stats = [
