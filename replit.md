@@ -12,6 +12,8 @@ Navigation: Service pages displayed directly in header (About Us page removed - 
 Typography: Increased font sizes throughout the site for better readability (August 2025)
 Storage: Multi-provider object storage system supporting Replit Object Storage and multiple Cloudflare R2 accounts (August 2025)
 Inline Text Editing: Implemented across all main pages for Manager and Admin roles with hover-to-edit functionality (August 2025)
+Mobile Optimization: Comprehensive responsive design improvements for all components (August 2025)
+Scroll to Top: Smooth scroll-to-top button with responsive design and performance optimization (August 2025)
 
 # System Architecture
 

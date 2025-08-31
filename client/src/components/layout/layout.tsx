@@ -16,8 +16,18 @@ export function Layout({ children }: LayoutProps) {
       setShowScrollTop(window.pageYOffset > 300);
     };
 
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    // Throttle scroll events for better performance
+    let timeoutId: NodeJS.Timeout;
+    const throttledHandleScroll = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleScroll, 10);
+    };
+
+    window.addEventListener('scroll', throttledHandleScroll, { passive: true });
+    return () => {
+      window.removeEventListener('scroll', throttledHandleScroll);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, []);
 
   const scrollToTop = () => {
@@ -39,10 +49,12 @@ export function Layout({ children }: LayoutProps) {
       {showScrollTop && (
         <Button
           onClick={scrollToTop}
-          className="fixed bottom-8 right-8 w-12 h-12 rounded-full shadow-lg z-50 btn-primary"
+          className="fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-10 h-10 sm:w-12 sm:h-12 rounded-full shadow-lg z-50 btn-primary hover:scale-110 transition-all duration-300 scroll-to-top-enter"
           size="icon"
+          aria-label="Cuộn lên đầu trang"
+          data-testid="scroll-to-top-button"
         >
-          <ChevronUp className="h-6 w-6" />
+          <ChevronUp className="h-4 w-4 sm:h-5 sm:w-5" />
         </Button>
       )}
     </div>
