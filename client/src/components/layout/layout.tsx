@@ -15,25 +15,50 @@ export function Layout({ children }: LayoutProps) {
 
   // Scroll to top when route changes
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    // Use multiple methods to ensure scroll to top works on all devices
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    
+    // Then smooth scroll to ensure it's at the very top
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 50);
   }, [location]);
 
   useEffect(() => {
     const handleScroll = () => {
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
       setShowScrollTop(scrollTop > 300);
     };
 
     // Call once to check initial position
     handleScroll();
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
+    // Use throttling for better performance
+    let timeoutId: NodeJS.Timeout;
+    const throttledHandleScroll = () => {
+      if (timeoutId) clearTimeout(timeoutId);
+      timeoutId = setTimeout(handleScroll, 16); // ~60fps
+    };
+
+    window.addEventListener('scroll', throttledHandleScroll, { passive: true });
+    document.addEventListener('scroll', throttledHandleScroll, { passive: true });
+    
     return () => {
-      window.removeEventListener('scroll', handleScroll);
+      window.removeEventListener('scroll', throttledHandleScroll);
+      document.removeEventListener('scroll', throttledHandleScroll);
+      if (timeoutId) clearTimeout(timeoutId);
     };
   }, []);
 
   const scrollToTop = () => {
+    // Multiple scroll methods for maximum compatibility
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+    
+    // Smooth scroll for better UX
     window.scrollTo({
       top: 0,
       behavior: 'smooth'
