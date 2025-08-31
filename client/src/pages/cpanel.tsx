@@ -36,6 +36,10 @@ export function CpanelPage() {
     isOpen: false,
     message: null
   });
+  const [deleteRegistrationConfirm, setDeleteRegistrationConfirm] = useState<{ isOpen: boolean; registration: any | null }>({
+    isOpen: false,
+    registration: null
+  });
   const [currentPage, setCurrentPage] = useState(1);
   const messagesPerPage = 9;
   const { toast } = useToast();
@@ -282,9 +286,15 @@ export function CpanelPage() {
     }
   };
 
-  const handleDeleteRegistration = async (requestId: string) => {
+  const handleDeleteRegistration = (registration: any) => {
+    setDeleteRegistrationConfirm({ isOpen: true, registration });
+  };
+
+  const confirmDeleteRegistration = async () => {
+    if (!deleteRegistrationConfirm.registration) return;
+
     try {
-      const response = await fetch(`/api/registration-requests/${requestId}`, {
+      const response = await fetch(`/api/registration-requests/${deleteRegistrationConfirm.registration.id}`, {
         method: "DELETE",
       });
 
@@ -304,7 +314,13 @@ export function CpanelPage() {
         description: error.message || "Không thể xóa yêu cầu đăng ký",
         variant: "destructive",
       });
+    } finally {
+      setDeleteRegistrationConfirm({ isOpen: false, registration: null });
     }
+  };
+
+  const cancelDeleteRegistration = () => {
+    setDeleteRegistrationConfirm({ isOpen: false, registration: null });
   };
 
   const getServiceName = (service: string) => {
@@ -776,11 +792,7 @@ export function CpanelPage() {
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() => {
-                                        if (window.confirm("Bạn có chắc chắn muốn xóa yêu cầu đăng ký này không?")) {
-                                          handleDeleteRegistration(request.id);
-                                        }
-                                      }}
+                                      onClick={() => handleDeleteRegistration(request)}
                                       className="text-red-600 hover:text-red-700"
                                     >
                                       <X className="w-4 h-4" />
@@ -961,6 +973,28 @@ export function CpanelPage() {
               </Button>
               <Button variant="destructive" onClick={confirmDeleteMessage}>
                 Xóa tin nhắn
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Registration Confirmation Dialog */}
+        <Dialog open={deleteRegistrationConfirm.isOpen} onOpenChange={(open) => !open && cancelDeleteRegistration()}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Xác nhận xóa yêu cầu đăng ký</DialogTitle>
+              <DialogDescription>
+                Bạn có chắc chắn muốn xóa yêu cầu đăng ký của "{deleteRegistrationConfirm.registration?.username}" không?
+                <br />
+                <span className="text-red-600 font-medium">Hành động này không thể hoàn tác.</span>
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter>
+              <Button variant="outline" onClick={cancelDeleteRegistration}>
+                Hủy
+              </Button>
+              <Button variant="destructive" onClick={confirmDeleteRegistration}>
+                Xóa yêu cầu
               </Button>
             </DialogFooter>
           </DialogContent>
