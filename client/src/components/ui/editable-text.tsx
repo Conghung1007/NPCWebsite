@@ -72,7 +72,9 @@ export function EditableText({
   };
   
   if (!showEditButton) {
-    return <span className={className}>{text}</span>;
+    // Use edited value if available, otherwise use original text
+    const displayText = editValues[fieldName] || text;
+    return <span className={className}>{displayText}</span>;
   }
 
   const handleSave = () => {
@@ -87,7 +89,9 @@ export function EditableText({
   };
 
   const handleStartEdit = () => {
-    onEditStart?.(fieldName, text);
+    // Use edited value if available, otherwise use original text
+    const currentText = editValues[fieldName] || text;
+    onEditStart?.(fieldName, currentText);
   };
 
   if (isEditing) {
@@ -138,9 +142,12 @@ export function EditableText({
     );
   }
 
+  // Use edited value if available, otherwise use original text
+  const displayText = editValues[fieldName] || text;
+
   return (
     <span className="group relative inline-block w-full">
-      <span className={className}>{text}</span>
+      <span className={className}>{displayText}</span>
       {showEditButton && (
         <Button
           size="sm"
