@@ -99,7 +99,7 @@ export function EditableText({
             value={localValue}
             onChange={handleInputChange}
             placeholder={placeholder}
-            className={`flex-1 border border-primary rounded-md px-2 py-1 resize-none ${className}`}
+            className={`flex-1 border border-primary rounded-md px-2 py-1 resize-none bg-gray-100 text-gray-900 ${className}`}
             onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey && !multiline) {
                 e.preventDefault();
@@ -117,7 +117,7 @@ export function EditableText({
             value={localValue}
             onChange={handleInputChange}
             placeholder={placeholder}
-            className={`flex-1 border border-primary rounded-md px-2 py-1 ${className}`}
+            className={`flex-1 border border-primary rounded-md px-2 py-1 bg-gray-100 text-gray-900 ${className}`}
             onKeyDown={(e) => {
               if (e.key === 'Enter') {
                 handleSave();
