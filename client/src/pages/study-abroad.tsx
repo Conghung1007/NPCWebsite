@@ -2,8 +2,7 @@ import { useEffect, useState, useRef } from "react";
 import { useLocation } from "wouter";
 import { HeroSection } from "@/components/ui/hero-section";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { EditableText } from "@/components/ui/editable-text";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArticleSection } from "@/components/ArticleSection";
 import { ImageManager } from "@/components/ui/image-manager";
@@ -32,91 +31,9 @@ export default function StudyAbroad() {
   const [showHeroImageManager, setShowHeroImageManager] = useState(false);
   const [showStudentsImageManager, setShowStudentsImageManager] = useState(false);
   
-  // Text editing states
-  const [editingField, setEditingField] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<Record<string, string>>({});
 
-  // Editable text handler functions  
-  const handleEditStart = (fieldName: string, currentValue: string) => {
-    setEditingField(fieldName);
-    setEditValues({ ...editValues, [fieldName]: currentValue });
-  };
 
-  const handleEditSave = (fieldName: string) => {
-    console.log(`Saving field ${fieldName} with value:`, editValues[fieldName]);
-    setEditingField(null);
-  };
 
-  const handleEditCancel = () => {
-    setEditingField(null);
-    setEditValues({});
-  };
-
-  // Editable text component inline
-  const EditableText = ({ 
-    fieldName, 
-    text, 
-    className = "", 
-    multiline = false, 
-    placeholder = "" 
-  }: {
-    fieldName: string;
-    text: string;
-    className?: string;
-    multiline?: boolean;
-    placeholder?: string;
-  }) => {
-    // For demo purposes, show edit buttons to all users temporarily
-    const showEditButtons = true; // hasImageEditPermission;
-    
-    if (!showEditButtons) {
-      return <span className={className}>{text}</span>;
-    }
-
-    if (editingField === fieldName) {
-      return (
-        <div className="flex items-center gap-2 w-full">
-          {multiline ? (
-            <Textarea
-              value={editValues[fieldName] || text}
-              onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
-              placeholder={placeholder}
-              className={`flex-1 ${className}`}
-              autoFocus
-            />
-          ) : (
-            <Input
-              value={editValues[fieldName] || text}
-              onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
-              placeholder={placeholder}
-              className={`flex-1 ${className}`}
-              autoFocus
-            />
-          )}
-          <Button size="sm" onClick={() => handleEditSave(fieldName)}>
-            <Check className="w-4 h-4" />
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleEditCancel}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="group relative inline-block w-full">
-        <span className={className}>{text}</span>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white shadow-sm border"
-          onClick={() => handleEditStart(fieldName, text)}
-        >
-          <Edit className="w-4 h-4" />
-        </Button>
-      </div>
-    );
-  };
 
   useEffect(() => {
     document.title = "Tư Vấn Du Học - N&P Company";
@@ -244,6 +161,12 @@ export default function StudyAbroad() {
                   fieldName="study-abroad-services-title"
                   text="Dịch vụ tư vấn du học toàn diện"
                   className="text-2xl font-bold text-foreground"
+                  showEditButton={true}
+                  editingField={null}
+                  editValues={{}}
+                  onEditStart={() => {}}
+                  onEditSave={() => {}}
+                  onEditCancel={() => {}}
                 />
               </h3>
               <div className="grid md:grid-cols-2 gap-6 mb-8">
@@ -258,6 +181,12 @@ export default function StudyAbroad() {
                           fieldName={`study-service-${index}-title`}
                           text={service.title}
                           className="font-semibold text-foreground"
+                          showEditButton={true}
+                          editingField={null}
+                          editValues={{}}
+                          onEditStart={() => {}}
+                          onEditSave={() => {}}
+                          onEditCancel={() => {}}
                         />
                       </h4>
                       <p className="text-muted-foreground text-sm">
@@ -266,6 +195,12 @@ export default function StudyAbroad() {
                           text={service.description}
                           className="text-muted-foreground text-sm"
                           multiline={true}
+                          showEditButton={true}
+                          editingField={null}
+                          editValues={{}}
+                          onEditStart={() => {}}
+                          onEditSave={() => {}}
+                          onEditCancel={() => {}}
                         />
                       </p>
                     </div>

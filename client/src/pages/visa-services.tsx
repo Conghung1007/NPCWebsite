@@ -3,8 +3,7 @@ import { useLocation } from "wouter";
 import { HeroSection } from "@/components/ui/hero-section";
 import { ServiceCard } from "@/components/ui/service-card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
+import { EditableText } from "@/components/ui/editable-text";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArticleSection } from "@/components/ArticleSection";
 import { ImageManager } from "@/components/ui/image-manager";
@@ -39,91 +38,9 @@ export default function VisaServices() {
   const [showHeroImageManager, setShowHeroImageManager] = useState(false);
   const [showConsultationImageManager, setShowConsultationImageManager] = useState(false);
   
-  // Text editing states
-  const [editingField, setEditingField] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<Record<string, string>>({});
 
-  // Editable text handler functions
-  const handleEditStart = (fieldName: string, currentValue: string) => {
-    setEditingField(fieldName);
-    setEditValues({ ...editValues, [fieldName]: currentValue });
-  };
 
-  const handleEditSave = (fieldName: string) => {
-    console.log(`Saving field ${fieldName} with value:`, editValues[fieldName]);
-    setEditingField(null);
-  };
 
-  const handleEditCancel = () => {
-    setEditingField(null);
-    setEditValues({});
-  };
-
-  // Editable text component inline
-  const EditableText = ({ 
-    fieldName, 
-    text, 
-    className = "", 
-    multiline = false, 
-    placeholder = "" 
-  }: {
-    fieldName: string;
-    text: string;
-    className?: string;
-    multiline?: boolean;
-    placeholder?: string;
-  }) => {
-    // For demo purposes, show edit buttons to all users temporarily
-    const showEditButtons = true; // hasImageEditPermission;
-    
-    if (!showEditButtons) {
-      return <span className={className}>{text}</span>;
-    }
-
-    if (editingField === fieldName) {
-      return (
-        <div className="flex items-center gap-2 w-full">
-          {multiline ? (
-            <Textarea
-              value={editValues[fieldName] || text}
-              onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
-              placeholder={placeholder}
-              className={`flex-1 ${className}`}
-              autoFocus
-            />
-          ) : (
-            <Input
-              value={editValues[fieldName] || text}
-              onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
-              placeholder={placeholder}
-              className={`flex-1 ${className}`}
-              autoFocus
-            />
-          )}
-          <Button size="sm" onClick={() => handleEditSave(fieldName)}>
-            <Check className="w-4 h-4" />
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleEditCancel}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="group relative inline-block w-full">
-        <span className={className}>{text}</span>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white shadow-sm border"
-          onClick={() => handleEditStart(fieldName, text)}
-        >
-          <Edit className="w-4 h-4" />
-        </Button>
-      </div>
-    );
-  };
 
   useEffect(() => {
     document.title = "Dịch Vụ Xin Thị Thực - N&P Company";
@@ -274,6 +191,12 @@ export default function VisaServices() {
                   fieldName="visa-types-support-title"
                   text="Các loại thị thực chúng tôi hỗ trợ"
                   className="text-2xl font-bold text-foreground"
+                  showEditButton={true}
+                  editingField={editingField}
+                  editValues={editValues}
+                  onEditStart={handleEditStart}
+                  onEditSave={handleEditSave}
+                  onEditCancel={handleEditCancel}
                 />
               </h3>
               <div className="grid grid-cols-2 gap-4 mb-8">
@@ -286,6 +209,12 @@ export default function VisaServices() {
                           fieldName={`visa-type-${index}-title`}
                           text={type.title}
                           className="font-medium text-foreground"
+                          showEditButton={true}
+                          editingField={editingField}
+                          editValues={editValues}
+                          onEditStart={handleEditStart}
+                          onEditSave={handleEditSave}
+                          onEditCancel={handleEditCancel}
                         />
                       </span>
                       <p className="text-sm text-muted-foreground">
@@ -293,6 +222,12 @@ export default function VisaServices() {
                           fieldName={`visa-type-${index}-description`}
                           text={type.description}
                           className="text-sm text-muted-foreground"
+                          showEditButton={true}
+                          editingField={editingField}
+                          editValues={editValues}
+                          onEditStart={handleEditStart}
+                          onEditSave={handleEditSave}
+                          onEditCancel={handleEditCancel}
                         />
                       </p>
                     </div>
@@ -305,6 +240,12 @@ export default function VisaServices() {
                   fieldName="visa-countries-title"
                   text="Quốc gia chuyên môn"
                   className="text-lg font-semibold text-foreground"
+                  showEditButton={true}
+                  editingField={editingField}
+                  editValues={editValues}
+                  onEditStart={handleEditStart}
+                  onEditSave={handleEditSave}
+                  onEditCancel={handleEditCancel}
                 />
               </h4>
               <div className="flex flex-wrap gap-2 mb-6">
@@ -326,6 +267,12 @@ export default function VisaServices() {
               fieldName="visa-process-title"
               text="Quy trình xin thị thực"
               className="text-2xl font-bold text-foreground"
+              showEditButton={true}
+              editingField={editingField}
+              editValues={editValues}
+              onEditStart={handleEditStart}
+              onEditSave={handleEditSave}
+              onEditCancel={handleEditCancel}
             />
           </h3>
           <div className="grid md:grid-cols-5 gap-8">
@@ -352,6 +299,12 @@ export default function VisaServices() {
                     fieldName="visa-documents-title"
                     text="Hồ Sơ Bắt Buộc"
                     className="text-xl font-bold text-foreground"
+                    showEditButton={true}
+                    editingField={editingField}
+                    editValues={editValues}
+                    onEditStart={handleEditStart}
+                    onEditSave={handleEditSave}
+                    onEditCancel={handleEditCancel}
                   />
                 </h3>
                 <ul className="space-y-3">
@@ -372,6 +325,12 @@ export default function VisaServices() {
                     fieldName="visa-faq-title"
                     text="Câu Hỏi Thường Gặp"
                     className="text-xl font-bold text-foreground"
+                    showEditButton={true}
+                    editingField={null}
+                    editValues={{}}
+                    onEditStart={() => {}}
+                    onEditSave={() => {}}
+                    onEditCancel={() => {}}
                   />
                 </h3>
                 <Accordion type="single" collapsible className="w-full">

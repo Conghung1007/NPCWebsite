@@ -148,6 +148,28 @@ export default function Home() {
 
   const handleServiceTextUpdate = (fieldName: string, newValue: string) => {
     setServiceTexts(prev => ({ ...prev, [fieldName]: newValue }));
+    
+    // Also update the services array with the new text
+    setServices(prevServices => 
+      prevServices.map(service => {
+        // Handle service title updates
+        if (fieldName === `${service.category}-title`) {
+          return { ...service, title: newValue };
+        }
+        // Handle service description updates  
+        if (fieldName === `${service.category}-description`) {
+          return { ...service, description: newValue };
+        }
+        // Handle online exam service (special case)
+        if (fieldName === 'online-exam-title' && service.category === 'online-exam') {
+          return { ...service, title: newValue };
+        }
+        if (fieldName === 'online-exam-description' && service.category === 'online-exam') {
+          return { ...service, description: newValue };
+        }
+        return service;
+      })
+    );
   };
 
   const [services, setServices] = useState([
@@ -377,6 +399,7 @@ export default function Home() {
                     onServiceClick={() => handleServiceClick(service.route)}
                     allowImageEdit={hasImageEditPermission}
                     onServiceImageUpdate={(newImageUrl) => handleServiceImageUpdate(index, newImageUrl)}
+                    onServiceTextUpdate={handleServiceTextUpdate}
                   />
                 );
               }
@@ -390,6 +413,7 @@ export default function Home() {
                   onServiceClick={() => handleServiceClick(service.route)}
                   allowImageEdit={hasImageEditPermission}
                   onServiceImageUpdate={(newImageUrl) => handleServiceImageUpdate(index, newImageUrl)}
+                  onServiceTextUpdate={handleServiceTextUpdate}
                 />
               );
             })}

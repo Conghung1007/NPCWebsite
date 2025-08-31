@@ -139,16 +139,18 @@ export function EditableText({
   }
 
   return (
-    <div className="group relative inline-block w-full">
+    <span className="group relative inline-block w-full">
       <span className={className}>{text}</span>
-      <Button
-        size="sm"
-        variant="ghost"
-        className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white shadow-sm border"
-        onClick={handleStartEdit}
-      >
-        <Edit className="w-4 h-4" />
-      </Button>
-    </div>
+      {showEditButton && (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white shadow-sm border"
+          onClick={handleStartEdit}
+        >
+          <Edit className="w-4 h-4" />
+        </Button>
+      )}
+    </span>
   );
 }

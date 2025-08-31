@@ -20,6 +20,7 @@ interface ServiceWithArticlesProps {
   onServiceClick: () => void;
   allowImageEdit?: boolean;
   onServiceImageUpdate?: (newImageUrl: string) => void;
+  onServiceTextUpdate?: (fieldName: string, newValue: string) => void;
 }
 
 // Simple Badge component
@@ -36,7 +37,8 @@ export function ServiceWithArticles({
   category, 
   onServiceClick,
   allowImageEdit = false,
-  onServiceImageUpdate
+  onServiceImageUpdate,
+  onServiceTextUpdate
 }: ServiceWithArticlesProps) {
   const { data: allArticles = [], isLoading } = useQuery<Article[]>({
     queryKey: ['/api/articles'],
@@ -59,8 +61,8 @@ export function ServiceWithArticles({
   };
 
   const handleEditSave = (fieldName: string, value: string) => {
-    console.log(`Saving field ${fieldName} with value:`, value);
     setEditValues({ ...editValues, [fieldName]: value });
+    onServiceTextUpdate?.(fieldName, value);
     setEditingField(null);
   };
 

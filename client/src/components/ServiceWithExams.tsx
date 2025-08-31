@@ -19,6 +19,7 @@ interface ServiceWithExamsProps {
   onServiceClick: () => void;
   allowImageEdit?: boolean;
   onServiceImageUpdate?: (newImageUrl: string) => void;
+  onServiceTextUpdate?: (fieldName: string, newValue: string) => void;
 }
 
 // Simple Badge component
@@ -34,7 +35,8 @@ export function ServiceWithExams({
   service, 
   onServiceClick,
   allowImageEdit = false,
-  onServiceImageUpdate
+  onServiceImageUpdate,
+  onServiceTextUpdate
 }: ServiceWithExamsProps) {
   const { data: allExams = [], isLoading } = useQuery<Exam[]>({
     queryKey: ['/api/exams'],
@@ -57,8 +59,8 @@ export function ServiceWithExams({
   };
 
   const handleEditSave = (fieldName: string, value: string) => {
-    console.log(`Saving field ${fieldName} with value:`, value);
     setEditValues({ ...editValues, [fieldName]: value });
+    onServiceTextUpdate?.(fieldName, value);
     setEditingField(null);
   };
 
