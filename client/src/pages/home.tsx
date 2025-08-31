@@ -402,9 +402,20 @@ export default function Home() {
                     </div>
                     <div>
                       <h3 className="text-xl font-semibold text-foreground mb-2">
-                        {reason.title}
+                        <EditableText 
+                          fieldName={`why-reason-title-${index}`}
+                          text={reason.title}
+                          className="text-xl font-semibold text-foreground"
+                        />
                       </h3>
-                      <p className="text-lg text-muted-foreground">{reason.description}</p>
+                      <div className="text-lg text-muted-foreground">
+                        <EditableText 
+                          fieldName={`why-reason-description-${index}`}
+                          text={reason.description}
+                          className="text-lg text-muted-foreground"
+                          multiline={true}
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}

@@ -11,6 +11,7 @@ Color scheme: Green theme (updated August 2025 - primary: hsl(142, 76%, 36%), ac
 Navigation: Service pages displayed directly in header (About Us page removed - August 2025)
 Typography: Increased font sizes throughout the site for better readability (August 2025)
 Storage: Multi-provider object storage system supporting Replit Object Storage and multiple Cloudflare R2 accounts (August 2025)
+Inline Text Editing: Implemented across all main pages for Manager and Admin roles with hover-to-edit functionality (August 2025)
 
 # System Architecture
 
@@ -38,9 +39,10 @@ Storage: Multi-provider object storage system supporting Replit Object Storage a
 - **Media Upload**: Presigned URL-based upload system with configurable storage providers
 
 ## Authentication and Authorization
-- Currently using basic user schema with username/password fields
-- Session management structure in place but not fully implemented
-- No active authentication middleware currently deployed
+- User authentication system with role-based access control (user, manager, admin)
+- Session management with PostgreSQL session storage
+- Authentication middleware protecting admin routes and edit permissions
+- Inline text editing permissions restricted to Manager and Admin roles
 
 ## External Dependencies
 - **Database**: Neon Database serverless PostgreSQL (@neondatabase/serverless)

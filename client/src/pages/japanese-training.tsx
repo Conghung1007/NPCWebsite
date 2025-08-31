@@ -384,7 +384,13 @@ export default function JapaneseTraining() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-12 items-center mb-16">
             <div>
-              <h3 className="text-2xl font-bold text-foreground mb-6">Phương pháp giảng dạy</h3>
+              <h3 className="text-2xl font-bold text-foreground mb-6">
+                <EditableText 
+                  fieldName="japanese-teaching-method-title"
+                  text="Phương pháp giảng dạy"
+                  className="text-2xl font-bold text-foreground"
+                />
+              </h3>
               <div className="space-y-4">
                 {teachingMethods.map((method, index) => (
                   <div key={index} className="flex items-start">
@@ -434,7 +440,13 @@ export default function JapaneseTraining() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid lg:grid-cols-2 gap-12">
             <div>
-              <h3 className="text-2xl font-bold text-foreground mb-6">Lịch học linh hoạt</h3>
+              <h3 className="text-2xl font-bold text-foreground mb-6">
+                <EditableText 
+                  fieldName="japanese-schedule-title"
+                  text="Lịch học linh hoạt"
+                  className="text-2xl font-bold text-foreground"
+                />
+              </h3>
               <Card>
                 <CardContent className="p-6">
                   <div className="grid grid-cols-2 gap-4 mb-6">
@@ -455,7 +467,13 @@ export default function JapaneseTraining() {
             </div>
 
             <div>
-              <h3 className="text-2xl font-bold text-foreground mb-6">Học viên nói gì</h3>
+              <h3 className="text-2xl font-bold text-foreground mb-6">
+                <EditableText 
+                  fieldName="japanese-testimonials-title"
+                  text="Học viên nói gì"
+                  className="text-2xl font-bold text-foreground"
+                />
+              </h3>
               <div className="space-y-4">
                 {testimonials.map((testimonial, index) => (
                   <Card key={index}>
@@ -482,7 +500,11 @@ export default function JapaneseTraining() {
       <section className="py-20 bg-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h3 className="text-2xl font-bold text-foreground text-center mb-8">
-            Đội ngũ giảng viên
+            <EditableText 
+              fieldName="japanese-instructors-title"
+              text="Đội ngũ giảng viên"
+              className="text-2xl font-bold text-foreground"
+            />
           </h3>
           <div className="grid md:grid-cols-3 gap-8">
             {instructors.map((instructor, index) => (

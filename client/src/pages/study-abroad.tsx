@@ -300,7 +300,13 @@ export default function StudyAbroad() {
               
               <Card>
                 <CardContent className="p-6">
-                  <h4 className="font-semibold text-foreground mb-4">Tại sao du học với N&P?</h4>
+                  <h4 className="font-semibold text-foreground mb-4">
+                    <EditableText 
+                      fieldName="study-why-np-title"
+                      text="Tại sao du học với N&P?"
+                      className="font-semibold text-foreground"
+                    />
+                  </h4>
                   <ul className="space-y-3 text-sm text-muted-foreground">
                     {whyChooseUs.map((item, index) => (
                       <li key={index} className="flex items-center">
@@ -320,7 +326,11 @@ export default function StudyAbroad() {
       <section className="py-20 bg-gradient-to-r from-primary to-blue-700 text-white">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h3 className="text-2xl font-bold mb-8 text-center">
-            Tại Sao Nên Du Học Với N&P?
+            <EditableText 
+              fieldName="study-why-choose-title"
+              text="Tại Sao Nên Du Học Với N&P?"
+              className="text-2xl font-bold text-white"
+            />
           </h3>
           <div className="grid md:grid-cols-3 gap-8">
             {whyChooseUs.slice(0, 3).map((item, index) => (

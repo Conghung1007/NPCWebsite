@@ -355,7 +355,13 @@ export default function VisaServices() {
             
             <Card>
               <CardContent className="p-8">
-                <h3 className="text-xl font-bold text-foreground mb-6">Câu Hỏi Thường Gặp</h3>
+                <h3 className="text-xl font-bold text-foreground mb-6">
+                  <EditableText 
+                    fieldName="visa-faq-title"
+                    text="Câu Hỏi Thường Gặp"
+                    className="text-xl font-bold text-foreground"
+                  />
+                </h3>
                 <Accordion type="single" collapsible className="w-full">
                   {faqs.map((faq, index) => (
                     <AccordionItem key={index} value={`item-${index}`}>
