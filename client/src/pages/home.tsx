@@ -6,6 +6,8 @@ import { ServiceCard } from "@/components/ui/service-card";
 import { TestimonialCard } from "@/components/ui/testimonial-card";
 import { ContactForm } from "@/components/ui/contact-form";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ServiceWithArticles } from "@/components/ServiceWithArticles";
 import { ServiceWithExams } from "@/components/ServiceWithExams";
 import { ImageManager } from "@/components/ui/image-manager";
@@ -23,7 +25,9 @@ import {
   Handshake,
   BarChart3,
   ArrowRight,
-  Edit
+  Edit,
+  Check,
+  X
 } from "lucide-react";
 
 
@@ -35,6 +39,90 @@ export default function Home() {
   const [whyChooseImage, setWhyChooseImage] = useState("https://images.unsplash.com/photo-1521737604893-d14cc237f11d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2084&q=80");
   const [uiImages, setUiImages] = useState<Record<string, string>>({});
   const [showWhyChooseImageManager, setShowWhyChooseImageManager] = useState(false);
+  
+  // Text editing states
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
+
+  // Editable text handler functions
+  const handleEditStart = (fieldName: string, currentValue: string) => {
+    setEditingField(fieldName);
+    setEditValues({ ...editValues, [fieldName]: currentValue });
+  };
+
+  const handleEditSave = (fieldName: string) => {
+    // In a real app, you would save to server here
+    console.log(`Saving field ${fieldName} with value:`, editValues[fieldName]);
+    setEditingField(null);
+  };
+
+  const handleEditCancel = () => {
+    setEditingField(null);
+    setEditValues({});
+  };
+
+  // Editable text component inline
+  const EditableText = ({ 
+    fieldName, 
+    text, 
+    className = "", 
+    multiline = false, 
+    placeholder = "" 
+  }: {
+    fieldName: string;
+    text: string;
+    className?: string;
+    multiline?: boolean;
+    placeholder?: string;
+  }) => {
+    if (!hasImageEditPermission) {
+      return <span className={className}>{text}</span>;
+    }
+
+    if (editingField === fieldName) {
+      return (
+        <div className="flex items-center gap-2 w-full">
+          {multiline ? (
+            <Textarea
+              value={editValues[fieldName] || text}
+              onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
+              placeholder={placeholder}
+              className={`flex-1 ${className}`}
+              autoFocus
+            />
+          ) : (
+            <Input
+              value={editValues[fieldName] || text}
+              onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
+              placeholder={placeholder}
+              className={`flex-1 ${className}`}
+              autoFocus
+            />
+          )}
+          <Button size="sm" onClick={() => handleEditSave(fieldName)}>
+            <Check className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleEditCancel}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="group relative inline-block w-full">
+        <span className={className}>{text}</span>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={() => handleEditStart(fieldName, text)}
+        >
+          <Edit className="w-3 h-3" />
+        </Button>
+      </div>
+    );
+  };
 
   useEffect(() => {
     document.title = "N&P Company - Đối Tác Tin Cậy Cho Giấc Mơ Toàn Cầu";
@@ -234,11 +322,20 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Dịch vụ chuyên nghiệp
+              <EditableText 
+                fieldName="services-title"
+                text="Dịch vụ chuyên nghiệp"
+                className="text-4xl md:text-5xl font-bold text-foreground"
+              />
             </h2>
-            <p className="text-2xl text-muted-foreground max-w-3xl mx-auto">
-              Chúng tôi cung cấp giải pháp toàn diện cho mọi nhu cầu du lịch, học tập và phát triển sự nghiệp quốc tế của bạn
-            </p>
+            <div className="text-2xl text-muted-foreground max-w-3xl mx-auto">
+              <EditableText 
+                fieldName="services-description"
+                text="Chúng tôi cung cấp giải pháp toàn diện cho mọi nhu cầu du lịch, học tập và phát triển sự nghiệp quốc tế của bạn"
+                className="text-2xl text-muted-foreground"
+                multiline={true}
+              />
+            </div>
           </div>
 
           <div className="space-y-20">
@@ -278,11 +375,20 @@ export default function Home() {
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
               <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-6">
-                Tại sao chọn N&P?
+                <EditableText 
+                  fieldName="why-choose-title"
+                  text="Tại sao chọn N&P?"
+                  className="text-4xl md:text-5xl font-bold text-foreground"
+                />
               </h2>
-              <p className="text-2xl text-muted-foreground mb-8">
-                Với hơn 10 năm kinh nghiệm, chúng tôi tự hào là đối tác đáng tin cậy giúp hàng nghìn khách hàng thực hiện ước mơ toàn cầu
-              </p>
+              <div className="text-2xl text-muted-foreground mb-8">
+                <EditableText 
+                  fieldName="why-choose-description"
+                  text="Với hơn 10 năm kinh nghiệm, chúng tôi tự hào là đối tác đáng tin cậy giúp hàng nghìn khách hàng thực hiện ước mơ toàn cầu"
+                  className="text-2xl text-muted-foreground"
+                  multiline={true}
+                />
+              </div>
 
               <div className="space-y-6">
                 {reasons.map((reason, index) => (
@@ -335,11 +441,20 @@ export default function Home() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-              Khách hàng nói gì về chúng tôi
+              <EditableText 
+                fieldName="testimonials-title"
+                text="Khách hàng nói gì về chúng tôi"
+                className="text-4xl md:text-5xl font-bold text-foreground"
+              />
             </h2>
-            <p className="text-2xl text-muted-foreground">
-              Hàng nghìn câu chuyện thành công từ khách hàng tin tưởng N&P
-            </p>
+            <div className="text-2xl text-muted-foreground">
+              <EditableText 
+                fieldName="testimonials-description"
+                text="Hàng nghìn câu chuyện thành công từ khách hàng tin tưởng N&P"
+                className="text-2xl text-muted-foreground"
+                multiline={true}
+              />
+            </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-8">

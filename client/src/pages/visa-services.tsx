@@ -3,6 +3,8 @@ import { useLocation } from "wouter";
 import { HeroSection } from "@/components/ui/hero-section";
 import { ServiceCard } from "@/components/ui/service-card";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArticleSection } from "@/components/ArticleSection";
 import { ImageManager } from "@/components/ui/image-manager";
@@ -18,7 +20,9 @@ import {
   Search,
   Send,
   Award,
-  Edit
+  Edit,
+  Check,
+  X
 } from "lucide-react";
 import {
   Accordion,
@@ -34,6 +38,89 @@ export default function VisaServices() {
   const [consultationImage, setConsultationImage] = useState("https://images.unsplash.com/photo-1600880292203-757bb62b4baf?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=600");
   const [showHeroImageManager, setShowHeroImageManager] = useState(false);
   const [showConsultationImageManager, setShowConsultationImageManager] = useState(false);
+  
+  // Text editing states
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
+
+  // Editable text handler functions
+  const handleEditStart = (fieldName: string, currentValue: string) => {
+    setEditingField(fieldName);
+    setEditValues({ ...editValues, [fieldName]: currentValue });
+  };
+
+  const handleEditSave = (fieldName: string) => {
+    console.log(`Saving field ${fieldName} with value:`, editValues[fieldName]);
+    setEditingField(null);
+  };
+
+  const handleEditCancel = () => {
+    setEditingField(null);
+    setEditValues({});
+  };
+
+  // Editable text component inline
+  const EditableText = ({ 
+    fieldName, 
+    text, 
+    className = "", 
+    multiline = false, 
+    placeholder = "" 
+  }: {
+    fieldName: string;
+    text: string;
+    className?: string;
+    multiline?: boolean;
+    placeholder?: string;
+  }) => {
+    if (!hasImageEditPermission) {
+      return <span className={className}>{text}</span>;
+    }
+
+    if (editingField === fieldName) {
+      return (
+        <div className="flex items-center gap-2 w-full">
+          {multiline ? (
+            <Textarea
+              value={editValues[fieldName] || text}
+              onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
+              placeholder={placeholder}
+              className={`flex-1 ${className}`}
+              autoFocus
+            />
+          ) : (
+            <Input
+              value={editValues[fieldName] || text}
+              onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
+              placeholder={placeholder}
+              className={`flex-1 ${className}`}
+              autoFocus
+            />
+          )}
+          <Button size="sm" onClick={() => handleEditSave(fieldName)}>
+            <Check className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleEditCancel}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="group relative inline-block w-full">
+        <span className={className}>{text}</span>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={() => handleEditStart(fieldName, text)}
+        >
+          <Edit className="w-3 h-3" />
+        </Button>
+      </div>
+    );
+  };
 
   useEffect(() => {
     document.title = "Dịch Vụ Xin Thị Thực - N&P Company";
@@ -180,7 +267,11 @@ export default function VisaServices() {
             </div>
             <div>
               <h3 className="text-2xl font-bold text-foreground mb-6">
-                Các loại thị thực chúng tôi hỗ trợ
+                <EditableText 
+                  fieldName="visa-types-support-title"
+                  text="Các loại thị thực chúng tôi hỗ trợ"
+                  className="text-2xl font-bold text-foreground"
+                />
               </h3>
               <div className="grid grid-cols-2 gap-4 mb-8">
                 {visaTypes.map((type, index) => (
@@ -194,7 +285,13 @@ export default function VisaServices() {
                 ))}
               </div>
               
-              <h4 className="text-lg font-semibold text-foreground mb-4">Quốc gia chuyên môn</h4>
+              <h4 className="text-lg font-semibold text-foreground mb-4">
+                <EditableText 
+                  fieldName="visa-countries-title"
+                  text="Quốc gia chuyên môn"
+                  className="text-lg font-semibold text-foreground"
+                />
+              </h4>
               <div className="flex flex-wrap gap-2 mb-6">
                 {["Nhật Bản", "Hàn Quốc", "Mỹ", "Canada", "Úc", "Anh", "Đức", "+40 quốc gia"].map((country, index) => (
                   <span key={index} className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full text-sm">
@@ -210,7 +307,11 @@ export default function VisaServices() {
       <section className="py-20 bg-neutral pt-[30px] pb-[30px]">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <h3 className="text-2xl font-bold text-foreground text-center mb-12">
-            Quy trình xin thị thực
+            <EditableText 
+              fieldName="visa-process-title"
+              text="Quy trình xin thị thực"
+              className="text-2xl font-bold text-foreground"
+            />
           </h3>
           <div className="grid md:grid-cols-5 gap-8">
             {processSteps.map((step, index) => (
@@ -231,7 +332,13 @@ export default function VisaServices() {
           <div className="grid md:grid-cols-2 gap-8 mb-16">
             <Card>
               <CardContent className="p-8">
-                <h3 className="text-xl font-bold text-foreground mb-6">Hồ Sơ Bắt Buộc</h3>
+                <h3 className="text-xl font-bold text-foreground mb-6">
+                  <EditableText 
+                    fieldName="visa-documents-title"
+                    text="Hồ Sơ Bắt Buộc"
+                    className="text-xl font-bold text-foreground"
+                  />
+                </h3>
                 <ul className="space-y-3">
                   {requiredDocuments.map((doc, index) => (
                     <li key={index} className="flex items-start">

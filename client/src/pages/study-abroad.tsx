@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { HeroSection } from "@/components/ui/hero-section";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArticleSection } from "@/components/ArticleSection";
 import { ImageManager } from "@/components/ui/image-manager";
@@ -17,7 +19,9 @@ import {
   Heart,
   TrendingUp,
   CheckCircle,
-  Edit
+  Edit,
+  Check,
+  X
 } from "lucide-react";
 
 export default function StudyAbroad() {
@@ -27,6 +31,89 @@ export default function StudyAbroad() {
   const [studentsImage, setStudentsImage] = useState("https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-4.0.3&auto=format&fit=crop&w=800&h=1000");
   const [showHeroImageManager, setShowHeroImageManager] = useState(false);
   const [showStudentsImageManager, setShowStudentsImageManager] = useState(false);
+  
+  // Text editing states
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
+
+  // Editable text handler functions  
+  const handleEditStart = (fieldName: string, currentValue: string) => {
+    setEditingField(fieldName);
+    setEditValues({ ...editValues, [fieldName]: currentValue });
+  };
+
+  const handleEditSave = (fieldName: string) => {
+    console.log(`Saving field ${fieldName} with value:`, editValues[fieldName]);
+    setEditingField(null);
+  };
+
+  const handleEditCancel = () => {
+    setEditingField(null);
+    setEditValues({});
+  };
+
+  // Editable text component inline
+  const EditableText = ({ 
+    fieldName, 
+    text, 
+    className = "", 
+    multiline = false, 
+    placeholder = "" 
+  }: {
+    fieldName: string;
+    text: string;
+    className?: string;
+    multiline?: boolean;
+    placeholder?: string;
+  }) => {
+    if (!hasImageEditPermission) {
+      return <span className={className}>{text}</span>;
+    }
+
+    if (editingField === fieldName) {
+      return (
+        <div className="flex items-center gap-2 w-full">
+          {multiline ? (
+            <Textarea
+              value={editValues[fieldName] || text}
+              onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
+              placeholder={placeholder}
+              className={`flex-1 ${className}`}
+              autoFocus
+            />
+          ) : (
+            <Input
+              value={editValues[fieldName] || text}
+              onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
+              placeholder={placeholder}
+              className={`flex-1 ${className}`}
+              autoFocus
+            />
+          )}
+          <Button size="sm" onClick={() => handleEditSave(fieldName)}>
+            <Check className="w-4 h-4" />
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleEditCancel}>
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+      );
+    }
+
+    return (
+      <div className="group relative inline-block w-full">
+        <span className={className}>{text}</span>
+        <Button
+          size="sm"
+          variant="ghost"
+          className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity"
+          onClick={() => handleEditStart(fieldName, text)}
+        >
+          <Edit className="w-3 h-3" />
+        </Button>
+      </div>
+    );
+  };
 
   useEffect(() => {
     document.title = "Tư Vấn Du Học - N&P Company";
