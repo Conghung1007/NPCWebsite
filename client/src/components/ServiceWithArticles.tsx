@@ -19,6 +19,7 @@ interface ServiceWithArticlesProps {
   category: string;
   onServiceClick: () => void;
   allowImageEdit?: boolean;
+  allowTextEdit?: boolean;
   onServiceImageUpdate?: (newImageUrl: string) => void;
   onServiceTextUpdate?: (fieldName: string, newValue: string) => void;
 }
@@ -37,6 +38,7 @@ export function ServiceWithArticles({
   category, 
   onServiceClick,
   allowImageEdit = false,
+  allowTextEdit = false,
   onServiceImageUpdate,
   onServiceTextUpdate
 }: ServiceWithArticlesProps) {
@@ -209,7 +211,7 @@ export function ServiceWithArticles({
                 text={service.description}
                 className="text-lg text-muted-foreground"
                 multiline={true}
-                showEditButton={true}
+                showEditButton={allowTextEdit}
                 editingField={editingField}
                 editValues={editValues}
                 onEditStart={handleEditStart}

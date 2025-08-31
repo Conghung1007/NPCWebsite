@@ -408,7 +408,7 @@ export default function Home() {
                 fieldName="services-title"
                 text="Dịch vụ chuyên nghiệp"
                 className="text-4xl md:text-5xl font-bold text-foreground"
-                showEditButton={true}
+                showEditButton={hasEditPermission}
                 editingField={editingField}
                 editValues={editValues}
                 onEditStart={handleEditStart}
@@ -422,7 +422,7 @@ export default function Home() {
                 text="Chúng tôi cung cấp giải pháp toàn diện cho mọi nhu cầu du lịch, học tập và phát triển sự nghiệp quốc tế của bạn"
                 className="text-2xl text-muted-foreground"
                 multiline={true}
-                showEditButton={true}
+                showEditButton={hasEditPermission}
                 editingField={editingField}
                 editValues={editValues}
                 onEditStart={handleEditStart}
@@ -450,6 +450,7 @@ export default function Home() {
                     service={editableService}
                     onServiceClick={() => handleServiceClick(service.route)}
                     allowImageEdit={hasImageEditPermission}
+                    allowTextEdit={hasEditPermission}
                     onServiceImageUpdate={(newImageUrl) => handleServiceImageUpdate(index, newImageUrl)}
                     onServiceTextUpdate={handleServiceTextUpdate}
                   />
@@ -464,6 +465,7 @@ export default function Home() {
                   category={service.category}
                   onServiceClick={() => handleServiceClick(service.route)}
                   allowImageEdit={hasImageEditPermission}
+                  allowTextEdit={hasEditPermission}
                   onServiceImageUpdate={(newImageUrl) => handleServiceImageUpdate(index, newImageUrl)}
                   onServiceTextUpdate={handleServiceTextUpdate}
                 />
@@ -483,7 +485,7 @@ export default function Home() {
                   fieldName="why-choose-title"
                   text="Tại sao chọn N&P?"
                   className="text-4xl md:text-5xl font-bold text-foreground"
-                  showEditButton={true}
+                  showEditButton={hasEditPermission}
                   editingField={editingField}
                   editValues={editValues}
                   onEditStart={handleEditStart}
@@ -497,7 +499,7 @@ export default function Home() {
                   text="Với hơn 10 năm kinh nghiệm, chúng tôi tự hào là đối tác đáng tin cậy giúp hàng nghìn khách hàng thực hiện ước mơ toàn cầu"
                   className="text-2xl text-muted-foreground"
                   multiline={true}
-                  showEditButton={true}
+                  showEditButton={hasEditPermission}
                   editingField={editingField}
                   editValues={editValues}
                   onEditStart={handleEditStart}
@@ -518,7 +520,7 @@ export default function Home() {
                           fieldName={`why-reason-title-${index}`}
                           text={reason.title}
                           className="text-xl font-semibold text-foreground"
-                          showEditButton={true}
+                          showEditButton={hasEditPermission}
                           editingField={editingField}
                           editValues={editValues}
                           onEditStart={handleEditStart}
@@ -532,7 +534,7 @@ export default function Home() {
                           text={reason.description}
                           className="text-lg text-muted-foreground"
                           multiline={true}
-                          showEditButton={true}
+                          showEditButton={hasEditPermission}
                           editingField={editingField}
                           editValues={editValues}
                           onEditStart={handleEditStart}
@@ -584,7 +586,7 @@ export default function Home() {
                 fieldName="testimonials-title"
                 text="Khách hàng nói gì về chúng tôi"
                 className="text-4xl md:text-5xl font-bold text-foreground"
-                showEditButton={true}
+                showEditButton={hasEditPermission}
                 editingField={editingField}
                 editValues={editValues}
                 onEditStart={handleEditStart}
@@ -598,7 +600,7 @@ export default function Home() {
                 text="Hàng nghìn câu chuyện thành công từ khách hàng tin tưởng N&P"
                 className="text-2xl text-muted-foreground"
                 multiline={true}
-                showEditButton={true}
+                showEditButton={hasEditPermission}
                 editingField={editingField}
                 editValues={editValues}
                 onEditStart={handleEditStart}
@@ -619,7 +621,7 @@ export default function Home() {
                 avatar={testimonial.avatar}
                 allowAvatarEdit={hasImageEditPermission}
                 onAvatarUpdate={(newAvatar) => handleTestimonialAvatarUpdate(testimonial.id, newAvatar)}
-                allowTextEdit={true}
+                allowTextEdit={hasEditPermission}
                 onTextUpdate={(field, value) => handleTestimonialTextUpdate(testimonial.id, field, value)}
                 editingField={editingField}
                 editValues={editValues}

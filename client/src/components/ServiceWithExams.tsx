@@ -18,6 +18,7 @@ interface ServiceWithExamsProps {
   };
   onServiceClick: () => void;
   allowImageEdit?: boolean;
+  allowTextEdit?: boolean;
   onServiceImageUpdate?: (newImageUrl: string) => void;
   onServiceTextUpdate?: (fieldName: string, newValue: string) => void;
 }
@@ -35,6 +36,7 @@ export function ServiceWithExams({
   service, 
   onServiceClick,
   allowImageEdit = false,
+  allowTextEdit = false,
   onServiceImageUpdate,
   onServiceTextUpdate
 }: ServiceWithExamsProps) {
@@ -186,7 +188,7 @@ export function ServiceWithExams({
                 text={service.description}
                 className="text-lg text-muted-foreground"
                 multiline={true}
-                showEditButton={true}
+                showEditButton={allowTextEdit}
                 editingField={editingField}
                 editValues={editValues}
                 onEditStart={handleEditStart}
