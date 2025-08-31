@@ -8,10 +8,12 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff, Lock, User } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { useQueryClient } from "@tanstack/react-query";
 
 export default function Login() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Cuộn lên đầu trang khi component mount
   useEffect(() => {
@@ -52,7 +54,8 @@ export default function Login() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(formData)
+        body: JSON.stringify(formData),
+        credentials: "include"
       });
 
       const data = await response.json();
@@ -63,11 +66,8 @@ export default function Login() {
           description: `Chào mừng ${data.user.username}!`,
         });
         
-        // Store user data in localStorage
-        localStorage.setItem("user", JSON.stringify(data.user));
-        
-        // Trigger custom event for same-tab updates
-        window.dispatchEvent(new CustomEvent("userChange"));
+        // Invalidate auth cache to trigger refetch
+        queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         
         // Redirect to home page
         setLocation("/");
