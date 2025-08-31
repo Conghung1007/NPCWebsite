@@ -176,6 +176,7 @@ export const contactInfo = pgTable("contact_info", {
   type: varchar("type").notNull(), // 'main_office', 'hotline', 'email', 'business_hours'
   title: varchar("title").notNull(),
   content: text("content").array().notNull().default(sql`'{}'::text[]`),
+  mapUrl: text("map_url"), // Google Maps embed URL for office locations
   displayOrder: integer("display_order").default(0),
   isActive: boolean("is_active").default(true),
   createdAt: timestamp("created_at").defaultNow(),

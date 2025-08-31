@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { useUiImages } from "@/hooks/useUiImages";
 import { useAuth } from "@/hooks/useAuth";
 import { useContactInfo } from "@/hooks/useContactInfo";
+import { MapDisplay } from "@/components/MapDisplay";
 import { 
   MapPin, 
   Phone, 
@@ -162,17 +163,11 @@ export default function Contact() {
                 </CardContent>
               </Card>
 
-              {/* Map Placeholder */}
+              {/* Map Display */}
               <Card>
                 <CardContent className="p-6">
                   <h4 className="font-semibold text-foreground mb-4">Bản đồ văn phòng</h4>
-                  <div className="w-full h-48 bg-muted rounded-lg flex items-center justify-center">
-                    <div className="text-center text-muted-foreground">
-                      <MapPin className="h-12 w-12 mx-auto mb-2" />
-                      <div className="text-sm">Bản đồ Google Maps</div>
-                      <div className="text-xs">sẽ được tích hợp</div>
-                    </div>
-                  </div>
+                  <MapDisplay />
                 </CardContent>
               </Card>
 

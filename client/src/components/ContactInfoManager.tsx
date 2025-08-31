@@ -30,6 +30,7 @@ export function ContactInfoManager() {
     type: "",
     title: "",
     content: [""],
+    mapUrl: "",
     displayOrder: 0,
     isActive: true
   });
@@ -43,8 +44,7 @@ export function ContactInfoManager() {
 
   const getTypeIcon = (type: string) => {
     const typeConfig = contactTypes.find(t => t.value === type);
-    if (!typeConfig) return MapPin;
-    const Icon = typeConfig.icon;
+    const Icon = typeConfig?.icon || MapPin;
     return <Icon className="w-4 h-4" />;
   };
 
@@ -125,6 +125,7 @@ export function ContactInfoManager() {
       type: contactInfo.type,
       title: contactInfo.title,
       content: [...contactInfo.content],
+      mapUrl: contactInfo.mapUrl || "",
       displayOrder: contactInfo.displayOrder || 0,
       isActive: contactInfo.isActive
     });
@@ -162,6 +163,7 @@ export function ContactInfoManager() {
       type: "",
       title: "",
       content: [""],
+      mapUrl: "",
       displayOrder: 0,
       isActive: true
     });
@@ -284,13 +286,28 @@ export function ContactInfoManager() {
                   </div>
                 </div>
 
+                {formData.type === "main_office" && (
+                  <div>
+                    <Label htmlFor="mapUrl">Link bản đồ Google Maps (Tùy chọn)</Label>
+                    <Input
+                      id="mapUrl"
+                      value={formData.mapUrl || ""}
+                      onChange={(e) => setFormData(prev => ({ ...prev, mapUrl: e.target.value }))}
+                      placeholder="https://www.google.com/maps/embed?pb=..."
+                    />
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Lấy link embed từ Google Maps: Share → Embed a map → Copy HTML
+                    </p>
+                  </div>
+                )}
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="displayOrder">Thứ tự hiển thị</Label>
                     <Input
                       id="displayOrder"
                       type="number"
-                      value={formData.displayOrder}
+                      value={formData.displayOrder || 0}
                       onChange={(e) => setFormData(prev => ({ ...prev, displayOrder: parseInt(e.target.value) || 0 }))}
                     />
                   </div>
@@ -298,7 +315,7 @@ export function ContactInfoManager() {
                     <input
                       type="checkbox"
                       id="isActive"
-                      checked={formData.isActive}
+                      checked={formData.isActive || false}
                       onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
                       className="rounded"
                     />
@@ -340,6 +357,7 @@ export function ContactInfoManager() {
                   <TableHead>Loại</TableHead>
                   <TableHead>Tiêu đề</TableHead>
                   <TableHead>Nội dung</TableHead>
+                  <TableHead>Bản đồ</TableHead>
                   <TableHead>Thứ tự</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead>Thao tác</TableHead>
@@ -363,6 +381,13 @@ export function ContactInfoManager() {
                           <div key={index} className="text-sm">{item}</div>
                         ))}
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      {contactInfo.mapUrl ? (
+                        <span className="text-sm text-green-600">✓ Có bản đồ</span>
+                      ) : (
+                        <span className="text-sm text-gray-400">Không có</span>
+                      )}
                     </TableCell>
                     <TableCell>{contactInfo.displayOrder}</TableCell>
                     <TableCell>
