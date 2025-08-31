@@ -51,7 +51,10 @@ export default function Home() {
   };
 
   const handleEditSave = (fieldName: string) => {
-    // In a real app, you would save to server here
+    // Update service texts if it's a service field
+    if (editValues[fieldName] && Object.keys(serviceTexts).includes(fieldName)) {
+      handleServiceTextUpdate(fieldName, editValues[fieldName]);
+    }
     console.log(`Saving field ${fieldName} with value:`, editValues[fieldName]);
     setEditingField(null);
   };
@@ -195,6 +198,25 @@ export default function Home() {
     );
   };
 
+  // State for editable service content
+  const [serviceTexts, setServiceTexts] = useState({
+    heroTitle: "Đối tác tin cậy cho",
+    heroSubtitle: "giấc mơ toàn cầu", 
+    heroDescription: "Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và hệ thống thi trực tuyến với hơn 10 năm kinh nghiệm",
+    visaTitle: "Dịch vụ xin thị thực",
+    visaDescription: "Hỗ trợ xin thị thực du lịch, công tác, sinh viên cho hơn 50 quốc gia với tỷ lệ thành công 98%",
+    studyTitle: "Tư vấn du học",
+    studyDescription: "Tư vấn chọn trường, chương trình học, hỗ trợ hồ sơ và học bổng tại Nhật, Mỹ, Canada, Châu Âu",
+    japaneseTitle: "Đào tạo tiếng Nhật",
+    japaneseDescription: "Khóa học tiếng Nhật từ cơ bản đến nâng cao, luyện thi JLPT với giảng viên bản ngữ",
+    examTitle: "Thi thử trực tuyến",
+    examDescription: "Hệ thống thi trực tuyến với đề thi demo miễn phí và đề thi chính thức đánh giá năng lực tiếng Anh, tiếng Nhật"
+  });
+
+  const handleServiceTextUpdate = (fieldName: string, newValue: string) => {
+    setServiceTexts(prev => ({ ...prev, [fieldName]: newValue }));
+  };
+
   const [services, setServices] = useState([
     {
       icon: <IdCard className="h-8 w-8 text-primary" />,
@@ -206,7 +228,7 @@ export default function Home() {
     },
     {
       icon: <GraduationCap className="h-8 w-8 text-secondary" />,
-      title: "Tư vấn du học", 
+      title: "Tư vấn du học",
       description: "Tư vấn chọn trường, chương trình học, hỗ trợ hồ sơ và học bổng tại Nhật, Mỹ, Canada, Châu Âu",
       route: "/study-abroad",
       category: "study-abroad",
@@ -294,32 +316,93 @@ export default function Home() {
   return (
     <div>
       {/* Hero Section */}
-      <HeroSection
-        title="Đối tác tin cậy cho"
-        subtitle="giấc mơ toàn cầu"
-        description="Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và hệ thống thi trực tuyến với hơn 10 năm kinh nghiệm"
-        backgroundImage={heroBgImage}
-        allowImageEdit={hasImageEditPermission}
-        onImageUpdate={setHeroBgImage}
-        primaryAction={{
-          text: "Tư vấn miễn phí ngay",
-          onClick: handleContactClick
-        }}
-        secondaryAction={{
-          text: "Xem dịch vụ", 
-          onClick: () => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })
-        }}
-      >
-        {/* Floating Stats */}
-        <div className="hidden lg:flex justify-center space-x-6 mt-12">
-          {stats.map((stat, index) => (
-            <div key={index} className="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
-              <div className="text-2xl font-bold">{stat.number}</div>
-              <div className="text-sm text-blue-100">{stat.label}</div>
+      <section className="relative hero-gradient text-white overflow-hidden">
+        {heroBgImage && (
+          <div className="absolute inset-0">
+            <img 
+              src={heroBgImage} 
+              alt="Hero background" 
+              className="w-full h-full object-cover opacity-20" 
+            />
+          </div>
+        )}
+        
+        {hasImageEditPermission && (
+          <div className="absolute top-4 right-4 z-10">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowWhyChooseImageManager(true)}
+              className="bg-white/20 text-white hover:bg-white/30 border-white/50"
+            >
+              <Edit className="w-4 h-4 mr-2" />
+              Cập nhật ảnh nền
+            </Button>
+            <ImageManager
+              isOpen={showWhyChooseImageManager}
+              onClose={() => setShowWhyChooseImageManager(false)}
+              onImageUpdate={setHeroBgImage}
+              imageType="hero"
+              altText="Hero background image"
+            />
+          </div>
+        )}
+        
+        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
+          <div className="text-center">
+            <h1 className="text-5xl lg:text-7xl font-bold mb-4">
+              <EditableText 
+                fieldName="heroTitle"
+                text={serviceTexts.heroTitle}
+                className="text-5xl lg:text-7xl font-bold text-white"
+              />
+              <br />
+              <span className="text-accent">
+                <EditableText 
+                  fieldName="heroSubtitle"
+                  text={serviceTexts.heroSubtitle}
+                  className="text-accent text-5xl lg:text-7xl font-bold"
+                />
+              </span>
+            </h1>
+            <div className="text-xl lg:text-2xl text-blue-100 mb-8 max-w-4xl mx-auto">
+              <EditableText 
+                fieldName="heroDescription"
+                text={serviceTexts.heroDescription}
+                className="text-xl lg:text-2xl text-blue-100"
+                multiline={true}
+              />
             </div>
-          ))}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button 
+                size="lg" 
+                className="bg-accent hover:bg-accent/90 text-white font-semibold px-8 py-4 text-lg"
+                onClick={handleContactClick}
+              >
+                Tư vấn miễn phí ngay
+              </Button>
+              <Button 
+                variant="outline" 
+                size="lg" 
+                className="border-white text-white hover:bg-white hover:text-primary font-semibold px-8 py-4 text-lg"
+                onClick={() => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                Xem dịch vụ
+              </Button>
+            </div>
+          </div>
+
+          {/* Floating Stats */}
+          <div className="hidden lg:flex justify-center space-x-6 mt-12">
+            {stats.map((stat, index) => (
+              <div key={index} className="bg-white/10 backdrop-blur-sm rounded-lg p-4 text-center">
+                <div className="text-2xl font-bold">{stat.number}</div>
+                <div className="text-sm text-blue-100">{stat.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
-      </HeroSection>
+      </section>
 
       {/* Services with Articles */}
       <section id="services" className="py-20 bg-neutral">
@@ -344,12 +427,36 @@ export default function Home() {
 
           <div className="space-y-20">
             {services.map((service, index) => {
+              const serviceKey = service.category === 'visa-services' ? 'visa' : 
+                               service.category === 'study-abroad' ? 'study' :
+                               service.category === 'japanese-training' ? 'japanese' :
+                               'exam';
+              
+              const editableService = {
+                ...service,
+                title: (
+                  <EditableText 
+                    fieldName={`${serviceKey}Title`}
+                    text={serviceTexts[`${serviceKey}Title` as keyof typeof serviceTexts]}
+                    className="text-3xl lg:text-4xl font-bold text-foreground"
+                  />
+                ),
+                description: (
+                  <EditableText 
+                    fieldName={`${serviceKey}Description`}
+                    text={serviceTexts[`${serviceKey}Description` as keyof typeof serviceTexts]}
+                    className="text-xl text-muted-foreground"
+                    multiline={true}
+                  />
+                )
+              };
+              
               // Use ServiceWithExams for online exam service
               if (service.category === 'online-exam') {
                 return (
                   <ServiceWithExams
                     key={index}
-                    service={service}
+                    service={editableService}
                     onServiceClick={() => handleServiceClick(service.route)}
                     allowImageEdit={hasImageEditPermission}
                     onServiceImageUpdate={(newImageUrl) => handleServiceImageUpdate(index, newImageUrl)}
@@ -361,7 +468,7 @@ export default function Home() {
               return (
                 <ServiceWithArticles
                   key={index}
-                  service={service}
+                  service={editableService}
                   category={service.category}
                   onServiceClick={() => handleServiceClick(service.route)}
                   allowImageEdit={hasImageEditPermission}
