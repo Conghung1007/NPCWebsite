@@ -138,7 +138,23 @@ export class MemStorage implements IStorage {
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    return this.users.delete(id);
+    // Get user info before deleting
+    const user = this.users.get(id);
+    if (!user) return false;
+    
+    // Delete the user
+    const userDeleted = this.users.delete(id);
+    
+    // Also delete any pending registration request with the same username
+    const registrationToDelete = Array.from(this.registrationRequests.entries()).find(
+      ([, request]) => request.username.toLowerCase() === user.username.toLowerCase()
+    );
+    
+    if (registrationToDelete) {
+      this.registrationRequests.delete(registrationToDelete[0]);
+    }
+    
+    return userDeleted;
   }
 
   async getAllUsers(): Promise<User[]> {
