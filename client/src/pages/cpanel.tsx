@@ -796,6 +796,72 @@ export function CpanelPage() {
                     )}
                   </CardContent>
                 </Card>
+
+                {/* Approved Accounts Table */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <Users className="w-5 h-5" />
+                      Tài khoản đã duyệt
+                    </CardTitle>
+                    <CardDescription>
+                      Danh sách các tài khoản đã được duyệt từ yêu cầu đăng ký
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {usersLoading ? (
+                      <div className="flex justify-center py-8">
+                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+                      </div>
+                    ) : (
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Tên đăng nhập</TableHead>
+                            <TableHead>Email</TableHead>
+                            <TableHead>Số điện thoại</TableHead>
+                            <TableHead>Vai trò</TableHead>
+                            <TableHead>Ngày tạo</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {users.filter(userItem => userItem.role === "user").map((userItem) => (
+                            <TableRow key={userItem.id}>
+                              <TableCell className="font-medium flex items-center gap-2">
+                                <User className="w-4 h-4" />
+                                {userItem.username}
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm text-gray-600">
+                                  {userItem.email || "Chưa có"}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm text-gray-600">
+                                  {userItem.phone || "Chưa có"}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="secondary">
+                                  {userItem.role}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                {new Date(userItem.createdAt).toLocaleDateString("vi-VN")}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    )}
+
+                    {users.filter(userItem => userItem.role === "user").length === 0 && !usersLoading && (
+                      <div className="text-center py-8 text-muted-foreground">
+                        Chưa có tài khoản nào được duyệt
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
               </div>
             )}
 
