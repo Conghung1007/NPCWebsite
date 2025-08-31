@@ -132,16 +132,16 @@ export default function Contact() {
       />
 
       {/* Contact Section */}
-      <section className="py-20 bg-neutral">
+      <section className="py-12 sm:py-16 lg:py-20 bg-neutral">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
             {/* Contact Form */}
-            <div className="lg:col-span-2">
+            <div className="order-2 lg:order-1 lg:col-span-2">
               <ContactForm variant="page" />
             </div>
 
             {/* Contact Information */}
-            <div className="space-y-6">
+            <div className="order-1 lg:order-2 space-y-4 lg:space-y-6">
               <Card>
                 <CardContent className="p-6">
                   <h4 className="font-semibold text-foreground mb-4">Thông tin liên hệ</h4>
@@ -165,7 +165,7 @@ export default function Contact() {
 
               {/* Map Display */}
               <Card>
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   <h4 className="font-semibold text-foreground mb-4">Bản đồ văn phòng</h4>
                   <MapDisplay />
                 </CardContent>
@@ -173,14 +173,14 @@ export default function Contact() {
 
               {/* Social Media */}
               <Card>
-                <CardContent className="p-6">
+                <CardContent className="p-4 sm:p-6">
                   <h4 className="font-semibold text-foreground mb-4">Kết nối với chúng tôi</h4>
-                  <div className="flex space-x-4">
+                  <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
                     {socialLinks.map((social, index) => (
                       <a
                         key={index}
                         href={social.href}
-                        className={`w-12 h-12 ${social.color} text-white rounded-full flex items-center justify-center transition-colors`}
+                        className={`w-10 h-10 sm:w-12 sm:h-12 ${social.color} text-white rounded-full flex items-center justify-center transition-colors`}
                         title={social.name}
                       >
                         {social.icon}

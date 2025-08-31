@@ -84,17 +84,17 @@ export function ContactForm({ variant = "page", className = "" }: ContactFormPro
   ];
 
   return (
-    <div className={`${variant === "hero" ? "bg-white/10 backdrop-blur-sm border border-white/20 text-white" : "bg-white border border-gray-200 shadow-lg"} rounded-2xl p-8 ${className}`}>
-      <h3 className={`text-2xl font-bold mb-6 ${variant === "hero" ? "text-white" : "text-foreground"}`}>
+    <div className={`${variant === "hero" ? "bg-white/10 backdrop-blur-sm border border-white/20 text-white" : "bg-white border border-gray-200 shadow-lg"} rounded-2xl p-4 sm:p-6 lg:p-8 ${className}`}>
+      <h3 className={`text-xl sm:text-2xl font-bold mb-4 sm:mb-6 ${variant === "hero" ? "text-white" : "text-foreground"}`}>
         {variant === "hero" ? "Nhận tư vấn miễn phí" : "Gửi yêu cầu tư vấn"}
       </h3>
       {variant === "hero" && (
-        <p className="text-xl opacity-90 mb-8">Để lại thông tin, chúng tôi sẽ liên hệ tư vấn trong 24h</p>
+        <p className="text-base sm:text-lg lg:text-xl opacity-90 mb-6 sm:mb-8">Để lại thông tin, chúng tôi sẽ liên hệ tư vấn trong 24h</p>
       )}
       
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <div className="grid md:grid-cols-2 gap-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 sm:space-y-6">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <FormField
               control={form.control}
               name="name"
@@ -237,7 +237,7 @@ export function ContactForm({ variant = "page", className = "" }: ContactFormPro
           
           <Button 
             type="submit" 
-            className={`w-full text-lg py-3 ${
+            className={`w-full text-sm sm:text-base lg:text-lg py-2 sm:py-3 ${
               variant === "hero" 
                 ? "btn-accent" 
                 : "btn-primary"

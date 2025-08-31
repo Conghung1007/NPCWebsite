@@ -71,14 +71,14 @@ export function Header() {
   return (
     <header className="bg-white shadow-sm sticky top-0 z-50">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative">
-        <div className="flex justify-between items-center h-20">
+        <div className="flex justify-between items-center h-16 sm:h-20">
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-3">
+            <Link href="/" className="flex items-center space-x-2 sm:space-x-3">
               <div className="flex flex-col items-center justify-center">
-                <span className="text-base text-muted-foreground">Công ty</span>
-                <span className="text-base text-muted-foreground">TNHH</span>
+                <span className="text-xs sm:text-sm lg:text-base text-muted-foreground">Công ty</span>
+                <span className="text-xs sm:text-sm lg:text-base text-muted-foreground">TNHH</span>
               </div>
-              <span className="text-5xl font-bold text-primary">N&P</span>
+              <span className="text-3xl sm:text-4xl lg:text-5xl font-bold text-primary">N&P</span>
             </Link>
           </div>
 
@@ -109,8 +109,8 @@ export function Header() {
             </div>
           </div>
 
-          <div className="hidden md:flex items-center space-x-4">
-            <Button variant="outline" size="sm" className="text-base">
+          <div className="hidden md:flex items-center space-x-3 lg:space-x-4">
+            <Button variant="outline" size="sm" className="text-sm lg:text-base px-2 lg:px-3">
               VI
             </Button>
 
@@ -165,12 +165,12 @@ export function Header() {
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-80">
-                <div className="flex flex-col space-y-4 mt-8">
+              <SheetContent side="right" className="w-72 sm:w-80">
+                <div className="flex flex-col space-y-3 mt-6">
                   {navigation.map((item) => (
                     <Link key={item.name} href={item.href}>
                       <span 
-                        className={`block px-4 py-3 text-xl font-semibold rounded-lg transition-all text-center ${
+                        className={`block px-3 py-2.5 text-lg font-semibold rounded-lg transition-all text-center ${
                           item.name === "Tư vấn\nmiễn phí" 
                             ? "bg-primary text-white hover:bg-primary/90 shadow-md" 
                             : location === item.href 
@@ -191,9 +191,9 @@ export function Header() {
                       </span>
                     </Link>
                   ))}
-                  <div className="border-t pt-4">
-                    <div className="flex space-x-3">
-                      <Button variant="outline" size="sm" className="text-base" onClick={() => setIsOpen(false)}>
+                  <div className="border-t pt-3 mt-4">
+                    <div className="flex space-x-2">
+                      <Button variant="outline" size="sm" className="text-sm" onClick={() => setIsOpen(false)}>
                         VI
                       </Button>
                       {user ? (
