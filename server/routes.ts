@@ -50,21 +50,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (usernameExists) {
         return res.status(409).json({
           success: false,
-          message: "Tên đăng nhập đã tồn tại hoặc đang chờ duyệt"
+          message: "Tên đăng nhập đã tồn tại"
         });
       }
 
       if (emailExists) {
         return res.status(409).json({
           success: false,
-          message: "Email đã được sử dụng hoặc đang chờ duyệt"
+          message: "Email đã được sử dụng"
         });
       }
 
       if (phoneExists) {
         return res.status(409).json({
           success: false,
-          message: "Số điện thoại đã được sử dụng hoặc đang chờ duyệt"
+          message: "Số điện thoại đã được sử dụng"
         });
       }
 
@@ -109,7 +109,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exists = await storage.checkUsernameExists(username.toLowerCase());
       res.json({ 
         available: !exists, 
-        message: exists ? "Tên đăng nhập đã tồn tại hoặc đang chờ duyệt" : "Tên đăng nhập có thể sử dụng"
+        message: exists ? "Tên đăng nhập đã tồn tại" : "Tên đăng nhập có thể sử dụng"
       });
     } catch (error) {
       res.status(500).json({ available: false, message: "Lỗi kiểm tra tên đăng nhập" });
@@ -126,7 +126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exists = await storage.checkEmailExists(email.toLowerCase());
       res.json({ 
         available: !exists, 
-        message: exists ? "Email đã được sử dụng hoặc đang chờ duyệt" : "Email có thể sử dụng"
+        message: exists ? "Email đã được sử dụng" : "Email có thể sử dụng"
       });
     } catch (error) {
       res.status(500).json({ available: false, message: "Lỗi kiểm tra email" });
@@ -143,7 +143,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exists = await storage.checkPhoneExists(phone);
       res.json({ 
         available: !exists, 
-        message: exists ? "Số điện thoại đã được sử dụng hoặc đang chờ duyệt" : "Số điện thoại có thể sử dụng"
+        message: exists ? "Số điện thoại đã được sử dụng" : "Số điện thoại có thể sử dụng"
       });
     } catch (error) {
       res.status(500).json({ available: false, message: "Lỗi kiểm tra số điện thoại" });
@@ -253,10 +253,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const sessionUser = (req.session as any)?.user;
       
-      console.log("Approval attempt - Session user:", sessionUser?.username, "Role:", sessionUser?.role);
-      
       if (!sessionUser) {
-        console.log("Approval failed: No session user");
         return res.status(401).json({ message: "Unauthorized" });
       }
 
@@ -264,34 +261,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const registrationRequest = await storage.getRegistrationRequest(id);
       if (!registrationRequest || registrationRequest.status !== 'pending') {
         return res.status(404).json({ message: "Registration request not found or already processed" });
-      }
-
-      // Check for conflicts with existing users before creating the account
-      const [usernameExists, emailExists, phoneExists] = await Promise.all([
-        storage.checkUsernameExistsInUsers(registrationRequest.username),
-        storage.checkEmailExistsInUsers(registrationRequest.email),
-        storage.checkPhoneExistsInUsers(registrationRequest.phone)
-      ]);
-
-      if (usernameExists) {
-        return res.status(409).json({ 
-          success: false, 
-          message: "Không thể duyệt: Tên đăng nhập đã tồn tại trong hệ thống" 
-        });
-      }
-
-      if (emailExists) {
-        return res.status(409).json({ 
-          success: false, 
-          message: "Không thể duyệt: Email đã được sử dụng trong hệ thống" 
-        });
-      }
-
-      if (phoneExists) {
-        return res.status(409).json({ 
-          success: false, 
-          message: "Không thể duyệt: Số điện thoại đã được sử dụng trong hệ thống" 
-        });
       }
 
       // Create user account

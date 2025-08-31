@@ -500,8 +500,6 @@ export function CpanelPage() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Tên đăng nhập</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Số điện thoại</TableHead>
                             <TableHead>Vai trò</TableHead>
                             <TableHead>Mật khẩu</TableHead>
                             <TableHead>Ngày tạo</TableHead>
@@ -514,16 +512,6 @@ export function CpanelPage() {
                               <TableCell className="font-medium flex items-center gap-2">
                                 <User className="w-4 h-4" />
                                 {userItem.username}
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-sm text-gray-600">
-                                  {userItem.email || "Chưa có"}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-sm text-gray-600">
-                                  {userItem.phone || "Chưa có"}
-                                </span>
                               </TableCell>
                               <TableCell>
                                 <Badge variant={userItem.role === "manager" ? "default" : "secondary"}>
