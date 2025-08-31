@@ -376,7 +376,7 @@ export default function Home() {
               <Button 
                 variant="outline" 
                 size="lg" 
-                className="border-white bg-white/10 backdrop-blur-sm text-white hover:bg-white hover:text-primary font-semibold px-8 py-4 text-lg shadow-lg"
+                className="border-white bg-white backdrop-blur-sm text-primary hover:bg-white/90 hover:text-primary/80 font-semibold px-8 py-4 text-lg shadow-lg"
                 onClick={() => document.getElementById('services')?.scrollIntoView({ behavior: 'smooth' })}
               >
                 Xem dịch vụ
