@@ -1,61 +1,113 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { Edit, Check, X } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 
 interface EditableTextProps {
+  fieldName: string;
   text: string;
-  onSave: (newText: string) => void;
-  multiline?: boolean;
   className?: string;
+  multiline?: boolean;
   placeholder?: string;
+  showEditButton?: boolean;
+  editingField?: string | null;
+  editValues?: Record<string, string>;
+  onEditStart?: (fieldName: string, value: string) => void;
+  onEditSave?: (fieldName: string, value: string) => void;
+  onEditCancel?: () => void;
 }
 
-export function EditableText({
-  text,
-  onSave,
-  multiline = false,
-  className = "",
-  placeholder = ""
+export function EditableText({ 
+  fieldName, 
+  text, 
+  className = "", 
+  multiline = false, 
+  placeholder = "",
+  showEditButton = true,
+  editingField,
+  editValues = {},
+  onEditStart,
+  onEditSave,
+  onEditCancel
 }: EditableTextProps) {
+  const [localValue, setLocalValue] = useState('');
   const [isEditing, setIsEditing] = useState(false);
-  const [editValue, setEditValue] = useState(text);
-  const { hasImageEditPermission } = useAuth();
-
-  if (!hasImageEditPermission) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  useEffect(() => {
+    if (editingField === fieldName) {
+      setIsEditing(true);
+      setLocalValue(editValues[fieldName] || text);
+      
+      // Focus and position cursor at end
+      setTimeout(() => {
+        const element = multiline ? textareaRef.current : inputRef.current;
+        if (element) {
+          element.focus();
+          const length = element.value.length;
+          element.setSelectionRange(length, length);
+        }
+      }, 10);
+    } else {
+      setIsEditing(false);
+    }
+  }, [editingField, fieldName, text, multiline, editValues]);
+  
+  if (!showEditButton) {
     return <span className={className}>{text}</span>;
   }
 
   const handleSave = () => {
-    onSave(editValue);
+    onEditSave?.(fieldName, localValue);
     setIsEditing(false);
   };
 
   const handleCancel = () => {
-    setEditValue(text);
+    onEditCancel?.();
     setIsEditing(false);
+    setLocalValue('');
+  };
+
+  const handleStartEdit = () => {
+    onEditStart?.(fieldName, text);
   };
 
   if (isEditing) {
     return (
       <div className="flex items-center gap-2 w-full">
         {multiline ? (
-          <Textarea
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
+          <textarea
+            ref={textareaRef}
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
             placeholder={placeholder}
-            className={`flex-1 ${className}`}
-            autoFocus
+            className={`flex-1 border border-primary rounded-md px-2 py-1 resize-none ${className}`}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey && !multiline) {
+                e.preventDefault();
+                handleSave();
+              } else if (e.key === 'Escape') {
+                handleCancel();
+              }
+            }}
+            onBlur={handleSave}
           />
         ) : (
-          <Input
-            value={editValue}
-            onChange={(e) => setEditValue(e.target.value)}
+          <input
+            ref={inputRef}
+            type="text"
+            value={localValue}
+            onChange={(e) => setLocalValue(e.target.value)}
             placeholder={placeholder}
-            className={`flex-1 ${className}`}
-            autoFocus
+            className={`flex-1 border border-primary rounded-md px-2 py-1 ${className}`}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                handleSave();
+              } else if (e.key === 'Escape') {
+                handleCancel();
+              }
+            }}
+            onBlur={handleSave}
           />
         )}
         <Button size="sm" onClick={handleSave}>
@@ -74,10 +126,10 @@ export function EditableText({
       <Button
         size="sm"
         variant="ghost"
-        className="absolute -right-8 top-0 opacity-0 group-hover:opacity-100 transition-opacity"
-        onClick={() => setIsEditing(true)}
+        className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white shadow-sm border"
+        onClick={handleStartEdit}
       >
-        <Edit className="w-3 h-3" />
+        <Edit className="w-4 h-4" />
       </Button>
     </div>
   );

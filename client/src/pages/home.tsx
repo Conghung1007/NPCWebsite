@@ -6,11 +6,10 @@ import { ServiceCard } from "@/components/ui/service-card";
 import { TestimonialCard } from "@/components/ui/testimonial-card";
 import { ContactForm } from "@/components/ui/contact-form";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
 import { ServiceWithArticles } from "@/components/ServiceWithArticles";
 import { ServiceWithExams } from "@/components/ServiceWithExams";
 import { ImageManager } from "@/components/ui/image-manager";
+import { EditableText } from "@/components/ui/editable-text";
 import { 
   IdCard, 
   GraduationCap, 
@@ -25,9 +24,7 @@ import {
   Handshake,
   BarChart3,
   ArrowRight,
-  Edit,
-  Check,
-  X
+  Edit
 } from "lucide-react";
 
 
@@ -50,12 +47,13 @@ export default function Home() {
     setEditValues({ ...editValues, [fieldName]: currentValue });
   };
 
-  const handleEditSave = (fieldName: string) => {
+  const handleEditSave = (fieldName: string, value: string) => {
     // Update service texts if it's a service field
-    if (editValues[fieldName] && Object.keys(serviceTexts).includes(fieldName)) {
-      handleServiceTextUpdate(fieldName, editValues[fieldName]);
+    if (value && Object.keys(serviceTexts).includes(fieldName)) {
+      handleServiceTextUpdate(fieldName, value);
     }
-    console.log(`Saving field ${fieldName} with value:`, editValues[fieldName]);
+    console.log(`Saving field ${fieldName} with value:`, value);
+    setEditValues({ ...editValues, [fieldName]: value });
     setEditingField(null);
   };
 
@@ -64,74 +62,7 @@ export default function Home() {
     setEditValues({});
   };
 
-  // Editable text component inline
-  const EditableText = ({ 
-    fieldName, 
-    text, 
-    className = "", 
-    multiline = false, 
-    placeholder = "" 
-  }: {
-    fieldName: string;
-    text: string;
-    className?: string;
-    multiline?: boolean;
-    placeholder?: string;
-  }) => {
-    // For demo purposes, show edit buttons to all users temporarily
-    // Comment this out to require authentication
-    const showEditButtons = true; // hasImageEditPermission;
-    
-    if (!showEditButtons) {
-      return <span className={className}>{text}</span>;
-    }
 
-    if (editingField === fieldName) {
-      return (
-        <div className="flex items-center gap-2 w-full">
-          {multiline ? (
-            <Textarea
-              defaultValue={editValues[fieldName] || text}
-              onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
-              placeholder={placeholder}
-              className={`flex-1 ${className}`}
-              autoFocus
-              key={fieldName}
-            />
-          ) : (
-            <Input
-              defaultValue={editValues[fieldName] || text}
-              onChange={(e) => setEditValues({ ...editValues, [fieldName]: e.target.value })}
-              placeholder={placeholder}
-              className={`flex-1 ${className}`}
-              autoFocus
-              key={fieldName}
-            />
-          )}
-          <Button size="sm" onClick={() => handleEditSave(fieldName)}>
-            <Check className="w-4 h-4" />
-          </Button>
-          <Button size="sm" variant="outline" onClick={handleEditCancel}>
-            <X className="w-4 h-4" />
-          </Button>
-        </div>
-      );
-    }
-
-    return (
-      <div className="group relative inline-block w-full">
-        <span className={className}>{text}</span>
-        <Button
-          size="sm"
-          variant="ghost"
-          className="absolute -right-12 top-0 opacity-0 group-hover:opacity-100 transition-opacity bg-white/90 hover:bg-white shadow-sm border"
-          onClick={() => handleEditStart(fieldName, text)}
-        >
-          <Edit className="w-4 h-4" />
-        </Button>
-      </div>
-    );
-  };
 
   useEffect(() => {
     document.title = "N&P Company - Đối Tác Tin Cậy Cho Giấc Mơ Toàn Cầu";
@@ -476,6 +407,12 @@ export default function Home() {
                   fieldName="why-choose-title"
                   text="Tại sao chọn N&P?"
                   className="text-4xl md:text-5xl font-bold text-foreground"
+                  showEditButton={true}
+                  editingField={editingField}
+                  editValues={editValues}
+                  onEditStart={handleEditStart}
+                  onEditSave={handleEditSave}
+                  onEditCancel={handleEditCancel}
                 />
               </h2>
               <div className="text-2xl text-muted-foreground mb-8">
@@ -484,6 +421,12 @@ export default function Home() {
                   text="Với hơn 10 năm kinh nghiệm, chúng tôi tự hào là đối tác đáng tin cậy giúp hàng nghìn khách hàng thực hiện ước mơ toàn cầu"
                   className="text-2xl text-muted-foreground"
                   multiline={true}
+                  showEditButton={true}
+                  editingField={editingField}
+                  editValues={editValues}
+                  onEditStart={handleEditStart}
+                  onEditSave={handleEditSave}
+                  onEditCancel={handleEditCancel}
                 />
               </div>
 
@@ -499,6 +442,12 @@ export default function Home() {
                           fieldName={`why-reason-title-${index}`}
                           text={reason.title}
                           className="text-xl font-semibold text-foreground"
+                          showEditButton={true}
+                          editingField={editingField}
+                          editValues={editValues}
+                          onEditStart={handleEditStart}
+                          onEditSave={handleEditSave}
+                          onEditCancel={handleEditCancel}
                         />
                       </h3>
                       <div className="text-lg text-muted-foreground">
@@ -507,6 +456,12 @@ export default function Home() {
                           text={reason.description}
                           className="text-lg text-muted-foreground"
                           multiline={true}
+                          showEditButton={true}
+                          editingField={editingField}
+                          editValues={editValues}
+                          onEditStart={handleEditStart}
+                          onEditSave={handleEditSave}
+                          onEditCancel={handleEditCancel}
                         />
                       </div>
                     </div>
