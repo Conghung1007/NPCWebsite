@@ -195,12 +195,12 @@ export function ServiceWithArticles({
                 fieldName={`${category}-title`}
                 text={service.title}
                 className="text-3xl font-bold text-foreground"
-                showEditButton={true}
-                editingField={editingField}
-                editValues={editValues}
-                onEditStart={handleEditStart}
-                onEditSave={handleEditSave}
-                onEditCancel={handleEditCancel}
+                showEditButton={false}
+                editingField={null}
+                editValues={{}}
+                onEditStart={() => {}}
+                onEditSave={() => {}}
+                onEditCancel={() => {}}
               />
             </h3>
             <div className="text-lg text-muted-foreground mb-6">
@@ -209,12 +209,12 @@ export function ServiceWithArticles({
                 text={service.description}
                 className="text-lg text-muted-foreground"
                 multiline={true}
-                showEditButton={true}
-                editingField={editingField}
-                editValues={editValues}
-                onEditStart={handleEditStart}
-                onEditSave={handleEditSave}
-                onEditCancel={handleEditCancel}
+                showEditButton={false}
+                editingField={null}
+                editValues={{}}
+                onEditStart={() => {}}
+                onEditSave={() => {}}
+                onEditCancel={() => {}}
               />
             </div>
           </div>
