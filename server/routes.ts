@@ -14,6 +14,26 @@ const upload = multer({
   limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
 });
 
+// Middleware to check if user is authenticated
+const requireAuth = (req: any, res: any, next: any) => {
+  const sessionUser = req.session?.user;
+  if (!sessionUser) {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+  req.user = sessionUser;
+  next();
+};
+
+// Middleware to check if user has image edit permission
+const requireImageEditPermission = (req: any, res: any, next: any) => {
+  const sessionUser = req.session?.user;
+  if (!sessionUser || (sessionUser.role !== "manager" && sessionUser.role !== "admin")) {
+    return res.status(403).json({ message: "Forbidden - insufficient permissions" });
+  }
+  req.user = sessionUser;
+  next();
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth endpoint - returns current user information
   app.get("/api/auth/user", async (req, res) => {
@@ -590,7 +610,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Image upload endpoint
-  app.post("/api/upload/image", async (req, res) => {
+  app.post("/api/upload/image", requireImageEditPermission, async (req, res) => {
     try {
       const { filename, contentType } = req.body;
       
@@ -1018,7 +1038,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // UI Images Management API endpoints
 
   // Get list of uploaded images from R2 storage
-  app.get("/api/images/list", async (req, res) => {
+  app.get("/api/images/list", requireImageEditPermission, async (req, res) => {
     try {
       const { provider = "primary" } = req.query;
       const images = await multiR2Storage.listFiles(provider as string, "ui-images");
@@ -1041,7 +1061,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Initialize default UI images with sample URLs
-  app.post("/api/ui-images/initialize", async (req, res) => {
+  app.post("/api/ui-images/initialize", requireImageEditPermission, async (req, res) => {
     try {
       const defaultImages = [
         {
@@ -1138,7 +1158,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Server-side upload to R2 (similar to article uploads)
-  app.post("/api/ui-images/server-upload", upload.single('file'), async (req, res) => {
+  app.post("/api/ui-images/server-upload", requireImageEditPermission, upload.single('file'), async (req, res) => {
     try {
       const file = req.file;
       const { imageType, altText } = req.body;
@@ -1189,7 +1209,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Get upload URL for UI images (stored in ui-images folder on R2)
-  app.post("/api/ui-images/upload", async (req, res) => {
+  app.post("/api/ui-images/upload", requireImageEditPermission, async (req, res) => {
     try {
       const { fileName, contentType, imageType, config = "primary" } = req.body;
       
@@ -1240,7 +1260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Delete UI image from R2
-  app.delete("/api/ui-images/:fileName", async (req, res) => {
+  app.delete("/api/ui-images/:fileName", requireImageEditPermission, async (req, res) => {
     try {
       const { fileName } = req.params;
       const { config = "primary" } = req.query;
@@ -1259,7 +1279,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Update UI image metadata
-  app.put("/api/ui-images", async (req, res) => {
+  app.put("/api/ui-images", requireImageEditPermission, async (req, res) => {
     try {
       const { imageUrl, imageType, altText, description } = req.body;
       
@@ -1339,8 +1359,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Delete UI image from R2 storage
-  app.delete("/api/ui-images/:fileName", async (req, res) => {
+  // Delete UI image from R2 storage  
+  app.delete("/api/ui-images/:fileName", requireImageEditPermission, async (req, res) => {
     try {
       const fileName = req.params.fileName;
       

@@ -94,7 +94,7 @@ export default function Contact() {
         subtitle=""
         description="Sẵn sàng hỗ trợ bạn 24/7. Hãy liên hệ ngay để nhận tư vấn miễn phí!"
         backgroundImage={heroImage}
-        allowImageEdit={hasImageEditPermission()}
+        allowImageEdit={hasImageEditPermission}
         onImageUpdate={(newUrl) => {
           setHeroImage(newUrl);
           invalidateCache();

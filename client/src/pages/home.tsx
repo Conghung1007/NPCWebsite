@@ -207,7 +207,7 @@ export default function Home() {
         subtitle="giấc mơ toàn cầu"
         description="Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và hệ thống thi trực tuyến với hơn 10 năm kinh nghiệm"
         backgroundImage={heroBgImage}
-        allowImageEdit={hasImageEditPermission()}
+        allowImageEdit={hasImageEditPermission}
         onImageUpdate={setHeroBgImage}
         primaryAction={{
           text: "Tư vấn miễn phí ngay",
@@ -250,7 +250,7 @@ export default function Home() {
                     key={index}
                     service={service}
                     onServiceClick={() => handleServiceClick(service.route)}
-                    allowImageEdit={hasImageEditPermission()}
+                    allowImageEdit={hasImageEditPermission}
                     onServiceImageUpdate={(newImageUrl) => handleServiceImageUpdate(index, newImageUrl)}
                   />
                 );
@@ -263,7 +263,7 @@ export default function Home() {
                   service={service}
                   category={service.category}
                   onServiceClick={() => handleServiceClick(service.route)}
-                  allowImageEdit={hasImageEditPermission()}
+                  allowImageEdit={hasImageEditPermission}
                   onServiceImageUpdate={(newImageUrl) => handleServiceImageUpdate(index, newImageUrl)}
                 />
               );
@@ -307,7 +307,7 @@ export default function Home() {
                 alt="Professional business team providing visa and international services" 
                 className="rounded-xl shadow-lg w-full h-auto" 
               />
-              {hasImageEditPermission() && (
+              {hasImageEditPermission && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -350,7 +350,7 @@ export default function Home() {
                 role={testimonial.role}
                 content={testimonial.content}
                 avatar={testimonial.avatar}
-                allowAvatarEdit={hasImageEditPermission()}
+                allowAvatarEdit={hasImageEditPermission}
                 onAvatarUpdate={(newAvatar) => handleTestimonialAvatarUpdate(testimonial.id, newAvatar)}
               />
             ))}

@@ -215,7 +215,7 @@ export default function JapaneseTraining() {
         subtitle=""
         description="Học tiếng Nhật từ cơ bản đến nâng cao với giảng viên bản ngữ và phương pháp giảng dạy hiện đại"
         backgroundImage={heroImage}
-        allowImageEdit={hasImageEditPermission()}
+        allowImageEdit={hasImageEditPermission}
         onImageUpdate={(newUrl) => {
           setHeroImage(newUrl);
           invalidateCache();
@@ -316,7 +316,7 @@ export default function JapaneseTraining() {
                 alt="Japanese teacher with students in classroom" 
                 className="rounded-xl shadow-lg w-full h-auto" 
               />
-              {hasImageEditPermission() && (
+              {hasImageEditPermission && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -402,7 +402,7 @@ export default function JapaneseTraining() {
                 title={instructor.title}
                 description={instructor.description}
                 avatar={instructor.avatar}
-                allowAvatarEdit={hasImageEditPermission()}
+                allowAvatarEdit={hasImageEditPermission}
                 onAvatarUpdate={(newAvatar) => handleInstructorAvatarUpdate(instructor.id, newAvatar)}
                 imageType={`instructor-${instructor.id}`}
               />

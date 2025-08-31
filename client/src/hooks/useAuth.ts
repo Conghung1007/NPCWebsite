@@ -9,21 +9,10 @@ export function useAuth() {
     throwOnError: false,
   });
 
-  const hasImageEditPermission = () => {
-    return user?.role === "manager" || user?.role === "admin";
-  };
-
-  const isManager = () => {
-    return user?.role === "manager";
-  };
-
-  const isAdmin = () => {
-    return user?.role === "admin";
-  };
-
-  const isUser = () => {
-    return user?.role === "user";
-  };
+  const hasImageEditPermission = user?.role === "manager" || user?.role === "admin";
+  const isManager = user?.role === "manager";
+  const isAdmin = user?.role === "admin";
+  const isUser = user?.role === "user";
 
   return {
     user,
