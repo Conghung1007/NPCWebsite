@@ -15,15 +15,43 @@ export function Layout({ children }: LayoutProps) {
 
   // Scroll to top when route changes
   useEffect(() => {
-    // Use multiple methods to ensure scroll to top works on all devices
-    window.scrollTo(0, 0);
-    document.documentElement.scrollTop = 0;
-    document.body.scrollTop = 0;
+    // Immediate scroll to top using multiple methods for maximum compatibility
+    const scrollToTopImmediate = () => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+      
+      // Force scroll for iOS Safari and other stubborn browsers
+      const html = document.documentElement;
+      const body = document.body;
+      html.scrollTop = 0;
+      body.scrollTop = 0;
+      
+      // Try window.pageYOffset reset
+      try {
+        if (window.pageYOffset > 0) {
+          window.scrollTo(0, 0);
+        }
+      } catch (e) {
+        console.log('pageYOffset scroll failed:', e);
+      }
+    };
+
+    // Execute immediately
+    scrollToTopImmediate();
     
-    // Then smooth scroll to ensure it's at the very top
+    // Execute again after a small delay to ensure all components have rendered
+    setTimeout(scrollToTopImmediate, 10);
+    setTimeout(scrollToTopImmediate, 100);
+    
+    // Force update scroll position tracking
     setTimeout(() => {
-      window.scrollTo({ top: 0, behavior: 'smooth' });
-    }, 50);
+      const handleScroll = () => {
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop || 0;
+        setShowScrollTop(scrollTop > 300);
+      };
+      handleScroll();
+    }, 150);
   }, [location]);
 
   useEffect(() => {
@@ -53,16 +81,25 @@ export function Layout({ children }: LayoutProps) {
   }, []);
 
   const scrollToTop = () => {
-    // Multiple scroll methods for maximum compatibility
+    // Force immediate scroll first
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
     document.body.scrollTop = 0;
     
-    // Smooth scroll for better UX
-    window.scrollTo({
-      top: 0,
-      behavior: 'smooth'
-    });
+    // Then smooth scroll for better UX
+    setTimeout(() => {
+      window.scrollTo({
+        top: 0,
+        behavior: 'smooth'
+      });
+    }, 10);
+    
+    // Ensure we're at the top
+    setTimeout(() => {
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
+    }, 500);
   };
 
   return (
