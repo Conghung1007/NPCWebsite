@@ -160,7 +160,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     }
   }, [authLoading, isAuthenticated]);
 
-  if (examLoading || questionsLoading || shuffledQuestions.length === 0) {
+  // Show loading only if authenticated and data is loading
+  if (isAuthenticated && (examLoading || questionsLoading || shuffledQuestions.length === 0)) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -171,7 +172,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     );
   }
 
-  if (!exam) {
+  // Only check for exam existence if authenticated
+  if (isAuthenticated && !exam) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="max-w-md mx-auto">
@@ -189,74 +191,93 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     );
   }
 
+  // Return early if not authenticated (modal will handle the UI)
+  if (!authLoading && !isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        {/* Authentication Modal */}
+        {showAuthModal && (
+          <div 
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) {
+                setShowAuthModal(false);
+                setLocation("/online-exam");
+              }
+            }}
+          >
+            <Card className="max-w-md mx-auto w-full relative">
+              <button
+                onClick={() => {
+                  setShowAuthModal(false);
+                  setLocation("/online-exam");
+                }}
+                className="absolute top-4 right-4 p-1 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+              <CardContent className="text-center py-12">
+                <FileText className="w-16 h-16 text-blue-500 mx-auto mb-6" />
+                <h2 className="text-2xl font-semibold mb-4 text-gray-900">Cần đăng nhập</h2>
+                <p className="text-gray-600 mb-8 leading-relaxed">
+                  Để tham gia đề thi chính thức, bạn cần đăng nhập vào hệ thống. 
+                  Các đề thi chính thức sẽ lưu kết quả và theo dõi tiến độ học tập của bạn.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+                  <Button 
+                    onClick={() => setLocation("/login")}
+                    className="px-6 py-2"
+                  >
+                    Đăng nhập ngay
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => {
+                      setShowAuthModal(false);
+                      setLocation("/online-exam");
+                    }}
+                    className="px-6 py-2"
+                  >
+                    Về trang thi thử
+                  </Button>
+                </div>
+                <div className="mt-6 pt-6 border-t border-gray-200">
+                  <p className="text-sm text-gray-500">
+                    Chưa có tài khoản?{' '}
+                    <button 
+                      onClick={() => setLocation("/register")}
+                      className="text-blue-600 hover:text-blue-800 font-medium"
+                    >
+                      Đăng ký tại đây
+                    </button>
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  // Main exam interface (only show when authenticated and exam exists)
+  if (!exam || !shuffledQuestions.length) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
+          <p className="mt-4 text-lg text-gray-600">Đang tải đề thi...</p>
+        </div>
+      </div>
+    );
+  }
+
   const currentQuestion = shuffledQuestions[currentQuestionIndex];
   const progress = ((currentQuestionIndex + 1) / shuffledQuestions.length) * 100;
   const answeredCount = Object.keys(userAnswers).length;
 
   return (
     <div className="min-h-screen bg-gray-50">
-      {/* Authentication Modal */}
-      {showAuthModal && (
-        <div 
-          className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowAuthModal(false);
-              setLocation("/online-exam");
-            }
-          }}
-        >
-          <Card className="max-w-md mx-auto w-full relative">
-            <button
-              onClick={() => {
-                setShowAuthModal(false);
-                setLocation("/online-exam");
-              }}
-              className="absolute top-4 right-4 p-1 hover:bg-gray-100 rounded-full transition-colors"
-            >
-              <X className="w-5 h-5 text-gray-500" />
-            </button>
-            <CardContent className="text-center py-12">
-              <FileText className="w-16 h-16 text-blue-500 mx-auto mb-6" />
-              <h2 className="text-2xl font-semibold mb-4 text-gray-900">Cần đăng nhập</h2>
-              <p className="text-gray-600 mb-8 leading-relaxed">
-                Để tham gia đề thi chính thức, bạn cần đăng nhập vào hệ thống. 
-                Các đề thi chính thức sẽ lưu kết quả và theo dõi tiến độ học tập của bạn.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
-                <Button 
-                  onClick={() => setLocation("/login")}
-                  className="px-6 py-2"
-                >
-                  Đăng nhập ngay
-                </Button>
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    setShowAuthModal(false);
-                    setLocation("/online-exam");
-                  }}
-                  className="px-6 py-2"
-                >
-                  Về trang thi thử
-                </Button>
-              </div>
-              <div className="mt-6 pt-6 border-t border-gray-200">
-                <p className="text-sm text-gray-500">
-                  Chưa có tài khoản?{' '}
-                  <button 
-                    onClick={() => setLocation("/register")}
-                    className="text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    Đăng ký tại đây
-                  </button>
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
-
       {/* Header */}
       <div className="bg-white shadow-sm sticky top-0 z-10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
