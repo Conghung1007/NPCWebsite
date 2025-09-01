@@ -28,20 +28,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([]);
 
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      toast({
-        title: "Cần đăng nhập",
-        description: "Bạn cần đăng nhập để tham gia đề thi chính thức. Đang chuyển hướng...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        setLocation("/login");
-      }, 1500);
-      return;
-    }
-  }, [authLoading, isAuthenticated, toast, setLocation]);
+  // Don't auto-redirect, let component handle it with UI
 
   // Fetch exam details - only if authenticated
   const { data: exam, isLoading: examLoading, error: examError } = useQuery<Exam>({
@@ -165,24 +152,43 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Check authentication for official exams
-  if (exam && !exam.isDemo && !user) {
+  // Show authentication required message for unauthenticated users
+  if (!authLoading && !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="max-w-md mx-auto">
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <Card className="max-w-md mx-auto w-full">
           <CardContent className="text-center py-12">
-            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Cần đăng nhập</h2>
-            <p className="text-gray-600 mb-6">
-              Đây là đề thi chính thức, bạn cần đăng nhập để tham gia.
+            <FileText className="w-16 h-16 text-blue-500 mx-auto mb-6" />
+            <h2 className="text-2xl font-semibold mb-4 text-gray-900">Cần đăng nhập</h2>
+            <p className="text-gray-600 mb-8 leading-relaxed">
+              Để tham gia đề thi chính thức, bạn cần đăng nhập vào hệ thống. 
+              Các đề thi chính thức sẽ lưu kết quả và theo dõi tiến độ học tập của bạn.
             </p>
-            <div className="space-x-4">
-              <Button variant="outline" onClick={() => setLocation("/login")}>
-                Đăng nhập
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+              <Button 
+                onClick={() => setLocation("/login")}
+                className="px-6 py-2"
+              >
+                Đăng nhập ngay
               </Button>
-              <Button onClick={() => setLocation("/online-exam")}>
-                Về trang chủ
+              <Button 
+                variant="outline" 
+                onClick={() => setLocation("/online-exam")}
+                className="px-6 py-2"
+              >
+                Về trang thi thử
               </Button>
+            </div>
+            <div className="mt-6 pt-6 border-t border-gray-200">
+              <p className="text-sm text-gray-500">
+                Chưa có tài khoản?{' '}
+                <button 
+                  onClick={() => setLocation("/register")}
+                  className="text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Đăng ký tại đây
+                </button>
+              </p>
             </div>
           </CardContent>
         </Card>
