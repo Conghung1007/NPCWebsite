@@ -9,6 +9,8 @@ import { Label } from "@/components/ui/label";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Clock, ChevronLeft, ChevronRight, FileText, CheckCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
+import { useToast } from "@/hooks/use-toast";
 import { type Exam, type Question, type User } from "@shared/schema";
 
 interface ExamTakingPageProps {
@@ -17,7 +19,8 @@ interface ExamTakingPageProps {
 
 export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [, setLocation] = useLocation();
-  const [user, setUser] = useState<User | null>(null);
+  const { user, isLoading: authLoading, isAuthenticated } = useAuth();
+  const { toast } = useToast();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState<number>(0);
@@ -25,30 +28,33 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([]);
 
-  // Check for logged in user
+  // Redirect to login if not authenticated
   useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-        localStorage.removeItem("user");
-        setUser(null);
-      }
+    if (!authLoading && !isAuthenticated) {
+      toast({
+        title: "Cần đăng nhập",
+        description: "Bạn cần đăng nhập để tham gia đề thi chính thức. Đang chuyển hướng...",
+        variant: "destructive",
+      });
+      setTimeout(() => {
+        setLocation("/login");
+      }, 1500);
+      return;
     }
-  }, []);
+  }, [authLoading, isAuthenticated, toast, setLocation]);
 
-  // Fetch exam details
-  const { data: exam, isLoading: examLoading } = useQuery<Exam>({
+  // Fetch exam details - only if authenticated
+  const { data: exam, isLoading: examLoading, error: examError } = useQuery<Exam>({
     queryKey: [`/api/exams/${examId}`],
     retry: false,
+    enabled: isAuthenticated && !authLoading,
   });
 
-  // Fetch exam questions
-  const { data: questions = [], isLoading: questionsLoading } = useQuery<Question[]>({
+  // Fetch exam questions - only if authenticated
+  const { data: questions = [], isLoading: questionsLoading, error: questionsError } = useQuery<Question[]>({
     queryKey: [`/api/exams/${examId}/questions`],
     retry: false,
+    enabled: isAuthenticated && !authLoading,
   });
 
   // Shuffle questions when they load
