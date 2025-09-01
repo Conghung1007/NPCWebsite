@@ -4,14 +4,16 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { useQuery } from "@tanstack/react-query";
-import { Clock, Users, BookOpen, Award, Play, Lock } from "lucide-react";
+import { Clock, Users, BookOpen, Award, Play, Lock, X } from "lucide-react";
 import { type Exam, type User } from "@shared/schema";
 
 export function OnlineExamPage() {
   const [user, setUser] = useState<User | null>(null);
   const [demoCurrentPage, setDemoCurrentPage] = useState(1);
   const [officialCurrentPage, setOfficialCurrentPage] = useState(1);
+  const [showLoginModal, setShowLoginModal] = useState(false);
   const examsPerPage = 6;
 
   // Check for logged in user
@@ -263,7 +265,11 @@ export function OnlineExamPage() {
                           </Button>
                         </Link>
                       ) : (
-                        <Button disabled className="w-full mt-4">
+                        <Button 
+                          className="w-full mt-4" 
+                          variant="outline"
+                          onClick={() => setShowLoginModal(true)}
+                        >
                           <Lock className="w-4 h-4 mr-2" />
                           Cần đăng nhập
                         </Button>
@@ -291,6 +297,47 @@ export function OnlineExamPage() {
           )}
         </div>
       </div>
+
+      {/* Login Required Modal */}
+      <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
+        <DialogContent className="sm:max-w-md" onInteractOutside={() => setShowLoginModal(false)}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Cần đăng nhập</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowLoginModal(false)}
+                className="h-6 w-6 p-0 hover:bg-gray-100"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </DialogTitle>
+            <DialogDescription>
+              Đây là đề thi chính thức, bạn cần đăng nhập để tham gia.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex items-center justify-center py-6">
+            <Lock className="w-16 h-16 text-blue-500" />
+          </div>
+          
+          <DialogFooter className="flex flex-col sm:flex-row gap-2">
+            <Link href="/login" className="w-full">
+              <Button className="w-full">
+                Đăng nhập ngay
+              </Button>
+            </Link>
+            <Button 
+              variant="outline" 
+              onClick={() => setShowLoginModal(false)}
+              className="w-full"
+            >
+              Tiếp tục thi thử
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
