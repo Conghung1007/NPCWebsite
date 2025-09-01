@@ -27,25 +27,24 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([]);
 
-  // Show login dialog if not authenticated
-  useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
-      setShowLoginDialog(true);
-    }
-  }, [authLoading, isAuthenticated]);
-
-  // Fetch exam details - only if authenticated
+  // Fetch exam details first to check if it's a demo
   const { data: exam, isLoading: examLoading, error: examError } = useQuery<Exam>({
     queryKey: [`/api/exams/${examId}`],
     retry: false,
-    enabled: isAuthenticated && !authLoading,
   });
 
-  // Fetch exam questions - only if authenticated
+  // Show login dialog if exam is not demo and user not authenticated
+  useEffect(() => {
+    if (!authLoading && exam && !exam.isDemo && !isAuthenticated) {
+      setShowLoginDialog(true);
+    }
+  }, [authLoading, isAuthenticated, exam]);
+
+  // Fetch exam questions - only if it's demo OR user is authenticated
   const { data: questions = [], isLoading: questionsLoading, error: questionsError } = useQuery<Question[]>({
     queryKey: [`/api/exams/${examId}/questions`],
     retry: false,
-    enabled: isAuthenticated && !authLoading,
+    enabled: exam && (exam.isDemo || isAuthenticated),
   });
 
   // Shuffle questions when they load
@@ -168,7 +167,55 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     );
   }
 
-  if (examLoading || questionsLoading || shuffledQuestions.length === 0) {
+  // Don't show loading if login dialog is shown
+  if (showLoginDialog) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        {/* Login Required Modal */}
+        <Dialog open={showLoginDialog} onOpenChange={() => setLocation("/online-exam")}>
+          <DialogContent className="sm:max-w-md" onInteractOutside={() => setLocation("/online-exam")}>
+            <DialogHeader>
+              <DialogTitle className="flex items-center justify-between">
+                <span>Cần đăng nhập</span>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setLocation("/online-exam")}
+                  className="h-6 w-6 p-0 hover:bg-gray-100"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </DialogTitle>
+              <DialogDescription>
+                Đây là đề thi chính thức, bạn cần đăng nhập để tham gia.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="flex items-center justify-center py-6">
+              <Lock className="w-16 h-16 text-blue-500" />
+            </div>
+            
+            <DialogFooter className="flex flex-col sm:flex-row gap-2">
+              <Link href="/login" className="w-full">
+                <Button className="w-full">
+                  Đăng nhập ngay
+                </Button>
+              </Link>
+              <Button 
+                variant="outline" 
+                onClick={() => setLocation("/online-exam")}
+                className="w-full"
+              >
+                Về trang thi thử
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      </div>
+    );
+  }
+
+  if (examLoading || questionsLoading || (!exam && !examError) || (exam && questions.length === 0 && !questionsError) || shuffledQuestions.length === 0) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
@@ -402,46 +449,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Login Required Modal */}
-      <Dialog open={showLoginDialog} onOpenChange={() => setLocation("/online-exam")}>
-        <DialogContent className="sm:max-w-md" onInteractOutside={() => setLocation("/online-exam")}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>Cần đăng nhập</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setLocation("/online-exam")}
-                className="h-6 w-6 p-0 hover:bg-gray-100"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </DialogTitle>
-            <DialogDescription>
-              Đây là đề thi chính thức, bạn cần đăng nhập để tham gia.
-            </DialogDescription>
-          </DialogHeader>
-          
-          <div className="flex items-center justify-center py-6">
-            <Lock className="w-16 h-16 text-blue-500" />
-          </div>
-          
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Link href="/login" className="w-full">
-              <Button className="w-full">
-                Đăng nhập ngay
-              </Button>
-            </Link>
-            <Button 
-              variant="outline" 
-              onClick={() => setLocation("/online-exam")}
-              className="w-full"
-            >
-              Về trang thi thử
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+
     </div>
   );
 }

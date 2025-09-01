@@ -363,14 +363,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Không tìm thấy đề thi" });
       }
 
-      // For official exams, require authentication to view details
-      if (!exam.isDemo) {
-        const sessionUser = (req.session as any)?.user;
-        if (!sessionUser) {
-          return res.status(401).json({ message: "Cần đăng nhập để xem thông tin đề thi chính thức" });
-        }
-      }
-
+      // Always allow access to exam info - authentication will be checked when taking the exam
       res.json(exam);
     } catch (error) {
       console.error("Error fetching exam:", error);
