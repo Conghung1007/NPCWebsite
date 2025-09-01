@@ -47,6 +47,17 @@ main {
   }
 }
 
+/* Ensure forms don't stretch full width */
+.max-w-md {
+  max-width: 28rem !important; /* Force form max width */
+}
+
+/* Additional constraints for form containers */
+form, .card {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
 @layer utilities {
   .line-clamp-2 {
     display: -webkit-box;

@@ -138,8 +138,8 @@ export default function Register() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-primary/10 to-accent/10 flex items-center justify-center p-4 w-full max-w-full overflow-x-hidden">
+      <Card className="w-full max-w-md mx-auto">
         <CardHeader className="text-center space-y-2">
           <CardTitle className="text-2xl font-bold text-foreground">
             Đăng ký tài khoản
