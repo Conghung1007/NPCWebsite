@@ -194,11 +194,11 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   // Return early if not authenticated (modal will handle the UI)
   if (!authLoading && !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-gray-50 relative">
         {/* Authentication Modal */}
         {showAuthModal && (
           <div 
-            className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center p-4 z-50"
+            className="fixed inset-0 bg-black/20 backdrop-blur-[2px] flex items-center justify-center p-4 z-50"
             onClick={(e) => {
               if (e.target === e.currentTarget) {
                 setShowAuthModal(false);
