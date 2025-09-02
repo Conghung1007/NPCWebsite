@@ -12,13 +12,27 @@ interface AudioUploaderProps {
 
 export function AudioUploader({ 
   onAudioUpload, 
-  currentAudioUrl, 
+  currentAudioUrl: initialAudioUrl, 
   onRemoveAudio, 
   disabled = false 
 }: AudioUploaderProps) {
+  // Convert relative path to full API URL
+  const normalizeAudioUrl = (url: string | undefined): string | null => {
+    if (!url) return null;
+    if (url.startsWith('/api/audio/')) return url;
+    if (url.startsWith('audio/')) {
+      const filename = url.replace('audio/', '');
+      return `/api/audio/${filename}`;
+    }
+    return url;
+  };
+
   const [isUploading, setIsUploading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(
+    normalizeAudioUrl(initialAudioUrl)
+  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
@@ -74,7 +88,8 @@ export function AudioUploader({
             const audioUrl = response.audioUrl;
             
             // Update current audio URL and load the audio
-            setCurrentAudioUrl(audioUrl);
+            const normalizedUrl = normalizeAudioUrl(audioUrl);
+            setCurrentAudioUrl(normalizedUrl);
             
             onAudioUpload(audioUrl);
             toast({
