@@ -1745,6 +1745,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // R2 Configuration Debug Endpoint
+  app.get("/api/debug/r2-config", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || sessionUser.role !== 'admin') {
+        return res.status(401).json({ message: "Unauthorized - Admin only" });
+      }
+
+      const r2Config = {
+        primary: {
+          accountId: process.env.R2_PRIMARY_ACCOUNT_ID || "Not configured",
+          bucketName: process.env.R2_PRIMARY_BUCKET_NAME || "Not configured", 
+          endpoint: process.env.R2_PRIMARY_ENDPOINT || "Not configured",
+          hasAccessKey: !!process.env.R2_PRIMARY_ACCESS_KEY_ID,
+          hasSecretKey: !!process.env.R2_PRIMARY_SECRET_ACCESS_KEY,
+        },
+        secondary: {
+          accountId: process.env.R2_SECONDARY_ACCOUNT_ID || "Not configured",
+          bucketName: process.env.R2_SECONDARY_BUCKET_NAME || "Not configured",
+          endpoint: process.env.R2_SECONDARY_ENDPOINT || "Not configured", 
+          hasAccessKey: !!process.env.R2_SECONDARY_ACCESS_KEY_ID,
+          hasSecretKey: !!process.env.R2_SECONDARY_SECRET_ACCESS_KEY,
+        }
+      };
+
+      res.json(r2Config);
+    } catch (error) {
+      console.error("Error getting R2 config:", error);
+      res.status(500).json({ message: "Failed to get R2 config" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
