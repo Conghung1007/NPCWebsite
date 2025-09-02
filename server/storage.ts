@@ -65,8 +65,6 @@ export interface IStorage {
   getQuestionsByExamId(examId: string): Promise<Question[]>;
   updateQuestion(id: string, updateData: Partial<InsertQuestion>): Promise<Question | null>;
   deleteQuestion(id: string): Promise<boolean>;
-  getAllQuestionsWithTempAudio(): Promise<Question[]>;
-  updateQuestionAudioUrl(id: string, audioUrl: string): Promise<Question>;
   
   createExamAttempt(attempt: InsertExamAttempt): Promise<ExamAttempt>;
   getExamAttempt(id: string): Promise<ExamAttempt | undefined>;
@@ -752,23 +750,6 @@ export class MemStorage implements IStorage {
     return this.questions.delete(id);
   }
 
-  // Get all questions with temp-audio URLs
-  async getAllQuestionsWithTempAudio(): Promise<Question[]> {
-    return Array.from(this.questions.values()).filter(q => 
-      q.audioUrl && q.audioUrl.includes('/api/temp-audio/')
-    );
-  }
-
-  // Update question audio URL
-  async updateQuestionAudioUrl(id: string, audioUrl: string): Promise<Question> {
-    const question = this.questions.get(id);
-    if (!question) {
-      throw new Error("Question not found");
-    }
-    question.audioUrl = audioUrl;
-    return question;
-  }
-
   async createExamAttempt(insertAttempt: InsertExamAttempt): Promise<ExamAttempt> {
     const id = randomUUID();
     const attempt: ExamAttempt = {
@@ -1167,26 +1148,6 @@ export class DatabaseStorage implements IStorage {
   async deleteQuestion(id: string): Promise<boolean> {
     const result = await db.delete(questions).where(eq(questions.id, id));
     return (result as any).rowCount > 0;
-  }
-
-  // Get all questions with temp-audio URLs
-  async getAllQuestionsWithTempAudio(): Promise<Question[]> {
-    return await db.select().from(questions).where(
-      sql`${questions.audioUrl} LIKE '%/api/temp-audio/%'`
-    );
-  }
-
-  // Update question audio URL
-  async updateQuestionAudioUrl(id: string, audioUrl: string): Promise<Question> {
-    const [question] = await db
-      .update(questions)
-      .set({ audioUrl })
-      .where(eq(questions.id, id))
-      .returning();
-    if (!question) {
-      throw new Error("Question not found");
-    }
-    return question;
   }
 
   async createExamAttempt(attemptData: InsertExamAttempt): Promise<ExamAttempt> {

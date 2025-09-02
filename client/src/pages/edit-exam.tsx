@@ -178,6 +178,21 @@ export default function EditExam() {
       window.location.href = "/cpanel?tab=exams";
     },
     onError: (error: any) => {
+      // Clean up temporary audio files on error
+      const tempAudioFilenames = form.getValues('questions')
+        .map(q => q.audioUrl)
+        .filter(url => url && url.includes('/api/temp-audio/'))
+        .map(url => url.split('/').pop())
+        .filter(Boolean);
+      
+      if (tempAudioFilenames.length > 0) {
+        fetch("/api/temp-audio/cleanup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ filenames: tempAudioFilenames })
+        }).catch(cleanupError => console.error("Failed to cleanup temp files:", cleanupError));
+      }
+
       toast({
         title: "Lỗi",
         description: error.message || "Không thể cập nhật bài thi",
@@ -211,7 +226,50 @@ export default function EditExam() {
     }
   };
 
+  // Clean up temporary files when leaving page
+  useEffect(() => {
+    const cleanup = () => {
+      const tempAudioFilenames = form.getValues('questions')
+        .map(q => q.audioUrl)
+        .filter(url => url && url.includes('/api/temp-audio/'))
+        .map(url => url.split('/').pop())
+        .filter(Boolean);
+      
+      if (tempAudioFilenames.length > 0) {
+        // Try sendBeacon first, fallback to fetch
+        const payload = JSON.stringify({ filenames: tempAudioFilenames });
+        const blob = new Blob([payload], { type: 'application/json' });
+        
+        if (!navigator.sendBeacon('/api/temp-audio/cleanup', blob)) {
+          // Fallback to fetch if sendBeacon fails
+          fetch('/api/temp-audio/cleanup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: payload,
+            keepalive: true
+          }).catch(e => console.error('Cleanup failed:', e));
+        }
+      }
+    };
 
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      const tempFiles = form.getValues('questions')
+        .some(q => q.audioUrl && q.audioUrl.includes('/api/temp-audio/'));
+      
+      if (tempFiles) {
+        e.preventDefault();
+        e.returnValue = '';
+        cleanup();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      cleanup();
+    };
+  }, [form]);
 
   const onSubmit = (data: ExamFormData) => {
     updateExamMutation.mutate(data);
