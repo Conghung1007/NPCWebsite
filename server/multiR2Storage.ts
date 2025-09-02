@@ -433,6 +433,17 @@ export class MultiR2StorageService {
       };
     }
   }
+
+  // Delete audio file specifically
+  async deleteAudio(filename: string): Promise<{ success: boolean; error?: string }> {
+    try {
+      const objectKey = `audio/${filename}`;
+      return await this.deleteFile("primary", objectKey);
+    } catch (error) {
+      console.error(`Error deleting audio file ${filename}:`, error);
+      return { success: false, error: error instanceof Error ? error.message : 'Unknown error' };
+    }
+  }
 }
 
 export const multiR2Storage = new MultiR2StorageService();

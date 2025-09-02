@@ -1694,6 +1694,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { id } = req.params;
+      
+      // Get all questions for this exam to delete audio files
+      const questions = await storage.getQuestionsByExamId(id);
+      
+      // Delete audio files from R2 storage
+      for (const question of questions) {
+        if (question.audioUrl) {
+          // Extract filename from audioUrl like "/api/audio/1756824740827-0xk22e.mp3"
+          const filename = question.audioUrl.split('/').pop();
+          if (filename) {
+            console.log(`Deleting audio file: ${filename}`);
+            const deleteResult = await multiR2Storage.deleteAudio(filename);
+            if (!deleteResult.success) {
+              console.warn(`Failed to delete audio file ${filename}:`, deleteResult.error);
+            } else {
+              console.log(`Successfully deleted audio file: ${filename}`);
+            }
+          }
+        }
+      }
+      
       const success = await storage.deleteExam(id);
 
       if (!success) {
@@ -1704,6 +1725,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error deleting exam:", error);
       res.status(500).json({ message: "Failed to delete exam" });
+    }
+  });
+
+  // Delete question endpoint
+  app.delete("/api/questions/:id", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+      
+      // Get question to check for audio before deleting
+      const question = await storage.getQuestion(id);
+      if (!question) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+      
+      // Delete audio file from R2 storage if exists
+      if (question.audioUrl) {
+        const filename = question.audioUrl.split('/').pop();
+        if (filename) {
+          console.log(`Deleting audio file for question: ${filename}`);
+          const deleteResult = await multiR2Storage.deleteAudio(filename);
+          if (!deleteResult.success) {
+            console.warn(`Failed to delete audio file ${filename}:`, deleteResult.error);
+          } else {
+            console.log(`Successfully deleted audio file: ${filename}`);
+          }
+        }
+      }
+      
+      const success = await storage.deleteQuestion(id);
+
+      if (!success) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+
+      res.json({ message: "Question deleted successfully" });
+    } catch (error) {
+      console.error("Error deleting question:", error);
+      res.status(500).json({ message: "Failed to delete question" });
     }
   });
 
