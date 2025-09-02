@@ -71,7 +71,16 @@ export function AudioUploader({
         if (xhr.status === 200) {
           try {
             const response = JSON.parse(xhr.responseText);
-            onAudioUpload(response.audioUrl);
+            const audioUrl = response.audioUrl;
+            
+            // Update current audio URL and load the audio
+            setCurrentAudioUrl(audioUrl);
+            if (audioRef.current) {
+              audioRef.current.src = audioUrl;
+              audioRef.current.load(); // Force reload of audio element
+            }
+            
+            onAudioUpload(audioUrl);
             toast({
               title: "Thành công", 
               description: "Upload file audio thành công",
@@ -119,7 +128,19 @@ export function AudioUploader({
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      audioRef.current.play();
+      // Ensure the audio src is set before playing
+      if (!audioRef.current.src || audioRef.current.src !== currentAudioUrl) {
+        audioRef.current.src = currentAudioUrl;
+        audioRef.current.load();
+      }
+      audioRef.current.play().catch(error => {
+        console.error('Audio play error:', error);
+        toast({
+          title: "Lỗi phát audio",
+          description: "Không thể phát file audio này",
+          variant: "destructive",
+        });
+      });
       setIsPlaying(true);
     }
   };
