@@ -229,7 +229,7 @@ export function ExamManager() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteConfirm.isOpen} onOpenChange={(open) => !open && cancelDeleteExam()}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Xác nhận xóa bài thi</DialogTitle>
             <DialogDescription>
