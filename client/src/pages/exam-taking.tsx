@@ -173,41 +173,25 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         {/* Login Required Modal */}
         <Dialog open={showLoginDialog} onOpenChange={() => setLocation("/online-exam")}>
-          <DialogContent className="sm:max-w-md" onInteractOutside={() => setLocation("/online-exam")}>
+          <DialogContent>
             <DialogHeader>
-              <DialogTitle className="flex items-center justify-between">
-                <span>Cần đăng nhập</span>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => setLocation("/online-exam")}
-                  className="h-6 w-6 p-0 hover:bg-gray-100"
-                >
-                  <X className="h-4 w-4" />
-                </Button>
-              </DialogTitle>
+              <DialogTitle>Cần đăng nhập</DialogTitle>
               <DialogDescription>
                 Đây là đề thi chính thức, bạn cần đăng nhập để tham gia.
               </DialogDescription>
             </DialogHeader>
-            
-            <div className="flex items-center justify-center py-6">
-              <Lock className="w-16 h-16 text-blue-500" />
-            </div>
-            
-            <DialogFooter className="flex flex-col sm:flex-row gap-2">
-              <Link href="/login" className="w-full">
-                <Button className="w-full">
-                  Đăng nhập ngay
-                </Button>
-              </Link>
+            <DialogFooter>
               <Button 
                 variant="outline" 
                 onClick={() => setLocation("/online-exam")}
-                className="w-full"
               >
-                Về trang thi thử
+                Hủy
               </Button>
+              <Link href="/login">
+                <Button>
+                  Đăng nhập
+                </Button>
+              </Link>
             </DialogFooter>
           </DialogContent>
         </Dialog>

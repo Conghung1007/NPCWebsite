@@ -300,41 +300,25 @@ export function OnlineExamPage() {
 
       {/* Login Required Modal */}
       <Dialog open={showLoginModal} onOpenChange={setShowLoginModal}>
-        <DialogContent className="sm:max-w-md" onInteractOutside={() => setShowLoginModal(false)}>
+        <DialogContent>
           <DialogHeader>
-            <DialogTitle className="flex items-center justify-between">
-              <span>Cần đăng nhập</span>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setShowLoginModal(false)}
-                className="h-6 w-6 p-0 hover:bg-gray-100"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-            </DialogTitle>
+            <DialogTitle>Cần đăng nhập</DialogTitle>
             <DialogDescription>
               Đây là đề thi chính thức, bạn cần đăng nhập để tham gia.
             </DialogDescription>
           </DialogHeader>
-          
-          <div className="flex items-center justify-center py-6">
-            <Lock className="w-16 h-16 text-blue-500" />
-          </div>
-          
-          <DialogFooter className="flex flex-col sm:flex-row gap-2">
-            <Link href="/login" className="w-full">
-              <Button className="w-full">
-                Đăng nhập ngay
-              </Button>
-            </Link>
+          <DialogFooter>
             <Button 
               variant="outline" 
               onClick={() => setShowLoginModal(false)}
-              className="w-full"
             >
-              Tiếp tục thi thử
+              Hủy
             </Button>
+            <Link href="/login">
+              <Button>
+                Đăng nhập
+              </Button>
+            </Link>
           </DialogFooter>
         </DialogContent>
       </Dialog>
