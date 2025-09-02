@@ -1457,6 +1457,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const fileExtension = fileName.split('.').pop() || 'mp3';
         const objectKey = `audio/${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
         
+        console.log(`Audio upload request: fileName=${fileName}, fileType=${fileType}, objectKey=${objectKey}`);
+        
         const uploadResult = await multiR2Storage.getUploadUrl({
           provider: "primary",
           folder: "audio",
@@ -1464,7 +1466,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
           maxSizeBytes: 10 * 1024 * 1024 // 10MB
         }, fileType);
         
+        console.log("Upload result:", uploadResult);
+        
         if (!uploadResult.success) {
+          console.error("Upload URL generation failed:", uploadResult.error);
           return res.status(500).json({ 
             uploadUrl: { success: false, error: uploadResult.error || "Failed to generate upload URL" }
           });
@@ -1472,6 +1477,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const uploadUrl = uploadResult.url;
         const audioUrl = uploadResult.path;
+
+        console.log(`Generated upload URL: ${uploadUrl}`);
+        console.log(`Audio URL will be: ${audioUrl}`);
 
         res.json({
           uploadUrl,
@@ -1745,35 +1753,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // R2 Configuration Debug Endpoint
-  app.get("/api/debug/r2-config", async (req, res) => {
+  // R2 Configuration Debug Endpoint (public for debugging)
+  app.get("/api/debug/r2-status", async (req, res) => {
     try {
-      const sessionUser = (req.session as any)?.user;
-      if (!sessionUser || sessionUser.role !== 'admin') {
-        return res.status(401).json({ message: "Unauthorized - Admin only" });
-      }
 
-      const r2Config = {
+      const r2Status = {
         primary: {
-          accountId: process.env.R2_PRIMARY_ACCOUNT_ID || "Not configured",
-          bucketName: process.env.R2_PRIMARY_BUCKET_NAME || "Not configured", 
-          endpoint: process.env.R2_PRIMARY_ENDPOINT || "Not configured",
           hasAccessKey: !!process.env.R2_PRIMARY_ACCESS_KEY_ID,
           hasSecretKey: !!process.env.R2_PRIMARY_SECRET_ACCESS_KEY,
+          hasBucketName: !!process.env.R2_PRIMARY_BUCKET_NAME,
+          hasEndpoint: !!process.env.R2_PRIMARY_ENDPOINT,
+          clientInitialized: r2Manager.getClient("primary") !== null,
         },
         secondary: {
-          accountId: process.env.R2_SECONDARY_ACCOUNT_ID || "Not configured",
-          bucketName: process.env.R2_SECONDARY_BUCKET_NAME || "Not configured",
-          endpoint: process.env.R2_SECONDARY_ENDPOINT || "Not configured", 
           hasAccessKey: !!process.env.R2_SECONDARY_ACCESS_KEY_ID,
           hasSecretKey: !!process.env.R2_SECONDARY_SECRET_ACCESS_KEY,
+          hasBucketName: !!process.env.R2_SECONDARY_BUCKET_NAME,
+          hasEndpoint: !!process.env.R2_SECONDARY_ENDPOINT,
+          clientInitialized: r2Manager.getClient("secondary") !== null,
         }
       };
 
-      res.json(r2Config);
+      res.json(r2Status);
     } catch (error) {
-      console.error("Error getting R2 config:", error);
-      res.status(500).json({ message: "Failed to get R2 config" });
+      console.error("Error getting R2 status:", error);
+      res.status(500).json({ message: "Failed to get R2 status" });
     }
   });
 

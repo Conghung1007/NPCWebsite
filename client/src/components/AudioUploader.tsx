@@ -81,14 +81,18 @@ export function AudioUploader({
       });
 
       uploadToR2.addEventListener('load', () => {
-        if (uploadToR2.status === 200) {
+        console.log('Upload completed with status:', uploadToR2.status);
+        console.log('Upload response text:', uploadToR2.responseText);
+        
+        if (uploadToR2.status === 200 || uploadToR2.status === 204) {
           onAudioUpload(audioUrl);
           toast({
             title: "Thành công",
             description: "Upload file audio thành công",
           });
         } else {
-          throw new Error('Upload failed');
+          console.error('Upload failed with status:', uploadToR2.status);
+          throw new Error(`Upload failed with status: ${uploadToR2.status}`);
         }
       });
 
@@ -97,7 +101,6 @@ export function AudioUploader({
       });
 
       uploadToR2.open('PUT', uploadUrl);
-      uploadToR2.setRequestHeader('Content-Type', file.type);
       uploadToR2.send(file);
 
     } catch (error) {

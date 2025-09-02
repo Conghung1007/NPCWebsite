@@ -112,8 +112,7 @@ export class R2ClientManager {
       });
 
       const signedUrl = await getSignedUrl(client, command, { 
-        expiresIn,
-        unhoistableHeaders: new Set(['content-type'])
+        expiresIn
       });
       return signedUrl;
     } catch (error) {
