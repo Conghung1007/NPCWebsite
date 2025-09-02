@@ -1626,6 +1626,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Cleanup temporary audio files endpoint
+  app.post("/api/temp-audio/cleanup", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      let filenames;
+      
+      // Handle both regular JSON and sendBeacon text requests
+      if (typeof req.body === 'string') {
+        try {
+          const parsed = JSON.parse(req.body);
+          filenames = parsed.filenames;
+        } catch (e) {
+          return res.status(400).json({ message: "Invalid JSON in request body" });
+        }
+      } else {
+        filenames = req.body.filenames;
+      }
+
+      if (!Array.isArray(filenames)) {
+        return res.status(400).json({ message: "Filenames array is required" });
+      }
+
+      const results = [];
+      for (const filename of filenames) {
+        const objectKey = `temp-audio/${filename}`;
+        const result = await multiR2Storage.deleteFile("primary", objectKey);
+        results.push({ filename, success: result.success, error: result.error });
+        
+        if (result.success) {
+          console.log(`✓ Cleaned up temporary audio file: ${filename}`);
+        } else {
+          console.warn(`✗ Failed to cleanup temporary audio file: ${filename} - ${result.error}`);
+        }
+      }
+
+      res.json({ results });
+    } catch (error) {
+      console.error("Error cleaning up temporary audio files:", error);
+      res.status(500).json({ message: "Failed to cleanup temporary files" });
+    }
+  });
+
   // Helper function to move temporary audio to permanent location
   async function moveTemporaryAudioToPermanent(tempUrl: string): Promise<string | null> {
     if (!tempUrl || !tempUrl.includes('/api/temp-audio/')) {
@@ -1668,8 +1714,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (uploadResult.success) {
-        // Delete temporary file
-        await r2Manager.deleteFile("primary", tempObjectKey);
+        // Delete temporary file using multiR2Storage
+        await multiR2Storage.deleteFile("primary", tempObjectKey);
         return `/api/audio/${filename}`;
       }
 
