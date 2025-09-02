@@ -1887,12 +1887,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Handle temporary audio file - move to permanent location
+      let finalAudioUrl = audioUrl;
+      if (audioUrl && audioUrl.includes('/api/temp-audio/')) {
+        try {
+          finalAudioUrl = await moveTemporaryAudioToPermanent(audioUrl);
+          if (!finalAudioUrl) {
+            console.warn("Failed to move temporary audio, setting to null");
+            finalAudioUrl = null;
+          }
+        } catch (error) {
+          console.error("Error moving temporary audio:", error);
+          finalAudioUrl = null;
+        }
+      }
+
       const question = await storage.createQuestion({
         examId,
         questionText,
         questionType: questionType || "multiple_choice",
         imageUrl: imageUrl || null,
-        audioUrl: audioUrl || null,
+        audioUrl: finalAudioUrl || null,
         options,
         correctAnswer,
         explanation: explanation || null,

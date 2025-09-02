@@ -171,6 +171,25 @@ export default function EditExam() {
           )
         );
 
+        // Cleanup temporary files after successful save
+        const tempAudioFilenames = data.questions
+          .map(q => q.audioUrl)
+          .filter(url => url && url.includes('/api/temp-audio/'))
+          .map(url => url.split('/').pop())
+          .filter(Boolean);
+        
+        if (tempAudioFilenames.length > 0) {
+          try {
+            await fetch("/api/temp-audio/cleanup", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ filenames: tempAudioFilenames })
+            });
+          } catch (cleanupError) {
+            console.warn("Failed to cleanup temp files after save:", cleanupError);
+          }
+        }
+
         return { success: true };
       } catch (error) {
         console.error("Update exam error:", error);
