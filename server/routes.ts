@@ -1452,14 +1452,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
       
       try {
-        // Upload to temporary location first
+        // Upload directly to audio folder (no more temp storage)
         const uploadResult = await multiR2Storage.uploadFile(
           file.buffer,
           fileName,
           file.mimetype,
           {
             provider: "primary",
-            folder: "temp-audio",
+            folder: "audio",
             allowedTypes: ["audio/*"],
             maxSizeBytes: 10 * 1024 * 1024
           }
@@ -1469,8 +1469,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ error: uploadResult.error || "Upload failed" });
         }
         
-        // Return temporary audio URL
-        const audioUrl = `/api/temp-audio/${fileName}`;
+        // Return permanent audio URL
+        const audioUrl = `/api/audio/${fileName}`;
         res.json({ 
           audioUrl,
           originalFileName: file.originalname || 'audio file'
@@ -1520,7 +1520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const uploadResult = await multiR2Storage.getUploadUrl({
           provider: "primary",
-          folder: "temp-audio",
+          folder: "audio",
           allowedTypes: ["audio/*"],
           maxSizeBytes: 10 * 1024 * 1024 // 10MB
         }, fileType);
@@ -1809,23 +1809,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: sessionUser.id,
       });
 
-      // Create questions for the exam and move temporary audio files
+      // Create questions for the exam (audio already in permanent location)
       const createdQuestions = [];
       for (let i = 0; i < questions.length; i++) {
         const questionData = questions[i];
-        
-        // Move temporary audio to permanent location if exists
-        let finalAudioUrl = questionData.audioUrl;
-        if (questionData.audioUrl && questionData.audioUrl.includes('/api/temp-audio/')) {
-          finalAudioUrl = await moveTemporaryAudioToPermanent(questionData.audioUrl);
-        }
         
         const question = await storage.createQuestion({
           examId: exam.id,
           questionText: questionData.questionText,
           questionType: questionData.questionType || "multiple_choice",
           imageUrl: questionData.imageUrl || null,
-          audioUrl: finalAudioUrl || null,
+          audioUrl: questionData.audioUrl || null,
           options: questionData.options,
           correctAnswer: questionData.correctAnswer,
           explanation: questionData.explanation || null,

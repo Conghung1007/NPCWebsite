@@ -1169,6 +1169,26 @@ export class DatabaseStorage implements IStorage {
     return (result as any).rowCount > 0;
   }
 
+  // Get all questions with temp-audio URLs
+  async getAllQuestionsWithTempAudio(): Promise<Question[]> {
+    return await db.select().from(questions).where(
+      sql`${questions.audioUrl} LIKE '%/api/temp-audio/%'`
+    );
+  }
+
+  // Update question audio URL
+  async updateQuestionAudioUrl(id: string, audioUrl: string): Promise<Question> {
+    const [question] = await db
+      .update(questions)
+      .set({ audioUrl })
+      .where(eq(questions.id, id))
+      .returning();
+    if (!question) {
+      throw new Error("Question not found");
+    }
+    return question;
+  }
+
   async createExamAttempt(attemptData: InsertExamAttempt): Promise<ExamAttempt> {
     const [attempt] = await db
       .insert(examAttempts)
