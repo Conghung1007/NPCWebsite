@@ -1457,8 +1457,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const fileExtension = fileName.split('.').pop() || 'mp3';
         const objectKey = `audio/${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
         
-        const uploadUrl = await multiR2Storage.getUploadUrl("primary", objectKey);
-        const audioUrl = `/audio/${objectKey.replace('audio/', '')}`;
+        const uploadResult = await multiR2Storage.getUploadUrl({
+          provider: "primary",
+          folder: "audio",
+          allowedTypes: ["audio/*"],
+          maxSizeBytes: 10 * 1024 * 1024 // 10MB
+        });
+        
+        if (!uploadResult.success) {
+          return res.status(500).json({ 
+            uploadUrl: { success: false, error: uploadResult.error || "Failed to generate upload URL" }
+          });
+        }
+        
+        const uploadUrl = uploadResult.url;
+        const audioUrl = uploadResult.path;
 
         res.json({
           uploadUrl,
