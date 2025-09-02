@@ -65,6 +65,8 @@ export interface IStorage {
   getQuestionsByExamId(examId: string): Promise<Question[]>;
   updateQuestion(id: string, updateData: Partial<InsertQuestion>): Promise<Question | null>;
   deleteQuestion(id: string): Promise<boolean>;
+  getAllQuestionsWithTempAudio(): Promise<Question[]>;
+  updateQuestionAudioUrl(id: string, audioUrl: string): Promise<Question>;
   
   createExamAttempt(attempt: InsertExamAttempt): Promise<ExamAttempt>;
   getExamAttempt(id: string): Promise<ExamAttempt | undefined>;
@@ -748,6 +750,23 @@ export class MemStorage implements IStorage {
 
   async deleteQuestion(id: string): Promise<boolean> {
     return this.questions.delete(id);
+  }
+
+  // Get all questions with temp-audio URLs
+  async getAllQuestionsWithTempAudio(): Promise<Question[]> {
+    return Array.from(this.questions.values()).filter(q => 
+      q.audioUrl && q.audioUrl.includes('/api/temp-audio/')
+    );
+  }
+
+  // Update question audio URL
+  async updateQuestionAudioUrl(id: string, audioUrl: string): Promise<Question> {
+    const question = this.questions.get(id);
+    if (!question) {
+      throw new Error("Question not found");
+    }
+    question.audioUrl = audioUrl;
+    return question;
   }
 
   async createExamAttempt(insertAttempt: InsertExamAttempt): Promise<ExamAttempt> {
