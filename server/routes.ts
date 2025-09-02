@@ -1452,14 +1452,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
       
       try {
-        // Upload directly using R2 client
+        // Upload to temporary location first
         const uploadResult = await multiR2Storage.uploadFile(
           file.buffer,
           fileName,
           file.mimetype,
           {
             provider: "primary",
-            folder: "audio",
+            folder: "temp-audio",
             allowedTypes: ["audio/*"],
             maxSizeBytes: 10 * 1024 * 1024
           }
@@ -1469,8 +1469,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ error: uploadResult.error || "Upload failed" });
         }
         
-        // Return the proper audio URL for accessing via proxy
-        const audioUrl = `/api/audio/${fileName}`;
+        // Return temporary audio URL
+        const audioUrl = `/api/temp-audio/${fileName}`;
         res.json({ 
           audioUrl,
           originalFileName: file.originalname || 'audio file'
@@ -1520,7 +1520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         const uploadResult = await multiR2Storage.getUploadUrl({
           provider: "primary",
-          folder: "audio",
+          folder: "temp-audio",
           allowedTypes: ["audio/*"],
           maxSizeBytes: 10 * 1024 * 1024 // 10MB
         }, fileType);
@@ -1590,6 +1590,96 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Temporary audio download endpoint
+  app.get("/api/temp-audio/:filename", async (req, res) => {
+    try {
+      const { filename } = req.params;
+      const objectKey = `temp-audio/${filename}`;
+      
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
+      
+      if (!downloadUrl) {
+        return res.status(404).json({ message: "Temporary audio file not found" });
+      }
+
+      // Proxy the audio file
+      const audioResponse = await fetch(downloadUrl);
+      if (!audioResponse.ok) {
+        return res.status(404).json({ message: "Temporary audio file not found" });
+      }
+
+      const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
+      const contentLength = audioResponse.headers.get('content-length');
+      
+      res.set({
+        'Content-Type': contentType,
+        'Content-Length': contentLength || '',
+        'Cache-Control': 'public, max-age=300', // 5 minute cache for temp files
+      });
+
+      // Stream the audio data
+      const audioBuffer = await audioResponse.arrayBuffer();
+      return res.send(Buffer.from(audioBuffer));
+    } catch (error) {
+      console.error("Error serving temporary audio file:", error);
+      res.status(500).json({ message: "Failed to serve temporary audio file" });
+    }
+  });
+
+  // Helper function to move temporary audio to permanent location
+  async function moveTemporaryAudioToPermanent(tempUrl: string): Promise<string | null> {
+    if (!tempUrl || !tempUrl.includes('/api/temp-audio/')) {
+      return tempUrl; // Already permanent or invalid
+    }
+
+    try {
+      const filename = tempUrl.split('/').pop();
+      if (!filename) return null;
+
+      const tempObjectKey = `temp-audio/${filename}`;
+      const finalObjectKey = `audio/${filename}`;
+
+      // Download from temp location
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", tempObjectKey);
+      if (!downloadUrl) {
+        console.warn(`Temporary file not found: ${tempObjectKey}`);
+        return null;
+      }
+
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        console.warn(`Failed to download temporary file: ${tempObjectKey}`);
+        return null;
+      }
+
+      const buffer = await response.arrayBuffer();
+
+      // Upload to final location
+      const uploadResult = await multiR2Storage.uploadFile(
+        Buffer.from(buffer),
+        filename,
+        "audio/mpeg",
+        {
+          provider: "primary",
+          folder: "audio",
+          allowedTypes: ["audio/*"],
+          maxSizeBytes: 10 * 1024 * 1024
+        }
+      );
+
+      if (uploadResult.success) {
+        // Delete temporary file
+        await r2Manager.deleteFile("primary", tempObjectKey);
+        return `/api/audio/${filename}`;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error moving temporary audio to permanent:", error);
+      return null;
+    }
+  }
+
   // Create exam endpoint
   app.post("/api/exams", async (req, res) => {
     try {
@@ -1617,16 +1707,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         createdBy: sessionUser.id,
       });
 
-      // Create questions for the exam
+      // Create questions for the exam and move temporary audio files
       const createdQuestions = [];
       for (let i = 0; i < questions.length; i++) {
         const questionData = questions[i];
+        
+        // Move temporary audio to permanent location if exists
+        let finalAudioUrl = questionData.audioUrl;
+        if (questionData.audioUrl && questionData.audioUrl.includes('/api/temp-audio/')) {
+          finalAudioUrl = await moveTemporaryAudioToPermanent(questionData.audioUrl);
+        }
+        
         const question = await storage.createQuestion({
           examId: exam.id,
           questionText: questionData.questionText,
           questionType: questionData.questionType || "multiple_choice",
           imageUrl: questionData.imageUrl || null,
-          audioUrl: questionData.audioUrl || null,
+          audioUrl: finalAudioUrl || null,
           options: questionData.options,
           correctAnswer: questionData.correctAnswer,
           explanation: questionData.explanation || null,
