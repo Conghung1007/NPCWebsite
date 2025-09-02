@@ -136,46 +136,54 @@ export default function EditExam() {
   // Update exam mutation
   const updateExamMutation = useMutation({
     mutationFn: async (data: ExamFormData) => {
-      // First update exam info
-      await apiRequest("PUT", `/api/exams/${examId}`, {
-        title: data.title,
-        description: data.description,
-        timeLimit: data.timeLimit,
-        isDemo: data.isDemo,
-        isActive: data.isActive,
-        questionCount: data.questions.length,
-      });
-
-      // Delete existing questions first
-      for (const question of questions) {
-        await apiRequest("DELETE", `/api/questions/${question.id}`);
-      }
-
-      // Then create new questions with updated data
-      for (let i = 0; i < data.questions.length; i++) {
-        const questionData = data.questions[i];
-        await apiRequest("POST", "/api/questions", {
-          examId: examId,
-          questionText: questionData.questionText,
-          questionType: questionData.questionType,
-          imageUrl: questionData.imageUrl || null,
-          audioUrl: questionData.audioUrl || null,
-          options: questionData.options,
-          correctAnswer: questionData.correctAnswer,
-          explanation: questionData.explanation || null,
-          sortOrder: i,
+      try {
+        // First update exam info
+        await apiRequest("PUT", `/api/exams/${examId}`, {
+          title: data.title,
+          description: data.description,
+          timeLimit: data.timeLimit,
+          isDemo: data.isDemo,
+          isActive: data.isActive,
+          questionCount: data.questions.length,
         });
-      }
 
-      return { success: true };
+        // Delete existing questions in parallel (faster)
+        await Promise.all(
+          questions.map(question => 
+            apiRequest("DELETE", `/api/questions/${question.id}`)
+          )
+        );
+
+        // Create new questions in parallel (faster)
+        await Promise.all(
+          data.questions.map((questionData, i) =>
+            apiRequest("POST", "/api/questions", {
+              examId: examId,
+              questionText: questionData.questionText,
+              questionType: questionData.questionType,
+              imageUrl: questionData.imageUrl || null,
+              audioUrl: questionData.audioUrl || null,
+              options: questionData.options,
+              correctAnswer: questionData.correctAnswer,
+              explanation: questionData.explanation || null,
+              sortOrder: i,
+            })
+          )
+        );
+
+        return { success: true };
+      } catch (error) {
+        console.error("Update exam error:", error);
+        throw error;
+      }
     },
     onSuccess: () => {
       toast({
         title: "Thành công", 
         description: "Cập nhật bài thi thành công",
       });
-      // Invalidate queries to refresh data
-      window.location.href = "/cpanel?tab=exams";
+      // Navigate back to cpanel using router
+      setLocation("/cpanel?tab=exams");
     },
     onError: (error: any) => {
       // Clean up temporary audio files on error
