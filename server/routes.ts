@@ -1449,16 +1449,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate unique filename
       const timestamp = Date.now();
       const fileExtension = file.originalname.split('.').pop() || 'mp3';
-      const objectKey = `audio/${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
       
       try {
         // Upload directly using R2 client
-        const uploadResult = await multiR2Storage.uploadFile({
-          provider: "primary",
-          key: objectKey,
-          body: file.buffer,
-          contentType: file.mimetype
-        });
+        const uploadResult = await multiR2Storage.uploadFile(
+          file.buffer,
+          fileName,
+          file.mimetype,
+          {
+            provider: "primary",
+            folder: "audio",
+            allowedTypes: ["audio/*"],
+            maxSizeBytes: 10 * 1024 * 1024
+          }
+        );
         
         if (!uploadResult.success) {
           return res.status(500).json({ error: uploadResult.error || "Upload failed" });

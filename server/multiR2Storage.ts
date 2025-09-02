@@ -55,7 +55,7 @@ export class MultiR2StorageService {
 
       await client.send(command);
       
-      const path = `https://${config.bucketName}.${config.endpoint.replace('https://', '')}.com/${key}`;
+      const path = `https://${config.bucketName}.${config.endpoint.replace('https://', '')}/${key}`;
       
       return {
         success: true,
