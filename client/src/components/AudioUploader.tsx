@@ -76,11 +76,17 @@ export function AudioUploader({
           try {
             const response = JSON.parse(xhr.responseText);
             const audioUrl = response.audioUrl;
+            const fileName = response.originalFileName;
             
             // Update current audio URL and load the audio
             if (audioRef.current) {
               audioRef.current.src = audioUrl;
               audioRef.current.load(); // Force reload of audio element
+            }
+            
+            // Update original file name for display
+            if (fileName) {
+              setOriginalFileName(fileName);
             }
             
             onAudioUpload(audioUrl);

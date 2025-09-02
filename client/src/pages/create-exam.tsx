@@ -321,7 +321,11 @@ export default function CreateExam() {
                           const audioUrl = form.watch(`questions.${questionIndex}.audioUrl`);
                           if (!audioUrl) return undefined;
                           const filename = audioUrl.split('/').pop();
-                          return filename?.replace(/^\d+-[a-z0-9]+\./, '') || filename;
+                          if (!filename) return undefined;
+                          // Remove timestamp and random ID: 1756824417808-wgo78.mp3 -> mp3
+                          // Better approach: keep original extension but show generic name
+                          const extension = filename.split('.').pop();
+                          return `Audio file.${extension}`;
                         })()}
                         onAudioUpload={(audioUrl) => {
                           form.setValue(`questions.${questionIndex}.audioUrl`, audioUrl);

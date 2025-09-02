@@ -1471,7 +1471,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Return the proper audio URL for accessing via proxy
         const audioUrl = `/api/audio/${fileName}`;
-        res.json({ audioUrl });
+        res.json({ 
+          audioUrl,
+          originalFileName: file.originalname || 'audio file'
+        });
         
       } catch (uploadError) {
         console.error("Direct upload error:", uploadError);
