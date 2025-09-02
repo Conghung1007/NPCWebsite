@@ -89,7 +89,7 @@ export default function EditExam() {
       
       if (questions.length > 0) {
         formattedQuestions = questions.map(q => {
-          console.log('Processing question:', q);
+          console.log('Processing question with audioUrl:', q.audioUrl);
           return {
             questionText: q.questionText || "",
             questionType: q.questionType || "multiple_choice",
