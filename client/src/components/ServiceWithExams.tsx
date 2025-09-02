@@ -251,7 +251,7 @@ export function ServiceWithExams({
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {featuredExams.slice(currentIndex, currentIndex + 3).map((exam) => (
                 <div key={exam.id} className="w-full h-full flex">
-                  <Link href={`/exam/${exam.id}`} className="w-full h-full">
+                  <Link href="/online-exam" className="w-full h-full">
                     <div className="w-full h-[400px] bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-lg hover:scale-105 transition-all duration-300 cursor-pointer flex flex-col">
                       {/* Exam header */}
                       <div className="h-32 bg-gradient-to-br from-blue-100 to-blue-200 rounded-t-lg flex items-center justify-center flex-shrink-0 relative">
