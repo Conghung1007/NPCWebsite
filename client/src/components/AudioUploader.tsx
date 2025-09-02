@@ -186,7 +186,7 @@ export function AudioUploader({
             <div className="flex items-center space-x-2">
               <Volume2 className="w-4 h-4 text-green-600" />
               <span className="text-sm text-gray-700">
-                {currentFileName || originalFileName || "File audio đã upload"}
+                {originalFileName || currentFileName || "File audio đã upload"}
               </span>
             </div>
             <div className="flex items-center space-x-2">
