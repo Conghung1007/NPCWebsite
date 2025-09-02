@@ -1728,6 +1728,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Create question endpoint
+  app.post("/api/questions", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { examId, questionText, questionType, imageUrl, audioUrl, options, correctAnswer, explanation, sortOrder } = req.body;
+
+      if (!examId || !questionText || !options || !correctAnswer) {
+        return res.status(400).json({ 
+          message: "ExamId, question text, options, and correct answer are required" 
+        });
+      }
+
+      const question = await storage.createQuestion({
+        examId,
+        questionText,
+        questionType: questionType || "multiple_choice",
+        imageUrl: imageUrl || null,
+        audioUrl: audioUrl || null,
+        options,
+        correctAnswer,
+        explanation: explanation || null,
+        sortOrder: sortOrder || 0,
+      });
+
+      res.status(201).json({
+        question,
+        message: "Question created successfully"
+      });
+    } catch (error) {
+      console.error("Error creating question:", error);
+      res.status(500).json({ message: "Failed to create question" });
+    }
+  });
+
   // Delete question endpoint
   app.delete("/api/questions/:id", async (req, res) => {
     try {

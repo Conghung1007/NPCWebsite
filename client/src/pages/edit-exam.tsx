@@ -143,18 +143,39 @@ export default function EditExam() {
         timeLimit: data.timeLimit,
         isDemo: data.isDemo,
         isActive: data.isActive,
+        questionCount: data.questions.length,
       });
 
-      // Then update questions (for now, we'll recreate them)
-      // In a real implementation, you might want to handle individual question updates
+      // Delete existing questions first
+      for (const question of questions) {
+        await apiRequest("DELETE", `/api/questions/${question.id}`);
+      }
+
+      // Then create new questions with updated data
+      for (let i = 0; i < data.questions.length; i++) {
+        const questionData = data.questions[i];
+        await apiRequest("POST", "/api/questions", {
+          examId: examId,
+          questionText: questionData.questionText,
+          questionType: questionData.questionType,
+          imageUrl: questionData.imageUrl || null,
+          audioUrl: questionData.audioUrl || null,
+          options: questionData.options,
+          correctAnswer: questionData.correctAnswer,
+          explanation: questionData.explanation || null,
+          sortOrder: i,
+        });
+      }
+
       return { success: true };
     },
     onSuccess: () => {
       toast({
-        title: "Thành công",
+        title: "Thành công", 
         description: "Cập nhật bài thi thành công",
       });
-      setLocation("/cpanel?tab=exams");
+      // Invalidate queries to refresh data
+      window.location.href = "/cpanel?tab=exams";
     },
     onError: (error: any) => {
       toast({
