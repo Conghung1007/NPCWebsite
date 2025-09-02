@@ -82,16 +82,31 @@ export default function EditExam() {
 
   // Populate form when data is loaded
   useEffect(() => {
-    if (exam && questions.length > 0) {
-      const formattedQuestions = questions.map(q => ({
-        questionText: q.questionText,
-        questionType: q.questionType || "multiple_choice",
-        imageUrl: q.imageUrl || "",
-        audioUrl: q.audioUrl || "",
-        options: Array.isArray(q.options) ? q.options as string[] : ["", ""],
-        correctAnswer: q.correctAnswer,
-        explanation: q.explanation || "",
-      }));
+    if (exam) {
+      let formattedQuestions;
+      
+      if (questions.length > 0) {
+        formattedQuestions = questions.map(q => ({
+          questionText: q.questionText,
+          questionType: q.questionType || "multiple_choice",
+          imageUrl: q.imageUrl || "",
+          audioUrl: q.audioUrl || "",
+          options: Array.isArray(q.options) ? q.options as string[] : ["", ""],
+          correctAnswer: q.correctAnswer,
+          explanation: q.explanation || "",
+        }));
+      } else {
+        // Default empty question if no questions exist
+        formattedQuestions = [{
+          questionText: "",
+          questionType: "multiple_choice",
+          imageUrl: "",
+          audioUrl: "",
+          options: ["", ""],
+          correctAnswer: "",
+          explanation: "",
+        }];
+      }
 
       form.reset({
         title: exam.title,
@@ -102,13 +117,13 @@ export default function EditExam() {
         questions: formattedQuestions,
       });
     }
-  }, [exam, questions, form]);
+  }, [exam, questions, form.reset]);
 
   // Update exam mutation
   const updateExamMutation = useMutation({
     mutationFn: async (data: ExamFormData) => {
       // First update exam info
-      await apiRequest(`/api/exams/${examId}`, "PUT", {
+      await apiRequest("PUT", `/api/exams/${examId}`, {
         title: data.title,
         description: data.description,
         timeLimit: data.timeLimit,
@@ -390,7 +405,15 @@ export default function EditExam() {
                         <FormLabel>File âm thanh (tùy chọn)</FormLabel>
                         <AudioUploader
                           currentAudioUrl={form.watch(`questions.${questionIndex}.audioUrl`)}
-                          currentFileName={undefined}
+                          currentFileName={(() => {
+                            const audioUrl = form.watch(`questions.${questionIndex}.audioUrl`);
+                            if (!audioUrl) return undefined;
+                            // For existing questions, show generic name since we don't store original filename
+                            const filename = audioUrl.split('/').pop();
+                            if (!filename) return undefined;
+                            const extension = filename.split('.').pop();
+                            return `Existing audio file.${extension}`;
+                          })()}
                           onAudioUpload={(audioUrl) => {
                             form.setValue(`questions.${questionIndex}.audioUrl`, audioUrl);
                           }}
