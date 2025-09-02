@@ -12,27 +12,13 @@ interface AudioUploaderProps {
 
 export function AudioUploader({ 
   onAudioUpload, 
-  currentAudioUrl: initialAudioUrl, 
+  currentAudioUrl, 
   onRemoveAudio, 
   disabled = false 
 }: AudioUploaderProps) {
-  // Convert relative path to full API URL
-  const normalizeAudioUrl = (url: string | undefined): string | null => {
-    if (!url) return null;
-    if (url.startsWith('/api/audio/')) return url;
-    if (url.startsWith('audio/')) {
-      const filename = url.replace('audio/', '');
-      return `/api/audio/${filename}`;
-    }
-    return url;
-  };
-
   const [isUploading, setIsUploading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [currentAudioUrl, setCurrentAudioUrl] = useState<string | null>(
-    normalizeAudioUrl(initialAudioUrl)
-  );
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
@@ -88,8 +74,11 @@ export function AudioUploader({
             const audioUrl = response.audioUrl;
             
             // Update current audio URL and load the audio
-            const normalizedUrl = normalizeAudioUrl(audioUrl);
-            setCurrentAudioUrl(normalizedUrl);
+            setCurrentAudioUrl(audioUrl);
+            if (audioRef.current) {
+              audioRef.current.src = audioUrl;
+              audioRef.current.load(); // Force reload of audio element
+            }
             
             onAudioUpload(audioUrl);
             toast({
@@ -98,11 +87,7 @@ export function AudioUploader({
             });
           } catch (parseError) {
             console.error('Failed to parse response:', parseError);
-            toast({
-              title: "Lỗi",
-              description: "Phản hồi từ server không hợp lệ",
-              variant: "destructive",
-            });
+            throw new Error('Invalid server response');
           }
         } else {
           console.error('Upload failed with status:', xhr.status);
@@ -136,43 +121,27 @@ export function AudioUploader({
     }
   };
 
-  const handlePlayPause = async () => {
-    if (!audioRef.current || !currentAudioUrl) {
-      console.log('No audio ref or URL:', { audioRef: !!audioRef.current, currentAudioUrl });
-      return;
-    }
-
-    console.log('Current audio URL:', currentAudioUrl);
-    console.log('Audio element src:', audioRef.current.src);
+  const handlePlayPause = () => {
+    if (!audioRef.current || !currentAudioUrl) return;
 
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      try {
-        // Test if URL is accessible first
-        const testResponse = await fetch(currentAudioUrl, { method: 'HEAD' });
-        if (!testResponse.ok) {
-          throw new Error(`Audio file not accessible: ${testResponse.status}`);
-        }
-
-        // Set src and load if different
-        if (audioRef.current.src !== currentAudioUrl) {
-          audioRef.current.src = currentAudioUrl;
-          audioRef.current.load();
-        }
-        
-        await audioRef.current.play();
-        setIsPlaying(true);
-      } catch (error) {
+      // Ensure the audio src is set before playing
+      if (!audioRef.current.src || audioRef.current.src !== currentAudioUrl) {
+        audioRef.current.src = currentAudioUrl;
+        audioRef.current.load();
+      }
+      audioRef.current.play().catch(error => {
         console.error('Audio play error:', error);
         toast({
           title: "Lỗi phát audio",
-          description: `Không thể phát file: ${currentAudioUrl?.split('/').pop()}. Kiểm tra file có tồn tại.`,
+          description: "Không thể phát file audio này",
           variant: "destructive",
         });
-        setIsPlaying(false);
-      }
+      });
+      setIsPlaying(true);
     }
   };
 
@@ -241,25 +210,7 @@ export function AudioUploader({
             ref={audioRef}
             src={currentAudioUrl}
             onEnded={handleAudioEnded}
-            onError={(e) => {
-              console.error('Audio element error:', e);
-              console.error('Failed audio URL:', currentAudioUrl);
-              setIsPlaying(false);
-              toast({
-                title: "Lỗi phát audio",
-                description: `Không thể load file audio: ${currentAudioUrl?.split('/').pop()}`,
-                variant: "destructive",
-              });
-            }}
-            onLoadedData={() => {
-              console.log('Audio loaded successfully:', currentAudioUrl);
-            }}
-            onCanPlay={() => {
-              console.log('Audio can play:', currentAudioUrl);
-            }}
             preload="metadata"
-            controls
-            style={{ width: '100%', maxWidth: '300px' }}
           />
         </div>
       )}
