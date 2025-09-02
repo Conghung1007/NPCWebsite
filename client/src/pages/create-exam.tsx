@@ -317,6 +317,12 @@ export default function CreateExam() {
                       <FormLabel>File âm thanh (tùy chọn)</FormLabel>
                       <AudioUploader
                         currentAudioUrl={form.watch(`questions.${questionIndex}.audioUrl`)}
+                        currentFileName={(() => {
+                          const audioUrl = form.watch(`questions.${questionIndex}.audioUrl`);
+                          if (!audioUrl) return undefined;
+                          const filename = audioUrl.split('/').pop();
+                          return filename?.replace(/^\d+-[a-z0-9]+\./, '') || filename;
+                        })()}
                         onAudioUpload={(audioUrl) => {
                           form.setValue(`questions.${questionIndex}.audioUrl`, audioUrl);
                         }}

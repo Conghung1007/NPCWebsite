@@ -6,6 +6,7 @@ import { useToast } from "@/hooks/use-toast";
 interface AudioUploaderProps {
   onAudioUpload: (audioUrl: string) => void;
   currentAudioUrl?: string;
+  currentFileName?: string;
   onRemoveAudio?: () => void;
   disabled?: boolean;
 }
@@ -13,12 +14,14 @@ interface AudioUploaderProps {
 export function AudioUploader({ 
   onAudioUpload, 
   currentAudioUrl, 
+  currentFileName,
   onRemoveAudio, 
   disabled = false 
 }: AudioUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [originalFileName, setOriginalFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
@@ -50,6 +53,7 @@ export function AudioUploader({
     try {
       setIsUploading(true);
       setUploadProgress(0);
+      setOriginalFileName(file.name);
 
       // Use direct upload via server
       const formData = new FormData();
@@ -175,7 +179,9 @@ export function AudioUploader({
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
             <div className="flex items-center space-x-2">
               <Volume2 className="w-4 h-4 text-green-600" />
-              <span className="text-sm text-gray-700">File audio đã upload</span>
+              <span className="text-sm text-gray-700">
+                {currentFileName || originalFileName || "File audio đã upload"}
+              </span>
             </div>
             <div className="flex items-center space-x-2">
               <Button
