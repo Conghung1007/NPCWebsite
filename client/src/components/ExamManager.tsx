@@ -38,7 +38,7 @@ export function ExamManager() {
   // Delete exam mutation
   const deleteExamMutation = useMutation({
     mutationFn: async (id: string) => {
-      return await apiRequest(`/api/exams/${id}`, "DELETE");
+      return await apiRequest("DELETE", `/api/exams/${id}`);
     },
     onSuccess: () => {
       toast({
