@@ -121,27 +121,54 @@ export function AudioUploader({
     }
   };
 
-  const handlePlayPause = () => {
+  const handlePlayPause = async () => {
     if (!audioRef.current || !currentAudioUrl) return;
 
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      // Ensure the audio src is set before playing
-      if (!audioRef.current.src || audioRef.current.src !== currentAudioUrl) {
-        audioRef.current.src = currentAudioUrl;
-        audioRef.current.load();
-      }
-      audioRef.current.play().catch(error => {
+      try {
+        // Ensure the audio src is set before playing
+        if (!audioRef.current.src || audioRef.current.src !== currentAudioUrl) {
+          audioRef.current.src = currentAudioUrl;
+          audioRef.current.load();
+        }
+        
+        // Wait for the audio to be ready before playing
+        await new Promise((resolve, reject) => {
+          const handleCanPlay = () => {
+            audioRef.current?.removeEventListener('canplay', handleCanPlay);
+            audioRef.current?.removeEventListener('error', handleError);
+            resolve(undefined);
+          };
+          
+          const handleError = (e: Event) => {
+            audioRef.current?.removeEventListener('canplay', handleCanPlay);
+            audioRef.current?.removeEventListener('error', handleError);
+            reject(new Error('Audio load failed'));
+          };
+          
+          if (audioRef.current?.readyState >= 3) {
+            // Audio is already ready
+            resolve(undefined);
+          } else {
+            audioRef.current?.addEventListener('canplay', handleCanPlay);
+            audioRef.current?.addEventListener('error', handleError);
+          }
+        });
+        
+        await audioRef.current.play();
+        setIsPlaying(true);
+      } catch (error) {
         console.error('Audio play error:', error);
+        setIsPlaying(false);
         toast({
           title: "Lỗi phát audio",
-          description: "Không thể phát file audio này",
+          description: "Không thể phát file audio này. Vui lòng thử lại.",
           variant: "destructive",
         });
-      });
-      setIsPlaying(true);
+      }
     }
   };
 
@@ -208,10 +235,19 @@ export function AudioUploader({
           
           <audio
             ref={audioRef}
-            src={currentAudioUrl}
             onEnded={handleAudioEnded}
+            onError={(e) => {
+              console.error('Audio element error:', e);
+              setIsPlaying(false);
+            }}
             preload="metadata"
-          />
+            crossOrigin="anonymous"
+          >
+            <source src={currentAudioUrl} type="audio/mpeg" />
+            <source src={currentAudioUrl} type="audio/mp3" />
+            <source src={currentAudioUrl} type="audio/wav" />
+            Trình duyệt của bạn không hỗ trợ phát audio.
+          </audio>
         </div>
       )}
 

@@ -1573,7 +1573,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const contentLength = audioResponse.headers.get('content-length');
       
       res.set({
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Range, Content-Type',
         'Content-Type': contentType,
+        'Accept-Ranges': 'bytes',
         'Content-Length': contentLength || '',
         'Cache-Control': 'public, max-age=31536000', // 1 year cache
       });
