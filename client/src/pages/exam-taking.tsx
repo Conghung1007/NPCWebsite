@@ -277,8 +277,10 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                 {/* Question Audio */}
                 {currentQuestion.audioUrl && (
                   <div className="flex justify-center">
-                    <audio controls className="w-full max-w-md">
-                      <source src={currentQuestion.audioUrl} type="audio/mpeg" />
+                    <audio controls className="w-full max-w-md" key={currentQuestion.id}>
+                      <source src={currentQuestion.audioUrl.startsWith('/api/') 
+                        ? currentQuestion.audioUrl 
+                        : `/api/${currentQuestion.audioUrl}`} type="audio/mpeg" />
                       Trình duyệt của bạn không hỗ trợ phát audio.
                     </audio>
                   </div>
