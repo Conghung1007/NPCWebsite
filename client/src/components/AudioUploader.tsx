@@ -74,7 +74,6 @@ export function AudioUploader({
             const audioUrl = response.audioUrl;
             
             // Update current audio URL and load the audio
-            setCurrentAudioUrl(audioUrl);
             if (audioRef.current) {
               audioRef.current.src = audioUrl;
               audioRef.current.load(); // Force reload of audio element
