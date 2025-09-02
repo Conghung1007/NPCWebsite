@@ -26,7 +26,7 @@ export interface FileInfo {
 export class MultiR2StorageService {
   
   // Get upload URL for different providers
-  async getUploadUrl(config: MediaUploadConfig): Promise<UploadResult> {
+  async getUploadUrl(config: MediaUploadConfig, contentType?: string): Promise<UploadResult> {
     const fileId = randomUUID();
     const fileName = `${config.folder}/${fileId}`;
 
@@ -36,7 +36,7 @@ export class MultiR2StorageService {
         return await this.getReplitUploadUrl(fileName);
       } else {
         // Use external R2
-        return await this.getExternalR2UploadUrl(config.provider, fileName);
+        return await this.getExternalR2UploadUrl(config.provider, fileName, contentType);
       }
     } catch (error) {
       console.error("Error getting upload URL:", error);
@@ -70,9 +70,9 @@ export class MultiR2StorageService {
   }
 
   // Get external R2 upload URL
-  private async getExternalR2UploadUrl(provider: string, fileName: string): Promise<UploadResult> {
+  private async getExternalR2UploadUrl(provider: string, fileName: string, contentType?: string): Promise<UploadResult> {
     try {
-      const uploadUrl = await r2Manager.generateUploadUrl(provider, fileName, 3600);
+      const uploadUrl = await r2Manager.generateUploadUrl(provider, fileName, 3600, contentType);
       
       if (!uploadUrl) {
         return {

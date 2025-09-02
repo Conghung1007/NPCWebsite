@@ -89,7 +89,8 @@ export class R2ClientManager {
   async generateUploadUrl(
     configName: string,
     key: string,
-    expiresIn: number = 3600
+    expiresIn: number = 3600,
+    contentType?: string
   ): Promise<string | null> {
     const client = this.getClient(configName);
     if (!client) {
@@ -107,7 +108,7 @@ export class R2ClientManager {
       const command = new PutObjectCommand({
         Bucket: config.bucketName,
         Key: key,
-        ContentType: 'image/jpeg' // Default content type for images
+        ContentType: contentType || 'application/octet-stream'
       });
 
       const signedUrl = await getSignedUrl(client, command, { 

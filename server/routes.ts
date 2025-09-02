@@ -1462,7 +1462,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           folder: "audio",
           allowedTypes: ["audio/*"],
           maxSizeBytes: 10 * 1024 * 1024 // 10MB
-        });
+        }, fileType);
         
         if (!uploadResult.success) {
           return res.status(500).json({ 
@@ -1493,7 +1493,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { filename } = req.params;
       const objectKey = `audio/${filename}`;
       
-      const downloadUrl = await multiR2Storage.getDownloadUrl("primary", objectKey);
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
       
       if (!downloadUrl) {
         return res.status(404).json({ message: "Audio file not found" });
