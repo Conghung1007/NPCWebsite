@@ -43,39 +43,10 @@ export function Pagination({ currentPage, totalPages, onPageChange, className = 
 
   return (
     <div className={`w-full max-w-full overflow-x-hidden ${className}`}>
-      {/* Mobile Layout - Compact */}
+      {/* Mobile Layout - Stacked */}
       <div className="flex flex-col space-y-3 md:hidden">
-        {/* Simple navigation for mobile */}
-        <div className="flex items-center justify-between">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(Math.max(1, currentPage - 1))}
-            disabled={currentPage === 1}
-            className="h-8 px-3"
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Trước
-          </Button>
-          
-          <span className="text-sm text-muted-foreground px-3">
-            Trang {currentPage} / {totalPages}
-          </span>
-          
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
-            disabled={currentPage === totalPages}
-            className="h-8 px-3"
-          >
-            Sau
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
-        </div>
-        
-        {/* Page numbers for mobile - limited to 5 buttons */}
-        <div className="flex items-center justify-center space-x-1 flex-wrap">
+        {/* Page numbers on top for mobile */}
+        <div className="flex items-center justify-center space-x-1 flex-wrap gap-y-2">
           {visiblePages.slice(0, 5).map((page, index) => {
             if (page === "...") {
               return (
@@ -98,9 +69,58 @@ export function Pagination({ currentPage, totalPages, onPageChange, className = 
             );
           })}
         </div>
+        
+        {/* Navigation buttons below for mobile */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(1)}
+              disabled={currentPage === 1}
+              className="h-8 px-2 text-xs"
+            >
+              <ChevronsLeft className="h-3 w-3" />
+              <span className="hidden sm:inline ml-1">Đầu</span>
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(Math.max(1, currentPage - 1))}
+              disabled={currentPage === 1}
+              className="h-8 px-2 text-xs"
+            >
+              <ChevronLeft className="h-3 w-3" />
+              <span className="hidden sm:inline ml-1">Trước</span>
+            </Button>
+          </div>
+          
+          <div className="flex items-center space-x-1">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(Math.min(totalPages, currentPage + 1))}
+              disabled={currentPage === totalPages}
+              className="h-8 px-2 text-xs"
+            >
+              <span className="hidden sm:inline mr-1">Kế</span>
+              <ChevronRight className="h-3 w-3" />
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => onPageChange(totalPages)}
+              disabled={currentPage === totalPages}
+              className="h-8 px-2 text-xs"
+            >
+              <span className="hidden sm:inline mr-1">Cuối</span>
+              <ChevronsRight className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
       </div>
 
-      {/* Desktop Layout - Full controls */}
+      {/* Desktop Layout */}
       <div className="hidden md:flex items-center justify-between w-full">
         {/* Left side: First and Previous buttons */}
         <div className="flex items-center space-x-2">
@@ -127,7 +147,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, className = 
         </div>
 
         {/* Center: Page numbers */}
-        <div className="flex items-center space-x-1">
+        <div className="flex items-center space-x-1 flex-wrap">
           {visiblePages.map((page, index) => {
             if (page === "...") {
               return (
@@ -160,7 +180,7 @@ export function Pagination({ currentPage, totalPages, onPageChange, className = 
             disabled={currentPage === totalPages}
             className="h-9 px-3"
           >
-            Sau
+            Kế
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
           <Button

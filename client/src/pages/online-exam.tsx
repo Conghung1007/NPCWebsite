@@ -1,32 +1,19 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Pagination } from "@/components/ui/pagination";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 import { Clock, Users, BookOpen, Award, Play, Lock } from "lucide-react";
-import { type Exam, type User } from "@shared/schema";
+import { type Exam } from "@shared/schema";
 
 export function OnlineExamPage() {
-  const [user, setUser] = useState<User | null>(null);
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const [demoCurrentPage, setDemoCurrentPage] = useState(1);
   const [officialCurrentPage, setOfficialCurrentPage] = useState(1);
   const examsPerPage = 6;
-
-  // Check for logged in user
-  useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-        localStorage.removeItem("user");
-        setUser(null);
-      }
-    }
-  }, []);
 
   // Fetch available exams
   const { data: exams = [], isLoading } = useQuery<Exam[]>({
@@ -59,7 +46,7 @@ export function OnlineExamPage() {
     setOfficialCurrentPage(page);
   };
 
-  if (isLoading) {
+  if (isLoading || authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-12 w-full max-w-full overflow-x-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -197,7 +184,7 @@ export function OnlineExamPage() {
             Các đề thi chính thức với kết quả được lưu trữ và theo dõi. Cần đăng nhập để tham gia.
           </p>
 
-          {!user && (
+          {!isAuthenticated && (
             <Card className="mb-6 border-blue-200 bg-blue-50">
               <CardContent className="pt-6">
                 <div className="flex items-center justify-between">
@@ -235,7 +222,7 @@ export function OnlineExamPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {officialExams.map((exam) => (
-                <Card key={exam.id} className={`hover:shadow-lg transition-shadow ${!user ? 'opacity-75' : ''}`}>
+                <Card key={exam.id} className={`hover:shadow-lg transition-shadow ${!isAuthenticated ? 'opacity-75' : ''}`}>
                   <CardHeader>
                     <CardTitle className="text-lg">{exam.title}</CardTitle>
                     <CardDescription>{exam.description}</CardDescription>
@@ -255,7 +242,7 @@ export function OnlineExamPage() {
                           Chính thức
                         </Badge>
                       </div>
-                      {user ? (
+                      {isAuthenticated ? (
                         <Link href={`/exam/${exam.id}`}>
                           <Button className="w-full mt-4">
                             <Play className="w-4 h-4 mr-2" />
