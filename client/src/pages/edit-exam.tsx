@@ -82,19 +82,24 @@ export default function EditExam() {
 
   // Populate form when data is loaded
   useEffect(() => {
-    if (exam) {
+    if (exam && !questionsLoading) {
+      console.log('Loading exam data:', { exam, questions, questionsLength: questions.length });
+      
       let formattedQuestions;
       
       if (questions.length > 0) {
-        formattedQuestions = questions.map(q => ({
-          questionText: q.questionText,
-          questionType: q.questionType || "multiple_choice",
-          imageUrl: q.imageUrl || "",
-          audioUrl: q.audioUrl || "",
-          options: Array.isArray(q.options) ? q.options as string[] : ["", ""],
-          correctAnswer: q.correctAnswer,
-          explanation: q.explanation || "",
-        }));
+        formattedQuestions = questions.map(q => {
+          console.log('Processing question:', q);
+          return {
+            questionText: q.questionText || "",
+            questionType: q.questionType || "multiple_choice",
+            imageUrl: q.imageUrl || "",
+            audioUrl: q.audioUrl || "",
+            options: Array.isArray(q.options) ? q.options as string[] : ["", ""],
+            correctAnswer: q.correctAnswer || "",
+            explanation: q.explanation || "",
+          };
+        });
       } else {
         // Default empty question if no questions exist
         formattedQuestions = [{
@@ -108,6 +113,15 @@ export default function EditExam() {
         }];
       }
 
+      console.log('Form data being reset with:', {
+        title: exam.title,
+        description: exam.description || "",
+        timeLimit: exam.timeLimit,
+        isDemo: exam.isDemo || false,
+        isActive: exam.isActive !== false,
+        questions: formattedQuestions,
+      });
+
       form.reset({
         title: exam.title,
         description: exam.description || "",
@@ -117,7 +131,7 @@ export default function EditExam() {
         questions: formattedQuestions,
       });
     }
-  }, [exam, questions, form.reset]);
+  }, [exam, questions, questionsLoading, form.reset]);
 
   // Update exam mutation
   const updateExamMutation = useMutation({
