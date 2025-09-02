@@ -7,10 +7,9 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Clock, ChevronLeft, ChevronRight, FileText, CheckCircle } from "lucide-react";
+import { Clock, ChevronLeft, ChevronRight, FileText, CheckCircle, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { type Exam, type Question, type User } from "@shared/schema";
 
 interface ExamTakingPageProps {
@@ -20,28 +19,20 @@ interface ExamTakingPageProps {
 export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [, setLocation] = useLocation();
   const { user, isLoading: authLoading, isAuthenticated } = useAuth();
-  const { toast } = useToast();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
+  const [showLoginDialog, setShowLoginDialog] = useState(false);
   const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([]);
 
-  // Redirect to login if not authenticated
+  // Show login dialog if not authenticated
   useEffect(() => {
     if (!authLoading && !isAuthenticated) {
-      toast({
-        title: "Cần đăng nhập",
-        description: "Bạn cần đăng nhập để tham gia đề thi chính thức. Đang chuyển hướng...",
-        variant: "destructive",
-      });
-      setTimeout(() => {
-        setLocation("/login");
-      }, 1500);
-      return;
+      setShowLoginDialog(true);
     }
-  }, [authLoading, isAuthenticated, toast, setLocation]);
+  }, [authLoading, isAuthenticated]);
 
   // Fetch exam details - only if authenticated
   const { data: exam, isLoading: examLoading, error: examError } = useQuery<Exam>({
@@ -165,27 +156,36 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     return `${minutes}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // Check authentication for official exams
-  if (exam && !exam.isDemo && !user) {
+  // Show login dialog for official exams without authentication
+  if (showLoginDialog && !isAuthenticated) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="max-w-md mx-auto">
-          <CardContent className="text-center py-12">
-            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Cần đăng nhập</h2>
-            <p className="text-gray-600 mb-6">
-              Đây là đề thi chính thức, bạn cần đăng nhập để tham gia.
-            </p>
-            <div className="space-x-4">
-              <Button variant="outline" onClick={() => setLocation("/login")}>
+        <Dialog open={true} onOpenChange={() => {}} modal={true}>
+          <DialogContent className="sm:max-w-[425px]" onPointerDownOutside={() => setLocation("/online-exam")} onEscapeKeyDown={() => setLocation("/online-exam")}>
+            <DialogHeader className="relative">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="absolute -top-2 -left-2 h-6 w-6 p-0"
+                onClick={() => setLocation("/online-exam")}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <DialogTitle>Cần đăng nhập</DialogTitle>
+              <DialogDescription>
+                Đây là đề thi chính thức, bạn cần đăng nhập để có thể tham gia.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex flex-col space-y-2 sm:flex-row sm:space-y-0 sm:space-x-2">
+              <Button variant="outline" onClick={() => setLocation("/online-exam")}>
+                Quay lại
+              </Button>
+              <Button onClick={() => setLocation("/login")}>
                 Đăng nhập
               </Button>
-              <Button onClick={() => setLocation("/online-exam")}>
-                Về trang chủ
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
