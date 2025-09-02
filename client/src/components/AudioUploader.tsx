@@ -75,10 +75,6 @@ export function AudioUploader({
             
             // Update current audio URL and load the audio
             setCurrentAudioUrl(audioUrl);
-            if (audioRef.current) {
-              audioRef.current.src = audioUrl;
-              audioRef.current.load(); // Force reload of audio element
-            }
             
             onAudioUpload(audioUrl);
             toast({
@@ -87,7 +83,11 @@ export function AudioUploader({
             });
           } catch (parseError) {
             console.error('Failed to parse response:', parseError);
-            throw new Error('Invalid server response');
+            toast({
+              title: "Lỗi",
+              description: "Phản hồi từ server không hợp lệ",
+              variant: "destructive",
+            });
           }
         } else {
           console.error('Upload failed with status:', xhr.status);
@@ -121,27 +121,31 @@ export function AudioUploader({
     }
   };
 
-  const handlePlayPause = () => {
+  const handlePlayPause = async () => {
     if (!audioRef.current || !currentAudioUrl) return;
 
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      // Ensure the audio src is set before playing
-      if (!audioRef.current.src || audioRef.current.src !== currentAudioUrl) {
-        audioRef.current.src = currentAudioUrl;
-        audioRef.current.load();
-      }
-      audioRef.current.play().catch(error => {
+      try {
+        // Create a new audio element if needed
+        if (!audioRef.current.src || audioRef.current.src !== currentAudioUrl) {
+          audioRef.current.src = currentAudioUrl;
+          audioRef.current.load();
+        }
+        
+        await audioRef.current.play();
+        setIsPlaying(true);
+      } catch (error) {
         console.error('Audio play error:', error);
         toast({
           title: "Lỗi phát audio",
-          description: "Không thể phát file audio này",
+          description: "Không thể phát file audio này. Kiểm tra file có tồn tại không.",
           variant: "destructive",
         });
-      });
-      setIsPlaying(true);
+        setIsPlaying(false);
+      }
     }
   };
 
@@ -208,10 +212,21 @@ export function AudioUploader({
           
           <audio
             ref={audioRef}
-            src={currentAudioUrl}
             onEnded={handleAudioEnded}
+            onError={(e) => {
+              console.error('Audio element error:', e);
+              setIsPlaying(false);
+            }}
+            onLoadedData={() => {
+              console.log('Audio loaded successfully');
+            }}
             preload="metadata"
-          />
+          >
+            <source src={currentAudioUrl} type="audio/mpeg" />
+            <source src={currentAudioUrl} type="audio/mp3" />
+            <source src={currentAudioUrl} type="audio/wav" />
+            Trình duyệt của bạn không hỗ trợ phát audio.
+          </audio>
         </div>
       )}
 
