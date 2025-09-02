@@ -122,15 +122,27 @@ export function AudioUploader({
   };
 
   const handlePlayPause = async () => {
-    if (!audioRef.current || !currentAudioUrl) return;
+    if (!audioRef.current || !currentAudioUrl) {
+      console.log('No audio ref or URL:', { audioRef: !!audioRef.current, currentAudioUrl });
+      return;
+    }
+
+    console.log('Current audio URL:', currentAudioUrl);
+    console.log('Audio element src:', audioRef.current.src);
 
     if (isPlaying) {
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
       try {
-        // Create a new audio element if needed
-        if (!audioRef.current.src || audioRef.current.src !== currentAudioUrl) {
+        // Test if URL is accessible first
+        const testResponse = await fetch(currentAudioUrl, { method: 'HEAD' });
+        if (!testResponse.ok) {
+          throw new Error(`Audio file not accessible: ${testResponse.status}`);
+        }
+
+        // Set src and load if different
+        if (audioRef.current.src !== currentAudioUrl) {
           audioRef.current.src = currentAudioUrl;
           audioRef.current.load();
         }
@@ -141,7 +153,7 @@ export function AudioUploader({
         console.error('Audio play error:', error);
         toast({
           title: "Lỗi phát audio",
-          description: "Không thể phát file audio này. Kiểm tra file có tồn tại không.",
+          description: `Không thể phát file: ${currentAudioUrl?.split('/').pop()}. Kiểm tra file có tồn tại.`,
           variant: "destructive",
         });
         setIsPlaying(false);
@@ -212,21 +224,28 @@ export function AudioUploader({
           
           <audio
             ref={audioRef}
+            src={currentAudioUrl}
             onEnded={handleAudioEnded}
             onError={(e) => {
               console.error('Audio element error:', e);
+              console.error('Failed audio URL:', currentAudioUrl);
               setIsPlaying(false);
+              toast({
+                title: "Lỗi phát audio",
+                description: `Không thể load file audio: ${currentAudioUrl?.split('/').pop()}`,
+                variant: "destructive",
+              });
             }}
             onLoadedData={() => {
-              console.log('Audio loaded successfully');
+              console.log('Audio loaded successfully:', currentAudioUrl);
+            }}
+            onCanPlay={() => {
+              console.log('Audio can play:', currentAudioUrl);
             }}
             preload="metadata"
-          >
-            <source src={currentAudioUrl} type="audio/mpeg" />
-            <source src={currentAudioUrl} type="audio/mp3" />
-            <source src={currentAudioUrl} type="audio/wav" />
-            Trình duyệt của bạn không hỗ trợ phát audio.
-          </audio>
+            controls
+            style={{ width: '100%', maxWidth: '300px' }}
+          />
         </div>
       )}
 
