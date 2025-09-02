@@ -58,6 +58,22 @@ export function AudioUploader({
       setUploadProgress(0);
       setOriginalFileName(file.name);
 
+      // Cleanup previous temporary file if exists
+      if (currentAudioUrl && currentAudioUrl.includes('/api/temp-audio/')) {
+        try {
+          const oldFilename = currentAudioUrl.split('/').pop();
+          if (oldFilename) {
+            fetch("/api/temp-audio/cleanup", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ filenames: [oldFilename] })
+            }).catch(e => console.warn("Failed to cleanup old temp file:", e));
+          }
+        } catch (error) {
+          console.warn("Failed to cleanup old temporary audio file:", error);
+        }
+      }
+
       // Use direct upload via server
       const formData = new FormData();
       formData.append('audio', file);
@@ -161,6 +177,29 @@ export function AudioUploader({
     setIsPlaying(false);
   };
 
+  const handleRemoveAudio = async () => {
+    // If it's a temporary file, clean it up from R2 storage
+    if (currentAudioUrl && currentAudioUrl.includes('/api/temp-audio/')) {
+      try {
+        const filename = currentAudioUrl.split('/').pop();
+        if (filename) {
+          await fetch("/api/temp-audio/cleanup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ filenames: [filename] })
+          });
+        }
+      } catch (error) {
+        console.warn("Failed to cleanup temporary audio file:", error);
+      }
+    }
+    
+    // Call the parent component's remove handler
+    if (onRemoveAudio) {
+      onRemoveAudio();
+    }
+  };
+
   return (
     <div className="space-y-3">
       <input
@@ -211,7 +250,7 @@ export function AudioUploader({
                   type="button"
                   variant="outline"
                   size="sm"
-                  onClick={onRemoveAudio}
+                  onClick={handleRemoveAudio}
                   disabled={disabled}
                 >
                   <Trash2 className="w-4 h-4" />
