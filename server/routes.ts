@@ -1890,8 +1890,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Handle temporary audio file - move to permanent location
       let finalAudioUrl = audioUrl;
       if (audioUrl && audioUrl.includes('/api/temp-audio/')) {
+        console.log(`Moving temporary audio: ${audioUrl}`);
         try {
           finalAudioUrl = await moveTemporaryAudioToPermanent(audioUrl);
+          console.log(`Move result: ${finalAudioUrl}`);
           if (!finalAudioUrl) {
             console.warn("Failed to move temporary audio, setting to null");
             finalAudioUrl = null;

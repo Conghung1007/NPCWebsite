@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import { Save, Plus, Minus, ArrowLeft } from "lucide-react";
 import { AudioUploader } from "@/components/AudioUploader";
@@ -40,6 +40,7 @@ export default function EditExam() {
   const { examId } = useParams<{ examId: string }>();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   // Fetch exam data
   const { data: exam, isLoading: examLoading } = useQuery<Exam>({
@@ -201,6 +202,10 @@ export default function EditExam() {
         title: "Thành công", 
         description: "Cập nhật bài thi thành công",
       });
+      // Invalidate queries to refresh cached data
+      queryClient.invalidateQueries({ queryKey: [`/api/exams/${examId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/exams/${examId}/questions`] });
+      queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
       // Navigate back to cpanel using router
       setLocation("/cpanel?tab=exams");
     },
