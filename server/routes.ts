@@ -1469,7 +1469,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ error: uploadResult.error || "Upload failed" });
         }
         
-        const audioUrl = uploadResult.path;
+        // Return the proper audio URL for accessing via proxy
+        const audioUrl = `/api/audio/${fileName}`;
         res.json({ audioUrl });
         
       } catch (uploadError) {
@@ -1551,7 +1552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Audio download endpoint
-  app.get("/audio/:filename", async (req, res) => {
+  app.get("/api/audio/:filename", async (req, res) => {
     try {
       const { filename } = req.params;
       const objectKey = `audio/${filename}`;
@@ -1577,7 +1578,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         'Cache-Control': 'public, max-age=31536000', // 1 year cache
       });
 
-      audioResponse.body?.pipe(res);
+      // Stream the audio data
+      const audioBuffer = await audioResponse.arrayBuffer();
+      return res.send(Buffer.from(audioBuffer));
     } catch (error) {
       console.error("Error serving audio file:", error);
       res.status(500).json({ message: "Failed to serve audio file" });
