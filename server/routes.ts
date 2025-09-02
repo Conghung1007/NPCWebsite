@@ -1427,7 +1427,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Audio upload endpoint
+  // Audio upload via server proxy (alternative to presigned URL)
+  app.post("/api/audio/upload-direct", upload.single('audio'), async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      if (!req.file) {
+        return res.status(400).json({ message: "No audio file provided" });
+      }
+
+      const file = req.file;
+      
+      // Validate audio file type
+      if (!file.mimetype.startsWith('audio/')) {
+        return res.status(400).json({ message: "Only audio files are allowed" });
+      }
+
+      // Generate unique filename
+      const timestamp = Date.now();
+      const fileExtension = file.originalname.split('.').pop() || 'mp3';
+      const objectKey = `audio/${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      
+      try {
+        // Upload directly using R2 client
+        const uploadResult = await multiR2Storage.uploadFile({
+          provider: "primary",
+          key: objectKey,
+          body: file.buffer,
+          contentType: file.mimetype
+        });
+        
+        if (!uploadResult.success) {
+          return res.status(500).json({ error: uploadResult.error || "Upload failed" });
+        }
+        
+        const audioUrl = uploadResult.path;
+        res.json({ audioUrl });
+        
+      } catch (uploadError) {
+        console.error("Direct upload error:", uploadError);
+        res.status(500).json({ error: "Failed to upload audio file" });
+      }
+    } catch (error) {
+      console.error("Audio upload endpoint error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Audio upload endpoint (presigned URL)
   app.post("/api/audio/upload", async (req, res) => {
     try {
       const sessionUser = (req.session as any)?.user;

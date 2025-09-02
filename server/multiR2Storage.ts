@@ -1,4 +1,5 @@
 import { r2Manager, EXTERNAL_R2_CONFIGS } from "./r2Config";
+import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
 
 export interface MediaUploadConfig {
@@ -24,6 +25,48 @@ export interface FileInfo {
 }
 
 export class MultiR2StorageService {
+  
+  // Direct upload method using R2 client
+  async uploadFile(params: {
+    provider: string;
+    key: string;
+    body: Buffer;
+    contentType: string;
+  }): Promise<{ success: boolean; path?: string; error?: string; provider?: string }> {
+    const { provider, key, body, contentType } = params;
+    
+    try {
+      const client = r2Manager.getClient(provider);
+      if (!client) {
+        return { success: false, error: `R2 client not found for provider: ${provider}` };
+      }
+
+      const config = EXTERNAL_R2_CONFIGS[provider];
+      if (!config) {
+        return { success: false, error: `R2 configuration not found: ${provider}` };
+      }
+
+      const command = new PutObjectCommand({
+        Bucket: config.bucketName,
+        Key: key,
+        Body: body,
+        ContentType: contentType
+      });
+
+      await client.send(command);
+      
+      const path = `https://${config.bucketName}.${config.endpoint.replace('https://', '')}.com/${key}`;
+      
+      return {
+        success: true,
+        path,
+        provider
+      };
+    } catch (error) {
+      console.error(`Upload file error for ${provider}:`, error);
+      return { success: false, error: error.message };
+    }
+  }
   
   // Get upload URL for different providers
   async getUploadUrl(config: MediaUploadConfig, contentType?: string): Promise<UploadResult> {

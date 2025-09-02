@@ -51,63 +51,56 @@ export function AudioUploader({
       setIsUploading(true);
       setUploadProgress(0);
 
-      // Get presigned URL for audio upload
-      const uploadResponse = await fetch('/api/audio/upload', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size,
-        }),
-      });
+      // Use direct upload via server
+      const formData = new FormData();
+      formData.append('audio', file);
 
-      if (!uploadResponse.ok) {
-        throw new Error('Failed to get upload URL');
-      }
-
-      const { uploadUrl, audioUrl } = await uploadResponse.json();
-
-      // Upload file to R2
-      const uploadToR2 = new XMLHttpRequest();
+      const xhr = new XMLHttpRequest();
       
-      uploadToR2.upload.addEventListener('progress', (e) => {
+      xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
           const progress = Math.round((e.loaded / e.total) * 100);
           setUploadProgress(progress);
         }
       });
 
-      uploadToR2.addEventListener('load', () => {
-        console.log('Upload completed with status:', uploadToR2.status);
-        console.log('Upload response text:', uploadToR2.responseText);
+      xhr.addEventListener('load', () => {
+        console.log('Upload completed with status:', xhr.status);
+        console.log('Upload response text:', xhr.responseText);
         
-        if (uploadToR2.status === 200 || uploadToR2.status === 204) {
-          onAudioUpload(audioUrl);
-          toast({
-            title: "Thành công",
-            description: "Upload file audio thành công",
-          });
+        if (xhr.status === 200) {
+          try {
+            const response = JSON.parse(xhr.responseText);
+            onAudioUpload(response.audioUrl);
+            toast({
+              title: "Thành công", 
+              description: "Upload file audio thành công",
+            });
+          } catch (parseError) {
+            console.error('Failed to parse response:', parseError);
+            throw new Error('Invalid server response');
+          }
         } else {
-          console.error('Upload failed with status:', uploadToR2.status);
-          throw new Error(`Upload failed with status: ${uploadToR2.status}`);
+          console.error('Upload failed with status:', xhr.status);
+          throw new Error(`Upload failed with status: ${xhr.status}`);
         }
       });
 
-      uploadToR2.addEventListener('error', () => {
-        throw new Error('Upload failed');
+      xhr.addEventListener('error', (e) => {
+        console.error('XMLHttpRequest error event:', e);
+        console.error('Upload error - status:', xhr.status);
+        console.error('Upload error - response:', xhr.responseText);
+        throw new Error(`Upload failed - Network error`);
       });
 
-      uploadToR2.open('PUT', uploadUrl);
-      uploadToR2.send(file);
+      xhr.open('POST', '/api/audio/upload-direct');
+      xhr.send(formData);
 
     } catch (error) {
       console.error('Audio upload error:', error);
       toast({
         title: "Lỗi",
-        description: "Không thể upload file audio. Vui lòng thử lại.",
+        description: error instanceof Error ? error.message : "Không thể upload file audio",
         variant: "destructive",
       });
     } finally {
