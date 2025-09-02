@@ -26,6 +26,9 @@ export function AudioUploader({
   const audioRef = useRef<HTMLAudioElement>(null);
   const { toast } = useToast();
 
+  // Debug log for currentAudioUrl
+  console.log('AudioUploader currentAudioUrl:', currentAudioUrl);
+
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
