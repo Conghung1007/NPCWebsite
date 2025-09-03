@@ -417,7 +417,7 @@ export default function Home() {
           </div>
         )}
         
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
+        <div className="relative max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-24 lg:py-32">
           <div className="text-center">
             <h1 className="text-5xl lg:text-7xl font-bold mb-4">
               <EditableText 
@@ -493,7 +493,7 @@ export default function Home() {
 
       {/* Services with Articles */}
       <section id="services" className="py-20 bg-neutral">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
               <EditableText 
