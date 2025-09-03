@@ -36,7 +36,7 @@ export function Footer() {
   return (
     <footer className="bg-gray-900 text-white py-12 sm:py-16 w-full max-w-full overflow-x-hidden">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mb-8 lg:mb-12">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8 mb-8 lg:mb-12 w-4/5 max-w-4/5 mx-auto">
           <div className="sm:col-span-2 lg:col-span-1">
             <div className="flex items-center mb-4 lg:mb-6">
               <span className="text-2xl sm:text-3xl font-bold text-primary mr-2">N&P</span>
@@ -115,7 +115,7 @@ export function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-gray-800 pt-8">
+        <div className="border-t border-gray-800 pt-8 w-4/5 max-w-4/5 mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-gray-400 text-sm mb-4 md:mb-0">
               © 2024 Công ty TNHH N&P. Tất cả quyền được bảo lưu.
