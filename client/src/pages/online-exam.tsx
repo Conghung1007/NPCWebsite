@@ -191,8 +191,7 @@ export function OnlineExamPage() {
                   <div className="flex items-center">
                     <Lock className="w-5 h-5 text-blue-600 mr-3" />
                     <div>
-                      <p className="font-medium text-blue-900">Cần đăng nhập để thi đề chính thức</p>
-                      <p className="text-sm text-blue-700">Đăng nhập để lưu kết quả và theo dõi tiến độ học tập</p>
+                      <p className="font-medium text-blue-900">Cần đăng nhập đề có nhiều đề thi hơn</p>
                     </div>
                   </div>
                   <div className="flex space-x-2">
