@@ -83,7 +83,7 @@ export function Header() {
           </div>
 
           {/* Desktop Navigation - Centered */}
-          <div className="hidden md:flex flex-1 justify-center">
+          <div className="hidden lg:flex flex-1 justify-center">
             <div className="flex items-center space-x-3">
               {navigation.map((item) => (
                 <Link key={item.name} href={item.href}>
@@ -109,7 +109,7 @@ export function Header() {
             </div>
           </div>
 
-          <div className="hidden md:flex items-center space-x-3 lg:space-x-4">
+          <div className="hidden lg:flex items-center space-x-3 lg:space-x-4">
             <Button variant="outline" size="sm" className="text-sm lg:text-base px-2 lg:px-3">
               VI
             </Button>
@@ -155,6 +155,89 @@ export function Header() {
                 </Link>
               </div>
             )}
+          </div>
+
+          {/* Tablet - Show Login/Register buttons */}
+          <div className="hidden md:flex lg:hidden items-center space-x-2">
+            <Button variant="outline" size="sm" className="text-sm px-2">
+              VI
+            </Button>
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="sm" className="text-sm">
+                    <User className="w-4 h-4 mr-1" />
+                    {user.username}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem disabled>
+                    <span className="font-medium">{user.role}</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  {(user.role === 'manager' || user.role === 'admin') && (
+                    <DropdownMenuItem asChild>
+                      <Link href="/cpanel" className="flex items-center">
+                        <Settings className="w-4 h-4 mr-2" />
+                        Control Panel
+                      </Link>
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={handleLogout}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Đăng xuất
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <>
+                <Link href="/login">
+                  <Button variant="outline" size="sm" className="text-sm px-3">
+                    Đăng nhập
+                  </Button>
+                </Link>
+                <Link href="/register">
+                  <Button variant="outline" size="sm" className="text-sm px-3">
+                    Đăng ký
+                  </Button>
+                </Link>
+              </>
+            )}
+            <Sheet open={isOpen} onOpenChange={setIsOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="ml-2">
+                  <Menu className="h-6 w-6" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-72 sm:w-80">
+                <div className="flex flex-col space-y-3 mt-6">
+                  {navigation.map((item) => (
+                    <Link key={item.name} href={item.href}>
+                      <span 
+                        className={`block px-3 py-2.5 text-lg font-semibold rounded-lg transition-all text-center ${
+                          item.name === "Tư vấn\nmiễn phí" 
+                            ? "bg-primary text-white hover:bg-primary/90 shadow-md" 
+                            : location === item.href 
+                              ? "text-white bg-primary" 
+                              : "text-foreground hover:text-primary hover:bg-primary/10"
+                        }`}
+                        onClick={() => setIsOpen(false)}
+                      >
+                        {item.name === "Tư vấn\nmiễn phí" ? (
+                          <span>Tư vấn miễn phí</span>
+                        ) : (
+                          item.name.split('\n').map((line, index) => (
+                            <span key={index} className="block">
+                              {line}
+                            </span>
+                          ))
+                        )}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
 
           {/* Mobile menu button */}
