@@ -70,7 +70,7 @@ export function Header() {
 
   return (
     <header className="bg-white/95 shadow-sm fixed top-0 left-0 right-0 z-[9999] w-full max-w-full overflow-x-hidden backdrop-blur-sm border-b border-gray-200">
-      <nav className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative w-full">
+      <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative w-full">
         <div className="flex justify-between items-center h-16 sm:h-20 w-full max-w-full">
           <div className="flex items-center">
             <Link href="/" className="flex items-center space-x-2 sm:space-x-3">
