@@ -191,7 +191,7 @@ export function OnlineExamPage() {
                   <div className="flex items-center">
                     <Lock className="w-5 h-5 text-blue-600 mr-3" />
                     <div>
-                      <p className="font-medium text-blue-900">Cần đăng nhập đề có nhiều đề thi hơn</p>
+                      <p className="font-medium text-blue-900">Cần đăng nhập để có nhiều đề thi hơn</p>
                     </div>
                   </div>
                   <div className="flex space-x-2">
