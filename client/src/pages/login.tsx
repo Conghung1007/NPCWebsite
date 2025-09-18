@@ -66,6 +66,9 @@ export default function Login() {
           description: `Chào mừng ${data.user.username}!`,
         });
         
+        // Store user data in localStorage for cpanel access
+        localStorage.setItem('user', JSON.stringify(data.user));
+        
         // Invalidate auth cache to trigger refetch
         queryClient.invalidateQueries({ queryKey: ["/api/auth/user"] });
         
