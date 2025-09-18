@@ -42,14 +42,19 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
   // Shuffle questions when they load
   useEffect(() => {
-    if (questions.length > 0 && exam) {
-      // Shuffle questions and take only the required number
-      const shuffled = [...questions]
-        .sort(() => Math.random() - 0.5)
-        .slice(0, exam.questionCount);
-      setShuffledQuestions(shuffled);
+    if (exam && !questionsLoading) {
+      if (questions.length > 0) {
+        // Shuffle questions and take only the required number
+        const shuffled = [...questions]
+          .sort(() => Math.random() - 0.5)
+          .slice(0, exam.questionCount);
+        setShuffledQuestions(shuffled);
+      } else {
+        // No questions available for this exam
+        setShuffledQuestions([]);
+      }
     }
-  }, [questions, exam]);
+  }, [questions, exam, questionsLoading]);
 
   // Initialize timer
   useEffect(() => {
@@ -173,13 +178,34 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     );
   }
 
-  if (examLoading || questionsLoading || shuffledQuestions.length === 0) {
+  // Show loading while fetching data
+  if (examLoading || questionsLoading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-lg text-gray-600">Đang tải đề thi...</p>
         </div>
+      </div>
+    );
+  }
+
+  // Show error if exam has no questions
+  if (exam && !examLoading && !questionsLoading && shuffledQuestions.length === 0) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="text-center py-12">
+            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Đề thi chưa có câu hỏi</h2>
+            <p className="text-gray-600 mb-6">
+              Đề thi này hiện tại chưa có câu hỏi nào. Vui lòng thử lại sau hoặc chọn đề thi khác.
+            </p>
+            <Button onClick={() => setLocation("/online-exam")}>
+              Về trang chủ
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
