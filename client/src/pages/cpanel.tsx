@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/useAuth";
 import { ArticleManager } from "@/components/ArticleManager";
 import { ExamManager } from "@/components/ExamManager";
 import { ContactInfoManager } from "@/components/ContactInfoManager";
@@ -18,7 +19,7 @@ import { type User as UserType, type ContactRequest, type RegistrationRequest } 
 
 export function CpanelPage() {
   const [, setLocation] = useLocation();
-  const [user, setUser] = useState<UserType | null>(null);
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("");
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [isAddingUser, setIsAddingUser] = useState(false);
@@ -46,8 +47,11 @@ export function CpanelPage() {
   const { toast } = useToast();
 
   useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (!userData) {
+    // Don't do anything while authentication is loading
+    if (isLoading) return;
+    
+    // If not authenticated, redirect to login
+    if (!isAuthenticated || !user) {
       toast({
         title: "Không có quyền truy cập",
         description: "Vui lòng đăng nhập để truy cập trang này.",
@@ -57,43 +61,34 @@ export function CpanelPage() {
       return;
     }
     
-    try {
-      const parsedUser = JSON.parse(userData);
-      
-      // Check if user has permission to access Control Panel
-      if (parsedUser.role === 'user') {
-        toast({
-          title: "Không có quyền truy cập",
-          description: "Chỉ Manager và Admin mới có thể truy cập Control Panel.",
-          variant: "destructive",
-        });
-        setLocation("/");
-        return;
-      }
-      
-      setUser(parsedUser);
-      
-      // Check URL parameters for tab
-      const urlParams = new URLSearchParams(window.location.search);
-      const tabParam = urlParams.get('tab');
-      
-      if (tabParam === 'articles') {
-        setActiveTab("articles");
-      } else if (tabParam === 'exams') {
-        setActiveTab("exams");
-      } else {
-        // Set default active tab based on user role
-        if (parsedUser.role === "manager" || parsedUser.role === "admin") {
-          setActiveTab("registrations");
-        } else {
-          setActiveTab("exams");
-        }
-      }
-    } catch (error) {
-      localStorage.removeItem("user");
-      setLocation("/login");
+    // Check if user has permission to access Control Panel
+    if (user.role === 'user') {
+      toast({
+        title: "Không có quyền truy cập",
+        description: "Chỉ Manager và Admin mới có thể truy cập Control Panel.",
+        variant: "destructive",
+      });
+      setLocation("/");
+      return;
     }
-  }, [setLocation, toast]);
+    
+    // Check URL parameters for tab
+    const urlParams = new URLSearchParams(window.location.search);
+    const tabParam = urlParams.get('tab');
+    
+    if (tabParam === 'articles') {
+      setActiveTab("articles");
+    } else if (tabParam === 'exams') {
+      setActiveTab("exams");
+    } else {
+      // Set default active tab based on user role
+      if (user.role === "manager" || user.role === "admin") {
+        setActiveTab("registrations");
+      } else {
+        setActiveTab("exams");
+      }
+    }
+  }, [isLoading, isAuthenticated, user, setLocation, toast]);
 
   // Define permissions based on user role
   const isManager = user?.role === "manager";

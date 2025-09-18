@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Clock, ChevronLeft, ChevronRight, FileText, CheckCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
+import { useAuth } from "@/hooks/useAuth";
 import { type Exam, type Question, type User } from "@shared/schema";
 
 interface ExamTakingPageProps {
@@ -17,7 +18,7 @@ interface ExamTakingPageProps {
 
 export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [, setLocation] = useLocation();
-  const [user, setUser] = useState<User | null>(null);
+  const { user } = useAuth();
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [userAnswers, setUserAnswers] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState<number>(0);
@@ -25,19 +26,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [shuffledQuestions, setShuffledQuestions] = useState<Question[]>([]);
 
-  // Check for logged in user
-  useEffect(() => {
-    const userData = localStorage.getItem("user");
-    if (userData) {
-      try {
-        setUser(JSON.parse(userData));
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-        localStorage.removeItem("user");
-        setUser(null);
-      }
-    }
-  }, []);
+  // User data is now handled by useAuth hook
 
   // Fetch exam details
   const { data: exam, isLoading: examLoading } = useQuery<Exam>({
