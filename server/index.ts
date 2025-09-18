@@ -1,6 +1,5 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import pgSession from "connect-pg-simple";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { seedExamData } from "./seedExamData";
@@ -8,41 +7,18 @@ import { seedExamData } from "./seedExamData";
 
 
 const app = express();
-
-// Trust proxy for production deployment behind TLS-terminating proxy
-app.set('trust proxy', 1);
-
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
-// Setup PostgreSQL session store
-const PgSession = pgSession(session);
-
-// Validate required environment variables in production
-if (process.env.NODE_ENV === 'production') {
-  if (!process.env.SESSION_SECRET) {
-    throw new Error('SESSION_SECRET environment variable is required in production');
-  }
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL environment variable is required in production');
-  }
-}
-
 // Session middleware
 app.use(session({
-  store: new PgSession({
-    conString: process.env.DATABASE_URL,
-    tableName: 'session',
-    createTableIfMissing: true
-  }),
   secret: process.env.SESSION_SECRET || 'your-secret-key-here',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production', // Set to true in production with HTTPS
+    secure: false, // Set to true in production with HTTPS
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000, // 24 hours
-    sameSite: 'lax' // For same-origin requests
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
   }
 }));
 
