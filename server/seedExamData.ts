@@ -7,7 +7,8 @@ export async function seedExamData() {
     // Check if there are already exams in the database
     const existingExams = await storage.getAllExams();
     if (existingExams.length > 0) {
-      console.log(`✓ Found ${existingExams.length} existing exams, skipping seed`);
+      console.log(`✓ Found ${existingExams.length} existing exams, checking for missing questions...`);
+      await seedMissingQuestions();
       return;
     }
 
@@ -248,5 +249,55 @@ export async function seedExamData() {
     
   } catch (error) {
     console.error("Error seeding exam data:", error);
+  }
+}
+
+async function seedMissingQuestions() {
+  try {
+    const allExams = await storage.getAllExams();
+    let fixedCount = 0;
+
+    for (const exam of allExams) {
+      const existingQuestions = await storage.getQuestionsByExamId(exam.id);
+      
+      if (existingQuestions.length === 0 && exam.questionCount > 0) {
+        console.log(`Creating ${exam.questionCount} questions for exam: ${exam.title}`);
+        
+        // Generate questions based on exam type and count
+        const questions = [];
+        for (let i = 1; i <= exam.questionCount; i++) {
+          questions.push({
+            examId: exam.id,
+            questionText: `Sample question ${i} for ${exam.title}`,
+            questionType: "multiple_choice",
+            options: [
+              `Option A for question ${i}`,
+              `Option B for question ${i}`,
+              `Option C for question ${i}`,
+              `Option D for question ${i}`
+            ],
+            correctAnswer: Math.floor(Math.random() * 4).toString(),
+            explanation: `This is the explanation for question ${i} in ${exam.title}.`,
+            sortOrder: i - 1
+          });
+        }
+
+        // Create all questions for this exam
+        for (const questionData of questions) {
+          await storage.createQuestion(questionData);
+        }
+        
+        fixedCount++;
+      }
+    }
+
+    if (fixedCount > 0) {
+      console.log(`✓ Created questions for ${fixedCount} exams that were missing questions`);
+    } else {
+      console.log(`✓ All exams already have questions`);
+    }
+    
+  } catch (error) {
+    console.error("Error seeding missing questions:", error);
   }
 }
