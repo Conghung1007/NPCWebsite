@@ -73,6 +73,7 @@ export const exams = pgTable("exams", {
 export const questions = pgTable("questions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   examId: varchar("exam_id"), // Now nullable - questions can exist independently
+  title: text("title"), // Title for the question
   category: text("category").notNull(), // từ vựng, ngữ pháp, đọc hiểu, nghe hiểu
   description: text("description"), // Mô tả hoặc ghi chú cho câu hỏi
   questionText: text("question_text").notNull(),

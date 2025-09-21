@@ -27,6 +27,7 @@ const questionCategories = [
 
 // Form validation schema
 const questionSchema = z.object({
+  title: z.string().min(1, "Tiêu đề câu hỏi là bắt buộc"),
   category: z.string().min(1, "Danh mục là bắt buộc"),
   description: z.string().optional(),
   questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
@@ -66,6 +67,7 @@ export function QuestionBankManager() {
   const form = useForm<QuestionFormData>({
     resolver: zodResolver(questionSchema),
     defaultValues: {
+      title: "",
       category: "ngữ pháp",
       description: "",
       questionText: "",
@@ -196,6 +198,7 @@ export function QuestionBankManager() {
   const handleEditQuestion = (question: Question) => {
     setEditingQuestion(question);
     form.reset({
+      title: (question as any).title || "",
       category: question.category,
       description: question.description || "",
       questionText: question.questionText,
@@ -389,6 +392,25 @@ export function QuestionBankManager() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+              {/* Title */}
+              <FormField
+                control={form.control}
+                name="title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tiêu đề câu hỏi *</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Nhập tiêu đề cho câu hỏi..."
+                        data-testid="input-question-title"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               <div className="grid grid-cols-1 gap-4">
                 {/* Category */}
                 <FormField
