@@ -62,9 +62,17 @@ export interface IStorage {
   
   createQuestion(question: InsertQuestion): Promise<Question>;
   getQuestion(id: string): Promise<Question | undefined>;
+  getAllQuestions(): Promise<Question[]>;
+  getQuestionsByCategory(category: string): Promise<Question[]>;
+  searchQuestions(searchTerm: string): Promise<Question[]>;
   getQuestionsByExamId(examId: string): Promise<Question[]>;
   updateQuestion(id: string, updateData: Partial<InsertQuestion>): Promise<Question | null>;
   deleteQuestion(id: string): Promise<boolean>;
+  
+  // Exam-Question junction table methods
+  addQuestionToExam(examId: string, questionId: string, sortOrder?: number): Promise<boolean>;
+  removeQuestionFromExam(examId: string, questionId: string): Promise<boolean>;
+  getExamQuestions(examId: string): Promise<Question[]>;
   
   createExamAttempt(attempt: InsertExamAttempt): Promise<ExamAttempt>;
   getExamAttempt(id: string): Promise<ExamAttempt | undefined>;
@@ -75,6 +83,7 @@ export interface IStorage {
 export class MemStorage implements IStorage {
   private users: Map<string, User>;
   private contactRequests: Map<string, ContactRequest>;
+  private contactInfos: Map<string, ContactInfo>;
   private articles: Map<string, Article>;
   private uiImages: Map<string, UiImage>;
   private registrationRequests: Map<string, RegistrationRequest>;
@@ -85,6 +94,7 @@ export class MemStorage implements IStorage {
   constructor() {
     this.users = new Map();
     this.contactRequests = new Map();
+    this.contactInfos = new Map();
     this.articles = new Map();
     this.uiImages = new Map();
     this.registrationRequests = new Map();
@@ -114,6 +124,8 @@ export class MemStorage implements IStorage {
     const user: User = { 
       ...insertUser, 
       id,
+      email: insertUser.email ?? null,
+      phone: insertUser.phone ?? null,
       role: insertUser.role || "user",
       createdAt: new Date()
     };
@@ -190,6 +202,54 @@ export class MemStorage implements IStorage {
 
   async deleteContactRequest(id: string): Promise<boolean> {
     return this.contactRequests.delete(id);
+  }
+
+  // ContactInfo methods for MemStorage
+  async createContactInfo(contactInfoData: InsertContactInfo): Promise<ContactInfo> {
+    const id = randomUUID();
+    const contactInfo: ContactInfo = {
+      ...contactInfoData,
+      id,
+      content: contactInfoData.content ?? [],
+      mapUrl: contactInfoData.mapUrl ?? null,
+      displayOrder: contactInfoData.displayOrder ?? null,
+      isActive: contactInfoData.isActive ?? null,
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    };
+    this.contactInfos.set(id, contactInfo);
+    return contactInfo;
+  }
+
+  async getContactInfo(): Promise<ContactInfo[]> {
+    return Array.from(this.contactInfos.values())
+      .filter(info => info.isActive)
+      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+  }
+
+  async getContactInfoById(id: string): Promise<ContactInfo | undefined> {
+    return this.contactInfos.get(id);
+  }
+
+  async updateContactInfo(id: string, updateData: Partial<InsertContactInfo>): Promise<ContactInfo | null> {
+    const existingInfo = this.contactInfos.get(id);
+    if (!existingInfo) {
+      return null;
+    }
+
+    const updatedInfo: ContactInfo = {
+      ...existingInfo,
+      ...updateData,
+      id,
+      updatedAt: new Date(),
+    };
+
+    this.contactInfos.set(id, updatedInfo);
+    return updatedInfo;
+  }
+
+  async deleteContactInfo(id: string): Promise<boolean> {
+    return this.contactInfos.delete(id);
   }
 
   async createArticle(insertArticle: InsertArticle): Promise<Article> {
@@ -519,6 +579,8 @@ export class MemStorage implements IStorage {
     const uiImage: UiImage = {
       ...uiImageData,
       id,
+      altText: uiImageData.altText ?? null,
+      description: uiImageData.description ?? null,
       createdAt: new Date(),
       updatedAt: new Date()
     };
@@ -663,6 +725,9 @@ export class MemStorage implements IStorage {
     const exam: Exam = {
       ...insertExam,
       id,
+      description: insertExam.description ?? null,
+      isDemo: insertExam.isDemo ?? null,
+      isActive: insertExam.isActive ?? null,
       createdAt: new Date(),
     };
     this.exams.set(id, exam);
@@ -713,6 +778,13 @@ export class MemStorage implements IStorage {
     const question: Question = {
       ...insertQuestion,
       id,
+      examId: insertQuestion.examId ?? null,
+      description: insertQuestion.description ?? null,
+      imageUrl: insertQuestion.imageUrl ?? null,
+      audioUrl: insertQuestion.audioUrl ?? null,
+      explanation: insertQuestion.explanation ?? null,
+      sortOrder: insertQuestion.sortOrder ?? null,
+      questionType: insertQuestion.questionType ?? "multiple_choice",
       createdAt: new Date(),
     };
     this.questions.set(id, question);
@@ -723,10 +795,62 @@ export class MemStorage implements IStorage {
     return this.questions.get(id);
   }
 
+  async getAllQuestions(): Promise<Question[]> {
+    return Array.from(this.questions.values()).sort(
+      (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)
+    );
+  }
+  
+  async getQuestionsByCategory(category: string): Promise<Question[]> {
+    return Array.from(this.questions.values()).filter(
+      question => question.category === category
+    ).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  }
+  
+  async searchQuestions(searchTerm: string): Promise<Question[]> {
+    const term = searchTerm.toLowerCase();
+    return Array.from(this.questions.values()).filter(
+      question => 
+        question.questionText.toLowerCase().includes(term) ||
+        (question.description && question.description.toLowerCase().includes(term))
+    ).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  }
+
   async getQuestionsByExamId(examId: string): Promise<Question[]> {
     return Array.from(this.questions.values()).filter(
       question => question.examId === examId
-    ).sort((a, b) => a.sortOrder - b.sortOrder);
+    ).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  }
+  
+  async addQuestionToExam(examId: string, questionId: string, sortOrder: number = 0): Promise<boolean> {
+    // For MemStorage, we'll just update the question's examId and sortOrder
+    const question = this.questions.get(questionId);
+    if (!question) return false;
+    
+    const updatedQuestion: Question = {
+      ...question,
+      examId,
+      sortOrder,
+    };
+    this.questions.set(questionId, updatedQuestion);
+    return true;
+  }
+  
+  async removeQuestionFromExam(examId: string, questionId: string): Promise<boolean> {
+    const question = this.questions.get(questionId);
+    if (!question || question.examId !== examId) return false;
+    
+    const updatedQuestion: Question = {
+      ...question,
+      examId: null, // Remove from exam, make it independent
+      sortOrder: 0,
+    };
+    this.questions.set(questionId, updatedQuestion);
+    return true;
+  }
+  
+  async getExamQuestions(examId: string): Promise<Question[]> {
+    return this.getQuestionsByExamId(examId);
   }
 
   async updateQuestion(id: string, updateData: Partial<InsertQuestion>): Promise<Question | null> {
@@ -755,6 +879,8 @@ export class MemStorage implements IStorage {
     const attempt: ExamAttempt = {
       ...insertAttempt,
       id,
+      userId: insertAttempt.userId ?? null,
+      timeSpent: insertAttempt.timeSpent ?? null,
       completedAt: new Date(),
     };
     this.examAttempts.set(id, attempt);
@@ -1148,6 +1274,58 @@ export class DatabaseStorage implements IStorage {
   async deleteQuestion(id: string): Promise<boolean> {
     const result = await db.delete(questions).where(eq(questions.id, id));
     return (result as any).rowCount > 0;
+  }
+
+  async getAllQuestions(): Promise<Question[]> {
+    return await db.select().from(questions).orderBy(questions.sortOrder);
+  }
+
+  async getQuestionsByCategory(category: string): Promise<Question[]> {
+    return await db.select().from(questions)
+      .where(eq(questions.category, category))
+      .orderBy(questions.sortOrder);
+  }
+
+  async searchQuestions(searchTerm: string): Promise<Question[]> {
+    const term = `%${searchTerm.toLowerCase()}%`;
+    return await db.select().from(questions)
+      .where(
+        sql`LOWER(${questions.questionText}) LIKE ${term} OR LOWER(${questions.description}) LIKE ${term}`
+      )
+      .orderBy(questions.sortOrder);
+  }
+
+  async addQuestionToExam(examId: string, questionId: string, sortOrder: number = 0): Promise<boolean> {
+    try {
+      // For DatabaseStorage with the new schema, we update the question's examId and sortOrder
+      const result = await db
+        .update(questions)
+        .set({ examId, sortOrder })
+        .where(eq(questions.id, questionId));
+      return (result as any).rowCount > 0;
+    } catch (error) {
+      console.error('Error adding question to exam:', error);
+      return false;
+    }
+  }
+
+  async removeQuestionFromExam(examId: string, questionId: string): Promise<boolean> {
+    try {
+      const result = await db
+        .update(questions)
+        .set({ examId: null, sortOrder: 0 })
+        .where(
+          sql`${questions.id} = ${questionId} AND ${questions.examId} = ${examId}`
+        );
+      return (result as any).rowCount > 0;
+    } catch (error) {
+      console.error('Error removing question from exam:', error);
+      return false;
+    }
+  }
+
+  async getExamQuestions(examId: string): Promise<Question[]> {
+    return this.getQuestionsByExamId(examId);
   }
 
   async createExamAttempt(attemptData: InsertExamAttempt): Promise<ExamAttempt> {

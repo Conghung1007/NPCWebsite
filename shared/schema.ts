@@ -72,15 +72,26 @@ export const exams = pgTable("exams", {
 
 export const questions = pgTable("questions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  examId: varchar("exam_id").notNull(),
+  examId: varchar("exam_id"), // Now nullable - questions can exist independently
+  category: text("category").notNull(), // từ vựng, ngữ pháp, đọc hiểu, nghe hiểu
+  description: text("description"), // Mô tả hoặc ghi chú cho câu hỏi
   questionText: text("question_text").notNull(),
   questionType: text("question_type").notNull().default("multiple_choice"), // multiple_choice, true_false
   imageUrl: text("image_url"), // Optional image for question
   audioUrl: text("audio_url"), // Optional audio for question
-  options: jsonb("options").notNull(), // Array of answer options
+  options: jsonb("options").notNull(), // Array of answer options with potential image URLs
   correctAnswer: text("correct_answer").notNull(), // Index or value of correct answer
   explanation: text("explanation"), // Optional explanation for answer
   sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Junction table to link exams with questions from question bank
+export const examQuestions = pgTable("exam_questions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  examId: varchar("exam_id").notNull(),
+  questionId: varchar("question_id").notNull(),
+  sortOrder: integer("sort_order").default(0), // Order of question in exam
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -162,6 +173,11 @@ export const insertQuestionSchema = createInsertSchema(questions).omit({
   createdAt: true,
 });
 
+export const insertExamQuestionSchema = createInsertSchema(examQuestions).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertExamAttemptSchema = createInsertSchema(examAttempts).omit({
   id: true,
   completedAt: true,
@@ -200,5 +216,7 @@ export type Exam = typeof exams.$inferSelect;
 export type InsertExam = z.infer<typeof insertExamSchema>;
 export type Question = typeof questions.$inferSelect;
 export type InsertQuestion = z.infer<typeof insertQuestionSchema>;
+export type ExamQuestion = typeof examQuestions.$inferSelect;
+export type InsertExamQuestion = z.infer<typeof insertExamQuestionSchema>;
 export type ExamAttempt = typeof examAttempts.$inferSelect;
 export type InsertExamAttempt = z.infer<typeof insertExamAttemptSchema>;

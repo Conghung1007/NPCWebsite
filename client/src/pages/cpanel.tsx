@@ -12,9 +12,10 @@ import { useAuth } from "@/hooks/useAuth";
 import { ArticleManager } from "@/components/ArticleManager";
 import { ExamManager } from "@/components/ExamManager";
 import { ContactInfoManager } from "@/components/ContactInfoManager";
+import { QuestionBankManager } from "@/components/QuestionBankManager";
 
 import { Pagination } from "@/components/ui/pagination";
-import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText, Image, Check, X, MapPin } from "lucide-react";
+import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText, Image, Check, X, MapPin, HelpCircle } from "lucide-react";
 import { type User as UserType, type ContactRequest, type RegistrationRequest } from "@shared/schema";
 
 export function CpanelPage() {
@@ -80,6 +81,8 @@ export function CpanelPage() {
       setActiveTab("articles");
     } else if (tabParam === 'exams') {
       setActiveTab("exams");
+    } else if (tabParam === 'questions') {
+      setActiveTab("questions");
     } else {
       // Set default active tab based on user role
       if (user.role === "manager" || user.role === "admin") {
@@ -381,6 +384,14 @@ export function CpanelPage() {
               >
                 <FileText className="w-5 h-5" />
                 Quản lý bài thi
+              </Button>
+              <Button 
+                variant={activeTab === "questions" ? "default" : "ghost"}
+                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
+                onClick={() => setActiveTab("questions")}
+              >
+                <HelpCircle className="w-5 h-5" />
+                Bộ câu hỏi
               </Button>
               <Button 
                 variant={activeTab === "articles" ? "default" : "ghost"}
@@ -885,6 +896,11 @@ export function CpanelPage() {
             {/* Exams Content - Available for all users */}
             {activeTab === "exams" && (
               <ExamManager />
+            )}
+
+            {/* Question Bank Content */}
+            {activeTab === "questions" && (
+              <QuestionBankManager />
             )}
 
             {/* Contact Info Content - Admin/Manager only */}

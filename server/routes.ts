@@ -380,6 +380,95 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Question Bank API endpoints
+  app.get("/api/questions", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { q, category } = req.query;
+      
+      let questions;
+      if (q && typeof q === 'string') {
+        questions = await storage.searchQuestions(q);
+      } else if (category && typeof category === 'string') {
+        questions = await storage.getQuestionsByCategory(category);
+      } else {
+        questions = await storage.getAllQuestions();
+      }
+      
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching questions:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi lấy danh sách câu hỏi" });
+    }
+  });
+
+  app.get("/api/questions/category/:category", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { category } = req.params;
+      const questions = await storage.getQuestionsByCategory(category);
+      res.json(questions);
+    } catch (error) {
+      console.error("Error fetching questions by category:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi lấy câu hỏi theo danh mục" });
+    }
+  });
+
+  // Add question to exam
+  app.post("/api/exams/:examId/questions/:questionId", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { examId, questionId } = req.params;
+      const { sortOrder } = req.body;
+
+      const success = await storage.addQuestionToExam(examId, questionId, sortOrder || 0);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Exam or question not found" });
+      }
+
+      res.json({ message: "Question added to exam successfully" });
+    } catch (error) {
+      console.error("Error adding question to exam:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi thêm câu hỏi vào đề thi" });
+    }
+  });
+
+  // Remove question from exam
+  app.delete("/api/exams/:examId/questions/:questionId", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { examId, questionId } = req.params;
+
+      const success = await storage.removeQuestionFromExam(examId, questionId);
+      
+      if (!success) {
+        return res.status(404).json({ message: "Question not found in this exam" });
+      }
+
+      res.json({ message: "Question removed from exam successfully" });
+    } catch (error) {
+      console.error("Error removing question from exam:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi xóa câu hỏi khỏi đề thi" });
+    }
+  });
+
   app.post("/api/exam-attempts", async (req, res) => {
     try {
       const { examId, userAnswers, timeSpent, questionOrder } = req.body;
@@ -1871,7 +1960,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Create question endpoint
+  // Create question endpoint (supports both standalone and exam-linked questions)
   app.post("/api/questions", async (req, res) => {
     try {
       const sessionUser = (req.session as any)?.user;
@@ -1879,11 +1968,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const { examId, questionText, questionType, imageUrl, audioUrl, options, correctAnswer, explanation, sortOrder } = req.body;
+      const { examId, category, description, questionText, questionType, imageUrl, audioUrl, options, correctAnswer, explanation, sortOrder } = req.body;
 
-      if (!examId || !questionText || !options || !correctAnswer) {
+      // For new question bank: category and questionText are required
+      // For old exam questions: examId and questionText are required  
+      if (!questionText || !options || !correctAnswer) {
         return res.status(400).json({ 
-          message: "ExamId, question text, options, and correct answer are required" 
+          message: "Question text, options, and correct answer are required" 
+        });
+      }
+
+      if (!examId && !category) {
+        return res.status(400).json({ 
+          message: "Either examId or category is required" 
         });
       }
 
@@ -1905,7 +2002,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const question = await storage.createQuestion({
-        examId,
+        examId: examId || null, // Can be null for standalone questions
+        category: category || "ngữ pháp", // Default category if not provided
+        description: description || null,
         questionText,
         questionType: questionType || "multiple_choice",
         imageUrl: imageUrl || null,
