@@ -30,7 +30,6 @@ const questionSchema = z.object({
   category: z.string().min(1, "Danh mục là bắt buộc"),
   description: z.string().optional(),
   questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
-  questionType: z.enum(["multiple_choice", "true_false"]).default("multiple_choice"),
   imageUrl: z.string().optional(),
   audioUrl: z.string().optional(),
   options: z.array(z.string()).min(2, "Phải có ít nhất 2 lựa chọn"),
@@ -45,19 +44,6 @@ const questionSchema = z.object({
   {
     message: "Đáp án đúng phải là một trong các lựa chọn đã nhập",
     path: ["correctAnswer"],
-  }
-).refine(
-  (data) => {
-    // For true/false questions, enforce exactly 2 options
-    if (data.questionType === "true_false") {
-      const nonEmptyOptions = data.options.filter(option => option.trim() !== "");
-      return nonEmptyOptions.length === 2;
-    }
-    return true;
-  },
-  {
-    message: "Câu hỏi Đúng/Sai phải có chính xác 2 lựa chọn",
-    path: ["options"],
   }
 );
 
@@ -83,7 +69,6 @@ export function QuestionBankManager() {
       category: "ngữ pháp",
       description: "",
       questionText: "",
-      questionType: "multiple_choice",
       imageUrl: "",
       audioUrl: "",
       options: ["", ""],
@@ -198,10 +183,13 @@ export function QuestionBankManager() {
   });
 
   const handleSubmit = (data: QuestionFormData) => {
+    // Add default questionType for backend compatibility
+    const dataWithType = { ...data, questionType: "multiple_choice" as const };
+    
     if (editingQuestion) {
-      updateQuestionMutation.mutate({ ...data, id: editingQuestion.id });
+      updateQuestionMutation.mutate({ ...dataWithType, id: editingQuestion.id });
     } else {
-      createQuestionMutation.mutate(data);
+      createQuestionMutation.mutate(dataWithType);
     }
   };
 
@@ -211,7 +199,6 @@ export function QuestionBankManager() {
       category: question.category,
       description: question.description || "",
       questionText: question.questionText,
-      questionType: question.questionType as "multiple_choice" | "true_false",
       imageUrl: question.imageUrl || "",
       audioUrl: question.audioUrl || "",
       options: typeof question.options === 'string' 
@@ -402,7 +389,7 @@ export function QuestionBankManager() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 gap-4">
                 {/* Category */}
                 <FormField
                   control={form.control}
@@ -429,28 +416,6 @@ export function QuestionBankManager() {
                   )}
                 />
 
-                {/* Question Type */}
-                <FormField
-                  control={form.control}
-                  name="questionType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Loại câu hỏi</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger data-testid="select-question-type">
-                            <SelectValue placeholder="Chọn loại câu hỏi" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          <SelectItem value="multiple_choice">Trắc nghiệm</SelectItem>
-                          <SelectItem value="true_false">Đúng/Sai</SelectItem>
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </div>
 
               {/* Description */}
