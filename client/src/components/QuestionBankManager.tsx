@@ -68,7 +68,7 @@ export function QuestionBankManager() {
   const queryClient = useQueryClient();
   
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; question: Question | null }>({
@@ -103,7 +103,7 @@ export function QuestionBankManager() {
       question.questionText.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (question.description && question.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
-    const matchesCategory = selectedCategory === "" || question.category === selectedCategory;
+    const matchesCategory = selectedCategory === "all" || question.category === selectedCategory;
     
     return matchesSearch && matchesCategory;
   });
@@ -290,7 +290,7 @@ export function QuestionBankManager() {
                   <SelectValue placeholder="Lọc theo danh mục" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tất cả danh mục</SelectItem>
+                  <SelectItem value="all">Tất cả danh mục</SelectItem>
                   {questionCategories.map(category => (
                     <SelectItem key={category.value} value={category.value}>
                       {category.label}

@@ -47,7 +47,7 @@ export default function EditExam() {
   const [selectedQuestions, setSelectedQuestions] = useState<Question[]>([]);
   const [isQuestionSelectOpen, setIsQuestionSelectOpen] = useState(false);
   const [questionSearchQuery, setQuestionSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   // Fetch exam data
   const { data: exam, isLoading: examLoading } = useQuery<Exam>({
@@ -107,7 +107,7 @@ export default function EditExam() {
     }
     
     // Apply category filter
-    if (selectedCategory && question.category !== selectedCategory) {
+    if (selectedCategory && selectedCategory !== "all" && question.category !== selectedCategory) {
       return false;
     }
     
@@ -471,7 +471,7 @@ export default function EditExam() {
                   <SelectValue placeholder="Lọc theo danh mục" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tất cả danh mục</SelectItem>
+                  <SelectItem value="all">Tất cả danh mục</SelectItem>
                   {questionCategories.map(category => (
                     <SelectItem key={category.value} value={category.value}>
                       {category.label}

@@ -45,7 +45,7 @@ export default function CreateExam() {
   const [selectedQuestions, setSelectedQuestions] = useState<Question[]>([]);
   const [isQuestionSelectOpen, setIsQuestionSelectOpen] = useState(false);
   const [questionSearchQuery, setQuestionSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string>("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
 
   const form = useForm<ExamFormData>({
     resolver: zodResolver(examSchema),
@@ -73,7 +73,7 @@ export default function CreateExam() {
     }
     
     // Apply category filter
-    if (selectedCategory && question.category !== selectedCategory) {
+    if (selectedCategory && selectedCategory !== "all" && question.category !== selectedCategory) {
       return false;
     }
     
@@ -385,7 +385,7 @@ export default function CreateExam() {
                   <SelectValue placeholder="Lọc theo danh mục" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Tất cả danh mục</SelectItem>
+                  <SelectItem value="all">Tất cả danh mục</SelectItem>
                   {questionCategories.map(category => (
                     <SelectItem key={category.value} value={category.value}>
                       {category.label}
