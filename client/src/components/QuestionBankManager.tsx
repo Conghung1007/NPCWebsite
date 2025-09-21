@@ -25,12 +25,15 @@ const questionCategories = [
   { value: "nghe hiểu", label: "Nghe hiểu" },
 ];
 
-// Form validation schema
+// Form validation schema  
 const questionSchema = z.object({
-  title: z.string().min(1, "Tiêu đề câu hỏi là bắt buộc"),
+  title: z.string().optional(),
   category: z.string().min(1, "Danh mục là bắt buộc"),
   description: z.string().optional(),
-  questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
+  questionTexts: z.array(z.string()).min(1, "Phải có ít nhất 1 câu hỏi").refine(
+    (texts) => texts.every(text => text.trim().length > 0),
+    { message: "Tất cả câu hỏi phải có nội dung" }
+  ),
   imageUrl: z.string().optional(),
   audioUrl: z.string().optional(),
   options: z.array(z.string()).min(2, "Phải có ít nhất 2 lựa chọn"),
@@ -70,7 +73,7 @@ export function QuestionBankManager() {
       title: "",
       category: "ngữ pháp",
       description: "",
-      questionText: "",
+      questionTexts: [""],
       imageUrl: "",
       audioUrl: "",
       options: ["", ""],
@@ -140,7 +143,7 @@ export function QuestionBankManager() {
 
   // Create/Update question mutations
   const createQuestionMutation = useMutation({
-    mutationFn: async (data: QuestionFormData) => {
+    mutationFn: async (data: any) => {
       return await apiRequest("POST", "/api/questions", data);
     },
     onSuccess: () => {
@@ -162,7 +165,7 @@ export function QuestionBankManager() {
   });
 
   const updateQuestionMutation = useMutation({
-    mutationFn: async (data: QuestionFormData & { id: string }) => {
+    mutationFn: async (data: any) => {
       const { id, ...updateData } = data;
       return await apiRequest("PUT", `/api/questions/${id}`, updateData);
     },
@@ -185,23 +188,36 @@ export function QuestionBankManager() {
   });
 
   const handleSubmit = (data: QuestionFormData) => {
-    // Add default questionType for backend compatibility
-    const dataWithType = { ...data, questionType: "multiple_choice" as const };
+    // Convert questionTexts array to single questionText for backend compatibility
+    const questionText = data.questionTexts.filter(text => text.trim()).join('\n\n');
+    const backendData = { 
+      category: data.category,
+      description: data.description,
+      questionText,
+      questionType: "multiple_choice" as const,
+      imageUrl: data.imageUrl,
+      audioUrl: data.audioUrl,
+      options: data.options,
+      correctAnswer: data.correctAnswer,
+      explanation: data.explanation,
+    };
     
     if (editingQuestion) {
-      updateQuestionMutation.mutate({ ...dataWithType, id: editingQuestion.id });
+      updateQuestionMutation.mutate({ ...backendData, id: editingQuestion.id });
     } else {
-      createQuestionMutation.mutate(dataWithType);
+      createQuestionMutation.mutate(backendData);
     }
   };
 
   const handleEditQuestion = (question: Question) => {
     setEditingQuestion(question);
+    // Split questionText by double newlines to get individual questions
+    const questionTexts = question.questionText.split('\n\n').filter(text => text.trim());
     form.reset({
       title: (question as any).title || "",
       category: question.category,
       description: question.description || "",
-      questionText: question.questionText,
+      questionTexts: questionTexts.length > 0 ? questionTexts : [""],
       imageUrl: question.imageUrl || "",
       audioUrl: question.audioUrl || "",
       options: typeof question.options === 'string' 
@@ -223,6 +239,18 @@ export function QuestionBankManager() {
     const currentOptions = form.getValues("options");
     if (currentOptions.length > 2) {
       form.setValue("options", currentOptions.filter((_, i) => i !== index));
+    }
+  };
+
+  const handleAddQuestion = () => {
+    const currentQuestions = form.getValues("questionTexts");
+    form.setValue("questionTexts", [...currentQuestions, ""]);
+  };
+
+  const handleRemoveQuestion = (index: number) => {
+    const currentQuestions = form.getValues("questionTexts");
+    if (currentQuestions.length > 1) {
+      form.setValue("questionTexts", currentQuestions.filter((_, i) => i !== index));
     }
   };
 
@@ -398,7 +426,7 @@ export function QuestionBankManager() {
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tiêu đề câu hỏi *</FormLabel>
+                    <FormLabel>Tiêu đề câu hỏi</FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="Nhập tiêu đề cho câu hỏi..."
@@ -460,25 +488,62 @@ export function QuestionBankManager() {
                 )}
               />
 
-              {/* Question Text */}
-              <FormField
-                control={form.control}
-                name="questionText"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nội dung câu hỏi *</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Nhập nội dung câu hỏi..."
-                        className="min-h-[100px]"
-                        data-testid="textarea-question-text"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Questions Section */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-medium">Nội dung câu hỏi *</Label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddQuestion}
+                    className="flex items-center gap-1"
+                    data-testid="button-add-question-text"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Thêm câu hỏi
+                  </Button>
+                </div>
+                
+                <div className="space-y-3">
+                  {form.watch("questionTexts").map((questionText, index) => (
+                    <div key={index} className="flex gap-2 items-start">
+                      <div className="flex-1">
+                        <FormField
+                          control={form.control}
+                          name={`questionTexts.${index}`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Câu hỏi {index + 1}</FormLabel>
+                              <FormControl>
+                                <Textarea 
+                                  placeholder={`Nhập nội dung câu hỏi ${index + 1}...`}
+                                  className="min-h-[80px]"
+                                  data-testid={`textarea-question-${index}`}
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                      {form.watch("questionTexts").length > 1 && (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleRemoveQuestion(index)}
+                          className="mt-7 text-red-600 hover:text-red-700"
+                          data-testid={`button-remove-question-${index}`}
+                        >
+                          <Minus className="w-4 h-4" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               {/* Options */}
               <div className="space-y-4">
