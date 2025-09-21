@@ -25,20 +25,17 @@ const questionCategories = [
   { value: "nghe hiểu", label: "Nghe hiểu" },
 ];
 
-// Form validation schema  
-const questionSchema = z.object({
-  title: z.string().optional(),
-  category: z.string().min(1, "Danh mục là bắt buộc"),
-  description: z.string().optional(),
-  questionTexts: z.array(z.string()).min(1, "Phải có ít nhất 1 câu hỏi").refine(
-    (texts) => texts.every(text => text.trim().length > 0),
-    { message: "Tất cả câu hỏi phải có nội dung" }
+// Single question schema for each question box
+const singleQuestionSchema = z.object({
+  questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
+  options: z.array(z.string()).min(2, "Phải có ít nhất 2 lựa chọn").refine(
+    (options) => options.every(opt => opt.trim().length > 0),
+    { message: "Tất cả lựa chọn phải có nội dung" }
   ),
-  imageUrl: z.string().optional(),
-  audioUrl: z.string().optional(),
-  options: z.array(z.string()).min(2, "Phải có ít nhất 2 lựa chọn"),
   correctAnswer: z.string().min(1, "Phải chọn đáp án đúng"),
   explanation: z.string().optional(),
+  imageUrl: z.string().optional(),
+  audioUrl: z.string().optional(),
 }).refine(
   (data) => {
     // Validate that correctAnswer is one of the provided options
@@ -50,6 +47,14 @@ const questionSchema = z.object({
     path: ["correctAnswer"],
   }
 );
+
+// Form validation schema for multiple questions
+const questionSchema = z.object({
+  title: z.string().optional(),
+  category: z.string().min(1, "Danh mục là bắt buộc"),
+  description: z.string().optional(),
+  questions: z.array(singleQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi"),
+});
 
 type QuestionFormData = z.infer<typeof questionSchema>;
 
@@ -73,12 +78,14 @@ export function QuestionBankManager() {
       title: "",
       category: "ngữ pháp",
       description: "",
-      questionTexts: [""],
-      imageUrl: "",
-      audioUrl: "",
-      options: ["", ""],
-      correctAnswer: "",
-      explanation: "",
+      questions: [{
+        questionText: "",
+        options: ["", ""],
+        correctAnswer: "",
+        explanation: "",
+        imageUrl: "",
+        audioUrl: "",
+      }],
     },
   });
 
@@ -187,70 +194,126 @@ export function QuestionBankManager() {
     },
   });
 
-  const handleSubmit = (data: QuestionFormData) => {
-    // Convert questionTexts array to single questionText for backend compatibility
-    const questionText = data.questionTexts.filter(text => text.trim()).join('\n\n');
-    const backendData = { 
-      category: data.category,
-      description: data.description,
-      questionText,
-      questionType: "multiple_choice" as const,
-      imageUrl: data.imageUrl,
-      audioUrl: data.audioUrl,
-      options: data.options,
-      correctAnswer: data.correctAnswer,
-      explanation: data.explanation,
-    };
-    
+  const handleSubmit = async (data: QuestionFormData) => {
     if (editingQuestion) {
+      // For editing, keep single question behavior (first question in array)
+      const question = data.questions[0];
+      const backendData = { 
+        category: data.category,
+        description: data.description,
+        questionText: question.questionText,
+        questionType: "multiple_choice" as const,
+        imageUrl: question.imageUrl,
+        audioUrl: question.audioUrl,
+        options: question.options,
+        correctAnswer: question.correctAnswer,
+        explanation: question.explanation,
+      };
       updateQuestionMutation.mutate({ ...backendData, id: editingQuestion.id });
     } else {
-      createQuestionMutation.mutate(backendData);
+      // For creating, submit each question as separate request
+      try {
+        for (const question of data.questions) {
+          const backendData = {
+            category: data.category,
+            description: data.description,
+            questionText: question.questionText,
+            questionType: "multiple_choice" as const,
+            imageUrl: question.imageUrl,
+            audioUrl: question.audioUrl,
+            options: question.options,
+            correctAnswer: question.correctAnswer,
+            explanation: question.explanation,
+          };
+          await apiRequest("POST", "/api/questions", backendData);
+        }
+        
+        toast({
+          title: "Thành công",
+          description: `Đã tạo ${data.questions.length} câu hỏi thành công.`,
+        });
+        queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
+        setIsAddingQuestion(false);
+        form.reset();
+      } catch (error: any) {
+        toast({
+          title: "Lỗi",
+          description: error.message || "Không thể tạo câu hỏi.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
   const handleEditQuestion = (question: Question) => {
     setEditingQuestion(question);
-    // Split questionText by double newlines to get individual questions
-    const questionTexts = question.questionText.split('\n\n').filter(text => text.trim());
+    // For editing, convert single question to questions array format
+    let options;
+    try {
+      options = typeof question.options === 'string' 
+        ? JSON.parse(question.options) 
+        : Array.isArray(question.options) 
+          ? question.options 
+          : [];
+    } catch (error) {
+      console.warn('Failed to parse question options:', error);
+      options = [];
+    }
+    
     form.reset({
       title: (question as any).title || "",
       category: question.category,
       description: question.description || "",
-      questionTexts: questionTexts.length > 0 ? questionTexts : [""],
-      imageUrl: question.imageUrl || "",
-      audioUrl: question.audioUrl || "",
-      options: typeof question.options === 'string' 
-        ? JSON.parse(question.options) 
-        : Array.isArray(question.options) 
-          ? question.options 
-          : [],
-      correctAnswer: question.correctAnswer,
-      explanation: question.explanation || "",
+      questions: [{
+        questionText: question.questionText,
+        options,
+        correctAnswer: question.correctAnswer,
+        explanation: question.explanation || "",
+        imageUrl: question.imageUrl || "",
+        audioUrl: question.audioUrl || "",
+      }],
     });
   };
 
-  const handleAddOption = () => {
-    const currentOptions = form.getValues("options");
-    form.setValue("options", [...currentOptions, ""]);
+  const handleAddOption = (questionIndex: number) => {
+    const currentQuestions = form.getValues("questions");
+    const updatedQuestions = [...currentQuestions];
+    updatedQuestions[questionIndex] = {
+      ...updatedQuestions[questionIndex],
+      options: [...updatedQuestions[questionIndex].options, ""]
+    };
+    form.setValue("questions", updatedQuestions);
   };
 
-  const handleRemoveOption = (index: number) => {
-    const currentOptions = form.getValues("options");
-    if (currentOptions.length > 2) {
-      form.setValue("options", currentOptions.filter((_, i) => i !== index));
+  const handleRemoveOption = (questionIndex: number, optionIndex: number) => {
+    const currentQuestions = form.getValues("questions");
+    const updatedQuestions = [...currentQuestions];
+    if (updatedQuestions[questionIndex].options.length > 2) {
+      updatedQuestions[questionIndex] = {
+        ...updatedQuestions[questionIndex],
+        options: updatedQuestions[questionIndex].options.filter((_, i) => i !== optionIndex)
+      };
+      form.setValue("questions", updatedQuestions);
     }
   };
 
   const handleAddQuestion = () => {
-    const currentQuestions = form.getValues("questionTexts");
-    form.setValue("questionTexts", [...currentQuestions, ""]);
+    const currentQuestions = form.getValues("questions");
+    // Create new question by deep cloning the last one (duplicate entire box)
+    const lastQuestion = currentQuestions[currentQuestions.length - 1];
+    const newQuestion = JSON.parse(JSON.stringify(lastQuestion));
+    // Clear the text fields but keep structure (options count, etc)
+    newQuestion.questionText = "";
+    newQuestion.correctAnswer = "";
+    newQuestion.explanation = "";
+    newQuestion.options = newQuestion.options.map(() => ""); // Keep same number of options
+    form.setValue("questions", [...currentQuestions, newQuestion]);
   };
 
   const handleRemoveQuestion = (index: number) => {
-    const currentQuestions = form.getValues("questionTexts");
+    const currentQuestions = form.getValues("questions");
     if (currentQuestions.length > 1) {
-      form.setValue("questionTexts", currentQuestions.filter((_, i) => i !== index));
+      form.setValue("questions", currentQuestions.filter((_, i) => i !== index));
     }
   };
 
@@ -491,7 +554,7 @@ export function QuestionBankManager() {
               {/* Questions Section */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-medium">Nội dung câu hỏi *</Label>
+                  <Label className="text-base font-medium">Câu hỏi *</Label>
                   <Button
                     type="button"
                     variant="outline"
@@ -505,21 +568,142 @@ export function QuestionBankManager() {
                   </Button>
                 </div>
                 
-                <div className="space-y-3">
-                  {form.watch("questionTexts").map((questionText, index) => (
-                    <div key={index} className="flex gap-2 items-start">
-                      <div className="flex-1">
+                <div className="space-y-6">
+                  {(form.watch("questions") || []).map((question, questionIndex) => (
+                    <Card key={questionIndex} className="p-4 border-2 border-dashed border-muted-foreground/20">
+                      <div className="space-y-4">
+                        {/* Question Header */}
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-lg font-medium">Câu hỏi {questionIndex + 1}</h4>
+                          {form.watch("questions").length > 1 && (
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleRemoveQuestion(questionIndex)}
+                              className="text-red-600 hover:text-red-700"
+                              data-testid={`button-remove-question-${questionIndex}`}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+
+                        {/* Question Text */}
                         <FormField
                           control={form.control}
-                          name={`questionTexts.${index}`}
+                          name={`questions.${questionIndex}.questionText`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Câu hỏi {index + 1}</FormLabel>
+                              <FormLabel>Nội dung câu hỏi *</FormLabel>
                               <FormControl>
                                 <Textarea 
-                                  placeholder={`Nhập nội dung câu hỏi ${index + 1}...`}
+                                  placeholder={`Nhập nội dung câu hỏi ${questionIndex + 1}...`}
                                   className="min-h-[80px]"
-                                  data-testid={`textarea-question-${index}`}
+                                  data-testid={`textarea-question-${questionIndex}`}
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Options */}
+                        <div className="space-y-3">
+                          <div className="flex items-center justify-between">
+                            <Label className="text-sm font-medium">Lựa chọn *</Label>
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAddOption(questionIndex)}
+                              className="flex items-center gap-1"
+                              data-testid={`button-add-option-${questionIndex}`}
+                            >
+                              <Plus className="w-3 h-3" />
+                              Thêm lựa chọn
+                            </Button>
+                          </div>
+                          
+                          <div className="space-y-2">
+                            {question.options.map((option, optionIndex) => (
+                              <div key={optionIndex} className="flex items-center gap-2">
+                                <div className="flex-1">
+                                  <Input
+                                    placeholder={`Lựa chọn ${optionIndex + 1}`}
+                                    value={option}
+                                    onChange={(e) => {
+                                      const currentQuestions = form.getValues("questions");
+                                      const updatedQuestions = [...currentQuestions];
+                                      updatedQuestions[questionIndex] = {
+                                        ...updatedQuestions[questionIndex],
+                                        options: updatedQuestions[questionIndex].options.map((opt, idx) => 
+                                          idx === optionIndex ? e.target.value : opt
+                                        )
+                                      };
+                                      form.setValue("questions", updatedQuestions);
+                                    }}
+                                    data-testid={`input-option-${questionIndex}-${optionIndex}`}
+                                  />
+                                </div>
+                                {question.options.length > 2 && (
+                                  <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handleRemoveOption(questionIndex, optionIndex)}
+                                    className="text-red-600 hover:text-red-700"
+                                    data-testid={`button-remove-option-${questionIndex}-${optionIndex}`}
+                                  >
+                                    <Minus className="w-4 h-4" />
+                                  </Button>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Correct Answer */}
+                        <FormField
+                          control={form.control}
+                          name={`questions.${questionIndex}.correctAnswer`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Đáp án đúng *</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid={`select-correct-answer-${questionIndex}`}>
+                                    <SelectValue placeholder="Chọn đáp án đúng" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {question.options.map((option, index) => (
+                                    option.trim() && (
+                                      <SelectItem key={index} value={option}>
+                                        {option}
+                                      </SelectItem>
+                                    )
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Explanation */}
+                        <FormField
+                          control={form.control}
+                          name={`questions.${questionIndex}.explanation`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Giải thích (tùy chọn)</FormLabel>
+                              <FormControl>
+                                <Textarea 
+                                  placeholder="Giải thích tại sao đáp án này là đúng..."
+                                  className="min-h-[60px]"
+                                  data-testid={`textarea-explanation-${questionIndex}`}
                                   {...field} 
                                 />
                               </FormControl>
@@ -528,119 +712,10 @@ export function QuestionBankManager() {
                           )}
                         />
                       </div>
-                      {form.watch("questionTexts").length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRemoveQuestion(index)}
-                          className="mt-7 text-red-600 hover:text-red-700"
-                          data-testid={`button-remove-question-${index}`}
-                        >
-                          <Minus className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
+                    </Card>
                   ))}
                 </div>
               </div>
-
-              {/* Options */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-medium">Lựa chọn *</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddOption}
-                    className="flex items-center gap-1"
-                    data-testid="button-add-option"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Thêm lựa chọn
-                  </Button>
-                </div>
-                
-                <div className="space-y-3">
-                  {form.watch("options").map((option, index) => (
-                    <div key={index} className="flex items-center gap-2">
-                      <div className="flex-1">
-                        <Input
-                          placeholder={`Lựa chọn ${index + 1}`}
-                          value={option}
-                          onChange={(e) => {
-                            const currentOptions = form.getValues("options");
-                            currentOptions[index] = e.target.value;
-                            form.setValue("options", currentOptions);
-                          }}
-                          data-testid={`input-option-${index}`}
-                        />
-                      </div>
-                      {form.watch("options").length > 2 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => handleRemoveOption(index)}
-                          className="text-red-600 hover:text-red-700"
-                          data-testid={`button-remove-option-${index}`}
-                        >
-                          <Minus className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Correct Answer */}
-              <FormField
-                control={form.control}
-                name="correctAnswer"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Đáp án đúng *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-correct-answer">
-                          <SelectValue placeholder="Chọn đáp án đúng" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {form.watch("options").map((option, index) => (
-                          option.trim() && (
-                            <SelectItem key={index} value={option}>
-                              {option}
-                            </SelectItem>
-                          )
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              {/* Explanation */}
-              <FormField
-                control={form.control}
-                name="explanation"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Giải thích (tùy chọn)</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Giải thích tại sao đáp án này là đúng..."
-                        className="min-h-[80px]"
-                        data-testid="textarea-explanation"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               <DialogFooter className="flex gap-2">
                 <Button type="button" variant="outline" onClick={cancelForm}>
