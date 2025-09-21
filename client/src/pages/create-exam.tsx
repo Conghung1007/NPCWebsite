@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
-import { useForm, useFieldArray } from "react-hook-form";
+import { useState } from "react";
+import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -11,29 +11,27 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Plus, Minus, Save, ArrowLeft } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { Plus, Save, ArrowLeft, Search, Trash2, HelpCircle, Volume2, Eye, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { AudioUploader } from "@/components/AudioUploader";
 import { apiRequest } from "@/lib/queryClient";
+import type { Question } from "@shared/schema";
 
-// Form validation schema
-const questionSchema = z.object({
-  questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
-  questionType: z.enum(["multiple_choice", "true_false"]),
-  imageUrl: z.string().optional(),
-  audioUrl: z.string().optional(),
-  options: z.array(z.string()).min(2, "Phải có ít nhất 2 lựa chọn"),
-  correctAnswer: z.string().min(1, "Phải chọn đáp án đúng"),
-  explanation: z.string().optional(),
-  sortOrder: z.number().default(0),
-});
+const questionCategories = [
+  { value: "từ vựng", label: "Từ vựng" },
+  { value: "ngữ pháp", label: "Ngữ pháp" },
+  { value: "đọc hiểu", label: "Đọc hiểu" },
+  { value: "nghe hiểu", label: "Nghe hiểu" },
+];
 
+// Form validation schema - now only for exam metadata
 const examSchema = z.object({
   title: z.string().min(1, "Tiêu đề bài thi là bắt buộc"),
   description: z.string().optional(),
   isDemo: z.boolean().default(false),
   timeLimit: z.number().min(1, "Thời gian làm bài phải lớn hơn 0"),
-  questions: z.array(questionSchema).min(1, "Phải có ít nhất 1 câu hỏi"),
 });
 
 type ExamFormData = z.infer<typeof examSchema>;
@@ -43,6 +41,12 @@ export default function CreateExam() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // State for managing selected questions
+  const [selectedQuestions, setSelectedQuestions] = useState<Question[]>([]);
+  const [isQuestionSelectOpen, setIsQuestionSelectOpen] = useState(false);
+  const [questionSearchQuery, setQuestionSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("");
+
   const form = useForm<ExamFormData>({
     resolver: zodResolver(examSchema),
     defaultValues: {
@@ -50,34 +54,42 @@ export default function CreateExam() {
       description: "",
       isDemo: false,
       timeLimit: 30,
-      questions: [
-        {
-          questionText: "",
-          questionType: "multiple_choice",
-          options: ["", ""],
-          correctAnswer: "",
-          explanation: "",
-          sortOrder: 0,
-        }
-      ],
     },
   });
 
-  const { fields, append, remove } = useFieldArray({
-    control: form.control,
-    name: "questions",
+  // Fetch questions from question bank
+  const { data: availableQuestions = [], isLoading: questionsLoading } = useQuery<Question[]>({
+    queryKey: ["/api/questions"],
+  });
+
+  // Filter available questions for selection
+  const filteredQuestions = availableQuestions.filter(question => {
+    // Don't show questions already selected
+    if (selectedQuestions.find(sq => sq.id === question.id)) return false;
+    
+    // Apply search filter
+    if (questionSearchQuery && !question.questionText.toLowerCase().includes(questionSearchQuery.toLowerCase())) {
+      return false;
+    }
+    
+    // Apply category filter
+    if (selectedCategory && question.category !== selectedCategory) {
+      return false;
+    }
+    
+    return true;
   });
 
   const createExamMutation = useMutation({
     mutationFn: async (data: ExamFormData) => {
-      // Transform data for API
+      if (selectedQuestions.length === 0) {
+        throw new Error("Phải chọn ít nhất một câu hỏi cho bài thi");
+      }
+
+      // Step 1: Create the exam
       const examData = {
         ...data,
-        questionCount: data.questions.length,
-        questions: data.questions.map((q, index) => ({
-          ...q,
-          sortOrder: index,
-        })),
+        questionCount: selectedQuestions.length,
       };
       
       const response = await fetch("/api/exams", {
@@ -92,7 +104,17 @@ export default function CreateExam() {
         throw new Error("Failed to create exam");
       }
       
-      return response.json();
+      const exam = await response.json();
+      
+      // Step 2: Add selected questions to the exam
+      for (let i = 0; i < selectedQuestions.length; i++) {
+        const question = selectedQuestions[i];
+        await apiRequest("POST", `/api/exams/${exam.id}/questions/${question.id}`, {
+          sortOrder: i
+        });
+      }
+      
+      return exam;
     },
     onSuccess: () => {
       toast({
@@ -103,106 +125,39 @@ export default function CreateExam() {
       setLocation("/cpanel?tab=exams");
     },
     onError: (error: any) => {
-      // Clean up temporary audio files on error
-      const tempAudioFilenames = form.getValues('questions')
-        .map(q => q.audioUrl)
-        .filter(url => url && url.includes('/api/temp-audio/'))
-        .map(url => url.split('/').pop())
-        .filter(Boolean);
-      
-      if (tempAudioFilenames.length > 0) {
-        fetch("/api/temp-audio/cleanup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filenames: tempAudioFilenames })
-        }).catch(cleanupError => console.error("Failed to cleanup temp files:", cleanupError));
-      }
-
       toast({
         title: "Lỗi",
         description: error.message || "Không thể tạo bài thi",
         variant: "destructive",
       });
-    },
-  });
-
-  const addQuestion = () => {
-    append({
-      questionText: "",
-      questionType: "multiple_choice",
-      options: ["", ""],
-      correctAnswer: "",
-      explanation: "",
-      sortOrder: fields.length,
-    });
-  };
-
-  const addOption = (questionIndex: number) => {
-    const currentOptions = form.getValues(`questions.${questionIndex}.options`);
-    form.setValue(`questions.${questionIndex}.options`, [...currentOptions, ""]);
-  };
-
-  const removeOption = (questionIndex: number, optionIndex: number) => {
-    const currentOptions = form.getValues(`questions.${questionIndex}.options`);
-    if (currentOptions.length > 2) {
-      const newOptions = currentOptions.filter((_, i) => i !== optionIndex);
-      form.setValue(`questions.${questionIndex}.options`, newOptions);
-      
-      // Reset correct answer if it was pointing to removed option
-      const correctAnswer = form.getValues(`questions.${questionIndex}.correctAnswer`);
-      if (correctAnswer === optionIndex.toString()) {
-        form.setValue(`questions.${questionIndex}.correctAnswer`, "");
-      }
     }
-  };
-
-  // Clean up temporary files when leaving page
-  useEffect(() => {
-    const cleanup = () => {
-      const tempAudioFilenames = form.getValues('questions')
-        .map(q => q.audioUrl)
-        .filter(url => url && url.includes('/api/temp-audio/'))
-        .map(url => url.split('/').pop())
-        .filter(Boolean);
-      
-      if (tempAudioFilenames.length > 0) {
-        // Try sendBeacon first, fallback to fetch
-        const payload = JSON.stringify({ filenames: tempAudioFilenames });
-        const blob = new Blob([payload], { type: 'application/json' });
-        
-        if (!navigator.sendBeacon('/api/temp-audio/cleanup', blob)) {
-          // Fallback to fetch if sendBeacon fails
-          fetch('/api/temp-audio/cleanup', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: payload,
-            keepalive: true
-          }).catch(e => console.error('Cleanup failed:', e));
-        }
-      }
-    };
-
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      const tempFiles = form.getValues('questions')
-        .some(q => q.audioUrl && q.audioUrl.includes('/api/temp-audio/'));
-      
-      if (tempFiles) {
-        e.preventDefault();
-        e.returnValue = '';
-        cleanup();
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      cleanup();
-    };
-  }, [form]);
+  });
 
   const onSubmit = (data: ExamFormData) => {
     createExamMutation.mutate(data);
+  };
+
+  const handleSelectQuestion = (question: Question) => {
+    setSelectedQuestions(prev => [...prev, question]);
+  };
+
+  const handleRemoveQuestion = (questionId: string) => {
+    setSelectedQuestions(prev => prev.filter(q => q.id !== questionId));
+  };
+
+  const getCategoryBadge = (category: string) => {
+    const categoryConfig = questionCategories.find(cat => cat.value === category);
+    const variants: any = {
+      "từ vựng": "default",
+      "ngữ pháp": "secondary", 
+      "đọc hiểu": "outline",
+      "nghe hiểu": "destructive"
+    };
+    return (
+      <Badge variant={variants[category] || "outline"}>
+        {categoryConfig?.label || category}
+      </Badge>
+    );
   };
 
   return (
@@ -217,7 +172,7 @@ export default function CreateExam() {
           Quay lại
         </Button>
         <h1 className="text-3xl font-bold text-gray-900">Tạo Bài Thi Mới</h1>
-        <p className="text-gray-600 mt-2">Tạo bài thi với câu hỏi, hình ảnh và âm thanh</p>
+        <p className="text-gray-600 mt-2">Tạo bài thi bằng cách chọn câu hỏi từ bộ câu hỏi có sẵn</p>
       </div>
 
       <Form {...form}>
@@ -235,7 +190,7 @@ export default function CreateExam() {
                   <FormItem>
                     <FormLabel>Tiêu đề *</FormLabel>
                     <FormControl>
-                      <Input placeholder="Nhập tiêu đề bài thi" {...field} />
+                      <Input placeholder="Nhập tiêu đề bài thi" {...field} data-testid="input-exam-title" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -253,6 +208,7 @@ export default function CreateExam() {
                         placeholder="Nhập mô tả bài thi (tùy chọn)"
                         rows={3}
                         {...field}
+                        data-testid="textarea-exam-description"
                       />
                     </FormControl>
                     <FormMessage />
@@ -274,6 +230,7 @@ export default function CreateExam() {
                           placeholder="30"
                           {...field}
                           onChange={(e) => field.onChange(parseInt(e.target.value))}
+                          data-testid="input-exam-timelimit"
                         />
                       </FormControl>
                       <FormMessage />
@@ -287,15 +244,17 @@ export default function CreateExam() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Loại bài thi</FormLabel>
-                      <FormControl>
-                        <div className="flex items-center space-x-3 rounded-md border p-3 h-10">
-                          <Checkbox
-                            checked={field.value}
-                            onCheckedChange={field.onChange}
-                          />
-                          <span className="text-sm">Bài thi demo</span>
-                        </div>
-                      </FormControl>
+                      <div className="flex items-center space-x-2 mt-2">
+                        <Checkbox 
+                          id="isDemo"
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="checkbox-exam-demo"
+                        />
+                        <label htmlFor="isDemo" className="text-sm">
+                          Bài thi demo (không cần đăng nhập)
+                        </label>
+                      </div>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -304,202 +263,90 @@ export default function CreateExam() {
             </CardContent>
           </Card>
 
-          {/* Questions */}
+          {/* Selected Questions */}
           <Card>
             <CardHeader>
-              <CardTitle>
-                Câu Hỏi ({fields.length})
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              {fields.map((field, questionIndex) => (
-                <Card key={field.id} className="border-2 border-gray-100">
-                  <CardHeader className="pb-4">
-                    <div className="flex justify-between items-center">
-                      <CardTitle className="text-lg">Câu hỏi {questionIndex + 1}</CardTitle>
-                      {fields.length > 1 && (
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => remove(questionIndex)}
-                        >
-                          <Minus className="w-4 h-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {/* Question Text */}
-                    <FormField
-                      control={form.control}
-                      name={`questions.${questionIndex}.questionText`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Nội dung câu hỏi *</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Nhập nội dung câu hỏi"
-                              rows={3}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Question Type */}
-                    <FormField
-                      control={form.control}
-                      name={`questions.${questionIndex}.questionType`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Loại câu hỏi</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Chọn loại câu hỏi" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="multiple_choice">Trắc nghiệm</SelectItem>
-                              <SelectItem value="true_false">Đúng/Sai</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Audio Upload */}
-                    <div>
-                      <FormLabel>File âm thanh (tùy chọn)</FormLabel>
-                      <AudioUploader
-                        currentAudioUrl={form.watch(`questions.${questionIndex}.audioUrl`)}
-                        currentFileName={undefined}
-                        onAudioUpload={(audioUrl) => {
-                          form.setValue(`questions.${questionIndex}.audioUrl`, audioUrl);
-                        }}
-                        onRemoveAudio={() => {
-                          form.setValue(`questions.${questionIndex}.audioUrl`, "");
-                        }}
-                      />
-                    </div>
-
-                    {/* Answer Options */}
-                    <div>
-                      <FormLabel>Các lựa chọn *</FormLabel>
-                      <div className="space-y-2 mt-2">
-                        {form.watch(`questions.${questionIndex}.options`).map((_, optionIndex) => (
-                          <div key={optionIndex} className="flex gap-2">
-                            <FormField
-                              control={form.control}
-                              name={`questions.${questionIndex}.options.${optionIndex}`}
-                              render={({ field }) => (
-                                <FormItem className="flex-1">
-                                  <FormControl>
-                                    <Input
-                                      placeholder={`Lựa chọn ${optionIndex + 1}`}
-                                      {...field}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => addOption(questionIndex)}
-                            >
-                              <Plus className="w-4 h-4" />
-                            </Button>
-                            {form.watch(`questions.${questionIndex}.options`).length > 2 && (
-                              <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={() => removeOption(questionIndex, optionIndex)}
-                              >
-                                <Minus className="w-4 h-4" />
-                              </Button>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Correct Answer */}
-                    <FormField
-                      control={form.control}
-                      name={`questions.${questionIndex}.correctAnswer`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Đáp án đúng *</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Chọn đáp án đúng" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {form.watch(`questions.${questionIndex}.options`).map((option, optionIndex) => (
-                                <SelectItem key={optionIndex} value={optionIndex.toString()}>
-                                  {`${optionIndex + 1}. ${option || `Lựa chọn ${optionIndex + 1}`}`}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {/* Explanation */}
-                    <FormField
-                      control={form.control}
-                      name={`questions.${questionIndex}.explanation`}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Giải thích (tùy chọn)</FormLabel>
-                          <FormControl>
-                            <Textarea
-                              placeholder="Nhập giải thích cho đáp án"
-                              rows={2}
-                              {...field}
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </CardContent>
-                </Card>
-              ))}
-              
-              {/* Add Question Button at the bottom */}
-              <div className="mt-6 flex justify-center">
-                <Button
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Câu hỏi đã chọn ({selectedQuestions.length})</CardTitle>
+                  <p className="text-sm text-gray-600 mt-1">
+                    {selectedQuestions.length === 0 
+                      ? "Chưa có câu hỏi nào được chọn" 
+                      : `Đã chọn ${selectedQuestions.length} câu hỏi`}
+                  </p>
+                </div>
+                <Button 
                   type="button"
-                  variant="outline"
-                  onClick={addQuestion}
-                  className="min-w-[200px]"
+                  onClick={() => setIsQuestionSelectOpen(true)}
+                  className="flex items-center gap-2"
+                  data-testid="button-select-questions"
                 >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Thêm câu hỏi
+                  <Plus className="w-4 h-4" />
+                  Chọn câu hỏi
                 </Button>
               </div>
+            </CardHeader>
+            <CardContent>
+              {selectedQuestions.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <HelpCircle className="w-16 h-16 mx-auto mb-4 text-gray-300" />
+                  <p className="text-lg font-medium mb-2">Chưa chọn câu hỏi nào</p>
+                  <p className="text-sm">Nhấn nút "Chọn câu hỏi" để thêm câu hỏi vào bài thi</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {selectedQuestions.map((question, index) => (
+                    <div key={question.id} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="flex-shrink-0 w-6 h-6 bg-primary text-primary-foreground rounded-full flex items-center justify-center text-sm font-medium">
+                        {index + 1}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-start gap-2 mb-2">
+                          {question.audioUrl && <Volume2 className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />}
+                          {question.imageUrl && <Eye className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />}
+                          <p className="text-sm font-medium">{question.questionText}</p>
+                        </div>
+                        <div className="flex items-center gap-2 mb-2">
+                          {getCategoryBadge(question.category)}
+                          <Badge variant="outline" className="text-xs">
+                            {question.questionType === "multiple_choice" ? "Trắc nghiệm" : "Đúng/Sai"}
+                          </Badge>
+                        </div>
+                        {question.description && (
+                          <p className="text-xs text-gray-600">{question.description}</p>
+                        )}
+                      </div>
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleRemoveQuestion(question.id)}
+                        className="text-red-600 hover:text-red-700"
+                        data-testid={`button-remove-question-${question.id}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Submit Button */}
-          <div className="flex justify-end">
+          <div className="flex gap-4">
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => setLocation("/cpanel?tab=exams")}
+              disabled={createExamMutation.isPending}
+            >
+              Hủy
+            </Button>
             <Button 
               type="submit" 
-              disabled={createExamMutation.isPending}
-              className="min-w-[120px]"
+              disabled={createExamMutation.isPending || selectedQuestions.length === 0}
+              data-testid="button-create-exam"
             >
               <Save className="w-4 h-4 mr-2" />
               {createExamMutation.isPending ? "Đang tạo..." : "Tạo bài thi"}
@@ -507,6 +354,128 @@ export default function CreateExam() {
           </div>
         </form>
       </Form>
+
+      {/* Question Selection Dialog */}
+      <Dialog open={isQuestionSelectOpen} onOpenChange={setIsQuestionSelectOpen}>
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Chọn câu hỏi từ bộ câu hỏi</DialogTitle>
+            <DialogDescription>
+              Chọn câu hỏi từ bộ câu hỏi có sẵn để thêm vào bài thi
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Search and Filter */}
+          <div className="flex gap-4 mb-4">
+            <div className="flex-1">
+              <div className="relative">
+                <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Tìm kiếm câu hỏi..."
+                  value={questionSearchQuery}
+                  onChange={(e) => setQuestionSearchQuery(e.target.value)}
+                  className="pl-8"
+                  data-testid="input-search-available-questions"
+                />
+              </div>
+            </div>
+            <div className="min-w-[200px]">
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger data-testid="select-filter-category">
+                  <SelectValue placeholder="Lọc theo danh mục" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="">Tất cả danh mục</SelectItem>
+                  {questionCategories.map(category => (
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          {/* Available Questions */}
+          <div className="border rounded-lg">
+            {questionsLoading ? (
+              <div className="flex justify-center py-8">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+              </div>
+            ) : filteredQuestions.length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                {questionSearchQuery || selectedCategory ? 
+                  "Không tìm thấy câu hỏi nào phù hợp." :
+                  "Đã chọn tất cả câu hỏi có sẵn hoặc bộ câu hỏi trống."
+                }
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nội dung câu hỏi</TableHead>
+                    <TableHead>Danh mục</TableHead>
+                    <TableHead>Loại</TableHead>
+                    <TableHead>Thao tác</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredQuestions.map((question) => (
+                    <TableRow key={question.id}>
+                      <TableCell className="max-w-md">
+                        <div className="flex items-start gap-2">
+                          {question.audioUrl && <Volume2 className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />}
+                          {question.imageUrl && <Eye className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />}
+                          <div className="truncate" title={question.questionText}>
+                            {question.questionText}
+                          </div>
+                        </div>
+                        {question.description && (
+                          <div className="text-xs text-gray-600 mt-1 truncate">
+                            {question.description}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {getCategoryBadge(question.category)}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">
+                          {question.questionType === "multiple_choice" ? "Trắc nghiệm" : "Đúng/Sai"}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          size="sm"
+                          onClick={() => handleSelectQuestion(question)}
+                          data-testid={`button-add-question-${question.id}`}
+                        >
+                          <Plus className="w-4 h-4 mr-1" />
+                          Chọn
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsQuestionSelectOpen(false);
+                setQuestionSearchQuery("");
+                setSelectedCategory("");
+              }}
+            >
+              <X className="w-4 h-4 mr-1" />
+              Đóng
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
