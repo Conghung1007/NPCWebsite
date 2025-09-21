@@ -1823,11 +1823,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const { title, description, isDemo, timeLimit, questions } = req.body;
+      const { title, description, isDemo, timeLimit, questions, questionCount } = req.body;
 
-      if (!title || !timeLimit || !questions || questions.length === 0) {
+      if (!title || !timeLimit) {
         return res.status(400).json({ 
-          message: "Title, time limit, and at least one question are required" 
+          message: "Title and time limit are required" 
+        });
+      }
+
+      // Support both old format (with questions array) and new format (with questionCount)
+      let finalQuestionCount;
+      let hasInlineQuestions = questions && Array.isArray(questions) && questions.length > 0;
+      
+      if (hasInlineQuestions) {
+        // Old format - inline question creation
+        finalQuestionCount = questions.length;
+      } else if (questionCount !== undefined && questionCount > 0) {
+        // New format - question bank integration
+        finalQuestionCount = questionCount;
+      } else {
+        return res.status(400).json({ 
+          message: "Must have at least one question or specify questionCount" 
         });
       }
 
@@ -1837,34 +1853,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: description || null,
         isDemo: isDemo || false,
         timeLimit,
-        questionCount: questions.length,
+        questionCount: finalQuestionCount,
         isActive: true,
         createdBy: sessionUser.id,
       });
 
-      // Create questions for the exam and move temporary audio files
+      // Create questions for the exam if using old inline format
       const createdQuestions = [];
-      for (let i = 0; i < questions.length; i++) {
-        const questionData = questions[i];
-        
-        // Move temporary audio to permanent location if exists
-        let finalAudioUrl = questionData.audioUrl;
-        if (questionData.audioUrl && questionData.audioUrl.includes('/api/temp-audio/')) {
-          finalAudioUrl = await moveTemporaryAudioToPermanent(questionData.audioUrl);
+      if (hasInlineQuestions) {
+        for (let i = 0; i < questions.length; i++) {
+          const questionData = questions[i];
+          
+          // Move temporary audio to permanent location if exists
+          let finalAudioUrl = questionData.audioUrl;
+          if (questionData.audioUrl && questionData.audioUrl.includes('/api/temp-audio/')) {
+            finalAudioUrl = await moveTemporaryAudioToPermanent(questionData.audioUrl);
+          }
+          
+          const question = await storage.createQuestion({
+            examId: exam.id,
+            questionText: questionData.questionText,
+            questionType: questionData.questionType || "multiple_choice",
+            imageUrl: questionData.imageUrl || null,
+            audioUrl: finalAudioUrl || null,
+            options: questionData.options,
+            correctAnswer: questionData.correctAnswer,
+            explanation: questionData.explanation || null,
+            sortOrder: i,
+          });
+          createdQuestions.push(question);
         }
-        
-        const question = await storage.createQuestion({
-          examId: exam.id,
-          questionText: questionData.questionText,
-          questionType: questionData.questionType || "multiple_choice",
-          imageUrl: questionData.imageUrl || null,
-          audioUrl: finalAudioUrl || null,
-          options: questionData.options,
-          correctAnswer: questionData.correctAnswer,
-          explanation: questionData.explanation || null,
-          sortOrder: i,
-        });
-        createdQuestions.push(question);
       }
 
       res.json({
