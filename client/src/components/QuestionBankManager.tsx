@@ -471,7 +471,7 @@ export function QuestionBankManager() {
 
       {/* Create/Edit Question Dialog */}
       <Dialog open={isAddingQuestion || !!editingQuestion} onOpenChange={(open) => !open && cancelForm()}>
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingQuestion ? "Chỉnh sửa câu hỏi" : "Thêm câu hỏi mới"}
