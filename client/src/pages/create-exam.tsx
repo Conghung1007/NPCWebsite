@@ -161,7 +161,7 @@ export default function CreateExam() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="mb-6">
         <Button
           variant="outline"
@@ -334,7 +334,7 @@ export default function CreateExam() {
           </Card>
 
           {/* Submit Button */}
-          <div className="flex gap-4">
+          <div className="flex justify-end gap-4">
             <Button 
               type="button" 
               variant="outline" 
