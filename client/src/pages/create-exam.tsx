@@ -161,7 +161,7 @@ export default function CreateExam() {
   };
 
   return (
-    <div className="container mx-auto px-4 py-8 max-w-4xl">
+    <div className="container mx-auto px-4 py-8 max-w-2xl">
       <div className="mb-6">
         <Button
           variant="outline"
@@ -357,7 +357,7 @@ export default function CreateExam() {
 
       {/* Question Selection Dialog */}
       <Dialog open={isQuestionSelectOpen} onOpenChange={setIsQuestionSelectOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Chọn câu hỏi từ bộ câu hỏi</DialogTitle>
             <DialogDescription>
