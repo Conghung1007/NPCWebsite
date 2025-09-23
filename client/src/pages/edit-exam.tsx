@@ -443,7 +443,7 @@ export default function EditExam() {
 
       {/* Question Selection Dialog */}
       <Dialog open={isQuestionSelectOpen} onOpenChange={setIsQuestionSelectOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-h-[90vh] overflow-y-auto" style={{ maxWidth: '900px' }}>
           <DialogHeader>
             <DialogTitle>Chọn câu hỏi từ bộ câu hỏi</DialogTitle>
             <DialogDescription>
