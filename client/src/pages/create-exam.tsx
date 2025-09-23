@@ -357,7 +357,7 @@ export default function CreateExam() {
 
       {/* Question Selection Dialog */}
       <Dialog open={isQuestionSelectOpen} onOpenChange={setIsQuestionSelectOpen}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto" style={{ maxWidth: '900px' }}>
+        <DialogContent className="max-h-[90vh] overflow-y-auto" style={{ maxWidth: '1800px' }}>
           <DialogHeader>
             <DialogTitle>Chọn câu hỏi từ bộ câu hỏi</DialogTitle>
             <DialogDescription>
