@@ -63,9 +63,24 @@ export const exams = pgTable("exams", {
   title: text("title").notNull(),
   description: text("description"),
   isDemo: boolean("is_demo").default(false), // Demo exams don't require login
-  timeLimit: integer("time_limit").notNull(), // Time limit in minutes
-  questionCount: integer("question_count").notNull(), // Total questions to show
   isActive: boolean("is_active").default(true),
+  
+  // Vocabulary section
+  vocabularyTimeLimit: integer("vocabulary_time_limit").notNull(), // Time limit in minutes
+  vocabularyQuestions: jsonb("vocabulary_questions").notNull(), // Array of question IDs
+  
+  // Grammar section  
+  grammarTimeLimit: integer("grammar_time_limit").notNull(), // Time limit in minutes
+  grammarQuestions: jsonb("grammar_questions").notNull(), // Array of question IDs
+  
+  // Listening section
+  listeningTimeLimit: integer("listening_time_limit").notNull(), // Time limit in minutes
+  listeningQuestions: jsonb("listening_questions").notNull(), // Array of question IDs
+  
+  // Reading section
+  readingTimeLimit: integer("reading_time_limit").notNull(), // Time limit in minutes  
+  readingQuestions: jsonb("reading_questions").notNull(), // Array of question IDs
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: varchar("created_by").notNull(), // Admin/Manager ID
 });
@@ -102,13 +117,30 @@ export const examAttempts = pgTable("exam_attempts", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   examId: varchar("exam_id").notNull(),
   userId: varchar("user_id"), // Null for demo exams (anonymous)
-  userAnswers: jsonb("user_answers").notNull(), // User's answers mapped by question ID
-  score: integer("score").notNull(), // Final score
-  totalQuestions: integer("total_questions").notNull(),
-  correctAnswers: integer("correct_answers").notNull(),
-  timeSpent: integer("time_spent"), // Time spent in seconds
+  
+  // Section-specific answers and timing
+  vocabularyAnswers: jsonb("vocabulary_answers").notNull(), // User's answers for vocabulary section
+  vocabularyTimeSpent: integer("vocabulary_time_spent").notNull(), // Time spent in seconds
+  vocabularyScore: integer("vocabulary_score").notNull(), // Score for vocabulary section
+  
+  grammarAnswers: jsonb("grammar_answers").notNull(), // User's answers for grammar section  
+  grammarTimeSpent: integer("grammar_time_spent").notNull(), // Time spent in seconds
+  grammarScore: integer("grammar_score").notNull(), // Score for grammar section
+  
+  listeningAnswers: jsonb("listening_answers").notNull(), // User's answers for listening section
+  listeningTimeSpent: integer("listening_time_spent").notNull(), // Time spent in seconds  
+  listeningScore: integer("listening_score").notNull(), // Score for listening section
+  
+  readingAnswers: jsonb("reading_answers").notNull(), // User's answers for reading section
+  readingTimeSpent: integer("reading_time_spent").notNull(), // Time spent in seconds
+  readingScore: integer("reading_score").notNull(), // Score for reading section
+  
+  // Total scores and timing
+  totalScore: integer("total_score").notNull(), // Final total score
+  totalTimeSpent: integer("total_time_spent").notNull(), // Total time spent in seconds
+  waitTimeBetweenSections: integer("wait_time_between_sections").notNull(), // Wait time between sections in seconds
+  
   completedAt: timestamp("completed_at").defaultNow().notNull(),
-  questionOrder: jsonb("question_order").notNull(), // Randomized question order for this attempt
 });
 
 export const insertUserSchema = createInsertSchema(users).pick({
