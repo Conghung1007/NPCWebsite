@@ -2684,6 +2684,232 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ DESCRIPTION MEDIA UPLOAD ROUTES ============
+  
+  // Upload temporary description images
+  app.post("/api/temp-description-images/upload", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const uploadResult = await multiR2Storage.handleUpload(
+        req,
+        {
+          provider: "primary",
+          folder: "temp-description-images",
+          allowedTypes: ["image/*"],
+          maxSizeBytes: 5 * 1024 * 1024 // 5MB
+        }
+      );
+
+      if (uploadResult.success && uploadResult.files && uploadResult.files.length > 0) {
+        const file = uploadResult.files[0];
+        console.log(`✓ Uploaded temporary description image: ${file.filename}`);
+        res.json({
+          success: true,
+          filename: file.filename,
+          url: `/api/temp-description-images/${file.filename}`,
+          message: "Tạm lưu hình ảnh mô tả thành công"
+        });
+      } else {
+        console.error("Description image upload failed:", uploadResult.error);
+        res.status(400).json({
+          success: false,
+          message: uploadResult.error || "Tải lên hình ảnh mô tả thất bại"
+        });
+      }
+    } catch (error) {
+      console.error("Error uploading temporary description image:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi tải lên hình ảnh mô tả"
+      });
+    }
+  });
+
+  // Upload temporary description audio
+  app.post("/api/temp-description-audio/upload", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const uploadResult = await multiR2Storage.handleUpload(
+        req,
+        {
+          provider: "primary",
+          folder: "temp-description-audio",
+          allowedTypes: ["audio/*"],
+          maxSizeBytes: 10 * 1024 * 1024 // 10MB
+        }
+      );
+
+      if (uploadResult.success && uploadResult.files && uploadResult.files.length > 0) {
+        const file = uploadResult.files[0];
+        console.log(`✓ Uploaded temporary description audio: ${file.filename}`);
+        res.json({
+          success: true,
+          filename: file.filename,
+          url: `/api/temp-description-audio/${file.filename}`,
+          message: "Tạm lưu audio mô tả thành công"
+        });
+      } else {
+        console.error("Description audio upload failed:", uploadResult.error);
+        res.status(400).json({
+          success: false,
+          message: uploadResult.error || "Tải lên audio mô tả thất bại"
+        });
+      }
+    } catch (error) {
+      console.error("Error uploading temporary description audio:", error);
+      res.status(500).json({
+        success: false,
+        message: "Lỗi server khi tải lên audio mô tả"
+      });
+    }
+  });
+
+  // Temporary description images download endpoint
+  app.get("/api/temp-description-images/:filename", async (req, res) => {
+    try {
+      const { filename } = req.params;
+      const objectKey = `temp-description-images/${filename}`;
+      
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
+      
+      if (downloadUrl) {
+        // Proxy the image
+        try {
+          const response = await fetch(downloadUrl);
+          if (response.ok) {
+            const contentType = response.headers.get('content-type') || 'image/jpeg';
+            res.set({
+              'Content-Type': contentType,
+              'Cache-Control': 'public, max-age=300', // 5 minute cache for temp files
+              'Access-Control-Allow-Origin': '*'
+            });
+            
+            const buffer = await response.arrayBuffer();
+            return res.send(Buffer.from(buffer));
+          }
+        } catch (proxyError) {
+          console.error("Error proxying temporary description image:", proxyError);
+        }
+      }
+      
+      res.status(404).json({ error: "Temporary description image not found" });
+    } catch (error) {
+      console.error("Error serving temporary description image:", error);
+      res.status(500).json({ error: "Failed to serve temporary description image" });
+    }
+  });
+
+  // Temporary description audio download endpoint
+  app.get("/api/temp-description-audio/:filename", async (req, res) => {
+    try {
+      const { filename } = req.params;
+      const objectKey = `temp-description-audio/${filename}`;
+      
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
+      
+      if (downloadUrl) {
+        // Proxy the audio
+        try {
+          const response = await fetch(downloadUrl);
+          if (response.ok) {
+            const contentType = response.headers.get('content-type') || 'audio/mpeg';
+            res.set({
+              'Content-Type': contentType,
+              'Cache-Control': 'public, max-age=300', // 5 minute cache for temp files
+              'Access-Control-Allow-Origin': '*'
+            });
+            
+            const buffer = await response.arrayBuffer();
+            return res.send(Buffer.from(buffer));
+          }
+        } catch (proxyError) {
+          console.error("Error proxying temporary description audio:", proxyError);
+        }
+      }
+      
+      res.status(404).json({ error: "Temporary description audio not found" });
+    } catch (error) {
+      console.error("Error serving temporary description audio:", error);
+      res.status(500).json({ error: "Failed to serve temporary description audio" });
+    }
+  });
+
+  // Cleanup temporary description images  
+  app.post("/api/temp-description-images/cleanup", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { filenames } = req.body;
+      
+      if (!Array.isArray(filenames)) {
+        return res.status(400).json({ message: "filenames must be an array" });
+      }
+
+      const results = [];
+      for (const filename of filenames) {
+        const objectKey = `temp-description-images/${filename}`;
+        const result = await multiR2Storage.deleteFile("primary", objectKey);
+        results.push({ filename, success: result.success, error: result.error });
+        
+        if (result.success) {
+          console.log(`✓ Cleaned up temporary description image: ${filename}`);
+        } else {
+          console.warn(`✗ Failed to cleanup temporary description image: ${filename} - ${result.error}`);
+        }
+      }
+
+      res.json({ results });
+    } catch (error) {
+      console.error("Error cleaning up temporary description images:", error);
+      res.status(500).json({ message: "Failed to cleanup temporary files" });
+    }
+  });
+
+  // Cleanup temporary description audio  
+  app.post("/api/temp-description-audio/cleanup", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { filenames } = req.body;
+      
+      if (!Array.isArray(filenames)) {
+        return res.status(400).json({ message: "filenames must be an array" });
+      }
+
+      const results = [];
+      for (const filename of filenames) {
+        const objectKey = `temp-description-audio/${filename}`;
+        const result = await multiR2Storage.deleteFile("primary", objectKey);
+        results.push({ filename, success: result.success, error: result.error });
+        
+        if (result.success) {
+          console.log(`✓ Cleaned up temporary description audio: ${filename}`);
+        } else {
+          console.warn(`✗ Failed to cleanup temporary description audio: ${filename} - ${result.error}`);
+        }
+      }
+
+      res.json({ results });
+    } catch (error) {
+      console.error("Error cleaning up temporary description audio:", error);
+      res.status(500).json({ message: "Failed to cleanup temporary files" });
+    }
+  });
+
   const httpServer = createServer(app);
   return httpServer;
 }
