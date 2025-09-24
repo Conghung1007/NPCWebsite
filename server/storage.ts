@@ -785,6 +785,9 @@ export class MemStorage implements IStorage {
       explanation: insertQuestion.explanation ?? null,
       sortOrder: insertQuestion.sortOrder ?? null,
       questionType: insertQuestion.questionType ?? "multiple_choice",
+      language: insertQuestion.language || "vietnamese", // Ensure language is always set
+      descriptionImageUrl: insertQuestion.descriptionImageUrl ?? null,
+      descriptionAudioUrl: insertQuestion.descriptionAudioUrl ?? null,
       createdAt: new Date(),
     };
     this.questions.set(id, question);
@@ -880,7 +883,6 @@ export class MemStorage implements IStorage {
       ...insertAttempt,
       id,
       userId: insertAttempt.userId ?? null,
-      timeSpent: insertAttempt.timeSpent ?? null,
       completedAt: new Date(),
     };
     this.examAttempts.set(id, attempt);

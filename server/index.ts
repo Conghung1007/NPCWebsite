@@ -55,12 +55,11 @@ app.use((req, res, next) => {
 (async () => {
   const server = await registerRoutes(app);
   
+  // TODO: Re-enable seeding after implementing new 4-section exam structure
   // Seed exam data in development
-  if (app.get("env") === "development") {
-    await seedExamData();
-    
-
-  }
+  // if (app.get("env") === "development") {
+  //   await seedExamData();
+  // }
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
