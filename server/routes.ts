@@ -2239,6 +2239,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }
 
+  // Helper function to move temporary description images to permanent location
+  async function moveTemporaryDescriptionImageToPermanent(tempUrl: string): Promise<string | null> {
+    if (!tempUrl || !tempUrl.includes('/api/temp-description-images/')) {
+      return tempUrl; // Already permanent or invalid
+    }
+
+    try {
+      const filename = tempUrl.split('/').pop();
+      if (!filename) return null;
+
+      const tempObjectKey = `temp-description-images/${filename}`;
+      const finalObjectKey = `description-images/${filename}`;
+
+      // Download from temp location
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", tempObjectKey);
+      if (!downloadUrl) {
+        console.warn(`Temporary description image not found: ${tempObjectKey}`);
+        return null;
+      }
+
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        console.warn(`Failed to download temporary description image: ${tempObjectKey}`);
+        return null;
+      }
+
+      const buffer = await response.arrayBuffer();
+
+      // Upload to final location
+      const uploadResult = await multiR2Storage.uploadFile(
+        Buffer.from(buffer),
+        filename,
+        "image/*",
+        {
+          provider: "primary",
+          folder: "description-images",
+          allowedTypes: ["image/*"],
+          maxSizeBytes: 5 * 1024 * 1024
+        }
+      );
+
+      if (uploadResult.success) {
+        // Delete temporary file
+        await multiR2Storage.deleteFile("primary", tempObjectKey);
+        return `/api/description-images/${filename}`;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error moving temporary description image to permanent:", error);
+      return null;
+    }
+  }
+
+  // Helper function to move temporary description audio to permanent location
+  async function moveTemporaryDescriptionAudioToPermanent(tempUrl: string): Promise<string | null> {
+    if (!tempUrl || !tempUrl.includes('/api/temp-description-audio/')) {
+      return tempUrl; // Already permanent or invalid
+    }
+
+    try {
+      const filename = tempUrl.split('/').pop();
+      if (!filename) return null;
+
+      const tempObjectKey = `temp-description-audio/${filename}`;
+      const finalObjectKey = `description-audio/${filename}`;
+
+      // Download from temp location
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", tempObjectKey);
+      if (!downloadUrl) {
+        console.warn(`Temporary description audio not found: ${tempObjectKey}`);
+        return null;
+      }
+
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        console.warn(`Failed to download temporary description audio: ${tempObjectKey}`);
+        return null;
+      }
+
+      const buffer = await response.arrayBuffer();
+
+      // Upload to final location
+      const uploadResult = await multiR2Storage.uploadFile(
+        Buffer.from(buffer),
+        filename,
+        "audio/mpeg",
+        {
+          provider: "primary",
+          folder: "description-audio",
+          allowedTypes: ["audio/*"],
+          maxSizeBytes: 10 * 1024 * 1024
+        }
+      );
+
+      if (uploadResult.success) {
+        // Delete temporary file
+        await multiR2Storage.deleteFile("primary", tempObjectKey);
+        return `/api/description-audio/${filename}`;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error moving temporary description audio to permanent:", error);
+      return null;
+    }
+  }
+
   // Create exam endpoint
   app.post("/api/exams", async (req, res) => {
     try {
@@ -2416,7 +2524,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const { examId, category, description, questionText, questionType, imageUrl, audioUrl, options, correctAnswer, explanation, sortOrder } = req.body;
+      const { examId, category, description, descriptionImageUrl, descriptionAudioUrl, questionText, questionType, imageUrl, audioUrl, options, correctAnswer, explanation, sortOrder } = req.body;
 
       // For new question bank: category and questionText are required
       // For old exam questions: examId and questionText are required  
@@ -2466,10 +2574,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Handle temporary description image - move to permanent location
+      let finalDescriptionImageUrl = descriptionImageUrl;
+      if (descriptionImageUrl && descriptionImageUrl.includes('/api/temp-description-images/')) {
+        console.log(`Moving temporary description image: ${descriptionImageUrl}`);
+        try {
+          finalDescriptionImageUrl = await moveTemporaryDescriptionImageToPermanent(descriptionImageUrl);
+          console.log(`Description image move result: ${finalDescriptionImageUrl}`);
+          if (!finalDescriptionImageUrl) {
+            console.warn("Failed to move temporary description image, setting to null");
+            finalDescriptionImageUrl = null;
+          }
+        } catch (error) {
+          console.error("Error moving temporary description image:", error);
+          finalDescriptionImageUrl = null;
+        }
+      }
+
+      // Handle temporary description audio - move to permanent location
+      let finalDescriptionAudioUrl = descriptionAudioUrl;
+      if (descriptionAudioUrl && descriptionAudioUrl.includes('/api/temp-description-audio/')) {
+        console.log(`Moving temporary description audio: ${descriptionAudioUrl}`);
+        try {
+          finalDescriptionAudioUrl = await moveTemporaryDescriptionAudioToPermanent(descriptionAudioUrl);
+          console.log(`Description audio move result: ${finalDescriptionAudioUrl}`);
+          if (!finalDescriptionAudioUrl) {
+            console.warn("Failed to move temporary description audio, setting to null");
+            finalDescriptionAudioUrl = null;
+          }
+        } catch (error) {
+          console.error("Error moving temporary description audio:", error);
+          finalDescriptionAudioUrl = null;
+        }
+      }
+
       const question = await storage.createQuestion({
         examId: examId || null, // Can be null for standalone questions
         category: category || "ngữ pháp", // Default category if not provided
         description: description || null,
+        descriptionImageUrl: finalDescriptionImageUrl || null,
+        descriptionAudioUrl: finalDescriptionAudioUrl || null,
         questionText,
         questionType: questionType || "multiple_choice",
         imageUrl: finalImageUrl || null,
