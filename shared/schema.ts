@@ -76,6 +76,8 @@ export const questions = pgTable("questions", {
   category: text("category").notNull(), // từ vựng, ngữ pháp, đọc hiểu, nghe hiểu
   language: text("language").notNull().default("japanese"), // japanese, english, german
   description: text("description"), // Mô tả hoặc ghi chú cho câu hỏi
+  descriptionImageUrl: text("description_image_url"), // Optional image for description
+  descriptionAudioUrl: text("description_audio_url"), // Optional audio for description
   questionText: text("question_text").notNull(),
   questionType: text("question_type").notNull().default("multiple_choice"), // multiple_choice, true_false
   imageUrl: text("image_url"), // Optional image for question
