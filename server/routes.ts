@@ -1927,6 +1927,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Permanent description images download endpoint
+  app.get("/api/description-images/:filename", async (req, res) => {
+    try {
+      const { filename } = req.params;
+      const objectKey = `description-images/${filename}`;
+      
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
+      
+      if (downloadUrl) {
+        // Proxy the image
+        try {
+          const response = await fetch(downloadUrl);
+          if (response.ok) {
+            const contentType = response.headers.get('content-type') || 'image/jpeg';
+            res.set({
+              'Content-Type': contentType,
+              'Cache-Control': 'public, max-age=86400', // 24 hour cache for permanent files
+              'Access-Control-Allow-Origin': '*'
+            });
+            
+            const buffer = await response.arrayBuffer();
+            return res.send(Buffer.from(buffer));
+          }
+        } catch (proxyError) {
+          console.error("Error proxying permanent description image:", proxyError);
+        }
+      }
+      
+      res.status(404).json({ error: "Description image not found" });
+    } catch (error) {
+      console.error("Error serving permanent description image:", error);
+      res.status(500).json({ error: "Failed to serve description image" });
+    }
+  });
+
+  // Permanent description audio download endpoint
+  app.get("/api/description-audio/:filename", async (req, res) => {
+    try {
+      const { filename } = req.params;
+      const objectKey = `description-audio/${filename}`;
+      
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
+      
+      if (!downloadUrl) {
+        return res.status(404).json({ message: "Description audio file not found" });
+      }
+
+      // Proxy the audio file
+      const audioResponse = await fetch(downloadUrl);
+      if (!audioResponse.ok) {
+        return res.status(404).json({ message: "Description audio file not found" });
+      }
+
+      const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
+      const contentLength = audioResponse.headers.get('content-length');
+      
+      res.set({
+        'Content-Type': contentType,
+        'Content-Length': contentLength || '',
+        'Cache-Control': 'public, max-age=86400', // 24 hour cache for permanent files
+      });
+
+      // Stream the audio data
+      const audioBuffer = await audioResponse.arrayBuffer();
+      return res.send(Buffer.from(audioBuffer));
+    } catch (error) {
+      console.error("Error serving description audio file:", error);
+      res.status(500).json({ message: "Failed to serve description audio file" });
+    }
+  });
+
   // Temporary audio download endpoint
   app.get("/api/temp-audio/:filename", async (req, res) => {
     try {
