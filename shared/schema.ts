@@ -74,6 +74,7 @@ export const questions = pgTable("questions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   examId: varchar("exam_id"), // Now nullable - questions can exist independently
   category: text("category").notNull(), // từ vựng, ngữ pháp, đọc hiểu, nghe hiểu
+  language: text("language").notNull().default("japanese"), // japanese, english, german
   description: text("description"), // Mô tả hoặc ghi chú cho câu hỏi
   questionText: text("question_text").notNull(),
   questionType: text("question_type").notNull().default("multiple_choice"), // multiple_choice, true_false

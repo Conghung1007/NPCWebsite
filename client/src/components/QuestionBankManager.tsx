@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Search, Edit, Trash2, HelpCircle, BookOpen, Volume2, Eye, Filter, Save, X, Minus } from "lucide-react";
+import { Plus, Search, Edit, Trash2, HelpCircle, BookOpen, Volume2, Eye, Filter, Save, X, Minus, ChevronLeft, ChevronRight } from "lucide-react";
 import type { Question } from "@shared/schema";
 
 const questionCategories = [
@@ -23,6 +23,12 @@ const questionCategories = [
   { value: "ngữ pháp", label: "Ngữ pháp" },
   { value: "đọc hiểu", label: "Đọc hiểu" },
   { value: "nghe hiểu", label: "Nghe hiểu" },
+];
+
+const languageOptions = [
+  { value: "japanese", label: "Tiếng Nhật" },
+  { value: "english", label: "Tiếng Anh" },
+  { value: "german", label: "Tiếng Đức" },
 ];
 
 // Single question schema for each question box
@@ -50,7 +56,7 @@ const singleQuestionSchema = z.object({
 
 // Form validation schema for multiple questions
 const questionSchema = z.object({
-  title: z.string().optional(),
+  language: z.string().min(1, "Ngôn ngữ là bắt buộc"),
   category: z.string().min(1, "Danh mục là bắt buộc"),
   description: z.string().optional(),
   questions: z.array(singleQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi"),
@@ -64,6 +70,9 @@ export function QuestionBankManager() {
   
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
+  const [selectedLanguage, setSelectedLanguage] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
   const [isAddingQuestion, setIsAddingQuestion] = useState(false);
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; question: Question | null }>({
@@ -75,7 +84,7 @@ export function QuestionBankManager() {
   const form = useForm<QuestionFormData>({
     resolver: zodResolver(questionSchema),
     defaultValues: {
-      title: "",
+      language: "japanese",
       category: "ngữ pháp",
       description: "",
       questions: [{
@@ -94,16 +103,39 @@ export function QuestionBankManager() {
     queryKey: ["/api/questions"],
   });
 
-  // Filter questions based on search and category
+  // Filter questions based on search, category and language
   const filteredQuestions = questions.filter(question => {
     const matchesSearch = searchQuery === "" || 
       question.questionText.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (question.description && question.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesCategory = selectedCategory === "all" || question.category === selectedCategory;
+    const matchesLanguage = selectedLanguage === "all" || (question as any).language === selectedLanguage;
     
-    return matchesSearch && matchesCategory;
+    return matchesSearch && matchesCategory && matchesLanguage;
   });
+
+  // Pagination logic
+  const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / itemsPerPage));
+  const safePage = Math.min(currentPage, totalPages);
+  const startIndex = (safePage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedQuestions = filteredQuestions.slice(startIndex, endIndex);
+
+  // Auto-correct current page if it's out of bounds
+  if (currentPage > totalPages && totalPages > 0) {
+    setCurrentPage(totalPages);
+  }
+
+  // Reset to first page when filters change
+  const resetPagination = () => {
+    setCurrentPage(1);
+  };
+
+  // Update pagination when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategory, selectedLanguage]);
 
   const getCategoryBadge = (category: string) => {
     const categoryConfig = questionCategories.find(cat => cat.value === category);
@@ -116,6 +148,20 @@ export function QuestionBankManager() {
     return (
       <Badge variant={variants[category] || "outline"}>
         {categoryConfig?.label || category}
+      </Badge>
+    );
+  };
+
+  const getLanguageBadge = (language: string) => {
+    const languageConfig = languageOptions.find(lang => lang.value === language);
+    const variants: any = {
+      "japanese": "default",
+      "english": "secondary",
+      "german": "outline"
+    };
+    return (
+      <Badge variant={variants[language] || "outline"}>
+        {languageConfig?.label || language}
       </Badge>
     );
   };
@@ -200,6 +246,7 @@ export function QuestionBankManager() {
       const question = data.questions[0];
       const backendData = { 
         category: data.category,
+        language: data.language,
         description: data.description,
         questionText: question.questionText,
         questionType: "multiple_choice" as const,
@@ -216,6 +263,7 @@ export function QuestionBankManager() {
         for (const question of data.questions) {
           const backendData = {
             category: data.category,
+            language: data.language,
             description: data.description,
             questionText: question.questionText,
             questionType: "multiple_choice" as const,
@@ -261,7 +309,7 @@ export function QuestionBankManager() {
     }
     
     form.reset({
-      title: (question as any).title || "",
+      language: (question as any).language || "japanese",
       category: question.category,
       description: question.description || "",
       questions: [{
@@ -381,6 +429,40 @@ export function QuestionBankManager() {
               </Select>
             </div>
 
+            {/* Language Filter */}
+            <div className="min-w-[180px]">
+              <Select value={selectedLanguage} onValueChange={setSelectedLanguage}>
+                <SelectTrigger data-testid="select-language-filter">
+                  <SelectValue placeholder="Lọc theo ngôn ngữ" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả ngôn ngữ</SelectItem>
+                  {languageOptions.map(language => (
+                    <SelectItem key={language.value} value={language.value}>
+                      {language.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Items per page selector */}
+            <div className="min-w-[120px]">
+              <Select value={itemsPerPage.toString()} onValueChange={(value) => {
+                setItemsPerPage(parseInt(value));
+                setCurrentPage(1);
+              }}>
+                <SelectTrigger data-testid="select-items-per-page">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10 / trang</SelectItem>
+                  <SelectItem value="20">20 / trang</SelectItem>
+                  <SelectItem value="50">50 / trang</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Add Question Button */}
             <Button 
               onClick={() => setIsAddingQuestion(true)} 
@@ -399,7 +481,7 @@ export function QuestionBankManager() {
         <CardContent className="p-0">
           {filteredQuestions.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
-              {searchQuery || selectedCategory ? 
+              {searchQuery || selectedCategory !== "all" || selectedLanguage !== "all" ? 
                 "Không tìm thấy câu hỏi nào phù hợp." :
                 "Chưa có câu hỏi nào trong bộ câu hỏi."
               }
@@ -410,13 +492,14 @@ export function QuestionBankManager() {
                 <TableRow>
                   <TableHead>Nội dung câu hỏi</TableHead>
                   <TableHead>Danh mục</TableHead>
+                  <TableHead>Ngôn ngữ</TableHead>
                   <TableHead>Loại</TableHead>
                   <TableHead>Mô tả</TableHead>
                   <TableHead>Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredQuestions.map((question) => (
+                {paginatedQuestions.map((question) => (
                   <TableRow key={question.id}>
                     <TableCell className="max-w-md">
                       <div className="flex items-start gap-2">
@@ -429,6 +512,9 @@ export function QuestionBankManager() {
                     </TableCell>
                     <TableCell>
                       {getCategoryBadge(question.category)}
+                    </TableCell>
+                    <TableCell>
+                      {getLanguageBadge((question as any).language || "japanese")}
                     </TableCell>
                     <TableCell>
                       <Badge variant="outline">
@@ -469,6 +555,69 @@ export function QuestionBankManager() {
         </CardContent>
       </Card>
 
+      {/* Pagination */}
+      {filteredQuestions.length > 0 && (
+        <Card>
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredQuestions.length)} trong tổng số {filteredQuestions.length} câu hỏi
+              </div>
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(currentPage - 1)}
+                  disabled={currentPage === 1}
+                  data-testid="button-prev-page"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                  Trước
+                </Button>
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => {
+                    const page = i + 1;
+                    if (
+                      page === 1 ||
+                      page === totalPages ||
+                      (page >= currentPage - 1 && page <= currentPage + 1)
+                    ) {
+                      return (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? "default" : "outline"}
+                          size="sm"
+                          onClick={() => setCurrentPage(page)}
+                          data-testid={`button-page-${page}`}
+                        >
+                          {page}
+                        </Button>
+                      );
+                    } else if (
+                      page === currentPage - 2 ||
+                      page === currentPage + 2
+                    ) {
+                      return <span key={page} className="px-2">...</span>;
+                    }
+                    return null;
+                  })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                  data-testid="button-next-page"
+                >
+                  Tiếp
+                  <ChevronRight className="w-4 h-4" />
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Create/Edit Question Dialog */}
       <Dialog open={isAddingQuestion || !!editingQuestion} onOpenChange={(open) => !open && cancelForm()}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
@@ -483,20 +632,27 @@ export function QuestionBankManager() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-              {/* Title */}
+              {/* Language */}
               <FormField
                 control={form.control}
-                name="title"
+                name="language"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tiêu đề câu hỏi</FormLabel>
-                    <FormControl>
-                      <Input 
-                        placeholder="Nhập tiêu đề cho câu hỏi..."
-                        data-testid="input-question-title"
-                        {...field} 
-                      />
-                    </FormControl>
+                    <FormLabel>Ngôn ngữ *</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger data-testid="select-question-language">
+                          <SelectValue placeholder="Chọn ngôn ngữ" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {languageOptions.map(language => (
+                          <SelectItem key={language.value} value={language.value}>
+                            {language.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}
