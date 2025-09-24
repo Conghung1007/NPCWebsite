@@ -16,6 +16,8 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { Plus, Search, Edit, Trash2, HelpCircle, BookOpen, Volume2, Eye, Filter, Save, X, Minus, ChevronLeft, ChevronRight } from "lucide-react";
+import { AudioUploader } from "@/components/AudioUploader";
+import { QuestionImageUploader } from "@/components/QuestionImageUploader";
 import type { Question } from "@shared/schema";
 
 const questionCategories = [
@@ -365,7 +367,90 @@ export function QuestionBankManager() {
     }
   };
 
-  const cancelForm = () => {
+  const cancelForm = async () => {
+    // Cleanup any uploaded temporary files before canceling
+    const formData = form.getValues();
+    const tempFilesToCleanup: {audio: string[], questionImages: string[], answerImages: string[]} = {
+      audio: [],
+      questionImages: [],
+      answerImages: []
+    };
+
+    // Collect temporary files from all questions
+    formData.questions?.forEach(question => {
+      // Collect temporary audio files
+      if (question.audioUrl && question.audioUrl.includes('/api/temp-audio/')) {
+        const filename = question.audioUrl.split('/').pop();
+        if (filename) tempFilesToCleanup.audio.push(filename);
+      }
+
+      // Collect temporary question image files
+      if (question.imageUrl && question.imageUrl.includes('/api/temp-question-images/')) {
+        const filename = question.imageUrl.split('/').pop();
+        if (filename) tempFilesToCleanup.questionImages.push(filename);
+      }
+
+      // Collect temporary answer choice image files (future-proofing)
+      // Note: Answer choice images are not currently implemented in the UI,
+      // but this handles cleanup if they're added in the future
+      if (question.options && Array.isArray(question.options)) {
+        question.options.forEach((option: any) => {
+          // Check if options are objects with imageUrl property
+          if (typeof option === 'object' && option.imageUrl && option.imageUrl.includes('/api/temp-answer-images/')) {
+            const filename = option.imageUrl.split('/').pop();
+            if (filename) tempFilesToCleanup.answerImages.push(filename);
+          }
+          // Check if option is a string that contains an answer image URL
+          if (typeof option === 'string' && option.includes('/api/temp-answer-images/')) {
+            const filename = option.split('/').pop();
+            if (filename) tempFilesToCleanup.answerImages.push(filename);
+          }
+        });
+      }
+    });
+
+    // Cleanup temporary files
+    const cleanupPromises = [];
+    
+    if (tempFilesToCleanup.audio.length > 0) {
+      cleanupPromises.push(
+        fetch('/api/temp-audio/cleanup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filenames: tempFilesToCleanup.audio })
+        }).catch(e => console.warn('Failed to cleanup temporary audio files:', e))
+      );
+    }
+
+    if (tempFilesToCleanup.questionImages.length > 0) {
+      cleanupPromises.push(
+        fetch('/api/temp-question-images/cleanup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filenames: tempFilesToCleanup.questionImages })
+        }).catch(e => console.warn('Failed to cleanup temporary question image files:', e))
+      );
+    }
+
+    if (tempFilesToCleanup.answerImages.length > 0) {
+      cleanupPromises.push(
+        fetch('/api/temp-answer-images/cleanup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filenames: tempFilesToCleanup.answerImages })
+        }).catch(e => console.warn('Failed to cleanup temporary answer image files:', e))
+      );
+    }
+
+    // Execute cleanup (don't wait for completion to avoid blocking UI)
+    if (cleanupPromises.length > 0) {
+      Promise.all(cleanupPromises).then(() => {
+        console.log('✓ Temporary files cleaned up on form cancel');
+      }).catch(e => {
+        console.warn('Some temporary files could not be cleaned up:', e);
+      });
+    }
+
     setIsAddingQuestion(false);
     setEditingQuestion(null);
     form.reset();
@@ -764,6 +849,49 @@ export function QuestionBankManager() {
                             </FormItem>
                           )}
                         />
+
+                        {/* Question Media Uploads */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          {/* Question Image Upload */}
+                          <FormField
+                            control={form.control}
+                            name={`questions.${questionIndex}.imageUrl`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Hình ảnh câu hỏi (tùy chọn)</FormLabel>
+                                <FormControl>
+                                  <QuestionImageUploader
+                                    type="question"
+                                    maxSizeMB={5}
+                                    currentImageUrl={field.value}
+                                    onImageUpload={(imageUrl) => field.onChange(imageUrl)}
+                                    onRemoveImage={() => field.onChange("")}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+
+                          {/* Question Audio Upload */}
+                          <FormField
+                            control={form.control}
+                            name={`questions.${questionIndex}.audioUrl`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Audio câu hỏi (tùy chọn)</FormLabel>
+                                <FormControl>
+                                  <AudioUploader
+                                    currentAudioUrl={field.value}
+                                    onAudioUpload={(audioUrl) => field.onChange(audioUrl)}
+                                    onRemoveAudio={() => field.onChange("")}
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
 
                         {/* Options */}
                         <div className="space-y-3">

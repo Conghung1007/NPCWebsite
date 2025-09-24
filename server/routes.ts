@@ -1516,6 +1516,114 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Question image upload endpoint (direct upload using multipart/form-data)
+  app.post("/api/question-images/upload-direct", upload.single('image'), async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      // Validate file type
+      if (!file.mimetype.startsWith('image/')) {
+        return res.status(400).json({ message: "Only image files are allowed" });
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        return res.status(400).json({ message: "Image size cannot exceed 5MB" });
+      }
+
+      const timestamp = Date.now();
+      const fileExtension = file.originalname.split('.').pop() || 'jpg';
+      const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      
+      try {
+        const uploadResult = await multiR2Storage.uploadFile({
+          provider: "primary",
+          key: `temp-question-images/${fileName}`,
+          body: file.buffer,
+          contentType: file.mimetype
+        });
+
+        if (!uploadResult.success) {
+          return res.status(500).json({ message: uploadResult.error || "Failed to upload image" });
+        }
+
+        const imageUrl = `/api/temp-question-images/${fileName}`;
+        res.json({ 
+          imageUrl,
+          originalFileName: file.originalname || 'image file'
+        });
+      } catch (error) {
+        console.error("Error uploading question image:", error);
+        res.status(500).json({ message: "Failed to upload image" });
+      }
+    } catch (error) {
+      console.error("Error handling question image upload:", error);
+      res.status(500).json({ message: "Failed to process image upload request" });
+    }
+  });
+
+  // Answer choice image upload endpoint (direct upload using multipart/form-data)
+  app.post("/api/answer-images/upload-direct", upload.single('image'), async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      // Validate file type
+      if (!file.mimetype.startsWith('image/')) {
+        return res.status(400).json({ message: "Only image files are allowed" });
+      }
+
+      // Validate file size (max 3MB for answer images)
+      if (file.size > 3 * 1024 * 1024) {
+        return res.status(400).json({ message: "Image size cannot exceed 3MB" });
+      }
+
+      const timestamp = Date.now();
+      const fileExtension = file.originalname.split('.').pop() || 'jpg';
+      const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      
+      try {
+        const uploadResult = await multiR2Storage.uploadFile({
+          provider: "primary",
+          key: `temp-answer-images/${fileName}`,
+          body: file.buffer,
+          contentType: file.mimetype
+        });
+
+        if (!uploadResult.success) {
+          return res.status(500).json({ message: uploadResult.error || "Failed to upload image" });
+        }
+
+        const imageUrl = `/api/temp-answer-images/${fileName}`;
+        res.json({ 
+          imageUrl,
+          originalFileName: file.originalname || 'image file'
+        });
+      } catch (error) {
+        console.error("Error uploading answer image:", error);
+        res.status(500).json({ message: "Failed to upload image" });
+      }
+    } catch (error) {
+      console.error("Error handling answer image upload:", error);
+      res.status(500).json({ message: "Failed to process image upload request" });
+    }
+  });
+
   // Audio upload via server proxy (alternative to presigned URL)
   app.post("/api/audio/upload-direct", upload.single('audio'), async (req, res) => {
     try {
@@ -1679,6 +1787,146 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Temporary question images download endpoint
+  app.get("/api/temp-question-images/:filename", async (req, res) => {
+    try {
+      const { filename } = req.params;
+      const objectKey = `temp-question-images/${filename}`;
+      
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
+      
+      if (downloadUrl) {
+        // Proxy the image
+        try {
+          const response = await fetch(downloadUrl);
+          if (response.ok) {
+            const contentType = response.headers.get('content-type') || 'image/jpeg';
+            res.set({
+              'Content-Type': contentType,
+              'Cache-Control': 'public, max-age=3600',
+              'Access-Control-Allow-Origin': '*'
+            });
+            
+            const buffer = await response.arrayBuffer();
+            return res.send(Buffer.from(buffer));
+          }
+        } catch (proxyError) {
+          console.error("Error proxying question image:", proxyError);
+        }
+      }
+      
+      res.status(404).json({ error: "Question image not found" });
+    } catch (error) {
+      console.error("Error serving question image:", error);
+      res.status(500).json({ error: "Failed to serve question image" });
+    }
+  });
+
+  // Temporary answer images download endpoint
+  app.get("/api/temp-answer-images/:filename", async (req, res) => {
+    try {
+      const { filename } = req.params;
+      const objectKey = `temp-answer-images/${filename}`;
+      
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
+      
+      if (downloadUrl) {
+        // Proxy the image
+        try {
+          const response = await fetch(downloadUrl);
+          if (response.ok) {
+            const contentType = response.headers.get('content-type') || 'image/jpeg';
+            res.set({
+              'Content-Type': contentType,
+              'Cache-Control': 'public, max-age=3600',
+              'Access-Control-Allow-Origin': '*'
+            });
+            
+            const buffer = await response.arrayBuffer();
+            return res.send(Buffer.from(buffer));
+          }
+        } catch (proxyError) {
+          console.error("Error proxying answer image:", proxyError);
+        }
+      }
+      
+      res.status(404).json({ error: "Answer image not found" });
+    } catch (error) {
+      console.error("Error serving answer image:", error);
+      res.status(500).json({ error: "Failed to serve answer image" });
+    }
+  });
+
+  // Permanent question images download endpoint
+  app.get("/api/question-images/:filename", async (req, res) => {
+    try {
+      const { filename } = req.params;
+      const objectKey = `question-images/${filename}`;
+      
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
+      
+      if (downloadUrl) {
+        // Proxy the image
+        try {
+          const response = await fetch(downloadUrl);
+          if (response.ok) {
+            const contentType = response.headers.get('content-type') || 'image/jpeg';
+            res.set({
+              'Content-Type': contentType,
+              'Cache-Control': 'public, max-age=86400', // 24 hour cache for permanent files
+              'Access-Control-Allow-Origin': '*'
+            });
+            
+            const buffer = await response.arrayBuffer();
+            return res.send(Buffer.from(buffer));
+          }
+        } catch (proxyError) {
+          console.error("Error proxying permanent question image:", proxyError);
+        }
+      }
+      
+      res.status(404).json({ error: "Question image not found" });
+    } catch (error) {
+      console.error("Error serving permanent question image:", error);
+      res.status(500).json({ error: "Failed to serve question image" });
+    }
+  });
+
+  // Permanent answer images download endpoint
+  app.get("/api/answer-images/:filename", async (req, res) => {
+    try {
+      const { filename } = req.params;
+      const objectKey = `answer-images/${filename}`;
+      
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
+      
+      if (downloadUrl) {
+        // Proxy the image
+        try {
+          const response = await fetch(downloadUrl);
+          if (response.ok) {
+            const contentType = response.headers.get('content-type') || 'image/jpeg';
+            res.set({
+              'Content-Type': contentType,
+              'Cache-Control': 'public, max-age=86400', // 24 hour cache for permanent files
+              'Access-Control-Allow-Origin': '*'
+            });
+            
+            const buffer = await response.arrayBuffer();
+            return res.send(Buffer.from(buffer));
+          }
+        } catch (proxyError) {
+          console.error("Error proxying permanent answer image:", proxyError);
+        }
+      }
+      
+      res.status(404).json({ error: "Answer image not found" });
+    } catch (error) {
+      console.error("Error serving permanent answer image:", error);
+      res.status(500).json({ error: "Failed to serve answer image" });
+    }
+  });
+
   // Temporary audio download endpoint
   app.get("/api/temp-audio/:filename", async (req, res) => {
     try {
@@ -1760,6 +2008,182 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Failed to cleanup temporary files" });
     }
   });
+
+  // Cleanup temporary question images  
+  app.post("/api/temp-question-images/cleanup", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { filenames } = req.body;
+      
+      if (!Array.isArray(filenames)) {
+        return res.status(400).json({ message: "filenames must be an array" });
+      }
+
+      const results = [];
+      for (const filename of filenames) {
+        const objectKey = `temp-question-images/${filename}`;
+        const result = await multiR2Storage.deleteFile("primary", objectKey);
+        results.push({ filename, success: result.success, error: result.error });
+        
+        if (result.success) {
+          console.log(`✓ Cleaned up temporary question image: ${filename}`);
+        } else {
+          console.warn(`✗ Failed to cleanup temporary question image: ${filename} - ${result.error}`);
+        }
+      }
+
+      res.json({ results });
+    } catch (error) {
+      console.error("Error cleaning up temporary question images:", error);
+      res.status(500).json({ message: "Failed to cleanup temporary files" });
+    }
+  });
+
+  // Cleanup temporary answer images  
+  app.post("/api/temp-answer-images/cleanup", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { filenames } = req.body;
+      
+      if (!Array.isArray(filenames)) {
+        return res.status(400).json({ message: "filenames must be an array" });
+      }
+
+      const results = [];
+      for (const filename of filenames) {
+        const objectKey = `temp-answer-images/${filename}`;
+        const result = await multiR2Storage.deleteFile("primary", objectKey);
+        results.push({ filename, success: result.success, error: result.error });
+        
+        if (result.success) {
+          console.log(`✓ Cleaned up temporary answer image: ${filename}`);
+        } else {
+          console.warn(`✗ Failed to cleanup temporary answer image: ${filename} - ${result.error}`);
+        }
+      }
+
+      res.json({ results });
+    } catch (error) {
+      console.error("Error cleaning up temporary answer images:", error);
+      res.status(500).json({ message: "Failed to cleanup temporary files" });
+    }
+  });
+
+  // Helper function to move temporary question images to permanent location
+  async function moveTemporaryQuestionImageToPermanent(tempUrl: string): Promise<string | null> {
+    if (!tempUrl || !tempUrl.includes('/api/temp-question-images/')) {
+      return tempUrl; // Already permanent or invalid
+    }
+
+    try {
+      const filename = tempUrl.split('/').pop();
+      if (!filename) return null;
+
+      const tempObjectKey = `temp-question-images/${filename}`;
+      const finalObjectKey = `question-images/${filename}`;
+
+      // Download from temp location
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", tempObjectKey);
+      if (!downloadUrl) {
+        console.warn(`Temporary question image not found: ${tempObjectKey}`);
+        return null;
+      }
+
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        console.warn(`Failed to download temporary question image: ${tempObjectKey}`);
+        return null;
+      }
+
+      const buffer = await response.arrayBuffer();
+
+      // Upload to final location
+      const uploadResult = await multiR2Storage.uploadFile(
+        Buffer.from(buffer),
+        filename,
+        "image/jpeg", // Default content type, can be adjusted
+        {
+          provider: "primary",
+          folder: "question-images",
+          allowedTypes: ["image/*"],
+          maxSizeBytes: 5 * 1024 * 1024
+        }
+      );
+
+      if (uploadResult.success) {
+        // Delete temporary file
+        await multiR2Storage.deleteFile("primary", tempObjectKey);
+        return `/api/question-images/${filename}`;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error moving temporary question image to permanent:", error);
+      return null;
+    }
+  }
+
+  // Helper function to move temporary answer images to permanent location
+  async function moveTemporaryAnswerImageToPermanent(tempUrl: string): Promise<string | null> {
+    if (!tempUrl || !tempUrl.includes('/api/temp-answer-images/')) {
+      return tempUrl; // Already permanent or invalid
+    }
+
+    try {
+      const filename = tempUrl.split('/').pop();
+      if (!filename) return null;
+
+      const tempObjectKey = `temp-answer-images/${filename}`;
+      const finalObjectKey = `answer-images/${filename}`;
+
+      // Download from temp location
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", tempObjectKey);
+      if (!downloadUrl) {
+        console.warn(`Temporary answer image not found: ${tempObjectKey}`);
+        return null;
+      }
+
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        console.warn(`Failed to download temporary answer image: ${tempObjectKey}`);
+        return null;
+      }
+
+      const buffer = await response.arrayBuffer();
+
+      // Upload to final location
+      const uploadResult = await multiR2Storage.uploadFile(
+        Buffer.from(buffer),
+        filename,
+        "image/jpeg", // Default content type, can be adjusted
+        {
+          provider: "primary",
+          folder: "answer-images",
+          allowedTypes: ["image/*"],
+          maxSizeBytes: 3 * 1024 * 1024
+        }
+      );
+
+      if (uploadResult.success) {
+        // Delete temporary file
+        await multiR2Storage.deleteFile("primary", tempObjectKey);
+        return `/api/answer-images/${filename}`;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error moving temporary answer image to permanent:", error);
+      return null;
+    }
+  }
 
   // Helper function to move temporary audio to permanent location
   async function moveTemporaryAudioToPermanent(tempUrl: string): Promise<string | null> {
@@ -1869,12 +2293,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (questionData.audioUrl && questionData.audioUrl.includes('/api/temp-audio/')) {
             finalAudioUrl = await moveTemporaryAudioToPermanent(questionData.audioUrl);
           }
+
+          // Move temporary question image to permanent location if exists
+          let finalImageUrl = questionData.imageUrl;
+          if (questionData.imageUrl && questionData.imageUrl.includes('/api/temp-question-images/')) {
+            finalImageUrl = await moveTemporaryQuestionImageToPermanent(questionData.imageUrl);
+          }
           
           const question = await storage.createQuestion({
             examId: exam.id,
             questionText: questionData.questionText,
             questionType: questionData.questionType || "multiple_choice",
-            imageUrl: questionData.imageUrl || null,
+            imageUrl: finalImageUrl || null,
             audioUrl: finalAudioUrl || null,
             options: questionData.options,
             correctAnswer: questionData.correctAnswer,
@@ -2019,13 +2449,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Handle temporary question image - move to permanent location
+      let finalImageUrl = imageUrl;
+      if (imageUrl && imageUrl.includes('/api/temp-question-images/')) {
+        console.log(`Moving temporary question image: ${imageUrl}`);
+        try {
+          finalImageUrl = await moveTemporaryQuestionImageToPermanent(imageUrl);
+          console.log(`Image move result: ${finalImageUrl}`);
+          if (!finalImageUrl) {
+            console.warn("Failed to move temporary question image, setting to null");
+            finalImageUrl = null;
+          }
+        } catch (error) {
+          console.error("Error moving temporary question image:", error);
+          finalImageUrl = null;
+        }
+      }
+
       const question = await storage.createQuestion({
         examId: examId || null, // Can be null for standalone questions
         category: category || "ngữ pháp", // Default category if not provided
         description: description || null,
         questionText,
         questionType: questionType || "multiple_choice",
-        imageUrl: imageUrl || null,
+        imageUrl: finalImageUrl || null,
         audioUrl: finalAudioUrl || null,
         options,
         correctAnswer,
@@ -2053,7 +2500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { id } = req.params;
       
-      // Get question to check for audio before deleting
+      // Get question to check for files before deleting
       const question = await storage.getQuestion(id);
       if (!question) {
         return res.status(404).json({ message: "Question not found" });
@@ -2069,6 +2516,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             console.warn(`Failed to delete audio file ${filename}:`, deleteResult.error);
           } else {
             console.log(`Successfully deleted audio file: ${filename}`);
+          }
+        }
+      }
+
+      // Delete image file from R2 storage if exists  
+      if (question.imageUrl) {
+        const filename = question.imageUrl.split('/').pop();
+        if (filename) {
+          console.log(`Deleting image file for question: ${filename}`);
+          try {
+            // Try to delete from both locations (temporary and permanent)
+            await multiR2Storage.deleteFile("primary", `temp-question-images/${filename}`);
+            await multiR2Storage.deleteFile("primary", `question-images/${filename}`);
+            console.log(`✓ Cleaned up question image file: ${filename}`);
+          } catch (error) {
+            console.warn(`Failed to cleanup question image file: ${filename}`, error);
           }
         }
       }
