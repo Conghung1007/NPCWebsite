@@ -73,9 +73,8 @@ export function DescriptionMediaUploader({
     setIsImageUploading(true);
 
     try {
-      // Cleanup previous temporary image if exists
-      await cleanupPreviousFile(imageUrl, "/api/temp-description-images/cleanup");
-
+      const previousImageUrl = imageUrl; // Store previous URL for potential cleanup
+      
       const formData = new FormData();
       formData.append('file', file);
 
@@ -88,6 +87,12 @@ export function DescriptionMediaUploader({
 
       if (result.success) {
         onImageChange(result.url);
+        
+        // Only cleanup previous temporary image after successful upload
+        if (previousImageUrl && previousImageUrl.includes('/api/temp-description-images/')) {
+          await cleanupPreviousFile(previousImageUrl, "/api/temp-description-images/cleanup");
+        }
+        
         toast({
           title: "Thành công",
           description: result.message || "Tải lên hình ảnh mô tả thành công!"
@@ -138,9 +143,8 @@ export function DescriptionMediaUploader({
     setIsAudioUploading(true);
 
     try {
-      // Cleanup previous temporary audio if exists
-      await cleanupPreviousFile(audioUrl, "/api/temp-description-audio/cleanup");
-
+      const previousAudioUrl = audioUrl; // Store previous URL for potential cleanup
+      
       const formData = new FormData();
       formData.append('file', file);
 
@@ -153,6 +157,12 @@ export function DescriptionMediaUploader({
 
       if (result.success) {
         onAudioChange(result.url);
+        
+        // Only cleanup previous temporary audio after successful upload
+        if (previousAudioUrl && previousAudioUrl.includes('/api/temp-description-audio/')) {
+          await cleanupPreviousFile(previousAudioUrl, "/api/temp-description-audio/cleanup");
+        }
+        
         toast({
           title: "Thành công",
           description: result.message || "Tải lên audio mô tả thành công!"
