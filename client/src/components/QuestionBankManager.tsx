@@ -18,6 +18,7 @@ import { apiRequest } from "@/lib/queryClient";
 import { Plus, Search, Edit, Trash2, HelpCircle, BookOpen, Volume2, Eye, Filter, Save, X, Minus, ChevronLeft, ChevronRight } from "lucide-react";
 import { AudioUploader } from "@/components/AudioUploader";
 import { QuestionImageUploader } from "@/components/QuestionImageUploader";
+import { DescriptionMediaUploader } from "@/components/DescriptionMediaUploader";
 import type { Question } from "@shared/schema";
 
 const questionCategories = [
@@ -61,6 +62,8 @@ const questionSchema = z.object({
   language: z.string().min(1, "Ngôn ngữ là bắt buộc"),
   category: z.string().min(1, "Danh mục là bắt buộc"),
   description: z.string().optional(),
+  descriptionImageUrl: z.string().optional(),
+  descriptionAudioUrl: z.string().optional(),
   questions: z.array(singleQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi"),
 });
 
@@ -89,6 +92,8 @@ export function QuestionBankManager() {
       language: "japanese",
       category: "ngữ pháp",
       description: "",
+      descriptionImageUrl: "",
+      descriptionAudioUrl: "",
       questions: [{
         questionText: "",
         options: ["", ""],
@@ -250,6 +255,8 @@ export function QuestionBankManager() {
         category: data.category,
         language: data.language,
         description: data.description,
+        descriptionImageUrl: data.descriptionImageUrl,
+        descriptionAudioUrl: data.descriptionAudioUrl,
         questionText: question.questionText,
         questionType: "multiple_choice" as const,
         imageUrl: question.imageUrl,
@@ -267,6 +274,8 @@ export function QuestionBankManager() {
             category: data.category,
             language: data.language,
             description: data.description,
+        descriptionImageUrl: data.descriptionImageUrl,
+        descriptionAudioUrl: data.descriptionAudioUrl,
             questionText: question.questionText,
             questionType: "multiple_choice" as const,
             imageUrl: question.imageUrl,
@@ -314,6 +323,8 @@ export function QuestionBankManager() {
       language: (question as any).language || "japanese",
       category: question.category,
       description: question.description || "",
+      descriptionImageUrl: (question as any).descriptionImageUrl || "",
+      descriptionAudioUrl: (question as any).descriptionAudioUrl || "",
       questions: [{
         questionText: question.questionText,
         options,
@@ -370,11 +381,24 @@ export function QuestionBankManager() {
   const cancelForm = async () => {
     // Cleanup any uploaded temporary files before canceling
     const formData = form.getValues();
-    const tempFilesToCleanup: {audio: string[], questionImages: string[], answerImages: string[]} = {
+    const tempFilesToCleanup: {audio: string[], questionImages: string[], answerImages: string[], descriptionImages: string[], descriptionAudio: string[]} = {
       audio: [],
       questionImages: [],
-      answerImages: []
+      answerImages: [],
+      descriptionImages: [],
+      descriptionAudio: []
     };
+
+    // Collect temporary description media files
+    if (formData.descriptionImageUrl && formData.descriptionImageUrl.includes('/api/temp-description-images/')) {
+      const filename = formData.descriptionImageUrl.split('/').pop();
+      if (filename) tempFilesToCleanup.descriptionImages.push(filename);
+    }
+
+    if (formData.descriptionAudioUrl && formData.descriptionAudioUrl.includes('/api/temp-description-audio/')) {
+      const filename = formData.descriptionAudioUrl.split('/').pop();
+      if (filename) tempFilesToCleanup.descriptionAudio.push(filename);
+    }
 
     // Collect temporary files from all questions
     formData.questions?.forEach(question => {
@@ -411,6 +435,26 @@ export function QuestionBankManager() {
 
     // Cleanup temporary files
     const cleanupPromises = [];
+    
+    if (tempFilesToCleanup.descriptionImages.length > 0) {
+      cleanupPromises.push(
+        fetch('/api/temp-description-images/cleanup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filenames: tempFilesToCleanup.descriptionImages })
+        }).catch(e => console.warn('Failed to cleanup temporary description image files:', e))
+      );
+    }
+
+    if (tempFilesToCleanup.descriptionAudio.length > 0) {
+      cleanupPromises.push(
+        fetch('/api/temp-description-audio/cleanup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filenames: tempFilesToCleanup.descriptionAudio })
+        }).catch(e => console.warn('Failed to cleanup temporary description audio files:', e))
+      );
+    }
     
     if (tempFilesToCleanup.audio.length > 0) {
       cleanupPromises.push(
@@ -790,6 +834,15 @@ export function QuestionBankManager() {
                     <FormMessage />
                   </FormItem>
                 )}
+              />
+
+              {/* Description Media Upload */}
+              <DescriptionMediaUploader
+                imageUrl={form.watch("descriptionImageUrl")}
+                audioUrl={form.watch("descriptionAudioUrl")}
+                onImageChange={(url) => form.setValue("descriptionImageUrl", url)}
+                onAudioChange={(url) => form.setValue("descriptionAudioUrl", url)}
+                disabled={createQuestionMutation.isPending || updateQuestionMutation.isPending}
               />
 
               {/* Questions Section */}
