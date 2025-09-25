@@ -151,6 +151,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   role: true,
 });
 
+
 export const insertRegistrationRequestSchema = createInsertSchema(registrationRequests).omit({
   id: true,
   createdAt: true,

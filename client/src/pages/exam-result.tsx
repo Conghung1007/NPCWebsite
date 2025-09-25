@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
-import { Trophy, Clock, Target, CheckCircle, XCircle, RotateCcw, Home, Share2 } from "lucide-react";
+import { Trophy, Clock, Target, CheckCircle, XCircle, RotateCcw, Home, Share2, BookOpen, MessageSquare, Headphones, FileInput } from "lucide-react";
 import { type ExamAttempt, type Exam, type Question } from "@shared/schema";
 
 interface ExamResultPageProps {
@@ -64,9 +64,48 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     );
   }
 
-  const scorePercentage = (attempt.score / attempt.totalQuestions) * 100;
-  const timeSpentMinutes = attempt.timeSpent ? Math.floor(attempt.timeSpent / 60) : 0;
-  const timeSpentSeconds = attempt.timeSpent ? attempt.timeSpent % 60 : 0;
+  // Calculate 4-section results
+  const sections = [
+    { 
+      key: 'vocabulary', 
+      title: 'Từ vựng', 
+      icon: BookOpen, 
+      color: 'text-green-600',
+      score: attempt.vocabularyScore,
+      timeSpent: attempt.vocabularyTimeSpent,
+      timeLimit: exam.vocabularyTimeLimit
+    },
+    { 
+      key: 'grammar', 
+      title: 'Ngữ pháp', 
+      icon: MessageSquare, 
+      color: 'text-blue-600',
+      score: attempt.grammarScore,
+      timeSpent: attempt.grammarTimeSpent,
+      timeLimit: exam.grammarTimeLimit
+    },
+    { 
+      key: 'listening', 
+      title: 'Nghe hiểu', 
+      icon: Headphones, 
+      color: 'text-yellow-600',
+      score: attempt.listeningScore,
+      timeSpent: attempt.listeningTimeSpent,
+      timeLimit: exam.listeningTimeLimit
+    },
+    { 
+      key: 'reading', 
+      title: 'Đọc hiểu', 
+      icon: FileInput, 
+      color: 'text-purple-600',
+      score: attempt.readingScore,
+      timeSpent: attempt.readingTimeSpent,
+      timeLimit: exam.readingTimeLimit
+    }
+  ];
+
+  const totalTimeMinutes = Math.floor(attempt.totalTimeSpent / 60);
+  const totalTimeSeconds = attempt.totalTimeSpent % 60;
 
   const getScoreColor = (percentage: number) => {
     if (percentage >= 80) return "text-green-600";
@@ -74,15 +113,20 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     return "text-red-600";
   };
 
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
   const getScoreBadge = (percentage: number) => {
     if (percentage >= 90) return { text: "Xuất sắc", variant: "default" as const, color: "bg-green-600" };
     if (percentage >= 80) return { text: "Tốt", variant: "secondary" as const, color: "bg-blue-600" };
-    if (percentage >= 70) return { text: "Khá", variant: "outline" as const, color: "bg-yellow-600" };
-    if (percentage >= 60) return { text: "Trung bình", variant: "outline" as const, color: "bg-orange-600" };
+    if (percentage >= 60) return { text: "Khá", variant: "outline" as const, color: "bg-yellow-600" };
     return { text: "Cần cải thiện", variant: "destructive" as const, color: "bg-red-600" };
   };
 
-  const scoreBadge = getScoreBadge(scorePercentage);
+  const scoreBadge = getScoreBadge(attempt.totalScore);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-12">
@@ -105,13 +149,10 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="text-center">
             <CardContent className="pt-6">
-              <div className={`text-3xl font-bold ${getScoreColor(scorePercentage)}`}>
-                {attempt.correctAnswers}/{attempt.totalQuestions}
+              <div className={`text-3xl font-bold ${getScoreColor(attempt.totalScore)}`}>
+                {attempt.totalScore}%
               </div>
-              <p className="text-sm text-gray-600 mt-1">Số câu đúng</p>
-              <div className={`text-lg font-semibold ${getScoreColor(scorePercentage)} mt-2`}>
-                {scorePercentage.toFixed(1)}%
-              </div>
+              <p className="text-sm text-gray-600 mt-1">Điểm tổng</p>
             </CardContent>
           </Card>
 
@@ -120,7 +161,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
               <div className="flex items-center justify-center">
                 <Clock className="w-6 h-6 text-blue-600 mr-2" />
                 <div className="text-2xl font-bold text-gray-900">
-                  {timeSpentMinutes}:{timeSpentSeconds.toString().padStart(2, '0')}
+                  {totalTimeMinutes}:{totalTimeSeconds.toString().padStart(2, '0')}
                 </div>
               </div>
               <p className="text-sm text-gray-600 mt-1">Thời gian làm bài</p>

@@ -12,28 +12,218 @@ export async function seedExamData() {
       return;
     }
 
-    // Create demo exam
+    // First create independent questions for the question bank
+    const vocabularyQuestions = await createVocabularyQuestions();
+    const grammarQuestions = await createGrammarQuestions();
+    const listeningQuestions = await createListeningQuestions();
+    const readingQuestions = await createReadingQuestions();
+
+    // Create demo exam with 4-section structure
     const demoExam = await storage.createExam({
       title: "Kiểm tra trình độ tiếng Anh cơ bản (Demo)",
-      description: "Đề thi demo giúp bạn làm quen với hệ thống thi trực tuyến. Bao gồm 10 câu hỏi về ngữ pháp và từ vựng tiếng Anh cơ bản.",
+      description: "Đề thi demo với 4 phần: Từ vựng (10 phút), Ngữ pháp (10 phút), Nghe hiểu (5 phút), Đọc hiểu (5 phút). Tổng thời gian 30 phút.",
       isDemo: true,
-      timeLimit: 15, // 15 minutes
-      questionCount: 10,
+      vocabularyTimeLimit: 10,
+      vocabularyQuestions: vocabularyQuestions.slice(0, 10).map(q => q.id), // 10 vocabulary questions
+      grammarTimeLimit: 10,
+      grammarQuestions: grammarQuestions.slice(0, 10).map(q => q.id), // 10 grammar questions  
+      listeningTimeLimit: 5,
+      listeningQuestions: listeningQuestions.slice(0, 5).map(q => q.id), // 5 listening questions
+      readingTimeLimit: 5,
+      readingQuestions: readingQuestions.slice(0, 5).map(q => q.id), // 5 reading questions
       isActive: true,
       createdBy: "system"
     });
 
-    // Create demo questions
-    const demoQuestions = [
-      {
-        examId: demoExam.id,
-        questionText: "Choose the correct form of the verb: She _____ to school every day.",
-        options: ["go", "goes", "going", "gone"],
-        correctAnswer: "1",
-        explanation: "Với chủ ngữ số ít (she), động từ phải chia ở dạng số ít 'goes'."
-      },
-      {
-        examId: demoExam.id,
+    // Create official exam
+    const officialExam = await storage.createExam({
+      title: "Kiểm tra trình độ tiếng Anh chính thức",
+      description: "Đề thi chính thức với 4 phần: Từ vựng (15 phút), Ngữ pháp (20 phút), Nghe hiểu (15 phút), Đọc hiểu (20 phút). Tổng thời gian 70 phút.",
+      isDemo: false,
+      vocabularyTimeLimit: 15,
+      vocabularyQuestions: vocabularyQuestions.map(q => q.id), // All vocabulary questions
+      grammarTimeLimit: 20,
+      grammarQuestions: grammarQuestions.map(q => q.id), // All grammar questions
+      listeningTimeLimit: 15,
+      listeningQuestions: listeningQuestions.map(q => q.id), // All listening questions
+      readingTimeLimit: 20,
+      readingQuestions: readingQuestions.map(q => q.id), // All reading questions
+      isActive: true,
+      createdBy: "system"
+    });
+
+    console.log(`✓ Created demo exam: ${demoExam.title}`);
+    console.log(`✓ Created official exam: ${officialExam.title}`);
+  } catch (error) {
+    console.error("Error seeding exam data:", error);
+  }
+}
+
+async function createVocabularyQuestions() {
+  const questions = [
+    {
+      category: "từ vựng",
+      language: "english",
+      description: "Chọn từ có nghĩa đúng",
+      questionText: "Which word means 'học sinh'?",
+      options: ["teacher", "student", "doctor", "engineer"],
+      correctAnswer: "1",
+      explanation: "'Student' có nghĩa là học sinh, sinh viên."
+    },
+    {
+      category: "từ vựng", 
+      language: "english",
+      description: "Chọn từ đồng nghĩa",
+      questionText: "Choose the synonym of 'happy':",
+      options: ["sad", "joyful", "angry", "tired"],
+      correctAnswer: "1",
+      explanation: "'Joyful' là từ đồng nghĩa với 'happy', cùng có nghĩa là vui vẻ."
+    },
+    {
+      category: "từ vựng",
+      language: "english", 
+      description: "Chọn từ trái nghĩa",
+      questionText: "What is the opposite of 'big'?",
+      options: ["large", "huge", "small", "enormous"],
+      correctAnswer: "2",
+      explanation: "'Small' là từ trái nghĩa với 'big'."
+    },
+    {
+      category: "từ vựng",
+      language: "english",
+      description: "Nghĩa của từ trong ngữ cảnh",
+      questionText: "In the sentence 'The weather is pleasant today', what does 'pleasant' mean?",
+      options: ["bad", "terrible", "nice", "cold"],
+      correctAnswer: "2", 
+      explanation: "'Pleasant' có nghĩa là dễ chịu, tốt đẹp."
+    }
+  ];
+
+  const createdQuestions = [];
+  for (const q of questions) {
+    const question = await storage.createQuestion(q);
+    createdQuestions.push(question);
+  }
+  return createdQuestions;
+}
+
+async function createGrammarQuestions() {
+  const questions = [
+    {
+      category: "ngữ pháp",
+      language: "english",
+      description: "Chia động từ",
+      questionText: "Choose the correct form of the verb: She _____ to school every day.",
+      options: ["go", "goes", "going", "gone"],
+      correctAnswer: "1",
+      explanation: "Với chủ ngữ số ít (she), động từ phải chia ở dạng số ít 'goes'."
+    },
+    {
+      category: "ngữ pháp",
+      language: "english", 
+      description: "Thì hiện tại đơn",
+      questionText: "Which sentence is correct?",
+      options: [
+        "I am study English",
+        "I study English", 
+        "I studying English",
+        "I studies English"
+      ],
+      correctAnswer: "1",
+      explanation: "Câu đúng là 'I study English' - thì hiện tại đơn với chủ ngữ 'I'."
+    },
+    {
+      category: "ngữ pháp",
+      language: "english",
+      description: "Quá khứ đơn",
+      questionText: "What is the past tense of 'eat'?",
+      options: ["eated", "ate", "eaten", "eating"],
+      correctAnswer: "1",
+      explanation: "'Ate' là dạng quá khứ đơn của động từ 'eat'."
+    },
+    {
+      category: "ngữ pháp",
+      language: "english",
+      description: "Giới từ",
+      questionText: "Choose the correct preposition: I'm interested _____ learning Japanese.",
+      options: ["on", "at", "in", "for"],
+      correctAnswer: "2",
+      explanation: "Cụm từ đúng là 'interested in' - có hứng thú với việc gì."
+    }
+  ];
+
+  const createdQuestions = [];
+  for (const q of questions) {
+    const question = await storage.createQuestion(q);
+    createdQuestions.push(question);
+  }
+  return createdQuestions;
+}
+
+async function createListeningQuestions() {
+  const questions = [
+    {
+      category: "nghe hiểu",
+      language: "english",
+      description: "Nghe và chọn đáp án đúng",
+      questionText: "Listen and choose the correct answer: What time does the store open?",
+      options: ["8:00 AM", "9:00 AM", "10:00 AM", "11:00 AM"],
+      correctAnswer: "1",
+      explanation: "Cửa hàng mở cửa lúc 9:00 AM theo như audio."
+    },
+    {
+      category: "nghe hiểu",
+      language: "english",
+      description: "Nghe hội thoại",
+      questionText: "In the conversation, where are the speakers going?",
+      options: ["To the park", "To the library", "To the restaurant", "To the cinema"],
+      correctAnswer: "2", 
+      explanation: "Trong hội thoại, họ nói về việc đi thư viện."
+    }
+  ];
+
+  const createdQuestions = [];
+  for (const q of questions) {
+    const question = await storage.createQuestion(q);
+    createdQuestions.push(question);
+  }
+  return createdQuestions;
+}
+
+async function createReadingQuestions() {
+  const questions = [
+    {
+      category: "đọc hiểu",
+      language: "english", 
+      description: "Đọc đoạn văn và trả lời câu hỏi",
+      questionText: "Read the passage: 'Tom is a student at ABC University. He studies computer science and enjoys programming.' What does Tom study?",
+      options: ["Mathematics", "Computer Science", "Literature", "History"],
+      correctAnswer: "1",
+      explanation: "Theo đoạn văn, Tom học ngành khoa học máy tính (Computer Science)."
+    },
+    {
+      category: "đọc hiểu",
+      language: "english",
+      description: "Hiểu ý chính",
+      questionText: "What is the main idea of the text about Tom?",
+      options: ["Tom's hobby", "Tom's education", "Tom's family", "Tom's job"],
+      correctAnswer: "1",
+      explanation: "Ý chính của đoạn văn là nói về việc học tập của Tom."
+    }
+  ];
+
+  const createdQuestions = [];
+  for (const q of questions) {
+    const question = await storage.createQuestion(q);
+    createdQuestions.push(question);
+  }
+  return createdQuestions;
+}
+
+async function seedMissingQuestions() {
+  // This function can be implemented later if needed for migration
+  console.log("Checking for missing questions - implementation pending");
+}
         questionText: "Which sentence is correct?",
         options: [
           "I am study English",

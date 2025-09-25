@@ -471,10 +471,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/exam-attempts", async (req, res) => {
     try {
-      const { examId, userAnswers, timeSpent, questionOrder } = req.body;
+      const { 
+        examId,
+        vocabularyAnswers, vocabularyTimeSpent, vocabularyScore,
+        grammarAnswers, grammarTimeSpent, grammarScore,
+        listeningAnswers, listeningTimeSpent, listeningScore,
+        readingAnswers, readingTimeSpent, readingScore,
+        totalScore, totalTimeSpent, waitTimeBetweenSections
+      } = req.body;
       const sessionUser = (req.session as any)?.user;
       
-      // Get exam and questions
+      // Get exam
       const exam = await storage.getExam(examId);
       if (!exam) {
         return res.status(404).json({ message: "Không tìm thấy đề thi" });
@@ -485,27 +492,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Cần đăng nhập để thi đề chính thức" });
       }
 
-      const questions = await storage.getQuestionsByExamId(examId);
-      
-      // Calculate score
-      let correctAnswers = 0;
-      for (const question of questions) {
-        const userAnswer = userAnswers[question.id];
-        if (userAnswer === question.correctAnswer) {
-          correctAnswers++;
-        }
-      }
-
-      // Create exam attempt
+      // Create exam attempt with 4-section data
       const attempt = await storage.createExamAttempt({
         examId,
         userId: sessionUser?.id || null,
-        userAnswers,
-        score: correctAnswers,
-        totalQuestions: questions.length,
-        correctAnswers,
-        timeSpent,
-        questionOrder,
+        vocabularyAnswers,
+        vocabularyTimeSpent,
+        vocabularyScore,
+        grammarAnswers,
+        grammarTimeSpent,
+        grammarScore,
+        listeningAnswers,
+        listeningTimeSpent,
+        listeningScore,
+        readingAnswers,
+        readingTimeSpent,
+        readingScore,
+        totalScore,
+        totalTimeSpent,
+        waitTimeBetweenSections,
       });
 
       res.json(attempt);
