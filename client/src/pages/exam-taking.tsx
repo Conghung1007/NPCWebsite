@@ -277,11 +277,12 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     }
   };
 
-  const handlePrevious = () => {
-    if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
-    }
-  };
+  // Removed handlePrevious - no backward navigation allowed
+  // const handlePrevious = () => {
+  //   if (currentQuestionIndex > 0) {
+  //     setCurrentQuestionIndex(prev => prev - 1);
+  //   }
+  // };
 
   const startExam = () => {
     setExamStarted(true);
@@ -543,16 +544,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               </CardContent>
             </Card>
 
-            {/* Navigation */}
-            <div className="flex justify-between mt-6">
-              <Button
-                variant="outline"
-                onClick={handlePrevious}
-                disabled={currentQuestionIndex === 0}
-              >
-                <ChevronLeft className="w-4 h-4 mr-2" />
-                Câu trước
-              </Button>
+            {/* Navigation - Forward Only */}
+            <div className="flex justify-end mt-6">
               <Button
                 onClick={handleNext}
                 disabled={currentQuestionIndex === sectionQuestions.length - 1}
@@ -580,23 +573,31 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   </div>
                   
                   <div className="grid grid-cols-5 gap-2">
-                    {sectionQuestions.map((question, index) => (
-                      <button
-                        key={question.id}
-                        onClick={() => setCurrentQuestionIndex(index)}
-                        className={`
-                          w-8 h-8 text-xs rounded font-medium border-2 transition-colors
-                          ${index === currentQuestionIndex 
-                            ? 'bg-primary text-primary-foreground border-primary' 
-                            : sectionAnswers[question.id]
-                              ? 'bg-green-100 text-green-800 border-green-300'
-                              : 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
-                          }
-                        `}
-                      >
-                        {index + 1}
-                      </button>
-                    ))}
+                    {sectionQuestions.map((question, index) => {
+                      const canAccess = index <= currentQuestionIndex; // Only allow access to current and previous questions viewed
+                      const isPrevious = index < currentQuestionIndex;
+                      
+                      return (
+                        <button
+                          key={question.id}
+                          onClick={canAccess && !isPrevious ? () => setCurrentQuestionIndex(index) : undefined}
+                          disabled={!canAccess || isPrevious}
+                          className={`
+                            w-8 h-8 text-xs rounded font-medium border-2 transition-colors
+                            ${index === currentQuestionIndex 
+                              ? 'bg-primary text-primary-foreground border-primary' 
+                              : sectionAnswers[question.id]
+                                ? 'bg-green-100 text-green-800 border-green-300'
+                                : canAccess && !isPrevious
+                                  ? 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
+                                  : 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed'
+                            }
+                          `}
+                        >
+                          {index + 1}
+                        </button>
+                      );
+                    })}
                   </div>
                   
                   <div className="text-xs text-gray-600 space-y-1">
@@ -610,7 +611,11 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     </div>
                     <div className="flex items-center">
                       <div className="w-3 h-3 bg-gray-100 border border-gray-300 rounded mr-2"></div>
-                      <span>Chưa trả lời</span>
+                      <span>Có thể trả lời</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-gray-50 border border-gray-200 rounded mr-2"></div>
+                      <span>Chưa mở khóa</span>
                     </div>
                   </div>
 
