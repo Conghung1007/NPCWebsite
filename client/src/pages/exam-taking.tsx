@@ -92,7 +92,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
   // Fetch questions for current section
   const { data: allQuestions = [], isLoading: questionsLoading } = useQuery<Question[]>({
-    queryKey: ["/api/questions"],
+    queryKey: [`/api/exams/${examId}/questions`],
+    enabled: !!examId && !!exam,
     retry: false,
   });
 
@@ -574,7 +575,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
                 {/* Answer Options */}
                 <RadioGroup
-                  value={userAnswers[currentQuestion.id] || ""}
+                  value={sectionAnswers[currentQuestion.id] || ""}
                   onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
                 >
                   {(currentQuestion.options as string[]).map((option, index) => (

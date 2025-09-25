@@ -1,7 +1,7 @@
 import { type User, type InsertUser, type ContactRequest, type InsertContactRequest, type ContactInfo, type InsertContactInfo, type Article, type InsertArticle, type UiImage, type InsertUiImage, type RegistrationRequest, type InsertRegistrationRequest, type Exam, type InsertExam, type Question, type InsertQuestion, type ExamAttempt, type InsertExamAttempt } from "@shared/schema";
 import { users, contactRequests, contactInfo, articles, uiImages, registrationRequests, exams, questions, examAttempts } from "@shared/schema";
 import { db } from "./db";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, inArray } from "drizzle-orm";
 import { randomUUID } from "crypto";
 
 export interface IStorage {
@@ -820,8 +820,21 @@ export class MemStorage implements IStorage {
   }
 
   async getQuestionsByExamId(examId: string): Promise<Question[]> {
+    // Get the exam to access its question arrays
+    const exam = await this.getExam(examId);
+    if (!exam) return [];
+
+    // Collect all question IDs from all sections
+    const allQuestionIds = [
+      ...(Array.isArray(exam.vocabularyQuestions) ? exam.vocabularyQuestions : []),
+      ...(Array.isArray(exam.grammarQuestions) ? exam.grammarQuestions : []),
+      ...(Array.isArray(exam.listeningQuestions) ? exam.listeningQuestions : []),
+      ...(Array.isArray(exam.readingQuestions) ? exam.readingQuestions : [])
+    ].filter((id): id is string => typeof id === 'string');
+
+    // Return questions with those IDs
     return Array.from(this.questions.values()).filter(
-      question => question.examId === examId
+      question => allQuestionIds.includes(question.id)
     ).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }
   
@@ -1261,7 +1274,24 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getQuestionsByExamId(examId: string): Promise<Question[]> {
-    return await db.select().from(questions).where(eq(questions.examId, examId));
+    // Get the exam to access its question arrays
+    const exam = await this.getExam(examId);
+    if (!exam) return [];
+
+    // Collect all question IDs from all sections
+    const allQuestionIds = [
+      ...(Array.isArray(exam.vocabularyQuestions) ? exam.vocabularyQuestions : []),
+      ...(Array.isArray(exam.grammarQuestions) ? exam.grammarQuestions : []),
+      ...(Array.isArray(exam.listeningQuestions) ? exam.listeningQuestions : []),
+      ...(Array.isArray(exam.readingQuestions) ? exam.readingQuestions : [])
+    ].filter((id): id is string => typeof id === 'string');
+
+    if (allQuestionIds.length === 0) return [];
+
+    // Return questions with those IDs using 'in' query
+    return await db.select().from(questions)
+      .where(inArray(questions.id, allQuestionIds))
+      .orderBy(questions.sortOrder);
   }
 
   async updateQuestion(id: string, updateData: Partial<InsertQuestion>): Promise<Question | null> {

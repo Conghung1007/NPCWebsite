@@ -542,19 +542,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Không tìm thấy kết quả thi" });
       }
 
+      // Get exam to access section question arrays
+      const exam = await storage.getExam(attempt.examId);
+      if (!exam) {
+        return res.status(404).json({ message: "Không tìm thấy đề thi" });
+      }
+
       const questions = await storage.getQuestionsByExamId(attempt.examId);
-      const questionOrder = attempt.questionOrder as string[];
       
-      // Order questions according to the attempt's question order
-      const orderedQuestions = questionOrder.map(questionId => 
+      // Create ordered question list from all sections
+      const sectionQuestionIds = [
+        ...(Array.isArray(exam.vocabularyQuestions) ? exam.vocabularyQuestions : []),
+        ...(Array.isArray(exam.grammarQuestions) ? exam.grammarQuestions : []),
+        ...(Array.isArray(exam.listeningQuestions) ? exam.listeningQuestions : []),
+        ...(Array.isArray(exam.readingQuestions) ? exam.readingQuestions : [])
+      ].filter((id): id is string => typeof id === 'string');
+
+      const orderedQuestions = sectionQuestionIds.map(questionId => 
         questions.find(q => q.id === questionId)
       ).filter(Boolean);
+
+      // Combine all section answers into single object
+      const allAnswers = {
+        ...(attempt.vocabularyAnswers as Record<string, string> || {}),
+        ...(attempt.grammarAnswers as Record<string, string> || {}),
+        ...(attempt.listeningAnswers as Record<string, string> || {}),
+        ...(attempt.readingAnswers as Record<string, string> || {})
+      };
 
       const questionsWithAnswers = orderedQuestions.map(question => {
         if (!question) return null;
         return {
           question,
-          userAnswer: (attempt.userAnswers as Record<string, string>)[question.id],
+          userAnswer: allAnswers[question.id] || null,
         };
       }).filter(Boolean);
 
