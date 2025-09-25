@@ -574,22 +574,24 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   
                   <div className="grid grid-cols-5 gap-2">
                     {sectionQuestions.map((question, index) => {
-                      const canAccess = index <= currentQuestionIndex; // Only allow access to current and previous questions viewed
+                      const isCurrent = index === currentQuestionIndex;
+                      const isCompleted = sectionAnswers[question.id];
                       const isPrevious = index < currentQuestionIndex;
+                      const isNext = index > currentQuestionIndex;
                       
                       return (
                         <button
                           key={question.id}
-                          onClick={canAccess && !isPrevious ? () => setCurrentQuestionIndex(index) : undefined}
-                          disabled={!canAccess || isPrevious}
+                          onClick={isCurrent ? () => setCurrentQuestionIndex(index) : undefined}
+                          disabled={!isCurrent}
                           className={`
                             w-8 h-8 text-xs rounded font-medium border-2 transition-colors
-                            ${index === currentQuestionIndex 
+                            ${isCurrent
                               ? 'bg-primary text-primary-foreground border-primary' 
-                              : sectionAnswers[question.id]
-                                ? 'bg-green-100 text-green-800 border-green-300'
-                                : canAccess && !isPrevious
-                                  ? 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
+                              : isPrevious && isCompleted
+                                ? 'bg-green-100 text-green-800 border-green-300 cursor-not-allowed'
+                                : isPrevious
+                                  ? 'bg-gray-200 text-gray-500 border-gray-300 cursor-not-allowed'
                                   : 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed'
                             }
                           `}
@@ -607,15 +609,11 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     </div>
                     <div className="flex items-center">
                       <div className="w-3 h-3 bg-green-100 border border-green-300 rounded mr-2"></div>
-                      <span>Đã trả lời</span>
-                    </div>
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-gray-100 border border-gray-300 rounded mr-2"></div>
-                      <span>Có thể trả lời</span>
+                      <span>Đã hoàn thành</span>
                     </div>
                     <div className="flex items-center">
                       <div className="w-3 h-3 bg-gray-50 border border-gray-200 rounded mr-2"></div>
-                      <span>Chưa mở khóa</span>
+                      <span>Chưa đến lượt</span>
                     </div>
                   </div>
 
