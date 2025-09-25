@@ -36,6 +36,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [examStarted, setExamStarted] = useState(false);
+  const [sectionCompleted, setSectionCompleted] = useState(false); // Track if current section is completed and waiting for progression
   
   // Section-specific data
   const [sectionQuestions, setSectionQuestions] = useState<Question[]>([]);
@@ -103,6 +104,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       const filteredQuestions = allQuestions.filter(q => questionIds.includes(q.id));
       setSectionQuestions(filteredQuestions);
       setCurrentQuestionIndex(0);
+      setSectionCompleted(false); // Reset section completion when changing sections
       setSectionAnswers({});
     }
   }, [currentSection, exam, allQuestions]);
@@ -207,16 +209,22 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     
     setCompletedSections(prev => new Set([...prev, currentSection]));
     
-    // Move to next section or complete exam
+    // Mark section as completed and wait for user to proceed
+    setSectionCompleted(true);
+  }, [currentSection, sectionAnswers, sectionQuestions, sectionTimeLeft, isSubmitting]);
+
+  // Handle manual progression to next section
+  const handleProceedToNext = useCallback(() => {
     const nextSection = getNextSection(currentSection);
     if (nextSection) {
+      setSectionCompleted(false);
       setWaitStartTime(Date.now());
       setCurrentSection(nextSection);
     } else {
       // All sections completed, submit final exam
       handleFinalSubmit();
     }
-  }, [currentSection, sectionAnswers, sectionQuestions, sectionTimeLeft, isSubmitting]);
+  }, [currentSection]);
 
   // Handle section time up
   const handleSectionTimeUp = useCallback(() => {
@@ -476,7 +484,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               <Button 
                 variant="outline" 
                 onClick={handleSectionComplete}
-                disabled={isSubmitting}
+                disabled={isSubmitting || sectionCompleted}
               >
                 {getNextSection(currentSection) ? "Hoàn thành phần này" : "Nộp bài"}
               </Button>
@@ -487,6 +495,47 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
           </div>
         </div>
       </div>
+
+      {/* Section Completion Overlay */}
+      {sectionCompleted && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <Card className="max-w-md mx-4">
+            <CardContent className="text-center py-8">
+              <div className="mb-4">
+                <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  Hoàn thành phần {sectionConfig.title}!
+                </h3>
+                <p className="text-gray-600 mb-6">
+                  Bạn đã hoàn thành phần thi này. {getNextSection(currentSection) 
+                    ? "Nhấn nút bên dưới để chuyển sang phần tiếp theo."
+                    : "Nhấn nút bên dưới để nộp bài thi."
+                  }
+                </p>
+              </div>
+              
+              <div className="space-y-3">
+                <div className="text-sm text-gray-500">
+                  <p>Điểm số: {sectionResults[currentSection]?.score || 0}%</p>
+                  <p>Thời gian: {formatTime((sectionConfig.timeLimit * 60) - sectionTimeLeft)}</p>
+                </div>
+                
+                <Button 
+                  onClick={handleProceedToNext}
+                  className="w-full"
+                  size="lg"
+                >
+                  {getNextSection(currentSection) 
+                    ? `Chuyển sang phần tiếp theo`
+                    : "Nộp bài thi"
+                  }
+                  <ArrowRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
@@ -548,14 +597,14 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               <Button
                 variant="outline"
                 onClick={handlePrevious}
-                disabled={currentQuestionIndex === 0}
+                disabled={currentQuestionIndex === 0 || sectionCompleted}
               >
                 <ChevronLeft className="w-4 h-4 mr-2" />
                 Câu trước
               </Button>
               <Button
                 onClick={handleNext}
-                disabled={currentQuestionIndex === sectionQuestions.length - 1}
+                disabled={currentQuestionIndex === sectionQuestions.length - 1 || sectionCompleted}
               >
                 Câu sau
                 <ChevronRight className="w-4 h-4 ml-2" />

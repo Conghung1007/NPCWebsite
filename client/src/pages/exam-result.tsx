@@ -104,6 +104,14 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     }
   ];
 
+  // Calculate total stats
+  const totalTimeLimit = exam.vocabularyTimeLimit + exam.grammarTimeLimit + exam.listeningTimeLimit + exam.readingTimeLimit;
+  const totalQuestions = questionsWithAnswers.length;
+  const correctAnswers = questionsWithAnswers.filter(item => 
+    item.userAnswer === item.question.correctAnswer
+  ).length;
+  const scorePercentage = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+
   const totalTimeMinutes = Math.floor(attempt.totalTimeSpent / 60);
   const totalTimeSeconds = attempt.totalTimeSpent % 60;
 
@@ -173,7 +181,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
               <div className="flex items-center justify-center">
                 <Target className="w-6 h-6 text-green-600 mr-2" />
                 <div className="text-2xl font-bold text-gray-900">
-                  {exam.timeLimit}
+                  {totalTimeLimit}
                 </div>
               </div>
               <p className="text-sm text-gray-600 mt-1">Giới hạn (phút)</p>
@@ -204,7 +212,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                 <div className="flex justify-between text-sm mb-2">
                   <span>Tỷ lệ trả lời đúng</span>
                   <span className={getScoreColor(scorePercentage)}>
-                    {attempt.correctAnswers}/{attempt.totalQuestions} ({scorePercentage.toFixed(1)}%)
+                    {correctAnswers}/{totalQuestions} ({scorePercentage.toFixed(1)}%)
                   </span>
                 </div>
                 <Progress value={scorePercentage} className="h-3" />
@@ -214,13 +222,13 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                 <div className="flex items-center">
                   <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
                   <span className="text-sm">
-                    <strong>{attempt.correctAnswers}</strong> câu trả lời đúng
+                    <strong>{correctAnswers}</strong> câu trả lời đúng
                   </span>
                 </div>
                 <div className="flex items-center">
                   <XCircle className="w-5 h-5 text-red-600 mr-2" />
                   <span className="text-sm">
-                    <strong>{attempt.totalQuestions - attempt.correctAnswers}</strong> câu trả lời sai
+                    <strong>{totalQuestions - correctAnswers}</strong> câu trả lời sai
                   </span>
                 </div>
               </div>
@@ -335,7 +343,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
               if (navigator.share) {
                 navigator.share({
                   title: `Kết quả thi: ${exam.title}`,
-                  text: `Tôi vừa hoàn thành bài thi "${exam.title}" với kết quả ${scorePercentage.toFixed(1)}% (${attempt.correctAnswers}/${attempt.totalQuestions} câu đúng)`,
+                  text: `Tôi vừa hoàn thành bài thi "${exam.title}" với kết quả ${scorePercentage.toFixed(1)}% (${correctAnswers}/${totalQuestions} câu đúng)`,
                   url: window.location.href,
                 });
               } else {
