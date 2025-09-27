@@ -654,7 +654,7 @@ export default function EditExam() {
 
       {/* Question Selection Dialog */}
       <Dialog open={isQuestionSelectOpen} onOpenChange={setIsQuestionSelectOpen}>
-        <DialogContent className="max-w-[1000px] max-h-[80vh] overflow-y-auto">
+        <DialogContent className="w-full max-w-[1000px] max-h-[80vh] overflow-y-auto mx-auto">
           <DialogHeader>
             <DialogTitle>Chọn câu hỏi</DialogTitle>
             <DialogDescription>

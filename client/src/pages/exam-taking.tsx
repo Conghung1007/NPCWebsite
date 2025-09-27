@@ -44,7 +44,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [sectionQuestions, setSectionQuestions] = useState<Question[]>([]);
   const [sectionAnswers, setSectionAnswers] = useState<Record<string, string>>({});
   const [completedSections, setCompletedSections] = useState<Set<ExamSection>>(new Set());
-  const [sectionResults, setSectionResults] = useState<Record<ExamSection, SectionResults>>({});
+  const [sectionResults, setSectionResults] = useState<Record<ExamSection, SectionResults>>({} as Record<ExamSection, SectionResults>);
   
   // Wait time tracking between sections
   const [waitStartTime, setWaitStartTime] = useState<number | null>(null);
@@ -254,7 +254,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       [currentSection]: results
     }));
     
-    setCompletedSections(prev => new Set([...prev, currentSection]));
+    setCompletedSections(prev => new Set([...Array.from(prev), currentSection]));
     
     // Mark section as completed and wait for user to proceed
     setSectionCompleted(true);
