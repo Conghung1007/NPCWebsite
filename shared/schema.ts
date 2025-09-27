@@ -94,14 +94,20 @@ export const questions = pgTable("questions", {
   descriptionImageUrl: text("description_image_url"), // Legacy single image URL for backward compatibility
   descriptionImageUrls: jsonb("description_image_urls"), // Array of image URLs for description
   descriptionAudioUrl: text("description_audio_url"), // Optional audio for description
-  questionText: text("question_text").notNull(),
+  
+  // New structure for multiple sub-questions
+  subQuestions: jsonb("sub_questions"), // Array of sub-question objects: {id, text, imageUrls, audioUrl, options, correctAnswer, explanation}[]
+  
+  // Legacy fields for backward compatibility
+  questionText: text("question_text"), // Made nullable for new structure
   questionType: text("question_type").notNull().default("multiple_choice"), // multiple_choice, true_false
   imageUrl: text("image_url"), // Legacy single image URL for backward compatibility
   imageUrls: jsonb("image_urls"), // Array of image URLs for question
   audioUrl: text("audio_url"), // Optional audio for question
-  options: jsonb("options").notNull(), // Array of answer options with potential image URLs
-  correctAnswer: text("correct_answer").notNull(), // Index or value of correct answer
+  options: jsonb("options"), // Array of answer options with potential image URLs (nullable for new structure)
+  correctAnswer: text("correct_answer"), // Index or value of correct answer (nullable for new structure)
   explanation: text("explanation"), // Optional explanation for answer
+  
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -206,9 +212,22 @@ export const insertExamSchema = createInsertSchema(exams).omit({
   createdAt: true,
 });
 
+// SubQuestion schema for new structure
+export const subQuestionSchema = z.object({
+  id: z.string().default(() => Math.random().toString(36).substr(2, 9)),
+  text: z.string().min(1, 'Nội dung câu hỏi không được để trống'),
+  imageUrls: z.array(z.string()).optional(),
+  audioUrl: z.string().optional(),
+  options: z.array(z.string()).min(2, 'Phải có ít nhất 2 lựa chọn'),
+  correctAnswer: z.string().min(1, 'Phải chọn đáp án đúng'),
+  explanation: z.string().optional(),
+});
+
 export const insertQuestionSchema = createInsertSchema(questions).omit({
   id: true,
   createdAt: true,
+}).extend({
+  subQuestions: z.array(subQuestionSchema).optional(),
 });
 
 export const insertExamQuestionSchema = createInsertSchema(examQuestions).omit({
@@ -254,6 +273,7 @@ export type Exam = typeof exams.$inferSelect;
 export type InsertExam = z.infer<typeof insertExamSchema>;
 export type Question = typeof questions.$inferSelect;
 export type InsertQuestion = z.infer<typeof insertQuestionSchema>;
+export type SubQuestion = z.infer<typeof subQuestionSchema>;
 export type ExamQuestion = typeof examQuestions.$inferSelect;
 export type InsertExamQuestion = z.infer<typeof insertExamQuestionSchema>;
 export type ExamAttempt = typeof examAttempts.$inferSelect;
