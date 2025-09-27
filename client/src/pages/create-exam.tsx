@@ -63,8 +63,8 @@ export default function CreateExam() {
   const [isQuestionSelectOpen, setIsQuestionSelectOpen] = useState(false);
   const [currentSectionId, setCurrentSectionId] = useState<string>("");
   const [questionSearchQuery, setQuestionSearchQuery] = useState("");
-  const [selectedLanguageFilter, setSelectedLanguageFilter] = useState<string>("");
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("");
+  const [selectedLanguageFilter, setSelectedLanguageFilter] = useState<string>("all");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
 
   const form = useForm<ExamFormData>({
     resolver: zodResolver(examSchema),
@@ -187,12 +187,12 @@ export default function CreateExam() {
     }
     
     // Apply category filter
-    if (selectedCategoryFilter && question.category !== selectedCategoryFilter) {
+    if (selectedCategoryFilter && selectedCategoryFilter !== "all" && question.category !== selectedCategoryFilter) {
       return false;
     }
     
     // Apply language filter  
-    if (selectedLanguageFilter && question.language !== selectedLanguageFilter) {
+    if (selectedLanguageFilter && selectedLanguageFilter !== "all" && question.language !== selectedLanguageFilter) {
       return false;
     }
     
@@ -312,8 +312,8 @@ export default function CreateExam() {
     setCurrentSectionId(sectionId);
     setIsQuestionSelectOpen(true);
     setQuestionSearchQuery("");
-    setSelectedLanguageFilter("");
-    setSelectedCategoryFilter("");
+    setSelectedLanguageFilter("all");
+    setSelectedCategoryFilter("all");
   };
 
   // Show loading while checking authentication
@@ -600,7 +600,7 @@ export default function CreateExam() {
                       <SelectValue placeholder="Tất cả categories" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tất cả categories</SelectItem>
+                      <SelectItem value="all">Tất cả categories</SelectItem>
                       <SelectItem value="vocabulary">Vocabulary</SelectItem>
                       <SelectItem value="grammar">Grammar</SelectItem>
                       <SelectItem value="reading">Reading</SelectItem>
@@ -616,7 +616,7 @@ export default function CreateExam() {
                       <SelectValue placeholder="Tất cả ngôn ngữ" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Tất cả ngôn ngữ</SelectItem>
+                      <SelectItem value="all">Tất cả ngôn ngữ</SelectItem>
                       <SelectItem value="japanese">Tiếng Nhật</SelectItem>
                       <SelectItem value="english">Tiếng Anh</SelectItem>
                       <SelectItem value="german">Tiếng Đức</SelectItem>
