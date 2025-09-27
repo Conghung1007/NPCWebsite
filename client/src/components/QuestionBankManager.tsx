@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -86,6 +86,10 @@ export function QuestionBankManager() {
     isOpen: false,
     question: null
   });
+
+  // File input refs for image uploads
+  const descriptionImageInputRef = useRef<HTMLInputElement>(null);
+  const questionImageInputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
 
   // Form for creating/editing questions
   const form = useForm<QuestionFormData>({
@@ -201,6 +205,104 @@ export function QuestionBankManager() {
 
   const cancelDelete = () => {
     setDeleteConfirm({ isOpen: false, question: null });
+  };
+
+  // Handle description image upload
+  const handleDescriptionImageUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi tải lên",
+        description: "Vui lòng chọn file hình ảnh hợp lệ."
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: "destructive", 
+        title: "Lỗi tải lên",
+        description: "Kích thước file phải nhỏ hơn 5MB."
+      });
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/temp-description-images/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      form.setValue("descriptionImageUrl", data.url);
+
+      toast({
+        title: "Thành công",
+        description: "Hình ảnh mô tả đã được tải lên thành công.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi tải lên",
+        description: error.message || "Không thể tải lên hình ảnh."
+      });
+    }
+  };
+
+  // Handle question image upload
+  const handleQuestionImageUpload = async (file: File, questionIndex: number) => {
+    if (!file.type.startsWith('image/')) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi tải lên",
+        description: "Vui lòng chọn file hình ảnh hợp lệ."
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: "destructive", 
+        title: "Lỗi tải lên",
+        description: "Kích thước file phải nhỏ hơn 5MB."
+      });
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/question-images/upload-direct', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      form.setValue(`questions.${questionIndex}.imageUrl`, data.url);
+
+      toast({
+        title: "Thành công",
+        description: "Hình ảnh câu hỏi đã được tải lên thành công.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi tải lên",
+        description: error.message || "Không thể tải lên hình ảnh."
+      });
+    }
   };
 
   // Create/Update question mutations
@@ -810,8 +912,23 @@ export function QuestionBankManager() {
               <ImagePreviewBox
                 imageUrl={form.watch("descriptionImageUrl")}
                 onRemove={() => form.setValue("descriptionImageUrl", "")}
+                onChooseImage={() => descriptionImageInputRef.current?.click()}
                 title="Hình ảnh mô tả"
                 className="mt-2"
+              />
+              
+              {/* Hidden file input for description image */}
+              <input
+                ref={descriptionImageInputRef}
+                type="file"
+                accept="image/*"
+                style={{ display: 'none' }}
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) {
+                    handleDescriptionImageUpload(file);
+                  }
+                }}
               />
 
               {/* Questions Section */}
@@ -872,30 +989,41 @@ export function QuestionBankManager() {
                           )}
                         />
 
-                        {/* Question Media Uploads */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          {/* Question Image Upload */}
-                          <FormField
-                            control={form.control}
-                            name={`questions.${questionIndex}.imageUrl`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Hình ảnh câu hỏi (tùy chọn)</FormLabel>
-                                <FormControl>
-                                  <QuestionImageUploader
-                                    type="question"
-                                    maxSizeMB={5}
-                                    currentImageUrl={field.value}
-                                    onImageUpload={(imageUrl) => field.onChange(imageUrl)}
-                                    onRemoveImage={() => field.onChange("")}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
+                        {/* Question Image Upload */}
+                        <div>
+                          <Label className="text-sm font-medium">Hình ảnh câu hỏi (tùy chọn)</Label>
+                          <ImagePreviewBox
+                            imageUrl={form.watch(`questions.${questionIndex}.imageUrl`)}
+                            onRemove={() => form.setValue(`questions.${questionIndex}.imageUrl`, "")}
+                            onChooseImage={() => {
+                              const inputRef = questionImageInputRefs.current.get(questionIndex);
+                              inputRef?.click();
+                            }}
+                            title={`Hình ảnh câu hỏi ${questionIndex + 1}`}
+                            className="mt-2"
                           />
+                          
+                          {/* Hidden file input for question image */}
+                          <input
+                            ref={(el) => {
+                              if (el) {
+                                questionImageInputRefs.current.set(questionIndex, el);
+                              }
+                            }}
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleQuestionImageUpload(file, questionIndex);
+                              }
+                            }}
+                          />
+                        </div>
 
-                          {/* Question Audio Upload */}
+                        {/* Question Audio Upload */}
+                        <div>
                           <FormField
                             control={form.control}
                             name={`questions.${questionIndex}.audioUrl`}
@@ -914,14 +1042,6 @@ export function QuestionBankManager() {
                             )}
                           />
                         </div>
-
-                        {/* Question Image Preview */}
-                        <ImagePreviewBox
-                          imageUrl={form.watch(`questions.${questionIndex}.imageUrl`)}
-                          onRemove={() => form.setValue(`questions.${questionIndex}.imageUrl`, "")}
-                          title={`Hình ảnh câu hỏi ${questionIndex + 1}`}
-                          className="mt-2"
-                        />
 
                         {/* Options */}
                         <div className="space-y-3">
