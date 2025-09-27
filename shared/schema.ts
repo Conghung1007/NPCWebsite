@@ -226,8 +226,6 @@ export const subQuestionSchema = z.object({
 export const insertQuestionSchema = createInsertSchema(questions).omit({
   id: true,
   createdAt: true,
-}).extend({
-  subQuestions: z.array(subQuestionSchema).optional(),
 });
 
 export const insertExamQuestionSchema = createInsertSchema(examQuestions).omit({

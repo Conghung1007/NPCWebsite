@@ -2736,7 +2736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         descriptionImageUrl: finalDescriptionImageUrl || null, // Legacy support
         descriptionImageUrls: finalDescriptionImageUrls || null,
         descriptionAudioUrl: finalDescriptionAudioUrl || null,
-        questionText: questionText || null, // Can be null for new sub-questions format
+        questionText: questionText || (subQuestions ? "Sub-questions format" : null), // Default for sub-questions
         questionType: questionType || "multiple_choice",
         imageUrl: finalImageUrl || null,
         audioUrl: finalAudioUrl || null,
