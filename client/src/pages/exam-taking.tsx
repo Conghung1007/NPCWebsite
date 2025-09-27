@@ -60,6 +60,54 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
   // Helper functions for section management
   const getSectionConfig = () => {
+    // Check if exam uses new sections array structure
+    if (exam?.sections && Array.isArray(exam.sections)) {
+      // New structure with flexible sections
+      const sectionTypeMap: Record<string, ExamSection> = {
+        "từ vựng": "vocabulary",
+        "ngữ pháp": "grammar", 
+        "nghe hiểu": "listening",
+        "đọc hiểu": "reading"
+      };
+      
+      const currentSectionData = exam.sections.find(section => {
+        const mappedType = sectionTypeMap[section.type];
+        return mappedType === currentSection;
+      });
+      
+      if (currentSectionData) {
+        const iconMap = {
+          vocabulary: BookOpen,
+          grammar: MessageSquare,
+          listening: Headphones,
+          reading: FileInput
+        };
+        
+        const colorMap = {
+          vocabulary: "bg-green-500",
+          grammar: "bg-blue-500", 
+          listening: "bg-yellow-500",
+          reading: "bg-purple-500"
+        };
+        
+        const titleMap = {
+          vocabulary: "Từ vựng",
+          grammar: "Ngữ pháp",
+          listening: "Nghe hiểu", 
+          reading: "Đọc hiểu"
+        };
+        
+        return {
+          title: titleMap[currentSection],
+          icon: iconMap[currentSection],
+          color: colorMap[currentSection],
+          timeLimit: currentSectionData.timeLimit || 10,
+          questions: currentSectionData.questionIds || []
+        };
+      }
+    }
+    
+    // Fallback to old structure for backward compatibility
     const configs = {
       vocabulary: { 
         title: "Từ vựng", 
@@ -92,6 +140,24 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     };
     return configs[currentSection];
   };
+
+  // Auto-select first available section when exam loads
+  useEffect(() => {
+    if (exam?.sections && Array.isArray(exam.sections) && exam.sections.length > 0) {
+      const sectionTypeMap: Record<string, ExamSection> = {
+        "từ vựng": "vocabulary",
+        "ngữ pháp": "grammar", 
+        "nghe hiểu": "listening",
+        "đọc hiểu": "reading"
+      };
+      
+      const firstSection = exam.sections[0];
+      const mappedSection = sectionTypeMap[firstSection.type];
+      if (mappedSection && mappedSection !== currentSection) {
+        setCurrentSection(mappedSection);
+      }
+    }
+  }, [exam]);
 
   // Fetch questions for current section
   const { data: allQuestions = [], isLoading: questionsLoading } = useQuery<Question[]>({
