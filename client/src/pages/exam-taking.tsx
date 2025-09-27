@@ -691,8 +691,61 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Question Image */}
-                  {currentQuestion.imageUrl && (
+                  {/* Description Section */}
+                  {(currentQuestion as any).description && (
+                    <div className="bg-gray-50 p-4 rounded-lg">
+                      <h4 className="font-medium text-gray-800 mb-3">Mô tả:</h4>
+                      <p className="text-gray-700 whitespace-pre-wrap">{(currentQuestion as any).description}</p>
+                      
+                      {/* Description Images */}
+                      {(currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0 && (
+                        <div className="mt-4">
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {(currentQuestion as any).descriptionImageUrls.map((imageUrl: string, index: number) => (
+                              <img
+                                key={index}
+                                src={imageUrl}
+                                alt={`Description ${index + 1}`}
+                                className="w-full h-auto rounded-lg shadow-sm border"
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Description Audio */}
+                      {(currentQuestion as any).descriptionAudioUrl && (
+                        <div className="mt-4">
+                          <audio controls className="w-full max-w-md">
+                            <source src={(currentQuestion as any).descriptionAudioUrl.startsWith('/api/') 
+                              ? (currentQuestion as any).descriptionAudioUrl 
+                              : `/api/${(currentQuestion as any).descriptionAudioUrl}`} type="audio/mpeg" />
+                            Trình duyệt của bạn không hỗ trợ phát audio.
+                          </audio>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Question Images - Support both single and multiple */}
+                  {((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) && (
+                    <div className="space-y-3">
+                      <h4 className="font-medium text-gray-800">Hình ảnh câu hỏi:</h4>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                        {(currentQuestion as any).imageUrls.map((imageUrl: string, index: number) => (
+                          <img
+                            key={index}
+                            src={imageUrl}
+                            alt={`Question image ${index + 1}`}
+                            className="w-full h-auto rounded-lg shadow-sm border"
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Fallback for old single image structure */}
+                  {!((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) && currentQuestion.imageUrl && (
                     <div className="flex justify-center">
                       <img
                         src={currentQuestion.imageUrl}
@@ -704,8 +757,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
                   {/* Question Audio */}
                   {currentQuestion.audioUrl && (
-                    <div className="flex justify-center">
-                      <audio controls className="w-full max-w-md" key={currentQuestion.id}>
+                    <div className="space-y-2">
+                      <h4 className="font-medium text-gray-800">Audio câu hỏi:</h4>
+                      <audio controls className="w-full max-w-md">
                         <source src={currentQuestion.audioUrl.startsWith('/api/') 
                           ? currentQuestion.audioUrl 
                           : `/api/${currentQuestion.audioUrl}`} type="audio/mpeg" />
