@@ -541,6 +541,22 @@ export function QuestionBankManager() {
               </div>
             </div>
             
+            {/* Category Filter */}
+            <div className="min-w-[180px]">
+              <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                <SelectTrigger data-testid="select-category-filter">
+                  <SelectValue placeholder="Lọc theo danh mục" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả danh mục</SelectItem>
+                  {questionCategories.map(category => (
+                    <SelectItem key={category.value} value={category.value}>
+                      {category.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
             {/* Language Filter */}
             <div className="min-w-[180px]">
