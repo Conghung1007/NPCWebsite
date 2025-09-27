@@ -39,7 +39,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [sectionCompleted, setSectionCompleted] = useState(false); // Track if current section is completed and waiting for progression
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
-  const [showStayNotification, setShowStayNotification] = useState(false);
   
   // Section-specific data
   const [sectionQuestions, setSectionQuestions] = useState<Question[]>([]);
@@ -174,7 +173,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         console.log('User cancelled navigation via browser back/forward');
         // Stay on current page - push current state back
         window.history.pushState(null, '', window.location.href);
-        setShowStayNotification(true);
       }
     };
 
@@ -208,7 +206,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
           window.location.href = link.href;
         } else {
           console.log('User cancelled exit via link click');
-          setShowStayNotification(true);
+          // User chose to stay, no additional notification needed
         }
       }
     };
@@ -239,8 +237,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         setLocation("/online-exam");
       } else {
         console.log('User cancelled exit via keyboard shortcut');
-        // User cancelled, show notification dialog
-        setShowStayNotification(true);
+        // User chose to stay, no additional notification needed
       }
     }
   };
@@ -270,7 +267,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         setLocation(path);
       } else {
         console.log('User cancelled exit');
-        setShowStayNotification(true);
+        // User chose to stay, no additional notification needed
       }
     } else {
       console.log('Navigation allowed directly');
@@ -922,29 +919,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   {getNextSection(currentSection) ? "Chuyển phần tiếp theo" : "Nộp bài"}
                 </>
               )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Stay Notification Dialog */}
-      <Dialog open={showStayNotification} onOpenChange={setShowStayNotification}>
-        <DialogContent className="w-[90vw] max-w-md">
-          <DialogHeader>
-            <DialogTitle className="text-green-600">Tiếp tục làm bài</DialogTitle>
-            <DialogDescription>
-              Bạn đã chọn ở lại và tiếp tục làm bài thi. 
-              <br />
-              Chúc bạn làm bài tốt! 📝
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button 
-              onClick={() => setShowStayNotification(false)}
-              data-testid="button-continue-exam"
-              className="w-full"
-            >
-              Tiếp tục làm bài
             </Button>
           </DialogFooter>
         </DialogContent>
