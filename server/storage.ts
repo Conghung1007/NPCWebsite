@@ -728,6 +728,15 @@ export class MemStorage implements IStorage {
       description: insertExam.description ?? null,
       isDemo: insertExam.isDemo ?? null,
       isActive: insertExam.isActive ?? null,
+      sections: insertExam.sections ?? null,
+      vocabularyTimeLimit: insertExam.vocabularyTimeLimit ?? null,
+      vocabularyQuestions: insertExam.vocabularyQuestions ?? null,
+      grammarTimeLimit: insertExam.grammarTimeLimit ?? null,
+      grammarQuestions: insertExam.grammarQuestions ?? null,
+      listeningTimeLimit: insertExam.listeningTimeLimit ?? null,
+      listeningQuestions: insertExam.listeningQuestions ?? null,
+      readingTimeLimit: insertExam.readingTimeLimit ?? null,
+      readingQuestions: insertExam.readingQuestions ?? null,
       createdAt: new Date(),
     };
     this.exams.set(id, exam);
@@ -787,7 +796,13 @@ export class MemStorage implements IStorage {
       questionType: insertQuestion.questionType ?? "multiple_choice",
       language: insertQuestion.language || "vietnamese", // Ensure language is always set
       descriptionImageUrl: insertQuestion.descriptionImageUrl ?? null,
+      descriptionImageUrls: insertQuestion.descriptionImageUrls ?? null,
       descriptionAudioUrl: insertQuestion.descriptionAudioUrl ?? null,
+      imageUrls: insertQuestion.imageUrls ?? null,
+      options: insertQuestion.options ?? null,
+      correctAnswer: insertQuestion.correctAnswer ?? null,
+      questionText: insertQuestion.questionText ?? null,
+      subQuestions: insertQuestion.subQuestions ?? null,
       createdAt: new Date(),
     };
     this.questions.set(id, question);
@@ -814,7 +829,7 @@ export class MemStorage implements IStorage {
     const term = searchTerm.toLowerCase();
     return Array.from(this.questions.values()).filter(
       question => 
-        question.questionText.toLowerCase().includes(term) ||
+        question.questionText?.toLowerCase().includes(term) ||
         (question.description && question.description.toLowerCase().includes(term))
     ).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }

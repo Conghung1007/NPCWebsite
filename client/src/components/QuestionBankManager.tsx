@@ -36,8 +36,32 @@ const languageOptions = [
   { value: "german", label: "Tiếng Đức" },
 ];
 
-// Single question schema for each question box
-const singleQuestionSchema = z.object({
+// Single sub-question schema - each sub-question has independent media and options
+const subQuestionSchema = z.object({
+  id: z.string().default(() => Math.random().toString(36).substr(2, 9)),
+  text: z.string().min(1, "Nội dung câu hỏi không được để trống"),
+  imageUrls: z.array(z.string()).default([]),
+  audioUrl: z.string().optional(),
+  options: z.array(z.string()).min(2, "Phải có ít nhất 2 lựa chọn").refine(
+    (options) => options.every(opt => opt.trim().length > 0),
+    { message: "Tất cả lựa chọn phải có nội dung" }
+  ),
+  correctAnswer: z.string().min(1, "Phải chọn đáp án đúng"),
+  explanation: z.string().optional(),
+}).refine(
+  (data) => {
+    // Validate that correctAnswer is one of the provided options
+    const nonEmptyOptions = data.options.filter(option => option.trim() !== "");
+    return nonEmptyOptions.includes(data.correctAnswer);
+  },
+  {
+    message: "Đáp án đúng phải là một trong các lựa chọn đã nhập",
+    path: ["correctAnswer"],
+  }
+);
+
+// Legacy single question schema for backward compatibility
+const legacyQuestionSchema = z.object({
   questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
   options: z.array(z.string()).min(2, "Phải có ít nhất 2 lựa chọn").refine(
     (options) => options.every(opt => opt.trim().length > 0),
@@ -45,8 +69,8 @@ const singleQuestionSchema = z.object({
   ),
   correctAnswer: z.string().min(1, "Phải chọn đáp án đúng"),
   explanation: z.string().optional(),
-  imageUrl: z.string().optional(), // Legacy single image for backward compatibility
-  imageUrls: z.array(z.string()).default([]), // Array of image URLs
+  imageUrl: z.string().optional(),
+  imageUrls: z.array(z.string()).default([]),
   audioUrl: z.string().optional(),
 }).refine(
   (data) => {
@@ -60,15 +84,17 @@ const singleQuestionSchema = z.object({
   }
 );
 
-// Form validation schema for multiple questions
+// Form validation schema for questions with new sub-questions structure
 const questionSchema = z.object({
   language: z.string().min(1, "Ngôn ngữ là bắt buộc"),
   category: z.string().min(1, "Danh mục là bắt buộc"),
   description: z.string().optional(),
-  descriptionImageUrl: z.string().optional(), // Legacy single image for backward compatibility
-  descriptionImageUrls: z.array(z.string()).default([]), // Array of description image URLs
+  descriptionImageUrls: z.array(z.string()).default([]),
   descriptionAudioUrl: z.string().optional(),
-  questions: z.array(singleQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi"),
+  // New sub-questions structure
+  subQuestions: z.array(subQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi"),
+  // Legacy fields for backward compatibility
+  questions: z.array(legacyQuestionSchema).optional(),
 });
 
 type QuestionFormData = z.infer<typeof questionSchema>;
@@ -100,15 +126,14 @@ export function QuestionBankManager() {
       language: "japanese",
       category: "ngữ pháp",
       description: "",
-      descriptionImageUrl: "",
       descriptionImageUrls: [],
       descriptionAudioUrl: "",
-      questions: [{
-        questionText: "",
+      subQuestions: [{
+        id: Math.random().toString(36).substr(2, 9),
+        text: "",
         options: ["", ""],
         correctAnswer: "",
         explanation: "",
-        imageUrl: "",
         imageUrls: [],
         audioUrl: "",
       }],
@@ -123,7 +148,7 @@ export function QuestionBankManager() {
   // Filter questions based on search, category and language
   const filteredQuestions = questions.filter(question => {
     const matchesSearch = searchQuery === "" || 
-      question.questionText.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (question.questionText && question.questionText.toLowerCase().includes(searchQuery.toLowerCase())) ||
       (question.description && question.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
     const matchesCategory = selectedCategory === "all" || question.category === selectedCategory;
@@ -362,122 +387,130 @@ export function QuestionBankManager() {
   });
 
   const handleSubmit = async (data: QuestionFormData) => {
+    console.log("🚀 Form submitted with data:", data);
+    console.log("❌ Form validation errors:", form.formState.errors);
+    console.log("✅ Form is valid:", form.formState.isValid);
+    
     if (editingQuestion) {
-      // For editing, keep single question behavior (first question in array)
-      const question = data.questions[0];
+      // For editing - use subQuestions structure
       const backendData = { 
         category: data.category,
         language: data.language,
         description: data.description,
-        descriptionImageUrl: data.descriptionImageUrl,
         descriptionImageUrls: data.descriptionImageUrls,
         descriptionAudioUrl: data.descriptionAudioUrl,
-        questionText: question.questionText,
-        questionType: "multiple_choice" as const,
-        imageUrl: question.imageUrl,
-        imageUrls: question.imageUrls,
-        audioUrl: question.audioUrl,
-        options: question.options,
-        correctAnswer: question.correctAnswer,
-        explanation: question.explanation,
+        subQuestions: data.subQuestions,
       };
+      console.log("📝 Updating question with data:", backendData);
       updateQuestionMutation.mutate({ ...backendData, id: editingQuestion.id });
     } else {
-      // For creating, use mutation for each question
-      const question = data.questions[0]; // Take first question for now
+      // For creating - use subQuestions structure
       const backendData = {
         category: data.category,
         language: data.language,
         description: data.description,
-        descriptionImageUrl: data.descriptionImageUrl,
         descriptionImageUrls: data.descriptionImageUrls,
         descriptionAudioUrl: data.descriptionAudioUrl,
-        questionText: question.questionText,
-        questionType: "multiple_choice" as const,
-        imageUrl: question.imageUrl,
-        imageUrls: question.imageUrls,
-        audioUrl: question.audioUrl,
-        options: question.options,
-        correctAnswer: question.correctAnswer,
-        explanation: question.explanation,
+        subQuestions: data.subQuestions,
       };
+      console.log("➕ Creating question with data:", backendData);
       createQuestionMutation.mutate(backendData);
     }
   };
 
   const handleEditQuestion = (question: Question) => {
     setEditingQuestion(question);
-    // For editing, convert single question to questions array format
-    let options;
-    try {
-      options = typeof question.options === 'string' 
-        ? JSON.parse(question.options) 
-        : Array.isArray(question.options) 
-          ? question.options 
-          : [];
-    } catch (error) {
-      console.warn('Failed to parse question options:', error);
-      options = [];
+    
+    // Check if question has new subQuestions structure or legacy single question
+    let subQuestionsData = [];
+    
+    if (question.subQuestions && Array.isArray(question.subQuestions)) {
+      // New structure - use subQuestions directly
+      subQuestionsData = question.subQuestions.map((sq: any) => ({
+        id: sq.id || Math.random().toString(36).substr(2, 9),
+        text: sq.text || "",
+        imageUrls: sq.imageUrls || [],
+        audioUrl: sq.audioUrl || "",
+        options: Array.isArray(sq.options) ? sq.options : [],
+        correctAnswer: sq.correctAnswer || "",
+        explanation: sq.explanation || "",
+      }));
+    } else {
+      // Legacy structure - convert single question to subQuestion format
+      let options;
+      try {
+        options = typeof question.options === 'string' 
+          ? JSON.parse(question.options) 
+          : Array.isArray(question.options) 
+            ? question.options 
+            : [];
+      } catch (error) {
+        console.warn('Failed to parse question options:', error);
+        options = [];
+      }
+      
+      subQuestionsData = [{
+        id: Math.random().toString(36).substr(2, 9),
+        text: question.questionText || "",
+        imageUrls: (question as any).imageUrls || [],
+        audioUrl: question.audioUrl || "",
+        options,
+        correctAnswer: question.correctAnswer || "",
+        explanation: question.explanation || "",
+      }];
     }
     
     form.reset({
       language: (question as any).language || "japanese",
       category: question.category,
       description: question.description || "",
-      descriptionImageUrl: (question as any).descriptionImageUrl || "",
       descriptionImageUrls: (question as any).descriptionImageUrls || [],
       descriptionAudioUrl: (question as any).descriptionAudioUrl || "",
-      questions: [{
-        questionText: question.questionText,
-        options,
-        correctAnswer: question.correctAnswer,
-        explanation: question.explanation || "",
-        imageUrl: question.imageUrl || "",
-        imageUrls: (question as any).imageUrls || [],
-        audioUrl: question.audioUrl || "",
-      }],
+      subQuestions: subQuestionsData,
     });
   };
 
   const handleAddOption = (questionIndex: number) => {
-    const currentQuestions = form.getValues("questions");
-    const updatedQuestions = [...currentQuestions];
-    updatedQuestions[questionIndex] = {
-      ...updatedQuestions[questionIndex],
-      options: [...updatedQuestions[questionIndex].options, ""]
+    const currentSubQuestions = form.getValues("subQuestions");
+    const updatedSubQuestions = [...currentSubQuestions];
+    updatedSubQuestions[questionIndex] = {
+      ...updatedSubQuestions[questionIndex],
+      options: [...updatedSubQuestions[questionIndex].options, ""]
     };
-    form.setValue("questions", updatedQuestions);
+    form.setValue("subQuestions", updatedSubQuestions);
   };
 
   const handleRemoveOption = (questionIndex: number, optionIndex: number) => {
-    const currentQuestions = form.getValues("questions");
-    const updatedQuestions = [...currentQuestions];
-    if (updatedQuestions[questionIndex].options.length > 2) {
-      updatedQuestions[questionIndex] = {
-        ...updatedQuestions[questionIndex],
-        options: updatedQuestions[questionIndex].options.filter((_, i) => i !== optionIndex)
+    const currentSubQuestions = form.getValues("subQuestions");
+    const updatedSubQuestions = [...currentSubQuestions];
+    if (updatedSubQuestions[questionIndex].options.length > 2) {
+      updatedSubQuestions[questionIndex] = {
+        ...updatedSubQuestions[questionIndex],
+        options: updatedSubQuestions[questionIndex].options.filter((_, i) => i !== optionIndex)
       };
-      form.setValue("questions", updatedQuestions);
+      form.setValue("subQuestions", updatedSubQuestions);
     }
   };
 
-  const handleAddQuestion = () => {
-    const currentQuestions = form.getValues("questions");
-    // Create new question by deep cloning the last one (duplicate entire box)
-    const lastQuestion = currentQuestions[currentQuestions.length - 1];
-    const newQuestion = JSON.parse(JSON.stringify(lastQuestion));
-    // Clear the text fields but keep structure (options count, etc)
-    newQuestion.questionText = "";
-    newQuestion.correctAnswer = "";
-    newQuestion.explanation = "";
-    newQuestion.options = newQuestion.options.map(() => ""); // Keep same number of options
-    form.setValue("questions", [...currentQuestions, newQuestion]);
+  const handleAddSubQuestion = () => {
+    const currentSubQuestions = form.getValues("subQuestions");
+    // Create new sub-question
+    const newSubQuestion = {
+      id: Math.random().toString(36).substr(2, 9),
+      text: "",
+      imageUrls: [],
+      audioUrl: "",
+      options: ["", ""],
+      correctAnswer: "",
+      explanation: "",
+    };
+    form.setValue("subQuestions", [...currentSubQuestions, newSubQuestion]);
   };
 
-  const handleRemoveQuestion = (index: number) => {
-    const currentQuestions = form.getValues("questions");
-    if (currentQuestions.length > 1) {
-      form.setValue("questions", currentQuestions.filter((_, i) => i !== index));
+  const handleRemoveSubQuestion = (index: number) => {
+    const currentSubQuestions = form.getValues("subQuestions");
+    if (currentSubQuestions.length > 1) {
+      form.setValue("subQuestions", currentSubQuestions.filter((_, i) => i !== index));
     }
   };
 
@@ -493,9 +526,13 @@ export function QuestionBankManager() {
     };
 
     // Collect temporary description media files
-    if (formData.descriptionImageUrl && formData.descriptionImageUrl.includes('/api/temp-description-images/')) {
-      const filename = formData.descriptionImageUrl.split('/').pop();
-      if (filename) tempFilesToCleanup.descriptionImages.push(filename);
+    if (formData.descriptionImageUrls && Array.isArray(formData.descriptionImageUrls)) {
+      formData.descriptionImageUrls.forEach(imageUrl => {
+        if (imageUrl && imageUrl.includes('/api/temp-description-images/')) {
+          const filename = imageUrl.split('/').pop();
+          if (filename) tempFilesToCleanup.descriptionImages.push(filename);
+        }
+      });
     }
 
     if (formData.descriptionAudioUrl && formData.descriptionAudioUrl.includes('/api/temp-description-audio/')) {
@@ -737,8 +774,8 @@ export function QuestionBankManager() {
                       <div className="flex items-start gap-2">
                         {question.audioUrl && <Volume2 className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />}
                         {question.imageUrl && <Eye className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />}
-                        <div className="truncate" title={question.questionText}>
-                          {question.questionText}
+                        <div className="truncate" title={question.questionText || ""}>
+                          {question.questionText || "Không có nội dung"}
                         </div>
                       </div>
                     </TableCell>
@@ -956,7 +993,7 @@ export function QuestionBankManager() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    onClick={handleAddQuestion}
+                    onClick={handleAddSubQuestion}
                     className="flex items-center gap-1"
                     data-testid="button-add-question-text"
                   >
@@ -966,18 +1003,18 @@ export function QuestionBankManager() {
                 </div>
                 
                 <div className="space-y-6">
-                  {(form.watch("questions") || []).map((question, questionIndex) => (
+                  {(form.watch("subQuestions") || []).map((subQuestion, questionIndex) => (
                     <Card key={questionIndex} className="p-4 border-2 border-dashed border-muted-foreground/20">
                       <div className="space-y-4">
                         {/* Question Header */}
                         <div className="flex items-center justify-between">
                           <h4 className="text-lg font-medium">Câu hỏi {questionIndex + 1}</h4>
-                          {form.watch("questions").length > 1 && (
+                          {(form.watch("subQuestions") || []).length > 1 && (
                             <Button
                               type="button"
                               variant="outline"
                               size="sm"
-                              onClick={() => handleRemoveQuestion(questionIndex)}
+                              onClick={() => handleRemoveSubQuestion(questionIndex)}
                               className="text-red-600 hover:text-red-700"
                               data-testid={`button-remove-question-${questionIndex}`}
                             >
@@ -989,7 +1026,7 @@ export function QuestionBankManager() {
                         {/* Question Text */}
                         <FormField
                           control={form.control}
-                          name={`questions.${questionIndex}.questionText`}
+                          name={`subQuestions.${questionIndex}.text`}
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Nội dung câu hỏi *</FormLabel>
@@ -1010,11 +1047,11 @@ export function QuestionBankManager() {
                         <div>
                           <Label className="text-sm font-medium">Hình ảnh câu hỏi (tùy chọn)</Label>
                           <MultipleImagePreviewBox
-                            imageUrls={form.watch(`questions.${questionIndex}.imageUrls`) || []}
+                            imageUrls={form.watch(`subQuestions.${questionIndex}.imageUrls`) || []}
                             onRemove={(imageIndex) => {
-                              const currentUrls = form.getValues(`questions.${questionIndex}.imageUrls`) || [];
+                              const currentUrls = form.getValues(`subQuestions.${questionIndex}.imageUrls`) || [];
                               const newUrls = currentUrls.filter((_, i) => i !== imageIndex);
-                              form.setValue(`questions.${questionIndex}.imageUrls`, newUrls);
+                              form.setValue(`subQuestions.${questionIndex}.imageUrls`, newUrls);
                             }}
                             onChooseImage={() => {
                               const inputRef = questionImageInputRefs.current.get(questionIndex);
@@ -1048,7 +1085,7 @@ export function QuestionBankManager() {
                         <div>
                           <FormField
                             control={form.control}
-                            name={`questions.${questionIndex}.audioUrl`}
+                            name={`subQuestions.${questionIndex}.audioUrl`}
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Audio câu hỏi (tùy chọn)</FormLabel>
@@ -1083,27 +1120,27 @@ export function QuestionBankManager() {
                           </div>
                           
                           <div className="space-y-2">
-                            {question.options.map((option, optionIndex) => (
+                            {subQuestion.options.map((option, optionIndex) => (
                               <div key={optionIndex} className="flex items-center gap-2">
                                 <div className="flex-1">
                                   <Input
                                     placeholder={`Lựa chọn ${optionIndex + 1}`}
                                     value={option}
                                     onChange={(e) => {
-                                      const currentQuestions = form.getValues("questions");
-                                      const updatedQuestions = [...currentQuestions];
-                                      updatedQuestions[questionIndex] = {
-                                        ...updatedQuestions[questionIndex],
-                                        options: updatedQuestions[questionIndex].options.map((opt, idx) => 
+                                      const currentSubQuestions = form.getValues("subQuestions");
+                                      const updatedSubQuestions = [...currentSubQuestions];
+                                      updatedSubQuestions[questionIndex] = {
+                                        ...updatedSubQuestions[questionIndex],
+                                        options: updatedSubQuestions[questionIndex].options.map((opt, idx) => 
                                           idx === optionIndex ? e.target.value : opt
                                         )
                                       };
-                                      form.setValue("questions", updatedQuestions);
+                                      form.setValue("subQuestions", updatedSubQuestions);
                                     }}
                                     data-testid={`input-option-${questionIndex}-${optionIndex}`}
                                   />
                                 </div>
-                                {question.options.length > 2 && (
+                                {subQuestion.options.length > 2 && (
                                   <Button
                                     type="button"
                                     variant="outline"
@@ -1123,7 +1160,7 @@ export function QuestionBankManager() {
                         {/* Correct Answer */}
                         <FormField
                           control={form.control}
-                          name={`questions.${questionIndex}.correctAnswer`}
+                          name={`subQuestions.${questionIndex}.correctAnswer`}
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Đáp án đúng *</FormLabel>
@@ -1134,7 +1171,7 @@ export function QuestionBankManager() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  {question.options.map((option, index) => (
+                                  {subQuestion.options.map((option, index) => (
                                     option.trim() && (
                                       <SelectItem key={index} value={option}>
                                         {option}
@@ -1151,7 +1188,7 @@ export function QuestionBankManager() {
                         {/* Explanation */}
                         <FormField
                           control={form.control}
-                          name={`questions.${questionIndex}.explanation`}
+                          name={`subQuestions.${questionIndex}.explanation`}
                           render={({ field }) => (
                             <FormItem>
                               <FormLabel>Giải thích (tùy chọn)</FormLabel>
