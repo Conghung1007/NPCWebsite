@@ -28,6 +28,7 @@ interface ExamTakingPageProps {
 export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { toast } = useToast();
   
   // 4-Section exam state
   const [currentSection, setCurrentSection] = useState<ExamSection>("vocabulary");
@@ -150,22 +151,55 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     });
   }, [examStarted, completedSections.size, isExamInProgress]);
 
-  // Prevent page unload/navigation when exam is in progress
+  // Simple exit confirmation with immediate toast
   useEffect(() => {
     if (!isExamInProgress) return;
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = "Bạn đang trong quá trình làm bài thi. Bạn có chắc chắn muốn rời trang? Tiến độ làm bài sẽ bị mất.";
+      e.returnValue = "Bạn đang làm bài thi, bạn có rời bài thi không?";
       return e.returnValue;
     };
 
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Block F5, Ctrl+R refresh
+      if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
+        e.preventDefault();
+        showExitConfirmation();
+      }
+      // Block Alt+F4, Ctrl+W close
+      if ((e.altKey && e.key === 'F4') || (e.ctrlKey && e.key === 'w')) {
+        e.preventDefault();
+        showExitConfirmation();
+      }
+    };
+
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('keydown', handleKeyDown);
     
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('keydown', handleKeyDown);
     };
   }, [isExamInProgress]);
+
+  // Show immediate exit confirmation
+  const showExitConfirmation = () => {
+    if (isExamInProgress) {
+      const confirmed = window.confirm("Bạn đang làm bài thi, bạn có rời bài thi không?");
+      if (confirmed) {
+        // User confirmed, allow exit
+        setLocation("/online-exam");
+      } else {
+        // User cancelled, show toast
+        toast({
+          title: "Tiếp tục làm bài",
+          description: "Bạn đã chọn ở lại và tiếp tục làm bài thi.",
+          duration: 3000,
+        });
+      }
+    }
+  };
 
   // Handle navigation confirmation
   const handleNavigationConfirm = () => {
@@ -181,13 +215,23 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     setPendingNavigation(null);
   };
 
-  // Custom setLocation with confirmation
+  // Custom setLocation with immediate confirmation
   const handleNavigateWithConfirm = (path: string) => {
     console.log('Navigation attempt:', { path, isExamInProgress });
     if (isExamInProgress) {
-      console.log('Showing exit confirmation dialog');
-      setPendingNavigation(path);
-      setShowExitDialog(true);
+      console.log('Showing immediate exit confirmation');
+      const confirmed = window.confirm("Bạn đang làm bài thi, bạn có rời bài thi không?");
+      if (confirmed) {
+        console.log('User confirmed exit');
+        setLocation(path);
+      } else {
+        console.log('User cancelled exit');
+        toast({
+          title: "Tiếp tục làm bài",
+          description: "Bạn đã chọn ở lại và tiếp tục làm bài thi.",
+          duration: 3000,
+        });
+      }
     } else {
       console.log('Navigation allowed directly');
       setLocation(path);
