@@ -328,17 +328,24 @@ export default function EditExam() {
         throw new Error("Bài thi phải có ít nhất 1 câu hỏi");
       }
 
-      // Prepare exam data with section structure
+      // Prepare exam data with BOTH new sections format and legacy format
       const examData = {
         ...data,
         timeLimit: totalTimeLimit,
         questionCount: totalQuestions,
-        // Section question arrays
+        // NEW: Include sections format to save the flexible structure
+        sections: examSections.map(section => ({
+          id: section.id,
+          type: section.type,
+          timeLimit: section.timeLimit,
+          questionIds: section.questions.map(q => q.id)
+        })),
+        // LEGACY: Section question arrays for backward compatibility
         vocabularyQuestions: examSections.find(s => s.type === "từ vựng")?.questions.map(q => q.id) || [],
         grammarQuestions: examSections.find(s => s.type === "ngữ pháp")?.questions.map(q => q.id) || [],
         listeningQuestions: examSections.find(s => s.type === "nghe hiểu")?.questions.map(q => q.id) || [],
         readingQuestions: examSections.find(s => s.type === "đọc hiểu")?.questions.map(q => q.id) || [],
-        // Section time limits
+        // LEGACY: Section time limits for backward compatibility
         vocabularyTimeLimit: examSections.find(s => s.type === "từ vựng")?.timeLimit || 0,
         grammarTimeLimit: examSections.find(s => s.type === "ngữ pháp")?.timeLimit || 0,
         listeningTimeLimit: examSections.find(s => s.type === "nghe hiểu")?.timeLimit || 0,
