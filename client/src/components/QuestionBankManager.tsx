@@ -899,12 +899,16 @@ export function QuestionBankManager() {
               />
 
               {/* Description Image Preview */}
-              <ImagePreviewBox
-                imageUrl={form.watch("descriptionImageUrl")}
-                onRemove={() => form.setValue("descriptionImageUrl", "")}
-                onChooseImage={() => descriptionImageInputRef.current?.click()}
-                title="Hình ảnh mô tả"
-              />
+              <div>
+                <Label className="text-sm font-medium">Hình ảnh mô tả (tùy chọn)</Label>
+                <ImagePreviewBox
+                  imageUrl={form.watch("descriptionImageUrl")}
+                  onRemove={() => form.setValue("descriptionImageUrl", "")}
+                  onChooseImage={() => descriptionImageInputRef.current?.click()}
+                  title="Hình ảnh mô tả"
+                  className="mt-2"
+                />
+              </div>
               
               {/* Hidden file input for description image */}
               <input
