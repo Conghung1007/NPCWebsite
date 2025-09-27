@@ -2474,7 +2474,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Create the exam with flexible sections
+      // Calculate legacy fields for backward compatibility
+      const vocabularySection = sections.find((s: any) => s.type === "từ vựng");
+      const grammarSection = sections.find((s: any) => s.type === "ngữ pháp");
+      const listeningSection = sections.find((s: any) => s.type === "nghe hiểu");
+      const readingSection = sections.find((s: any) => s.type === "đọc hiểu");
+
+      // Create the exam with flexible sections and legacy fields
       const exam = await storage.createExam({
         title,
         description: description || null,
@@ -2482,6 +2488,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         sections: sections,
         isActive: true,
         createdBy: sessionUser.id,
+        // Legacy fields for backward compatibility (default to 0 if section doesn't exist)
+        vocabularyTimeLimit: vocabularySection?.timeLimit || 0,
+        vocabularyQuestions: vocabularySection?.questionIds || [],
+        grammarTimeLimit: grammarSection?.timeLimit || 0,
+        grammarQuestions: grammarSection?.questionIds || [],
+        listeningTimeLimit: listeningSection?.timeLimit || 0,
+        listeningQuestions: listeningSection?.questionIds || [],
+        readingTimeLimit: readingSection?.timeLimit || 0,
+        readingQuestions: readingSection?.questionIds || [],
       });
 
       res.json({
