@@ -192,11 +192,13 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         e.preventDefault();
         e.stopPropagation();
         
-        // Show custom dialog instead of window.confirm
-        setPendingExitAction(() => () => {
-          console.log('User confirmed exit via link click');
-          window.location.href = link.href;
-        });
+        // Extract path from link.href for router navigation
+        const url = new URL(link.href);
+        const targetPath = url.pathname;
+        console.log('Extracted target path:', targetPath);
+        
+        // Use router navigation for speed
+        setPendingNavigation(targetPath);
         setShowExitDialog(true);
       }
     };
@@ -218,11 +220,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   // Show immediate exit confirmation
   const showExitConfirmation = () => {
     if (isExamInProgress) {
-      // Show custom dialog instead of window.confirm
-      setPendingExitAction(() => () => {
-        console.log('User confirmed exit via keyboard shortcut');
-        setLocation("/online-exam");
-      });
+      // Use router navigation for speed
+      setPendingNavigation("/online-exam");
       setShowExitDialog(true);
     }
   };
@@ -230,17 +229,24 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   // Handle exit confirmation
   const handleExitConfirm = () => {
     console.log('User confirmed exit via custom dialog');
-    setShowExitDialog(false);
-    // Execute the pending exit action immediately
-    if (pendingExitAction) {
-      pendingExitAction();
-    }
-    if (pendingNavigation) {
-      setLocation(pendingNavigation);
-    }
-    // Clean up
+    
+    // Clean up immediately
     setPendingExitAction(null);
     setPendingNavigation(null);
+    setShowExitDialog(false);
+    
+    // Navigate immediately if there's a pending navigation
+    if (pendingNavigation) {
+      console.log('Navigating immediately to:', pendingNavigation);
+      setLocation(pendingNavigation);
+      return;
+    }
+    
+    // Execute pending exit action immediately
+    if (pendingExitAction) {
+      console.log('Executing immediate exit action');
+      pendingExitAction();
+    }
   };
 
   const handleExitCancel = () => {
