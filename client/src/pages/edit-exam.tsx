@@ -56,6 +56,8 @@ export default function EditExam() {
   const [isQuestionSelectOpen, setIsQuestionSelectOpen] = useState(false);
   const [currentSectionId, setCurrentSectionId] = useState<string>("");
   const [questionSearchQuery, setQuestionSearchQuery] = useState("");
+  const [selectedLanguageFilter, setSelectedLanguageFilter] = useState<string>("");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("");
 
   const form = useForm<ExamFormData>({
     resolver: zodResolver(examSchema),
@@ -250,6 +252,8 @@ export default function EditExam() {
     setCurrentSectionId(sectionId);
     setIsQuestionSelectOpen(true);
     setQuestionSearchQuery("");
+    setSelectedLanguageFilter("");
+    setSelectedCategoryFilter("");
   };
 
   // Category mapping between English and Vietnamese
@@ -291,6 +295,16 @@ export default function EditExam() {
       
       // Apply search filter
       if (questionSearchQuery && !question.questionText.toLowerCase().includes(questionSearchQuery.toLowerCase())) {
+        return false;
+      }
+      
+      // Apply category filter
+      if (selectedCategoryFilter && question.category !== selectedCategoryFilter) {
+        return false;
+      }
+      
+      // Apply language filter  
+      if (selectedLanguageFilter && question.language !== selectedLanguageFilter) {
         return false;
       }
       
@@ -688,7 +702,8 @@ export default function EditExam() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="mb-4">
+          <div className="mb-4 space-y-4">
+            {/* Search Box */}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
               <Input
@@ -698,6 +713,40 @@ export default function EditExam() {
                 className="pl-10"
                 data-testid="input-search-questions"
               />
+            </div>
+            
+            {/* Filter Dropdowns */}
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Lọc theo category</label>
+                <Select value={selectedCategoryFilter} onValueChange={setSelectedCategoryFilter}>
+                  <SelectTrigger data-testid="select-category-filter">
+                    <SelectValue placeholder="Tất cả categories" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Tất cả categories</SelectItem>
+                    <SelectItem value="vocabulary">Vocabulary</SelectItem>
+                    <SelectItem value="grammar">Grammar</SelectItem>
+                    <SelectItem value="reading">Reading</SelectItem>
+                    <SelectItem value="listening">Listening</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Lọc theo ngôn ngữ</label>
+                <Select value={selectedLanguageFilter} onValueChange={setSelectedLanguageFilter}>
+                  <SelectTrigger data-testid="select-language-filter">
+                    <SelectValue placeholder="Tất cả ngôn ngữ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Tất cả ngôn ngữ</SelectItem>
+                    <SelectItem value="japanese">Tiếng Nhật</SelectItem>
+                    <SelectItem value="english">Tiếng Anh</SelectItem>
+                    <SelectItem value="german">Tiếng Đức</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -711,8 +760,8 @@ export default function EditExam() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Câu hỏi</TableHead>
-                    <TableHead>Loại</TableHead>
-                    <TableHead>Media</TableHead>
+                    <TableHead>Category</TableHead>
+                    <TableHead>Ngôn ngữ</TableHead>
                     <TableHead>Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -728,10 +777,12 @@ export default function EditExam() {
                         {getCategoryBadge(question.category)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex gap-1">
-                          {question.audioUrl && <Volume2 className="w-4 h-4 text-blue-600" />}
-                          {question.imageUrl && <Eye className="w-4 h-4 text-green-600" />}
-                        </div>
+                        <Badge variant="outline">
+                          {question.language === "japanese" && "Tiếng Nhật"}
+                          {question.language === "english" && "Tiếng Anh"}
+                          {question.language === "german" && "Tiếng Đức"}
+                          {!["japanese", "english", "german"].includes(question.language) && question.language}
+                        </Badge>
                       </TableCell>
                       <TableCell>
                         <Button

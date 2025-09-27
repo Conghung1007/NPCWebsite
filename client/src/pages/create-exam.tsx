@@ -63,6 +63,8 @@ export default function CreateExam() {
   const [isQuestionSelectOpen, setIsQuestionSelectOpen] = useState(false);
   const [currentSectionId, setCurrentSectionId] = useState<string>("");
   const [questionSearchQuery, setQuestionSearchQuery] = useState("");
+  const [selectedLanguageFilter, setSelectedLanguageFilter] = useState<string>("");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("");
 
   const form = useForm<ExamFormData>({
     resolver: zodResolver(examSchema),
@@ -184,6 +186,16 @@ export default function CreateExam() {
       return false;
     }
     
+    // Apply category filter
+    if (selectedCategoryFilter && question.category !== selectedCategoryFilter) {
+      return false;
+    }
+    
+    // Apply language filter  
+    if (selectedLanguageFilter && question.language !== selectedLanguageFilter) {
+      return false;
+    }
+    
     return true;
   });
 
@@ -300,6 +312,8 @@ export default function CreateExam() {
     setCurrentSectionId(sectionId);
     setIsQuestionSelectOpen(true);
     setQuestionSearchQuery("");
+    setSelectedLanguageFilter("");
+    setSelectedCategoryFilter("");
   };
 
   // Show loading while checking authentication
@@ -576,6 +590,40 @@ export default function CreateExam() {
                   className="pl-10"
                 />
               </div>
+              
+              {/* Filter Dropdowns */}
+              <div className="flex gap-4">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Lọc theo category</label>
+                  <Select value={selectedCategoryFilter} onValueChange={setSelectedCategoryFilter}>
+                    <SelectTrigger data-testid="select-category-filter">
+                      <SelectValue placeholder="Tất cả categories" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Tất cả categories</SelectItem>
+                      <SelectItem value="vocabulary">Vocabulary</SelectItem>
+                      <SelectItem value="grammar">Grammar</SelectItem>
+                      <SelectItem value="reading">Reading</SelectItem>
+                      <SelectItem value="listening">Listening</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Lọc theo ngôn ngữ</label>
+                  <Select value={selectedLanguageFilter} onValueChange={setSelectedLanguageFilter}>
+                    <SelectTrigger data-testid="select-language-filter">
+                      <SelectValue placeholder="Tất cả ngôn ngữ" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">Tất cả ngôn ngữ</SelectItem>
+                      <SelectItem value="japanese">Tiếng Nhật</SelectItem>
+                      <SelectItem value="english">Tiếng Anh</SelectItem>
+                      <SelectItem value="german">Tiếng Đức</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
 
               {/* Question List */}
               <div className="max-h-96 overflow-y-auto">
@@ -590,7 +638,8 @@ export default function CreateExam() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Câu hỏi</TableHead>
-                        <TableHead>Loại</TableHead>
+                        <TableHead>Category</TableHead>
+                        <TableHead>Ngôn ngữ</TableHead>
                         <TableHead>Thao tác</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -607,7 +656,15 @@ export default function CreateExam() {
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">
-                              {questionCategories.find(c => c.value === question.category)?.label}
+                              {question.category}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline">
+                              {question.language === "japanese" && "Tiếng Nhật"}
+                              {question.language === "english" && "Tiếng Anh"}
+                              {question.language === "german" && "Tiếng Đức"}
+                              {!["japanese", "english", "german"].includes(question.language) && question.language}
                             </Badge>
                           </TableCell>
                           <TableCell>
