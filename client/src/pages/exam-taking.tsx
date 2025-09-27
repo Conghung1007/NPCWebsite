@@ -140,6 +140,15 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
   // Check if exam is in progress (started but not all sections completed)
   const isExamInProgress = examStarted && completedSections.size < 4;
+  
+  // Debug logging
+  useEffect(() => {
+    console.log('Exam progress state:', {
+      examStarted,
+      completedSections: completedSections.size,
+      isExamInProgress
+    });
+  }, [examStarted, completedSections.size, isExamInProgress]);
 
   // Prevent page unload/navigation when exam is in progress
   useEffect(() => {
@@ -174,10 +183,13 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
   // Custom setLocation with confirmation
   const handleNavigateWithConfirm = (path: string) => {
+    console.log('Navigation attempt:', { path, isExamInProgress });
     if (isExamInProgress) {
+      console.log('Showing exit confirmation dialog');
       setPendingNavigation(path);
       setShowExitDialog(true);
     } else {
+      console.log('Navigation allowed directly');
       setLocation(path);
     }
   };
@@ -586,6 +598,17 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Exam Progress Indicator */}
+        {isExamInProgress && (
+          <div className="mb-6 p-4 bg-amber-50 border-l-4 border-amber-400 rounded-r-lg">
+            <div className="flex items-center">
+              <div className="w-3 h-3 bg-amber-500 rounded-full mr-3 animate-pulse"></div>
+              <p className="text-amber-800 text-sm font-medium">
+                🔒 Bài thi đang diễn ra - Hệ thống sẽ xác nhận trước khi bạn rời trang
+              </p>
+            </div>
+          </div>
+        )}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Question Content */}
           <div className="lg:col-span-3">
