@@ -155,13 +155,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   useEffect(() => {
     if (!isExamInProgress) return;
 
-    // Browser close/refresh confirmation
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = "Bạn đang làm bài thi, bạn có rời bài thi không?";
-      return e.returnValue;
-    };
-
     // Handle browser back/forward navigation
     const handlePopState = (e: PopStateEvent) => {
       console.log('Browser navigation detected during exam');
@@ -211,13 +204,11 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     // Add a history entry to detect back button
     window.history.pushState(null, '', window.location.href);
     
-    window.addEventListener('beforeunload', handleBeforeUnload);
     window.addEventListener('popstate', handlePopState);
     window.addEventListener('keydown', handleKeyDown);
     document.addEventListener('click', handleLinkClick, true); // Use capture phase
     
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('keydown', handleKeyDown);
       document.removeEventListener('click', handleLinkClick, true);
