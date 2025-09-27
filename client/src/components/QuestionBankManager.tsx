@@ -19,7 +19,6 @@ import { apiRequest } from "@/lib/queryClient";
 import { Plus, Search, Edit, Trash2, HelpCircle, BookOpen, Volume2, Eye, Filter, Save, X, Minus, ChevronLeft, ChevronRight } from "lucide-react";
 import { AudioUploader } from "@/components/AudioUploader";
 import { QuestionImageUploader } from "@/components/QuestionImageUploader";
-import { DescriptionMediaUploader } from "@/components/DescriptionMediaUploader";
 import { ImagePreviewBox } from "@/components/ImagePreviewBox";
 import type { Question } from "@shared/schema";
 
@@ -899,22 +898,12 @@ export function QuestionBankManager() {
                 )}
               />
 
-              {/* Description Media Upload */}
-              <DescriptionMediaUploader
-                imageUrl={form.watch("descriptionImageUrl")}
-                audioUrl={form.watch("descriptionAudioUrl")}
-                onImageChange={(url) => form.setValue("descriptionImageUrl", url)}
-                onAudioChange={(url) => form.setValue("descriptionAudioUrl", url)}
-                disabled={createQuestionMutation.isPending || updateQuestionMutation.isPending}
-              />
-
               {/* Description Image Preview */}
               <ImagePreviewBox
                 imageUrl={form.watch("descriptionImageUrl")}
                 onRemove={() => form.setValue("descriptionImageUrl", "")}
                 onChooseImage={() => descriptionImageInputRef.current?.click()}
                 title="Hình ảnh mô tả"
-                className="mt-2"
               />
               
               {/* Hidden file input for description image */}
