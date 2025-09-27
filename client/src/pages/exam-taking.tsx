@@ -11,7 +11,6 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Clock, ChevronLeft, ChevronRight, FileText, CheckCircle, ArrowRight, Volume2, Eye, BookOpen, MessageSquare, Headphones, FileInput } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
-import { useToast } from "@/hooks/use-toast";
 import { type Exam, type Question, type User } from "@shared/schema";
 
 type ExamSection = "vocabulary" | "grammar" | "listening" | "reading";
@@ -29,7 +28,6 @@ interface ExamTakingPageProps {
 export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
-  const { toast } = useToast();
   
   // 4-Section exam state
   const [currentSection, setCurrentSection] = useState<ExamSection>("vocabulary");
@@ -41,6 +39,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [sectionCompleted, setSectionCompleted] = useState(false); // Track if current section is completed and waiting for progression
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+  const [showStayNotification, setShowStayNotification] = useState(false);
   
   // Section-specific data
   const [sectionQuestions, setSectionQuestions] = useState<Question[]>([]);
@@ -192,12 +191,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         // User confirmed, allow exit
         setLocation("/online-exam");
       } else {
-        // User cancelled, show toast
-        toast({
-          title: "Tiếp tục làm bài",
-          description: "Bạn đã chọn ở lại và tiếp tục làm bài thi.",
-          duration: 3000,
-        });
+        // User cancelled, show notification dialog
+        setShowStayNotification(true);
       }
     }
   };
@@ -227,11 +222,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         setLocation(path);
       } else {
         console.log('User cancelled exit');
-        toast({
-          title: "Tiếp tục làm bài",
-          description: "Bạn đã chọn ở lại và tiếp tục làm bài thi.",
-          duration: 3000,
-        });
+        setShowStayNotification(true);
       }
     } else {
       console.log('Navigation allowed directly');
@@ -883,6 +874,29 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   {getNextSection(currentSection) ? "Chuyển phần tiếp theo" : "Nộp bài"}
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Stay Notification Dialog */}
+      <Dialog open={showStayNotification} onOpenChange={setShowStayNotification}>
+        <DialogContent className="w-[90vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-green-600">Tiếp tục làm bài</DialogTitle>
+            <DialogDescription>
+              Bạn đã chọn ở lại và tiếp tục làm bài thi. 
+              <br />
+              Chúc bạn làm bài tốt! 📝
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              onClick={() => setShowStayNotification(false)}
+              data-testid="button-continue-exam"
+              className="w-full"
+            >
+              Tiếp tục làm bài
             </Button>
           </DialogFooter>
         </DialogContent>
