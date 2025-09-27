@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -15,9 +15,12 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
 import { Plus, Save, ArrowLeft, Search, Trash2, HelpCircle, Volume2, Eye, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { MultipleImagePreviewBox } from "@/components/MultipleImagePreviewBox";
+import { AudioUploader } from "@/components/AudioUploader";
 import type { Question } from "@shared/schema";
 
 const questionCategories = [
@@ -32,6 +35,9 @@ interface ExamSection {
   id: string;
   type: "từ vựng" | "ngữ pháp" | "đọc hiểu" | "nghe hiểu";
   timeLimit: number;
+  content?: string;
+  descriptionImageUrls?: string[];
+  descriptionAudioUrl?: string;
   questions: Question[];
 }
 
@@ -56,6 +62,9 @@ export default function CreateExam() {
       id: "section-1",
       type: "từ vựng",
       timeLimit: 10,
+      content: "",
+      descriptionImageUrls: [],
+      descriptionAudioUrl: "",
       questions: []
     }
   ]);
@@ -65,6 +74,10 @@ export default function CreateExam() {
   const [questionSearchQuery, setQuestionSearchQuery] = useState("");
   const [selectedLanguageFilter, setSelectedLanguageFilter] = useState<string>("all");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
+  
+  // File input refs for section uploads
+  const sectionImageInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+  const sectionAudioInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
 
   const form = useForm<ExamFormData>({
     resolver: zodResolver(examSchema),
@@ -95,6 +108,9 @@ export default function CreateExam() {
       id: `section-${Date.now()}`,
       type: "từ vựng",
       timeLimit: 10,
+      content: "",
+      descriptionImageUrls: [],
+      descriptionAudioUrl: "",
       questions: []
     };
     setExamSections(prev => [...prev, newSection]);
@@ -127,6 +143,83 @@ export default function CreateExam() {
         ? { ...section, timeLimit }
         : section
     ));
+  };
+
+  const updateSectionContent = (sectionId: string, content: string) => {
+    setExamSections(prev => prev.map(section => 
+      section.id === sectionId 
+        ? { ...section, content }
+        : section
+    ));
+  };
+
+  const updateSectionDescriptionImages = (sectionId: string, imageUrls: string[]) => {
+    setExamSections(prev => prev.map(section => 
+      section.id === sectionId 
+        ? { ...section, descriptionImageUrls: imageUrls }
+        : section
+    ));
+  };
+
+  const updateSectionDescriptionAudio = (sectionId: string, audioUrl: string) => {
+    setExamSections(prev => prev.map(section => 
+      section.id === sectionId 
+        ? { ...section, descriptionAudioUrl: audioUrl }
+        : section
+    ));
+  };
+
+  // Handle section description image upload
+  const handleSectionDescriptionImageUpload = async (file: File, sectionId: string) => {
+    if (!file.type.startsWith('image/')) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi tải lên",
+        description: "Vui lòng chọn file hình ảnh hợp lệ."
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi tải lên",
+        description: "Kích thước file phải nhỏ hơn 5MB."
+      });
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/temp-description-images/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Add to current section's description image URLs
+      const currentSection = examSections.find(s => s.id === sectionId);
+      const currentUrls = currentSection?.descriptionImageUrls || [];
+      updateSectionDescriptionImages(sectionId, [...currentUrls, data.url]);
+
+      toast({
+        title: "Thành công",
+        description: "Hình ảnh mô tả đã được tải lên thành công.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi tải lên",
+        description: error.message || "Không thể tải lên hình ảnh."
+      });
+    }
   };
 
   const getCurrentSection = () => {
@@ -198,6 +291,9 @@ export default function CreateExam() {
           id: section.id,
           type: section.type,
           timeLimit: section.timeLimit,
+          content: section.content || "",
+          descriptionImageUrls: section.descriptionImageUrls || [],
+          descriptionAudioUrl: section.descriptionAudioUrl || "",
           questionIds: section.questions.map(q => q.id)
         }))
       };
@@ -377,6 +473,64 @@ export default function CreateExam() {
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       )}
+                    </div>
+
+                    {/* Section Content */}
+                    <div className="mb-6">
+                      <Label className="block text-sm font-medium mb-2">Nội dung phần thi (tùy chọn)</Label>
+                      <Textarea
+                        placeholder="Nhập nội dung, hướng dẫn hoặc mô tả cho phần thi này..."
+                        className="min-h-[100px]"
+                        value={section.content || ""}
+                        onChange={(e) => updateSectionContent(section.id, e.target.value)}
+                      />
+                    </div>
+
+                    {/* Section Description Images */}
+                    <div className="mb-6">
+                      <Label className="block text-sm font-medium mb-2">Hình ảnh mô tả (tùy chọn)</Label>
+                      <MultipleImagePreviewBox
+                        imageUrls={section.descriptionImageUrls || []}
+                        onRemove={(imageIndex) => {
+                          const currentUrls = section.descriptionImageUrls || [];
+                          const newUrls = currentUrls.filter((_, i) => i !== imageIndex);
+                          updateSectionDescriptionImages(section.id, newUrls);
+                        }}
+                        onChooseImage={() => {
+                          const inputRef = sectionImageInputRefs.current.get(section.id);
+                          inputRef?.click();
+                        }}
+                        title="Hình ảnh mô tả phần thi"
+                        maxImages={5}
+                      />
+                      
+                      {/* Hidden file input for section description image */}
+                      <input
+                        ref={(el) => {
+                          if (el) {
+                            sectionImageInputRefs.current.set(section.id, el);
+                          }
+                        }}
+                        type="file"
+                        accept="image/*"
+                        style={{ display: 'none' }}
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleSectionDescriptionImageUpload(file, section.id);
+                          }
+                        }}
+                      />
+                    </div>
+
+                    {/* Section Description Audio */}
+                    <div className="mb-6">
+                      <Label className="block text-sm font-medium mb-2">Audio mô tả (tùy chọn)</Label>
+                      <AudioUploader
+                        currentAudioUrl={section.descriptionAudioUrl || ""}
+                        onAudioUpload={(audioUrl) => updateSectionDescriptionAudio(section.id, audioUrl)}
+                        onRemoveAudio={() => updateSectionDescriptionAudio(section.id, "")}
+                      />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

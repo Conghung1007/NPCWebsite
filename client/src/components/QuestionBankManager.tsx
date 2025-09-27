@@ -65,9 +65,6 @@ const questionSchema = z.object({
   language: z.string().min(1, "Ngôn ngữ là bắt buộc"),
   category: z.string().min(1, "Danh mục là bắt buộc"),
   description: z.string().optional(),
-  descriptionImageUrl: z.string().optional(), // Legacy single image for backward compatibility
-  descriptionImageUrls: z.array(z.string()).default([]), // Array of description image URLs
-  descriptionAudioUrl: z.string().optional(),
   questions: z.array(singleQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi"),
 });
 
@@ -90,7 +87,6 @@ export function QuestionBankManager() {
   });
 
   // File input refs for image uploads
-  const descriptionImageInputRef = useRef<HTMLInputElement>(null);
   const questionImageInputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
 
   // Form for creating/editing questions
@@ -100,9 +96,6 @@ export function QuestionBankManager() {
       language: "japanese",
       category: "ngữ pháp",
       description: "",
-      descriptionImageUrl: "",
-      descriptionImageUrls: [],
-      descriptionAudioUrl: "",
       questions: [{
         questionText: "",
         options: ["", ""],
@@ -211,57 +204,6 @@ export function QuestionBankManager() {
     setDeleteConfirm({ isOpen: false, question: null });
   };
 
-  // Handle description image upload
-  const handleDescriptionImageUpload = async (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi tải lên",
-        description: "Vui lòng chọn file hình ảnh hợp lệ."
-      });
-      return;
-    }
-
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        variant: "destructive", 
-        title: "Lỗi tải lên",
-        description: "Kích thước file phải nhỏ hơn 5MB."
-      });
-      return;
-    }
-
-    try {
-      const formData = new FormData();
-      formData.append('file', file);
-
-      const response = await fetch('/api/temp-description-images/upload', {
-        method: 'POST',
-        body: formData
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      
-      // Add to array instead of replacing single value
-      const currentUrls = form.getValues("descriptionImageUrls") || [];
-      form.setValue("descriptionImageUrls", [...currentUrls, data.url]);
-
-      toast({
-        title: "Thành công",
-        description: "Hình ảnh mô tả đã được tải lên thành công.",
-      });
-    } catch (error: any) {
-      toast({
-        variant: "destructive",
-        title: "Lỗi tải lên",
-        description: error.message || "Không thể tải lên hình ảnh."
-      });
-    }
-  };
 
   // Handle question image upload
   const handleQuestionImageUpload = async (file: File, questionIndex: number) => {
@@ -369,9 +311,6 @@ export function QuestionBankManager() {
         category: data.category,
         language: data.language,
         description: data.description,
-        descriptionImageUrl: data.descriptionImageUrl,
-        descriptionImageUrls: data.descriptionImageUrls,
-        descriptionAudioUrl: data.descriptionAudioUrl,
         questionText: question.questionText,
         questionType: "multiple_choice" as const,
         imageUrl: question.imageUrl,
@@ -389,9 +328,6 @@ export function QuestionBankManager() {
         category: data.category,
         language: data.language,
         description: data.description,
-        descriptionImageUrl: data.descriptionImageUrl,
-        descriptionImageUrls: data.descriptionImageUrls,
-        descriptionAudioUrl: data.descriptionAudioUrl,
         questionText: question.questionText,
         questionType: "multiple_choice" as const,
         imageUrl: question.imageUrl,
@@ -424,9 +360,6 @@ export function QuestionBankManager() {
       language: (question as any).language || "japanese",
       category: question.category,
       description: question.description || "",
-      descriptionImageUrl: (question as any).descriptionImageUrl || "",
-      descriptionImageUrls: (question as any).descriptionImageUrls || [],
-      descriptionAudioUrl: (question as any).descriptionAudioUrl || "",
       questions: [{
         questionText: question.questionText,
         options,
@@ -492,16 +425,7 @@ export function QuestionBankManager() {
       descriptionAudio: []
     };
 
-    // Collect temporary description media files
-    if (formData.descriptionImageUrl && formData.descriptionImageUrl.includes('/api/temp-description-images/')) {
-      const filename = formData.descriptionImageUrl.split('/').pop();
-      if (filename) tempFilesToCleanup.descriptionImages.push(filename);
-    }
-
-    if (formData.descriptionAudioUrl && formData.descriptionAudioUrl.includes('/api/temp-description-audio/')) {
-      const filename = formData.descriptionAudioUrl.split('/').pop();
-      if (filename) tempFilesToCleanup.descriptionAudio.push(filename);
-    }
+    // No more description media files to clean up since they're now handled at section level
 
     // Collect temporary files from all questions
     formData.questions?.forEach(question => {
@@ -898,55 +822,6 @@ export function QuestionBankManager() {
                 )}
               />
 
-              {/* Description Images Preview */}
-              <div>
-                <Label className="text-sm font-medium">Hình ảnh mô tả (tùy chọn)</Label>
-                <MultipleImagePreviewBox
-                  imageUrls={form.watch("descriptionImageUrls") || []}
-                  onRemove={(index) => {
-                    const currentUrls = form.getValues("descriptionImageUrls") || [];
-                    const newUrls = currentUrls.filter((_, i) => i !== index);
-                    form.setValue("descriptionImageUrls", newUrls);
-                  }}
-                  onChooseImage={() => descriptionImageInputRef.current?.click()}
-                  title="Hình ảnh mô tả"
-                  className="mt-2"
-                  maxImages={5}
-                />
-              </div>
-              
-              {/* Hidden file input for description image */}
-              <input
-                ref={descriptionImageInputRef}
-                type="file"
-                accept="image/*"
-                style={{ display: 'none' }}
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) {
-                    handleDescriptionImageUpload(file);
-                  }
-                }}
-              />
-
-              {/* Description Audio Upload */}
-              <FormField
-                control={form.control}
-                name="descriptionAudioUrl"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Audio mô tả (tùy chọn)</FormLabel>
-                    <FormControl>
-                      <AudioUploader
-                        currentAudioUrl={field.value}
-                        onAudioUpload={(audioUrl) => field.onChange(audioUrl)}
-                        onRemoveAudio={() => field.onChange("")}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
 
               {/* Questions Section */}
               <div className="space-y-4">
