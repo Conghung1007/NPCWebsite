@@ -639,7 +639,7 @@ export default function EditExam() {
       </div>
 
       {/* Save Button - Fixed at Bottom */}
-      <div className="mt-8 flex justify-center">
+      <div className="mt-8 flex justify-end">
         <Button 
           onClick={() => form.handleSubmit(onSubmit)()}
           size="lg"
