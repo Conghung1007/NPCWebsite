@@ -2613,13 +2613,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const { examId, category, description, descriptionImageUrl, descriptionAudioUrl, questionText, questionType, imageUrl, audioUrl, options, correctAnswer, explanation, sortOrder } = req.body;
+      const { examId, category, language, description, descriptionImageUrl, descriptionImageUrls, descriptionAudioUrl, questionText, questionType, imageUrl, audioUrl, options, correctAnswer, explanation, sortOrder, subQuestions } = req.body;
 
-      // For new question bank: category and questionText are required
-      // For old exam questions: examId and questionText are required  
-      if (!questionText || !options || !correctAnswer) {
+      // Support both legacy format (questionText, options, correctAnswer) and new format (subQuestions)
+      const isLegacyFormat = questionText && options && correctAnswer;
+      const isNewFormat = subQuestions && Array.isArray(subQuestions) && subQuestions.length > 0;
+      
+      if (!isLegacyFormat && !isNewFormat) {
         return res.status(400).json({ 
-          message: "Question text, options, and correct answer are required" 
+          message: "Either legacy format (questionText, options, correctAnswer) or new format (subQuestions array) is required" 
         });
       }
 
@@ -2663,8 +2665,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      // Handle temporary description image - move to permanent location
+      // Handle description images (legacy single image or new multiple images)
       let finalDescriptionImageUrl = descriptionImageUrl;
+      let finalDescriptionImageUrls = descriptionImageUrls;
+      
+      // Handle legacy single description image
       if (descriptionImageUrl && descriptionImageUrl.includes('/api/temp-description-images/')) {
         console.log(`Moving temporary description image: ${descriptionImageUrl}`);
         try {
@@ -2678,6 +2683,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
           console.error("Error moving temporary description image:", error);
           finalDescriptionImageUrl = null;
         }
+      }
+      
+      // Handle new multiple description images format
+      if (finalDescriptionImageUrls && Array.isArray(finalDescriptionImageUrls)) {
+        finalDescriptionImageUrls = await Promise.all(
+          finalDescriptionImageUrls.map(async (url) => {
+            if (url && url.includes('/api/temp-description-images/')) {
+              try {
+                const movedUrl = await moveTemporaryDescriptionImageToPermanent(url);
+                return movedUrl || url;
+              } catch (error) {
+                console.error("Error moving temporary description image:", error);
+                return url;
+              }
+            }
+            return url;
+          })
+        );
       }
 
       // Handle temporary description audio - move to permanent location
@@ -2708,17 +2731,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const question = await storage.createQuestion({
         examId: examId || null, // Can be null for standalone questions
         category: category || "ngữ pháp", // Default category if not provided
+        language: language || "japanese", // Default to japanese for backward compatibility
         description: description || null,
-        descriptionImageUrl: finalDescriptionImageUrl || null,
+        descriptionImageUrl: finalDescriptionImageUrl || null, // Legacy support
+        descriptionImageUrls: finalDescriptionImageUrls || null,
         descriptionAudioUrl: finalDescriptionAudioUrl || null,
-        questionText,
+        questionText: questionText || null, // Can be null for new sub-questions format
         questionType: questionType || "multiple_choice",
         imageUrl: finalImageUrl || null,
         audioUrl: finalAudioUrl || null,
-        options,
-        correctAnswer,
+        options: options || null, // Can be null for new sub-questions format
+        correctAnswer: correctAnswer || null, // Can be null for new sub-questions format
         explanation: explanation || null,
         sortOrder: newSortOrder,
+        subQuestions: subQuestions || null, // New field for sub-questions structure
       });
 
       res.status(201).json({
