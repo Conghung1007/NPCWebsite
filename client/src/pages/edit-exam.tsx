@@ -16,6 +16,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Save, ArrowLeft, Search, Trash2, HelpCircle, Volume2, Eye, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import type { Question, Exam } from "@shared/schema";
 
@@ -48,6 +49,7 @@ export default function EditExam() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, isLoading: authLoading, hasImageEditPermission } = useAuth();
 
   // State for dynamic exam sections
   const [examSections, setExamSections] = useState<ExamSection[]>([]);
@@ -70,9 +72,17 @@ export default function EditExam() {
     enabled: !!examId,
   });
 
-  // Fetch questions from question bank
+  // Authentication check
+  useEffect(() => {
+    if (!authLoading && (!user || !hasImageEditPermission)) {
+      setLocation("/cpanel?tab=login");
+    }
+  }, [authLoading, user, hasImageEditPermission, setLocation]);
+
+  // Fetch questions from question bank - only when authenticated
   const { data: availableQuestions = [], isLoading: questionsLoading } = useQuery<Question[]>({
     queryKey: ["/api/questions"],
+    enabled: !!user && hasImageEditPermission,
   });
 
   // Load existing exam data into sections
@@ -339,6 +349,22 @@ export default function EditExam() {
       </Badge>
     );
   };
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="flex justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated or unauthorized
+  if (!user || !hasImageEditPermission) {
+    return null; // Will redirect via useEffect
+  }
 
   if (examLoading || questionsLoading) {
     return (

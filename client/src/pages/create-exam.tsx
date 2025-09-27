@@ -1,9 +1,10 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -47,6 +48,7 @@ export default function CreateExam() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user, isLoading: authLoading, hasImageEditPermission } = useAuth();
 
   // State for dynamic exam sections
   const [examSections, setExamSections] = useState<ExamSection[]>([
@@ -71,9 +73,17 @@ export default function CreateExam() {
     },
   });
 
-  // Fetch questions from question bank
+  // Authentication check
+  useEffect(() => {
+    if (!authLoading && (!user || !hasImageEditPermission)) {
+      setLocation("/cpanel?tab=login");
+    }
+  }, [authLoading, user, hasImageEditPermission, setLocation]);
+
+  // Fetch questions from question bank - only when authenticated
   const { data: availableQuestions = [], isLoading: questionsLoading } = useQuery<Question[]>({
     queryKey: ["/api/questions"],
+    enabled: !!user && hasImageEditPermission,
   });
 
   // Helper functions for managing dynamic sections
@@ -278,6 +288,22 @@ export default function CreateExam() {
     setIsQuestionSelectOpen(true);
     setQuestionSearchQuery("");
   };
+
+  // Show loading while checking authentication
+  if (authLoading) {
+    return (
+      <div className="container mx-auto px-4 py-8 max-w-4xl">
+        <div className="flex justify-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+        </div>
+      </div>
+    );
+  }
+
+  // Redirect to login if not authenticated or unauthorized
+  if (!user || !hasImageEditPermission) {
+    return null; // Will redirect via useEffect
+  }
 
   return (
     <div className="min-h-screen bg-gray-50 py-12">
