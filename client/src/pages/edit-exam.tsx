@@ -498,15 +498,6 @@ export default function EditExam() {
                     </div>
                   </div>
 
-                  <Button 
-                    type="submit" 
-                    className="w-full"
-                    disabled={updateExamMutation.isPending}
-                    data-testid="button-save"
-                  >
-                    <Save className="w-4 h-4 mr-2" />
-                    {updateExamMutation.isPending ? "Đang lưu..." : "Lưu bài thi"}
-                  </Button>
                 </form>
               </Form>
             </CardContent>
@@ -645,6 +636,20 @@ export default function EditExam() {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Save Button - Fixed at Bottom */}
+      <div className="mt-8 flex justify-center">
+        <Button 
+          onClick={() => form.handleSubmit(onSubmit)()}
+          size="lg"
+          className="px-8 py-3 text-lg"
+          disabled={updateExamMutation.isPending}
+          data-testid="button-save-bottom"
+        >
+          <Save className="w-5 h-5 mr-3" />
+          {updateExamMutation.isPending ? "Đang lưu..." : "Lưu bài thi"}
+        </Button>
       </div>
 
       {/* Question Selection Dialog */}
