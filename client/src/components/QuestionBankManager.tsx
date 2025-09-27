@@ -920,6 +920,25 @@ export function QuestionBankManager() {
                 }}
               />
 
+              {/* Description Audio Upload */}
+              <FormField
+                control={form.control}
+                name="descriptionAudioUrl"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Audio mô tả (tùy chọn)</FormLabel>
+                    <FormControl>
+                      <AudioUploader
+                        currentAudioUrl={field.value}
+                        onAudioUpload={(audioUrl) => field.onChange(audioUrl)}
+                        onRemoveAudio={() => field.onChange("")}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               {/* Questions Section */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
