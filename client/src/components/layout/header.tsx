@@ -53,9 +53,9 @@ export function Header() {
       description: "Khóa học tiếng Nhật từ cơ bản đến nâng cao"
     },
     {
-      title: "Thi thử trực tuyến",
+      title: "Thi trực tuyến",
       href: "/online-exam",
-      description: "Kiểm tra trình độ với các đề thi thử"
+      description: "Kiểm tra trình độ với các đề thi"
     }
   ];
 
@@ -64,7 +64,7 @@ export function Header() {
     { name: "Dịch vụ xin\nthị thực", href: "/visa-services" },
     { name: "Tư vấn\ndu học", href: "/study-abroad" },
     { name: "Đào tạo\ntiếng Nhật", href: "/japanese-training" },
-    { name: "Thi thử\ntrực tuyến", href: "/online-exam" },
+    { name: "Thi\ntrực tuyến", href: "/online-exam" },
     { name: "Tư vấn\nmiễn phí", href: "/contact" }
   ];
 

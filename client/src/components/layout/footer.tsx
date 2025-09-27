@@ -9,7 +9,7 @@ export function Footer() {
     { name: "Dịch vụ xin thị thực", href: "/visa-services" },
     { name: "Tư vấn du học", href: "/study-abroad" },
     { name: "Đào tạo tiếng Nhật", href: "/japanese-training" },
-    { name: "Thi thử trực tuyến", href: "/online-exam" }
+    { name: "Thi trực tuyến", href: "/online-exam" }
   ];
 
   // Helper function to get contact info by type

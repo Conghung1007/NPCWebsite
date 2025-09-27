@@ -65,11 +65,11 @@ export function OnlineExamPage() {
         {/* Header Section */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            Hệ thống thi thử trực tuyến
+            Hệ thống thi trực tuyến
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Kiểm tra và nâng cao trình độ của bạn với các đề thi thử chuyên nghiệp. 
-            Thực hành ngay với đề demo hoặc tham gia các kỳ thi chính thức.
+            Kiểm tra và nâng cao trình độ của bạn với các đề thi chuyên nghiệp. 
+            Thực hành ngay với đề miễn phí hoặc tham gia các kỳ thi chính thức.
           </p>
         </div>
 
@@ -86,7 +86,7 @@ export function OnlineExamPage() {
             <CardContent className="pt-6">
               <Play className="w-8 h-8 text-green-600 mx-auto mb-2" />
               <div className="text-2xl font-bold text-gray-900">{allDemoExams.length}</div>
-              <p className="text-sm text-gray-600">Đề demo</p>
+              <p className="text-sm text-gray-600">Đề miễn phí</p>
             </CardContent>
           </Card>
           <Card className="text-center">
@@ -109,7 +109,7 @@ export function OnlineExamPage() {
         <div className="mb-12">
           <div className="flex items-center mb-6">
             <Play className="w-6 h-6 text-green-600 mr-2" />
-            <h2 className="text-2xl font-bold text-gray-900">Đề thi demo</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Đề thi miễn phí</h2>
           </div>
           <p className="text-gray-600 mb-6">
             Thực hành ngay mà không cần đăng nhập. Phù hợp để làm quen với hệ thống và định dạng bài thi.
@@ -119,7 +119,7 @@ export function OnlineExamPage() {
             <Card>
               <CardContent className="text-center py-12">
                 <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <p className="text-gray-500">Chưa có đề thi demo nào</p>
+                <p className="text-gray-500">Chưa có đề thi miễn phí nào</p>
               </CardContent>
             </Card>
           ) : (
@@ -142,7 +142,7 @@ export function OnlineExamPage() {
                       </div>
                       <div className="flex items-center">
                         <Badge variant="outline" className="text-green-600 border-green-600">
-                          Demo
+                          Miễn phí
                         </Badge>
                       </div>
                       <Link href={`/exam/${exam.id}`}>
@@ -162,7 +162,7 @@ export function OnlineExamPage() {
           {allDemoExams.length > 0 && (
             <div className="mt-8">
               <div className="mb-4 text-center text-sm text-muted-foreground">
-                Hiển thị {demoStartIndex + 1}-{Math.min(demoEndIndex, allDemoExams.length)} trong tổng số {allDemoExams.length} đề demo
+                Hiển thị {demoStartIndex + 1}-{Math.min(demoEndIndex, allDemoExams.length)} trong tổng số {allDemoExams.length} đề miễn phí
               </div>
               <Pagination
                 currentPage={demoCurrentPage}

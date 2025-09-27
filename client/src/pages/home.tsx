@@ -179,8 +179,8 @@ export default function Home() {
       studyDescription: "Tư vấn chọn trường, chương trình học, hỗ trợ hồ sơ và học bổng tại Nhật, Mỹ, Canada, Châu Âu",
       japaneseTitle: "Đào tạo tiếng Nhật",
       japaneseDescription: "Khóa học tiếng Nhật từ cơ bản đến nâng cao, luyện thi JLPT với giảng viên bản ngữ",
-      examTitle: "Thi thử trực tuyến",
-      examDescription: "Hệ thống thi trực tuyến với đề thi demo miễn phí và đề thi chính thức đánh giá năng lực tiếng Anh, tiếng Nhật"
+      examTitle: "Thi trực tuyến",
+      examDescription: "Hệ thống thi trực tuyến với đề thi miễn phí và đề thi chính thức đánh giá năng lực tiếng Anh, tiếng Nhật"
     };
     
     try {
@@ -270,8 +270,8 @@ export default function Home() {
     },
     {
       icon: <BookOpen className="h-8 w-8 text-blue-600" />,
-      title: "Thi thử trực tuyến",
-      description: "Hệ thống thi trực tuyến với đề thi demo miễn phí và đề thi chính thức đánh giá năng lực tiếng Anh, tiếng Nhật",
+      title: "Thi trực tuyến",
+      description: "Hệ thống thi trực tuyến với đề thi miễn phí và đề thi chính thức đánh giá năng lực tiếng Anh, tiếng Nhật",
       route: "/online-exam",
       category: "online-exam",
       backgroundImage: "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?w=400&h=300"

@@ -258,7 +258,7 @@ export function ServiceWithExams({
                         <div className="text-center">
                           <BookOpen className="h-8 w-8 text-blue-600 mx-auto mb-2" />
                           <Badge className={`${exam.isDemo ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'}`}>
-                            {exam.isDemo ? 'Đề demo' : 'Chính thức'}
+                            {exam.isDemo ? 'Đề miễn phí' : 'Chính thức'}
                           </Badge>
                         </div>
                       </div>
@@ -290,7 +290,7 @@ export function ServiceWithExams({
                           </div>
                           
                           <span className="text-blue-600 hover:text-blue-700 text-sm font-medium">
-                            {exam.isDemo ? 'Thi thử →' : 'Bắt đầu →'}
+                            {exam.isDemo ? 'Bắt đầu →' : 'Bắt đầu →'}
                           </span>
                         </div>
                       </div>
