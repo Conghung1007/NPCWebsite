@@ -20,6 +20,7 @@ import { Plus, Search, Edit, Trash2, HelpCircle, BookOpen, Volume2, Eye, Filter,
 import { AudioUploader } from "@/components/AudioUploader";
 import { QuestionImageUploader } from "@/components/QuestionImageUploader";
 import { DescriptionMediaUploader } from "@/components/DescriptionMediaUploader";
+import { ImagePreviewBox } from "@/components/ImagePreviewBox";
 import type { Question } from "@shared/schema";
 
 const questionCategories = [
@@ -805,6 +806,14 @@ export function QuestionBankManager() {
                 disabled={createQuestionMutation.isPending || updateQuestionMutation.isPending}
               />
 
+              {/* Description Image Preview */}
+              <ImagePreviewBox
+                imageUrl={form.watch("descriptionImageUrl")}
+                onRemove={() => form.setValue("descriptionImageUrl", "")}
+                title="Hình ảnh mô tả"
+                className="mt-2"
+              />
+
               {/* Questions Section */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
@@ -905,6 +914,14 @@ export function QuestionBankManager() {
                             )}
                           />
                         </div>
+
+                        {/* Question Image Preview */}
+                        <ImagePreviewBox
+                          imageUrl={form.watch(`questions.${questionIndex}.imageUrl`)}
+                          onRemove={() => form.setValue(`questions.${questionIndex}.imageUrl`, "")}
+                          title={`Hình ảnh câu hỏi ${questionIndex + 1}`}
+                          className="mt-2"
+                        />
 
                         {/* Options */}
                         <div className="space-y-3">
