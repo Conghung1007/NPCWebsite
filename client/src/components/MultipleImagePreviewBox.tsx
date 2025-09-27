@@ -54,7 +54,7 @@ export function MultipleImagePreviewBox({
                 type="button"
                 variant="ghost"
                 size="sm"
-                onMouseDown={(event) => {
+                onClick={(event) => {
                   event.stopPropagation();
                   event.preventDefault();
                   onRemove(index);
