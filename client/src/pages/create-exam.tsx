@@ -153,6 +153,18 @@ export default function CreateExam() {
     return examSections.find(section => section.id === currentSectionId);
   };
 
+  // Category mapping between English and Vietnamese
+  const categoryMapping: Record<string, string> = {
+    "vocabulary": "từ vựng",
+    "grammar": "ngữ pháp", 
+    "reading": "đọc hiểu",
+    "listening": "nghe hiểu",
+    "từ vựng": "từ vựng",
+    "ngữ pháp": "ngữ pháp",
+    "đọc hiểu": "đọc hiểu", 
+    "nghe hiểu": "nghe hiểu"
+  };
+
   // Filter available questions for current section
   const filteredQuestions = availableQuestions.filter(question => {
     const currentSection = getCurrentSection();
@@ -166,8 +178,9 @@ export default function CreateExam() {
       return false;
     }
     
-    // Apply category filter - only show questions matching the current section type
-    if (question.category !== currentSection.type) {
+    // Apply category filter - only show questions matching the current section type (with mapping)
+    const questionCategoryVietnamese = categoryMapping[question.category] || question.category;
+    if (questionCategoryVietnamese !== currentSection.type) {
       return false;
     }
     
