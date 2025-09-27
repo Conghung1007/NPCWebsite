@@ -1569,12 +1569,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
       
       try {
-        const uploadResult = await multiR2Storage.uploadFile({
+        const uploadConfig: MediaUploadConfig = {
           provider: "primary",
-          key: `temp-question-images/${fileName}`,
-          body: file.buffer,
-          contentType: file.mimetype
-        });
+          folder: "temp-question-images",
+          allowedTypes: ["image/*"],
+          maxSizeBytes: 5 * 1024 * 1024
+        };
+        
+        const uploadResult = await multiR2Storage.uploadFile(
+          file.buffer,
+          fileName,
+          file.mimetype,
+          uploadConfig
+        );
 
         if (!uploadResult.success) {
           return res.status(500).json({ message: uploadResult.error || "Failed to upload image" });
@@ -1623,12 +1630,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
       
       try {
-        const uploadResult = await multiR2Storage.uploadFile({
+        const uploadConfig: MediaUploadConfig = {
           provider: "primary",
-          key: `temp-answer-images/${fileName}`,
-          body: file.buffer,
-          contentType: file.mimetype
-        });
+          folder: "temp-answer-images",
+          allowedTypes: ["image/*"],
+          maxSizeBytes: 5 * 1024 * 1024
+        };
+        
+        const uploadResult = await multiR2Storage.uploadFile(
+          file.buffer,
+          fileName,
+          file.mimetype,
+          uploadConfig
+        );
 
         if (!uploadResult.success) {
           return res.status(500).json({ message: uploadResult.error || "Failed to upload image" });
