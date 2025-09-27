@@ -16,7 +16,7 @@ import { type Exam, type Question, type User } from "@shared/schema";
 type ExamSection = "vocabulary" | "grammar" | "listening" | "reading";
 
 interface SectionResults {
-  answers: Record<string, string>;
+  answers: Record<string, string | Record<string, string>>;
   timeSpent: number;
   score: number;
 }
@@ -43,7 +43,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   
   // Section-specific data
   const [sectionQuestions, setSectionQuestions] = useState<Question[]>([]);
-  const [sectionAnswers, setSectionAnswers] = useState<Record<string, string>>({});
+  const [sectionAnswers, setSectionAnswers] = useState<Record<string, string | Record<string, string>>>({});
   const [completedSections, setCompletedSections] = useState<Set<ExamSection>>(new Set());
   const [sectionResults, setSectionResults] = useState<Record<ExamSection, SectionResults>>({} as Record<ExamSection, SectionResults>);
   
@@ -376,15 +376,36 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   });
 
   // Calculate section score
-  const calculateSectionScore = (answers: Record<string, string>, questions: Question[]) => {
+  const calculateSectionScore = (answers: Record<string, string | Record<string, string>>, questions: Question[]) => {
     let correct = 0;
+    let totalQuestions = 0;
+    
     questions.forEach(question => {
       const userAnswer = answers[question.id];
-      if (userAnswer === question.correctAnswer) {
-        correct++;
+      
+      // Check if question has sub-questions
+      if ((question as any).subQuestions && (question as any).subQuestions.length > 0) {
+        // New sub-questions structure
+        const subQuestions = (question as any).subQuestions;
+        totalQuestions += subQuestions.length;
+        
+        if (typeof userAnswer === 'object' && userAnswer !== null) {
+          subQuestions.forEach((subQ: any) => {
+            if (userAnswer[subQ.id] === subQ.correctAnswer) {
+              correct++;
+            }
+          });
+        }
+      } else {
+        // Legacy single question structure
+        totalQuestions += 1;
+        if (typeof userAnswer === 'string' && userAnswer === question.correctAnswer) {
+          correct++;
+        }
       }
     });
-    return Math.round((correct / questions.length) * 100);
+    
+    return totalQuestions > 0 ? Math.round((correct / totalQuestions) * 100) : 0;
   };
 
   // Handle section completion
@@ -474,16 +495,16 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     
     submitExamMutation.mutate({
       examId,
-      vocabularyAnswers: sectionResults.vocabulary?.answers || {},
+      vocabularyAnswers: convertAnswersToLegacyFormat(sectionResults.vocabulary?.answers || {}),
       vocabularyTimeSpent: sectionResults.vocabulary?.timeSpent || 0,
       vocabularyScore: sectionResults.vocabulary?.score || 0,
-      grammarAnswers: sectionResults.grammar?.answers || {},
+      grammarAnswers: convertAnswersToLegacyFormat(sectionResults.grammar?.answers || {}),
       grammarTimeSpent: sectionResults.grammar?.timeSpent || 0,
       grammarScore: sectionResults.grammar?.score || 0,
-      listeningAnswers: sectionResults.listening?.answers || {},
+      listeningAnswers: convertAnswersToLegacyFormat(sectionResults.listening?.answers || {}),
       listeningTimeSpent: sectionResults.listening?.timeSpent || 0,
       listeningScore: sectionResults.listening?.score || 0,
-      readingAnswers: sectionResults.reading?.answers || {},
+      readingAnswers: convertAnswersToLegacyFormat(sectionResults.reading?.answers || {}),
       readingTimeSpent: sectionResults.reading?.timeSpent || 0,
       readingScore: sectionResults.reading?.score || 0,
       totalScore,
@@ -497,6 +518,35 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       ...prev,
       [questionId]: answer,
     }));
+  };
+
+  const handleSubQuestionAnswerChange = (questionId: string, subQuestionId: string, answer: string) => {
+    setSectionAnswers(prev => ({
+      ...prev,
+      [questionId]: {
+        ...(typeof prev[questionId] === 'object' ? prev[questionId] : {}),
+        [subQuestionId]: answer,
+      },
+    }));
+  };
+
+  // Helper function to convert nested answers to legacy format for backend compatibility
+  const convertAnswersToLegacyFormat = (answers: Record<string, string | Record<string, string>>): Record<string, string> => {
+    const legacyAnswers: Record<string, string> = {};
+    
+    Object.entries(answers).forEach(([questionId, answer]) => {
+      if (typeof answer === 'string') {
+        // Legacy single question - keep as is
+        legacyAnswers[questionId] = answer;
+      } else if (typeof answer === 'object' && answer !== null) {
+        // Sub-questions - combine answers (for backward compatibility)
+        // For now, just pick the first answer or combine them
+        const subAnswers = Object.values(answer);
+        legacyAnswers[questionId] = subAnswers[0] || "";
+      }
+    });
+    
+    return legacyAnswers;
   };
 
   const handleNext = () => {
@@ -773,7 +823,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-lg">
-                    Câu {currentQuestionIndex + 1}: {currentQuestion.questionText}
+                    Câu {currentQuestionIndex + 1}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
@@ -813,64 +863,142 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     </div>
                   )}
 
-                  {/* Question Images - Support both single and multiple */}
-                  {((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) && (
-                    <div className="space-y-3">
-                      <h4 className="font-medium text-gray-800">Hình ảnh câu hỏi:</h4>
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                        {(currentQuestion as any).imageUrls.map((imageUrl: string, index: number) => (
+                  {/* Sub-questions or Legacy Question */}
+                  {(currentQuestion as any).subQuestions && (currentQuestion as any).subQuestions.length > 0 ? (
+                    // New sub-questions structure
+                    <div className="space-y-8">
+                      {(currentQuestion as any).subQuestions.map((subQuestion: any, subIndex: number) => (
+                        <div key={subQuestion.id} className="border-l-4 border-green-500 pl-6 space-y-4">
+                          <h5 className="font-medium text-gray-900">
+                            {String.fromCharCode(97 + subIndex)}. {subQuestion.text}
+                          </h5>
+                          
+                          {/* Sub-question Images */}
+                          {subQuestion.imageUrls && subQuestion.imageUrls.length > 0 && (
+                            <div className="space-y-3">
+                              <h6 className="text-sm font-medium text-gray-700">Hình ảnh:</h6>
+                              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                                {subQuestion.imageUrls.map((imageUrl: string, imgIndex: number) => (
+                                  <img
+                                    key={imgIndex}
+                                    src={imageUrl}
+                                    alt={`Sub-question ${subIndex + 1} image ${imgIndex + 1}`}
+                                    className="w-full h-auto rounded-lg shadow-sm border"
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {/* Sub-question Audio */}
+                          {subQuestion.audioUrl && (
+                            <div className="space-y-2">
+                              <h6 className="text-sm font-medium text-gray-700">Audio:</h6>
+                              <audio controls className="w-full max-w-md">
+                                <source src={subQuestion.audioUrl.startsWith('/api/') 
+                                  ? subQuestion.audioUrl 
+                                  : `/api/${subQuestion.audioUrl}`} type="audio/mpeg" />
+                                Trình duyệt của bạn không hỗ trợ phát audio.
+                              </audio>
+                            </div>
+                          )}
+                          
+                          {/* Sub-question Options */}
+                          <RadioGroup
+                            value={(typeof sectionAnswers[currentQuestion.id] === 'object' && sectionAnswers[currentQuestion.id] !== null) 
+                              ? (sectionAnswers[currentQuestion.id] as Record<string, string>)[subQuestion.id] || "" 
+                              : ""}
+                            onValueChange={(value) => handleSubQuestionAnswerChange(currentQuestion.id, subQuestion.id, value)}
+                          >
+                            {subQuestion.options.map((option: string, optionIndex: number) => (
+                              <div key={optionIndex} className="flex items-center space-x-2">
+                                <RadioGroupItem value={optionIndex.toString()} id={`sub-${subIndex}-option-${optionIndex}`} />
+                                <Label 
+                                  htmlFor={`sub-${subIndex}-option-${optionIndex}`} 
+                                  className="flex-1 cursor-pointer py-2"
+                                >
+                                  {String.fromCharCode(65 + optionIndex)}. {option}
+                                </Label>
+                              </div>
+                            ))}
+                          </RadioGroup>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    // Legacy single question structure
+                    <div className="space-y-6">
+                      {/* Legacy Question Text */}
+                      {currentQuestion.questionText && (
+                        <div>
+                          <h5 className="font-medium text-gray-900 mb-4">{currentQuestion.questionText}</h5>
+                        </div>
+                      )}
+
+                      {/* Legacy Question Images */}
+                      {((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) && (
+                        <div className="space-y-3">
+                          <h6 className="font-medium text-gray-800">Hình ảnh câu hỏi:</h6>
+                          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                            {(currentQuestion as any).imageUrls.map((imageUrl: string, index: number) => (
+                              <img
+                                key={index}
+                                src={imageUrl}
+                                alt={`Question image ${index + 1}`}
+                                className="w-full h-auto rounded-lg shadow-sm border"
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Fallback for old single image structure */}
+                      {!((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) && currentQuestion.imageUrl && (
+                        <div className="flex justify-center">
                           <img
-                            key={index}
-                            src={imageUrl}
-                            alt={`Question image ${index + 1}`}
-                            className="w-full h-auto rounded-lg shadow-sm border"
+                            src={currentQuestion.imageUrl}
+                            alt="Question illustration"
+                            className="max-w-full h-auto rounded-lg shadow-sm"
                           />
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                  
-                  {/* Fallback for old single image structure */}
-                  {!((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) && currentQuestion.imageUrl && (
-                    <div className="flex justify-center">
-                      <img
-                        src={currentQuestion.imageUrl}
-                        alt="Question illustration"
-                        className="max-w-full h-auto rounded-lg shadow-sm"
-                      />
-                    </div>
-                  )}
+                        </div>
+                      )}
 
-                  {/* Question Audio */}
-                  {currentQuestion.audioUrl && (
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-gray-800">Audio câu hỏi:</h4>
-                      <audio controls className="w-full max-w-md">
-                        <source src={currentQuestion.audioUrl.startsWith('/api/') 
-                          ? currentQuestion.audioUrl 
-                          : `/api/${currentQuestion.audioUrl}`} type="audio/mpeg" />
-                        Trình duyệt của bạn không hỗ trợ phát audio.
-                      </audio>
-                    </div>
-                  )}
+                      {/* Legacy Question Audio */}
+                      {currentQuestion.audioUrl && (
+                        <div className="space-y-2">
+                          <h6 className="font-medium text-gray-800">Audio câu hỏi:</h6>
+                          <audio controls className="w-full max-w-md">
+                            <source src={currentQuestion.audioUrl.startsWith('/api/') 
+                              ? currentQuestion.audioUrl 
+                              : `/api/${currentQuestion.audioUrl}`} type="audio/mpeg" />
+                            Trình duyệt của bạn không hỗ trợ phát audio.
+                          </audio>
+                        </div>
+                      )}
 
-                  {/* Answer Options */}
-                  <RadioGroup
-                    value={sectionAnswers[currentQuestion.id] || ""}
-                    onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
-                  >
-                    {(currentQuestion.options as string[]).map((option, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                        <Label 
-                          htmlFor={`option-${index}`} 
-                          className="flex-1 cursor-pointer py-2"
+                      {/* Legacy Answer Options */}
+                      {currentQuestion.options && (
+                        <RadioGroup
+                          value={(typeof sectionAnswers[currentQuestion.id] === 'string') 
+                            ? (sectionAnswers[currentQuestion.id] as string)
+                            : ""}
+                          onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
                         >
-                          {String.fromCharCode(65 + index)}. {option}
-                        </Label>
-                      </div>
-                    ))}
-                  </RadioGroup>
+                          {(currentQuestion.options as string[]).map((option, index) => (
+                            <div key={index} className="flex items-center space-x-2">
+                              <RadioGroupItem value={index.toString()} id={`option-${index}`} />
+                              <Label 
+                                htmlFor={`option-${index}`} 
+                                className="flex-1 cursor-pointer py-2"
+                              >
+                                {String.fromCharCode(65 + index)}. {option}
+                              </Label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             )}
