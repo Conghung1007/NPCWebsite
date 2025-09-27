@@ -383,42 +383,25 @@ export function QuestionBankManager() {
       };
       updateQuestionMutation.mutate({ ...backendData, id: editingQuestion.id });
     } else {
-      // For creating, submit each question as separate request
-      try {
-        for (const question of data.questions) {
-          const backendData = {
-            category: data.category,
-            language: data.language,
-            description: data.description,
-            descriptionImageUrl: data.descriptionImageUrl,
-            descriptionImageUrls: data.descriptionImageUrls,
-            descriptionAudioUrl: data.descriptionAudioUrl,
-            questionText: question.questionText,
-            questionType: "multiple_choice" as const,
-            imageUrl: question.imageUrl,
-            imageUrls: question.imageUrls,
-            audioUrl: question.audioUrl,
-            options: question.options,
-            correctAnswer: question.correctAnswer,
-            explanation: question.explanation,
-          };
-          await apiRequest("POST", "/api/questions", backendData);
-        }
-        
-        toast({
-          title: "Thành công",
-          description: `Đã tạo ${data.questions.length} câu hỏi thành công.`,
-        });
-        queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
-        setIsAddingQuestion(false);
-        form.reset();
-      } catch (error: any) {
-        toast({
-          title: "Lỗi",
-          description: error.message || "Không thể tạo câu hỏi.",
-          variant: "destructive",
-        });
-      }
+      // For creating, use mutation for each question
+      const question = data.questions[0]; // Take first question for now
+      const backendData = {
+        category: data.category,
+        language: data.language,
+        description: data.description,
+        descriptionImageUrl: data.descriptionImageUrl,
+        descriptionImageUrls: data.descriptionImageUrls,
+        descriptionAudioUrl: data.descriptionAudioUrl,
+        questionText: question.questionText,
+        questionType: "multiple_choice" as const,
+        imageUrl: question.imageUrl,
+        imageUrls: question.imageUrls,
+        audioUrl: question.audioUrl,
+        options: question.options,
+        correctAnswer: question.correctAnswer,
+        explanation: question.explanation,
+      };
+      createQuestionMutation.mutate(backendData);
     }
   };
 
