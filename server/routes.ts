@@ -2740,8 +2740,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         questionType: questionType || "multiple_choice",
         imageUrl: finalImageUrl || null,
         audioUrl: finalAudioUrl || null,
-        options: options || null, // Can be null for new sub-questions format
-        correctAnswer: correctAnswer || null, // Can be null for new sub-questions format
+        options: options || (subQuestions ? [] : null), // Default empty array for sub-questions
+        correctAnswer: correctAnswer || (subQuestions ? "" : null), // Default empty string for sub-questions
         explanation: explanation || null,
         sortOrder: newSortOrder,
         subQuestions: subQuestions || null, // New field for sub-questions structure
