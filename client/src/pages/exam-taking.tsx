@@ -431,11 +431,30 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     handleSectionComplete();
   }, [handleSectionComplete]);
 
-  // Get next section in sequence
+  // Get next section in sequence - only sections with questions
   const getNextSection = (current: ExamSection): ExamSection | null => {
-    const sections: ExamSection[] = ["vocabulary", "grammar", "listening", "reading"];
-    const currentIndex = sections.indexOf(current);
-    return currentIndex < sections.length - 1 ? sections[currentIndex + 1] : null;
+    if (!exam?.sections) {
+      // Fallback to old structure
+      const sections: ExamSection[] = ["vocabulary", "grammar", "listening", "reading"];
+      const currentIndex = sections.indexOf(current);
+      return currentIndex < sections.length - 1 ? sections[currentIndex + 1] : null;
+    }
+    
+    // New structure - only go through sections that have questions
+    const sectionTypeMap: Record<string, ExamSection> = {
+      "từ vựng": "vocabulary",
+      "ngữ pháp": "grammar", 
+      "nghe hiểu": "listening",
+      "đọc hiểu": "reading"
+    };
+    
+    const availableSections = (exam.sections as any[])
+      .filter((section: any) => section.questionIds && section.questionIds.length > 0)
+      .map((section: any) => sectionTypeMap[section.type])
+      .filter(Boolean);
+    
+    const currentIndex = availableSections.indexOf(current);
+    return currentIndex < availableSections.length - 1 ? availableSections[currentIndex + 1] : null;
   };
 
   // Handle final exam submission
@@ -447,7 +466,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     // Calculate totals
     const allResults = Object.values(sectionResults);
     const totalTimeSpent = allResults.reduce((sum, result) => sum + result.timeSpent, 0);
-    const totalScore = Math.round(allResults.reduce((sum, result) => sum + result.score, 0) / 4);
+    const sectionCount = allResults.length || 1; // Prevent division by zero
+    const totalScore = Math.round(allResults.reduce((sum, result) => sum + result.score, 0) / sectionCount);
     
     // Calculate wait time between sections (excluding exam completion)
     const waitTime = waitStartTime ? Math.round((Date.now() - waitStartTime) / 1000) : 0;
