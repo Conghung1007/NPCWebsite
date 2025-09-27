@@ -648,74 +648,85 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Question Content */}
           <div className="lg:col-span-3">
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-lg">
-                  Câu {currentQuestionIndex + 1}: {currentQuestion.questionText}
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Question Image */}
-                {currentQuestion.imageUrl && (
-                  <div className="flex justify-center">
-                    <img
-                      src={currentQuestion.imageUrl}
-                      alt="Question illustration"
-                      className="max-w-full h-auto rounded-lg shadow-sm"
-                    />
-                  </div>
-                )}
-
-                {/* Question Audio */}
-                {currentQuestion.audioUrl && (
-                  <div className="flex justify-center">
-                    <audio controls className="w-full max-w-md" key={currentQuestion.id}>
-                      <source src={currentQuestion.audioUrl.startsWith('/api/') 
-                        ? currentQuestion.audioUrl 
-                        : `/api/${currentQuestion.audioUrl}`} type="audio/mpeg" />
-                      Trình duyệt của bạn không hỗ trợ phát audio.
-                    </audio>
-                  </div>
-                )}
-
-                {/* Answer Options */}
-                <RadioGroup
-                  value={sectionAnswers[currentQuestion.id] || ""}
-                  onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
-                >
-                  {(currentQuestion.options as string[]).map((option, index) => (
-                    <div key={index} className="flex items-center space-x-2">
-                      <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                      <Label 
-                        htmlFor={`option-${index}`} 
-                        className="flex-1 cursor-pointer py-2"
-                      >
-                        {String.fromCharCode(65 + index)}. {option}
-                      </Label>
+            {!currentQuestion ? (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
+                  <p className="text-gray-600">Đang tải câu hỏi...</p>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-lg">
+                    Câu {currentQuestionIndex + 1}: {currentQuestion.questionText}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {/* Question Image */}
+                  {currentQuestion.imageUrl && (
+                    <div className="flex justify-center">
+                      <img
+                        src={currentQuestion.imageUrl}
+                        alt="Question illustration"
+                        className="max-w-full h-auto rounded-lg shadow-sm"
+                      />
                     </div>
-                  ))}
-                </RadioGroup>
-              </CardContent>
-            </Card>
+                  )}
+
+                  {/* Question Audio */}
+                  {currentQuestion.audioUrl && (
+                    <div className="flex justify-center">
+                      <audio controls className="w-full max-w-md" key={currentQuestion.id}>
+                        <source src={currentQuestion.audioUrl.startsWith('/api/') 
+                          ? currentQuestion.audioUrl 
+                          : `/api/${currentQuestion.audioUrl}`} type="audio/mpeg" />
+                        Trình duyệt của bạn không hỗ trợ phát audio.
+                      </audio>
+                    </div>
+                  )}
+
+                  {/* Answer Options */}
+                  <RadioGroup
+                    value={sectionAnswers[currentQuestion.id] || ""}
+                    onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
+                  >
+                    {(currentQuestion.options as string[]).map((option, index) => (
+                      <div key={index} className="flex items-center space-x-2">
+                        <RadioGroupItem value={index.toString()} id={`option-${index}`} />
+                        <Label 
+                          htmlFor={`option-${index}`} 
+                          className="flex-1 cursor-pointer py-2"
+                        >
+                          {String.fromCharCode(65 + index)}. {option}
+                        </Label>
+                      </div>
+                    ))}
+                  </RadioGroup>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Navigation - Within Section Only */}
-            <div className="flex justify-between mt-6">
-              <Button
-                variant="outline"
-                onClick={handlePrevious}
-                disabled={currentQuestionIndex === 0 || sectionCompleted}
-              >
-                <ChevronLeft className="w-4 h-4 mr-2" />
-                Câu trước
-              </Button>
-              <Button
-                onClick={handleNext}
-                disabled={currentQuestionIndex === sectionQuestions.length - 1 || sectionCompleted}
-              >
-                Câu sau
-                <ChevronRight className="w-4 h-4 ml-2" />
-              </Button>
-            </div>
+            {currentQuestion && (
+              <div className="flex justify-between mt-6">
+                <Button
+                  variant="outline"
+                  onClick={handlePrevious}
+                  disabled={currentQuestionIndex === 0 || sectionCompleted}
+                >
+                  <ChevronLeft className="w-4 h-4 mr-2" />
+                  Câu trước
+                </Button>
+                <Button
+                  onClick={handleNext}
+                  disabled={currentQuestionIndex === sectionQuestions.length - 1 || sectionCompleted}
+                >
+                  Câu sau
+                  <ChevronRight className="w-4 h-4 ml-2" />
+                </Button>
+              </div>
+            )}
           </div>
 
           {/* Section Overview */}
