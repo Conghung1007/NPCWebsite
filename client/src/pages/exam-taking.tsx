@@ -157,7 +157,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     // Browser close/refresh confirmation
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
-      e.returnValue = "Thoát bài thi?";
+      e.returnValue = "Bạn đang làm bài thi, bạn có rời bài thi không?";
       return e.returnValue;
     };
 
@@ -165,7 +165,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     const handlePopState = (e: PopStateEvent) => {
       console.log('Browser navigation detected during exam');
       e.preventDefault();
-      const confirmed = window.confirm("Thoát bài thi?");
+      const confirmed = window.confirm("Bạn đang làm bài thi, bạn có rời bài thi không?");
       if (confirmed) {
         console.log('User confirmed navigation via browser back/forward');
         // Allow navigation by not pushing back to history
@@ -199,7 +199,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         e.preventDefault();
         e.stopPropagation();
         
-        const confirmed = window.confirm("Thoát bài thi?");
+        const confirmed = window.confirm("Bạn đang làm bài thi, bạn có rời bài thi không?");
         if (confirmed) {
           console.log('User confirmed exit via link click');
           // Allow navigation
@@ -230,7 +230,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   // Show immediate exit confirmation
   const showExitConfirmation = () => {
     if (isExamInProgress) {
-      const confirmed = window.confirm("Thoát bài thi?");
+      const confirmed = window.confirm("Bạn đang làm bài thi, bạn có rời bài thi không?");
       if (confirmed) {
         console.log('User confirmed exit via keyboard shortcut');
         // User confirmed, allow exit
@@ -261,7 +261,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     console.log('Navigation attempt:', { path, isExamInProgress });
     if (isExamInProgress) {
       console.log('Showing immediate exit confirmation');
-      const confirmed = window.confirm("Thoát bài thi?");
+      const confirmed = window.confirm("Bạn đang làm bài thi, bạn có rời bài thi không?");
       if (confirmed) {
         console.log('User confirmed exit');
         setLocation(path);
