@@ -387,6 +387,9 @@ export function QuestionBankManager() {
   });
 
   const handleSubmit = async (data: QuestionFormData) => {
+    console.log("Form submitted with data:", data);
+    console.log("Form validation errors:", form.formState.errors);
+    
     if (editingQuestion) {
       // For editing - use subQuestions structure
       const backendData = { 
@@ -397,6 +400,7 @@ export function QuestionBankManager() {
         descriptionAudioUrl: data.descriptionAudioUrl,
         subQuestions: data.subQuestions,
       };
+      console.log("Updating question with data:", backendData);
       updateQuestionMutation.mutate({ ...backendData, id: editingQuestion.id });
     } else {
       // For creating - use subQuestions structure
@@ -408,6 +412,7 @@ export function QuestionBankManager() {
         descriptionAudioUrl: data.descriptionAudioUrl,
         subQuestions: data.subQuestions,
       };
+      console.log("Creating question with data:", backendData);
       createQuestionMutation.mutate(backendData);
     }
   };
