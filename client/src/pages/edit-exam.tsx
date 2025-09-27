@@ -252,6 +252,18 @@ export default function EditExam() {
     setQuestionSearchQuery("");
   };
 
+  // Category mapping between English and Vietnamese
+  const categoryMapping: Record<string, string> = {
+    "vocabulary": "từ vựng",
+    "grammar": "ngữ pháp", 
+    "reading": "đọc hiểu",
+    "listening": "nghe hiểu",
+    "từ vựng": "từ vựng",
+    "ngữ pháp": "ngữ pháp",
+    "đọc hiểu": "đọc hiểu", 
+    "nghe hiểu": "nghe hiểu"
+  };
+
   // Filter questions for selection based on current section type
   const getFilteredQuestionsForSection = () => {
     if (!currentSectionId) return [];
@@ -262,12 +274,20 @@ export default function EditExam() {
     // Get all questions already used in ANY section
     const usedQuestionIds = examSections.flatMap(section => section.questions.map(q => q.id));
     
+    console.log('Debug filter:', {
+      currentSectionType: currentSection.type,
+      availableQuestionsCount: availableQuestions.length,
+      sampleQuestionCategory: availableQuestions[0]?.category,
+      usedQuestionIds: usedQuestionIds.length
+    });
+    
     return availableQuestions.filter(question => {
       // Don't show questions already used
       if (usedQuestionIds.includes(question.id)) return false;
       
-      // Only show questions of the current section type
-      if (question.category !== currentSection.type) return false;
+      // Only show questions of the current section type (with mapping)
+      const questionCategoryVietnamese = categoryMapping[question.category] || question.category;
+      if (questionCategoryVietnamese !== currentSection.type) return false;
       
       // Apply search filter
       if (questionSearchQuery && !question.questionText.toLowerCase().includes(questionSearchQuery.toLowerCase())) {
