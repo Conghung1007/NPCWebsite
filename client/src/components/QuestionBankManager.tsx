@@ -20,6 +20,7 @@ import { Plus, Search, Edit, Trash2, HelpCircle, BookOpen, Volume2, Eye, Filter,
 import { AudioUploader } from "@/components/AudioUploader";
 import { QuestionImageUploader } from "@/components/QuestionImageUploader";
 import { ImagePreviewBox } from "@/components/ImagePreviewBox";
+import { MultipleImagePreviewBox } from "@/components/MultipleImagePreviewBox";
 import type { Question } from "@shared/schema";
 
 const questionCategories = [
@@ -44,7 +45,8 @@ const singleQuestionSchema = z.object({
   ),
   correctAnswer: z.string().min(1, "Phải chọn đáp án đúng"),
   explanation: z.string().optional(),
-  imageUrl: z.string().optional(),
+  imageUrl: z.string().optional(), // Legacy single image for backward compatibility
+  imageUrls: z.array(z.string()).default([]), // Array of image URLs
   audioUrl: z.string().optional(),
 }).refine(
   (data) => {
@@ -63,7 +65,8 @@ const questionSchema = z.object({
   language: z.string().min(1, "Ngôn ngữ là bắt buộc"),
   category: z.string().min(1, "Danh mục là bắt buộc"),
   description: z.string().optional(),
-  descriptionImageUrl: z.string().optional(),
+  descriptionImageUrl: z.string().optional(), // Legacy single image for backward compatibility
+  descriptionImageUrls: z.array(z.string()).default([]), // Array of description image URLs
   descriptionAudioUrl: z.string().optional(),
   questions: z.array(singleQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi"),
 });
@@ -98,6 +101,7 @@ export function QuestionBankManager() {
       category: "ngữ pháp",
       description: "",
       descriptionImageUrl: "",
+      descriptionImageUrls: [],
       descriptionAudioUrl: "",
       questions: [{
         questionText: "",
@@ -105,6 +109,7 @@ export function QuestionBankManager() {
         correctAnswer: "",
         explanation: "",
         imageUrl: "",
+        imageUrls: [],
         audioUrl: "",
       }],
     },
@@ -240,7 +245,10 @@ export function QuestionBankManager() {
       }
 
       const data = await response.json();
-      form.setValue("descriptionImageUrl", data.url);
+      
+      // Add to array instead of replacing single value
+      const currentUrls = form.getValues("descriptionImageUrls") || [];
+      form.setValue("descriptionImageUrls", [...currentUrls, data.url]);
 
       toast({
         title: "Thành công",
@@ -289,7 +297,10 @@ export function QuestionBankManager() {
       }
 
       const data = await response.json();
-      form.setValue(`questions.${questionIndex}.imageUrl`, data.url);
+      
+      // Add to array instead of replacing single value
+      const currentUrls = form.getValues(`questions.${questionIndex}.imageUrls`) || [];
+      form.setValue(`questions.${questionIndex}.imageUrls`, [...currentUrls, data.url]);
 
       toast({
         title: "Thành công",
@@ -359,10 +370,12 @@ export function QuestionBankManager() {
         language: data.language,
         description: data.description,
         descriptionImageUrl: data.descriptionImageUrl,
+        descriptionImageUrls: data.descriptionImageUrls,
         descriptionAudioUrl: data.descriptionAudioUrl,
         questionText: question.questionText,
         questionType: "multiple_choice" as const,
         imageUrl: question.imageUrl,
+        imageUrls: question.imageUrls,
         audioUrl: question.audioUrl,
         options: question.options,
         correctAnswer: question.correctAnswer,
@@ -377,11 +390,13 @@ export function QuestionBankManager() {
             category: data.category,
             language: data.language,
             description: data.description,
-        descriptionImageUrl: data.descriptionImageUrl,
-        descriptionAudioUrl: data.descriptionAudioUrl,
+            descriptionImageUrl: data.descriptionImageUrl,
+            descriptionImageUrls: data.descriptionImageUrls,
+            descriptionAudioUrl: data.descriptionAudioUrl,
             questionText: question.questionText,
             questionType: "multiple_choice" as const,
             imageUrl: question.imageUrl,
+            imageUrls: question.imageUrls,
             audioUrl: question.audioUrl,
             options: question.options,
             correctAnswer: question.correctAnswer,
@@ -898,15 +913,20 @@ export function QuestionBankManager() {
                 )}
               />
 
-              {/* Description Image Preview */}
+              {/* Description Images Preview */}
               <div>
                 <Label className="text-sm font-medium">Hình ảnh mô tả (tùy chọn)</Label>
-                <ImagePreviewBox
-                  imageUrl={form.watch("descriptionImageUrl")}
-                  onRemove={() => form.setValue("descriptionImageUrl", "")}
+                <MultipleImagePreviewBox
+                  imageUrls={form.watch("descriptionImageUrls") || []}
+                  onRemove={(index) => {
+                    const currentUrls = form.getValues("descriptionImageUrls") || [];
+                    const newUrls = currentUrls.filter((_, i) => i !== index);
+                    form.setValue("descriptionImageUrls", newUrls);
+                  }}
                   onChooseImage={() => descriptionImageInputRef.current?.click()}
                   title="Hình ảnh mô tả"
                   className="mt-2"
+                  maxImages={5}
                 />
               </div>
               
@@ -1001,18 +1021,23 @@ export function QuestionBankManager() {
                           )}
                         />
 
-                        {/* Question Image Upload */}
+                        {/* Question Images Upload */}
                         <div>
                           <Label className="text-sm font-medium">Hình ảnh câu hỏi (tùy chọn)</Label>
-                          <ImagePreviewBox
-                            imageUrl={form.watch(`questions.${questionIndex}.imageUrl`)}
-                            onRemove={() => form.setValue(`questions.${questionIndex}.imageUrl`, "")}
+                          <MultipleImagePreviewBox
+                            imageUrls={form.watch(`questions.${questionIndex}.imageUrls`) || []}
+                            onRemove={(imageIndex) => {
+                              const currentUrls = form.getValues(`questions.${questionIndex}.imageUrls`) || [];
+                              const newUrls = currentUrls.filter((_, i) => i !== imageIndex);
+                              form.setValue(`questions.${questionIndex}.imageUrls`, newUrls);
+                            }}
                             onChooseImage={() => {
                               const inputRef = questionImageInputRefs.current.get(questionIndex);
                               inputRef?.click();
                             }}
                             title={`Hình ảnh câu hỏi ${questionIndex + 1}`}
                             className="mt-2"
+                            maxImages={5}
                           />
                           
                           {/* Hidden file input for question image */}

@@ -1542,7 +1542,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Question image upload endpoint (direct upload using multipart/form-data)
-  app.post("/api/question-images/upload-direct", upload.single('image'), async (req, res) => {
+  app.post("/api/question-images/upload-direct", upload.single('file'), async (req, res) => {
     try {
       const sessionUser = (req.session as any)?.user;
       if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {

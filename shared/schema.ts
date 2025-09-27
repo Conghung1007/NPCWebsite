@@ -91,11 +91,13 @@ export const questions = pgTable("questions", {
   category: text("category").notNull(), // từ vựng, ngữ pháp, đọc hiểu, nghe hiểu
   language: text("language").notNull().default("japanese"), // japanese, english, german
   description: text("description"), // Mô tả hoặc ghi chú cho câu hỏi
-  descriptionImageUrl: text("description_image_url"), // Optional image for description
+  descriptionImageUrl: text("description_image_url"), // Legacy single image URL for backward compatibility
+  descriptionImageUrls: jsonb("description_image_urls"), // Array of image URLs for description
   descriptionAudioUrl: text("description_audio_url"), // Optional audio for description
   questionText: text("question_text").notNull(),
   questionType: text("question_type").notNull().default("multiple_choice"), // multiple_choice, true_false
-  imageUrl: text("image_url"), // Optional image for question
+  imageUrl: text("image_url"), // Legacy single image URL for backward compatibility
+  imageUrls: jsonb("image_urls"), // Array of image URLs for question
   audioUrl: text("audio_url"), // Optional audio for question
   options: jsonb("options").notNull(), // Array of answer options with potential image URLs
   correctAnswer: text("correct_answer").notNull(), // Index or value of correct answer
