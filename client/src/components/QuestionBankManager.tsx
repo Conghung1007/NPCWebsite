@@ -778,7 +778,7 @@ export function QuestionBankManager() {
           style={{
             width: "95vw",
             maxWidth: "1000px",
-            marginTop: "20px"
+            marginTop: "40px"
           }}
         >
           <DialogHeader>
