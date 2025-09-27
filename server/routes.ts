@@ -2697,6 +2697,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Get max sortOrder to put new questions at the end
+      let newSortOrder = sortOrder;
+      if (!sortOrder) {
+        const allQuestions = await storage.getAllQuestions();
+        const maxSortOrder = Math.max(0, ...allQuestions.map(q => q.sortOrder || 0));
+        newSortOrder = maxSortOrder + 1;
+      }
+
       const question = await storage.createQuestion({
         examId: examId || null, // Can be null for standalone questions
         category: category || "ngữ pháp", // Default category if not provided
@@ -2710,7 +2718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         options,
         correctAnswer,
         explanation: explanation || null,
-        sortOrder: sortOrder || 0,
+        sortOrder: newSortOrder,
       });
 
       res.status(201).json({

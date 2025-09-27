@@ -25,9 +25,13 @@ import type { Question } from "@shared/schema";
 
 const questionCategories = [
   { value: "từ vựng", label: "Từ vựng" },
+  { value: "vocabulary", label: "Từ vựng (EN)" },
   { value: "ngữ pháp", label: "Ngữ pháp" },
+  { value: "grammar", label: "Ngữ pháp (EN)" },
   { value: "đọc hiểu", label: "Đọc hiểu" },
+  { value: "reading", label: "Đọc hiểu (EN)" },
   { value: "nghe hiểu", label: "Nghe hiểu" },
+  { value: "listening", label: "Nghe hiểu (EN)" },
 ];
 
 const languageOptions = [
@@ -158,9 +162,13 @@ export function QuestionBankManager() {
     const categoryConfig = questionCategories.find(cat => cat.value === category);
     const variants: any = {
       "từ vựng": "default",
-      "ngữ pháp": "secondary",
+      "vocabulary": "default",
+      "ngữ pháp": "secondary", 
+      "grammar": "secondary",
       "đọc hiểu": "outline",
-      "nghe hiểu": "destructive"
+      "reading": "outline",
+      "nghe hiểu": "destructive",
+      "listening": "destructive"
     };
     return (
       <Badge variant={variants[category] || "outline"}>
@@ -300,7 +308,7 @@ export function QuestionBankManager() {
       
       // Add to array instead of replacing single value
       const currentUrls = form.getValues(`questions.${questionIndex}.imageUrls`) || [];
-      form.setValue(`questions.${questionIndex}.imageUrls`, [...currentUrls, data.url]);
+      form.setValue(`questions.${questionIndex}.imageUrls`, [...currentUrls, data.imageUrl]);
 
       toast({
         title: "Thành công",
