@@ -2920,30 +2920,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============ DESCRIPTION MEDIA UPLOAD ROUTES ============
   
   // Upload temporary description images
-  app.post("/api/temp-description-images/upload", async (req, res) => {
+  app.post("/api/temp-description-images/upload", upload.single('file'), async (req, res) => {
     try {
       const sessionUser = (req.session as any)?.user;
       if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const uploadResult = await multiR2Storage.handleUpload(
-        req,
-        {
-          provider: "primary",
-          folder: "temp-description-images",
-          allowedTypes: ["image/*"],
-          maxSizeBytes: 5 * 1024 * 1024 // 5MB
-        }
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      // Validate file type
+      if (!file.mimetype.startsWith('image/')) {
+        return res.status(400).json({ message: "Only image files are allowed" });
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        return res.status(400).json({ message: "Image size cannot exceed 5MB" });
+      }
+
+      const timestamp = Date.now();
+      const fileExtension = file.originalname.split('.').pop() || 'jpg';
+      const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      
+      const uploadConfig: MediaUploadConfig = {
+        provider: "primary",
+        folder: "temp-description-images",
+        allowedTypes: ["image/*"],
+        maxSizeBytes: 5 * 1024 * 1024
+      };
+      
+      const uploadResult = await multiR2Storage.uploadFile(
+        file.buffer,
+        fileName,
+        file.mimetype,
+        uploadConfig
       );
 
-      if (uploadResult.success && uploadResult.files && uploadResult.files.length > 0) {
-        const file = uploadResult.files[0];
-        console.log(`✓ Uploaded temporary description image: ${file.filename}`);
+      if (uploadResult.success) {
+        console.log(`✓ Uploaded temporary description image: ${fileName}`);
         res.json({
           success: true,
-          filename: file.filename,
-          url: `/api/temp-description-images/${file.filename}`,
+          filename: fileName,
+          url: `/api/temp-description-images/${fileName}`,
           message: "Tạm lưu hình ảnh mô tả thành công"
         });
       } else {
@@ -2963,30 +2985,52 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload temporary description audio
-  app.post("/api/temp-description-audio/upload", async (req, res) => {
+  app.post("/api/temp-description-audio/upload", upload.single('file'), async (req, res) => {
     try {
       const sessionUser = (req.session as any)?.user;
       if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const uploadResult = await multiR2Storage.handleUpload(
-        req,
-        {
-          provider: "primary",
-          folder: "temp-description-audio",
-          allowedTypes: ["audio/*"],
-          maxSizeBytes: 10 * 1024 * 1024 // 10MB
-        }
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: "No audio file provided" });
+      }
+
+      // Validate file type
+      if (!file.mimetype.startsWith('audio/')) {
+        return res.status(400).json({ message: "Only audio files are allowed" });
+      }
+
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        return res.status(400).json({ message: "Audio size cannot exceed 10MB" });
+      }
+
+      const timestamp = Date.now();
+      const fileExtension = file.originalname.split('.').pop() || 'mp3';
+      const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      
+      const uploadConfig: MediaUploadConfig = {
+        provider: "primary",
+        folder: "temp-description-audio",
+        allowedTypes: ["audio/*"],
+        maxSizeBytes: 10 * 1024 * 1024
+      };
+      
+      const uploadResult = await multiR2Storage.uploadFile(
+        file.buffer,
+        fileName,
+        file.mimetype,
+        uploadConfig
       );
 
-      if (uploadResult.success && uploadResult.files && uploadResult.files.length > 0) {
-        const file = uploadResult.files[0];
-        console.log(`✓ Uploaded temporary description audio: ${file.filename}`);
+      if (uploadResult.success) {
+        console.log(`✓ Uploaded temporary description audio: ${fileName}`);
         res.json({
           success: true,
-          filename: file.filename,
-          url: `/api/temp-description-audio/${file.filename}`,
+          filename: fileName,
+          url: `/api/temp-description-audio/${fileName}`,
           message: "Tạm lưu audio mô tả thành công"
         });
       } else {
