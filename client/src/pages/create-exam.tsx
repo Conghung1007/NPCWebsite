@@ -90,22 +90,10 @@ export default function CreateExam() {
 
   // Helper functions for managing dynamic sections
   const addExamSection = () => {
-    // Find available section types (not already used)
-    const usedTypes = examSections.map(s => s.type);
-    const availableTypes = questionCategories.filter(c => !usedTypes.includes(c.value as ExamSection['type']));
-    
-    if (availableTypes.length === 0) {
-      toast({
-        title: "Thông báo",
-        description: "Bạn đã thêm đủ tất cả các loại phần thi. Mỗi loại chỉ được thêm 1 lần.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    // Add new section with default vocabulary type
     const newSection: ExamSection = {
       id: `section-${Date.now()}`,
-      type: availableTypes[0].value as ExamSection['type'],
+      type: "từ vựng",
       timeLimit: 10,
       questions: []
     };
@@ -125,17 +113,7 @@ export default function CreateExam() {
   };
 
   const updateSectionType = (sectionId: string, type: ExamSection['type']) => {
-    // Check if this type is already used in another section
-    const existingSection = examSections.find(s => s.type === type && s.id !== sectionId);
-    if (existingSection) {
-      toast({
-        title: "Lỗi",
-        description: `Loại phần thi "${questionCategories.find(c => c.value === type)?.label}" đã được sử dụng. Mỗi loại chỉ được sử dụng 1 lần.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
+    // Allow any type to be used multiple times
     setExamSections(prev => prev.map(section => 
       section.id === sectionId 
         ? { ...section, type, questions: [] } // Clear questions when type changes
@@ -201,16 +179,9 @@ export default function CreateExam() {
 
   const createExamMutation = useMutation({
     mutationFn: async (data: ExamFormData) => {
-      // Validate that we have exactly 4 different section types
-      const requiredTypes: ExamSection['type'][] = ["từ vựng", "ngữ pháp", "nghe hiểu", "đọc hiểu"];
-      const sectionTypes = examSections.map(s => s.type);
-      
-      const missingSections = requiredTypes.filter(type => !sectionTypes.includes(type));
-      if (missingSections.length > 0) {
-        const missingLabels = missingSections.map(type => 
-          questionCategories.find(c => c.value === type)?.label
-        ).join(", ");
-        throw new Error(`Bài thi phải có đủ tất cả 4 phần: ${missingLabels} đang thiếu. Vui lòng thêm các phần còn lại.`);
+      // Validate that we have at least one section
+      if (examSections.length === 0) {
+        throw new Error('Bài thi phải có ít nhất một phần thi.');
       }
 
       // Validate that each section has at least one question
@@ -220,41 +191,16 @@ export default function CreateExam() {
         }
       }
 
-      // Create the exam with dynamic sections
-      // Convert to the fixed 4-section format for backend compatibility
+      // Create the exam with flexible sections format
       const examData: any = {
         ...data,
-        vocabularyTimeLimit: 10,
-        vocabularyQuestions: [],
-        grammarTimeLimit: 10,  
-        grammarQuestions: [],
-        listeningTimeLimit: 5,
-        listeningQuestions: [],
-        readingTimeLimit: 5,
-        readingQuestions: [],
+        sections: examSections.map(section => ({
+          id: section.id,
+          type: section.type,
+          timeLimit: section.timeLimit,
+          questionIds: section.questions.map(q => q.id)
+        }))
       };
-
-      // Map dynamic sections to fixed sections - now guaranteed to have all 4 types
-      examSections.forEach(section => {
-        switch (section.type) {
-          case "từ vựng":
-            examData.vocabularyTimeLimit = section.timeLimit;
-            examData.vocabularyQuestions = section.questions.map(q => q.id);
-            break;
-          case "ngữ pháp":
-            examData.grammarTimeLimit = section.timeLimit;
-            examData.grammarQuestions = section.questions.map(q => q.id);
-            break;
-          case "nghe hiểu":
-            examData.listeningTimeLimit = section.timeLimit;
-            examData.listeningQuestions = section.questions.map(q => q.id);
-            break;
-          case "đọc hiểu":
-            examData.readingTimeLimit = section.timeLimit;
-            examData.readingQuestions = section.questions.map(q => q.id);
-            break;
-        }
-      });
       
       const response = await fetch("/api/exams", {
         method: "POST",
@@ -449,18 +395,14 @@ export default function CreateExam() {
                             <SelectValue placeholder="Chọn phần thi" />
                           </SelectTrigger>
                           <SelectContent>
-                            {questionCategories.map((category) => {
-                              const isUsed = examSections.some(s => s.type === category.value && s.id !== section.id);
-                              return (
-                                <SelectItem 
-                                  key={category.value} 
-                                  value={category.value}
-                                  disabled={isUsed}
-                                >
-                                  {category.label} {isUsed && "(Đã sử dụng)"}
-                                </SelectItem>
-                              );
-                            })}
+                            {questionCategories.map((category) => (
+                              <SelectItem 
+                                key={category.value} 
+                                value={category.value}
+                              >
+                                {category.label}
+                              </SelectItem>
+                            ))}
                           </SelectContent>
                         </Select>
                       </div>
@@ -522,25 +464,15 @@ export default function CreateExam() {
                 ))}
 
                 {/* Nút thêm phần thi */}
-                {examSections.length < 4 && (
-                  <Button
-                    type="button"
-                    onClick={addExamSection}
-                    variant="outline"
-                    className="w-full"
-                  >
-                    <Plus className="w-4 h-4 mr-2" />
-                    Thêm phần thi ({examSections.length}/4)
-                  </Button>
-                )}
-                
-                {examSections.length === 4 && (
-                  <div className="text-center p-4 bg-green-50 border border-green-200 rounded-lg">
-                    <p className="text-green-800 font-medium">
-                      ✓ Đã có đủ 4 phần thi bắt buộc. Bạn có thể tạo bài thi ngay!
-                    </p>
-                  </div>
-                )}
+                <Button
+                  type="button"
+                  onClick={addExamSection}
+                  variant="outline"
+                  className="w-full"
+                >
+                  <Plus className="w-4 h-4 mr-2" />
+                  Thêm phần thi ({examSections.length})
+                </Button>
               </CardContent>
             </Card>
 

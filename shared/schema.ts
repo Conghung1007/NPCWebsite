@@ -65,21 +65,21 @@ export const exams = pgTable("exams", {
   isDemo: boolean("is_demo").default(false), // Demo exams don't require login
   isActive: boolean("is_active").default(true),
   
-  // Vocabulary section
-  vocabularyTimeLimit: integer("vocabulary_time_limit").notNull(), // Time limit in minutes
-  vocabularyQuestions: jsonb("vocabulary_questions").notNull(), // Array of question IDs
+  // New flexible sections structure
+  sections: jsonb("sections"), // Array of dynamic exam sections: {id, type, timeLimit, questionIds}[]
   
-  // Grammar section  
-  grammarTimeLimit: integer("grammar_time_limit").notNull(), // Time limit in minutes
-  grammarQuestions: jsonb("grammar_questions").notNull(), // Array of question IDs
+  // Legacy fields for backward compatibility (optional)
+  vocabularyTimeLimit: integer("vocabulary_time_limit"), // Time limit in minutes
+  vocabularyQuestions: jsonb("vocabulary_questions"), // Array of question IDs
   
-  // Listening section
-  listeningTimeLimit: integer("listening_time_limit").notNull(), // Time limit in minutes
-  listeningQuestions: jsonb("listening_questions").notNull(), // Array of question IDs
+  grammarTimeLimit: integer("grammar_time_limit"), // Time limit in minutes
+  grammarQuestions: jsonb("grammar_questions"), // Array of question IDs
   
-  // Reading section
-  readingTimeLimit: integer("reading_time_limit").notNull(), // Time limit in minutes  
-  readingQuestions: jsonb("reading_questions").notNull(), // Array of question IDs
+  listeningTimeLimit: integer("listening_time_limit"), // Time limit in minutes
+  listeningQuestions: jsonb("listening_questions"), // Array of question IDs
+  
+  readingTimeLimit: integer("reading_time_limit"), // Time limit in minutes  
+  readingQuestions: jsonb("reading_questions"), // Array of question IDs
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: varchar("created_by").notNull(), // Admin/Manager ID

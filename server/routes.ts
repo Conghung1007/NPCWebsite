@@ -2451,77 +2451,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const { title, description, isDemo, timeLimit, questions, questionCount } = req.body;
+      const { title, description, isDemo, sections } = req.body;
 
-      if (!title || !timeLimit) {
+      if (!title) {
         return res.status(400).json({ 
-          message: "Title and time limit are required" 
+          message: "Title is required" 
         });
       }
 
-      // Support both old format (with questions array) and new format (with questionCount)
-      let finalQuestionCount;
-      let hasInlineQuestions = questions && Array.isArray(questions) && questions.length > 0;
-      
-      if (hasInlineQuestions) {
-        // Old format - inline question creation
-        finalQuestionCount = questions.length;
-      } else if (questionCount !== undefined && questionCount > 0) {
-        // New format - question bank integration
-        finalQuestionCount = questionCount;
-      } else {
+      if (!sections || !Array.isArray(sections) || sections.length === 0) {
         return res.status(400).json({ 
-          message: "Must have at least one question or specify questionCount" 
+          message: "At least one section is required" 
         });
       }
 
-      // Create the exam
+      // Validate sections
+      for (const section of sections) {
+        if (!section.type || !section.timeLimit || !section.questionIds || section.questionIds.length === 0) {
+          return res.status(400).json({ 
+            message: "Each section must have type, timeLimit, and at least one question" 
+          });
+        }
+      }
+
+      // Create the exam with flexible sections
       const exam = await storage.createExam({
         title,
         description: description || null,
         isDemo: isDemo || false,
-        timeLimit,
-        questionCount: finalQuestionCount,
+        sections: sections,
         isActive: true,
         createdBy: sessionUser.id,
       });
 
-      // Create questions for the exam if using old inline format
-      const createdQuestions = [];
-      if (hasInlineQuestions) {
-        for (let i = 0; i < questions.length; i++) {
-          const questionData = questions[i];
-          
-          // Move temporary audio to permanent location if exists
-          let finalAudioUrl = questionData.audioUrl;
-          if (questionData.audioUrl && questionData.audioUrl.includes('/api/temp-audio/')) {
-            finalAudioUrl = await moveTemporaryAudioToPermanent(questionData.audioUrl);
-          }
-
-          // Move temporary question image to permanent location if exists
-          let finalImageUrl = questionData.imageUrl;
-          if (questionData.imageUrl && questionData.imageUrl.includes('/api/temp-question-images/')) {
-            finalImageUrl = await moveTemporaryQuestionImageToPermanent(questionData.imageUrl);
-          }
-          
-          const question = await storage.createQuestion({
-            examId: exam.id,
-            questionText: questionData.questionText,
-            questionType: questionData.questionType || "multiple_choice",
-            imageUrl: finalImageUrl || null,
-            audioUrl: finalAudioUrl || null,
-            options: questionData.options,
-            correctAnswer: questionData.correctAnswer,
-            explanation: questionData.explanation || null,
-            sortOrder: i,
-          });
-          createdQuestions.push(question);
-        }
-      }
-
       res.json({
         exam,
-        questions: createdQuestions,
         message: "Exam created successfully"
       });
     } catch (error) {
@@ -2539,11 +2503,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { id } = req.params;
-      const { title, description, isDemo, timeLimit, isActive } = req.body;
+      const { title, description, isDemo, sections, isActive } = req.body;
 
-      if (!title || !timeLimit) {
+      if (!title) {
         return res.status(400).json({ 
-          message: "Title and time limit are required" 
+          message: "Title is required" 
         });
       }
 
@@ -2551,7 +2515,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title,
         description: description || null,
         isDemo: isDemo || false,
-        timeLimit,
+        sections: sections || undefined,
         isActive: isActive !== undefined ? isActive : true,
       });
 
