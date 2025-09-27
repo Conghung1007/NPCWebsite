@@ -39,6 +39,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [sectionCompleted, setSectionCompleted] = useState(false); // Track if current section is completed and waiting for progression
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
+  const [pendingExitAction, setPendingExitAction] = useState<(() => void) | null>(null);
   
   // Section-specific data
   const [sectionQuestions, setSectionQuestions] = useState<Question[]>([]);
@@ -165,15 +166,14 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     const handlePopState = (e: PopStateEvent) => {
       console.log('Browser navigation detected during exam');
       e.preventDefault();
-      const confirmed = window.confirm("Bạn đang làm bài thi, bạn có rời bài thi không?");
-      if (confirmed) {
-        console.log('User confirmed navigation via browser back/forward');
+      // Show custom dialog instead of window.confirm
+      setPendingExitAction(() => () => {
         // Allow navigation by not pushing back to history
-      } else {
-        console.log('User cancelled navigation via browser back/forward');
-        // Stay on current page - push current state back
-        window.history.pushState(null, '', window.location.href);
-      }
+        console.log('User confirmed navigation via browser back/forward');
+      });
+      setShowExitDialog(true);
+      // Always push back to stay on page until user decides
+      window.history.pushState(null, '', window.location.href);
     };
 
     // Handle keyboard shortcuts
@@ -199,15 +199,12 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         e.preventDefault();
         e.stopPropagation();
         
-        const confirmed = window.confirm("Bạn đang làm bài thi, bạn có rời bài thi không?");
-        if (confirmed) {
+        // Show custom dialog instead of window.confirm
+        setPendingExitAction(() => () => {
           console.log('User confirmed exit via link click');
-          // Allow navigation
           window.location.href = link.href;
-        } else {
-          console.log('User cancelled exit via link click');
-          // User chose to stay, no additional notification needed
-        }
+        });
+        setShowExitDialog(true);
       }
     };
 
@@ -230,29 +227,35 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   // Show immediate exit confirmation
   const showExitConfirmation = () => {
     if (isExamInProgress) {
-      const confirmed = window.confirm("Bạn đang làm bài thi, bạn có rời bài thi không?");
-      if (confirmed) {
+      // Show custom dialog instead of window.confirm
+      setPendingExitAction(() => () => {
         console.log('User confirmed exit via keyboard shortcut');
-        // User confirmed, allow exit
         setLocation("/online-exam");
-      } else {
-        console.log('User cancelled exit via keyboard shortcut');
-        // User chose to stay, no additional notification needed
-      }
+      });
+      setShowExitDialog(true);
     }
   };
 
-  // Handle navigation confirmation
-  const handleNavigationConfirm = () => {
+  // Handle exit confirmation
+  const handleExitConfirm = () => {
+    console.log('User confirmed exit via custom dialog');
+    setShowExitDialog(false);
+    // Execute the pending exit action immediately
+    if (pendingExitAction) {
+      pendingExitAction();
+    }
     if (pendingNavigation) {
       setLocation(pendingNavigation);
     }
-    setShowExitDialog(false);
+    // Clean up
+    setPendingExitAction(null);
     setPendingNavigation(null);
   };
 
-  const handleNavigationCancel = () => {
+  const handleExitCancel = () => {
+    console.log('User cancelled exit via custom dialog');
     setShowExitDialog(false);
+    setPendingExitAction(null);
     setPendingNavigation(null);
   };
 
@@ -260,15 +263,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const handleNavigateWithConfirm = (path: string) => {
     console.log('Navigation attempt:', { path, isExamInProgress });
     if (isExamInProgress) {
-      console.log('Showing immediate exit confirmation');
-      const confirmed = window.confirm("Bạn đang làm bài thi, bạn có rời bài thi không?");
-      if (confirmed) {
-        console.log('User confirmed exit');
-        setLocation(path);
-      } else {
-        console.log('User cancelled exit');
-        // User chose to stay, no additional notification needed
-      }
+      console.log('Showing exit confirmation dialog');
+      setPendingNavigation(path);
+      setShowExitDialog(true);
     } else {
       console.log('Navigation allowed directly');
       setLocation(path);
@@ -924,31 +921,29 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         </DialogContent>
       </Dialog>
 
-      {/* Exit Confirmation Dialog */}
+      {/* Custom Exit Confirmation Dialog */}
       <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
         <DialogContent className="w-[90vw] max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-red-600">Xác nhận rời trang</DialogTitle>
-            <DialogDescription>
-              Bạn đang trong quá trình làm bài thi. Nếu rời trang bây giờ, toàn bộ tiến độ làm bài sẽ bị mất và không thể khôi phục.
-              <br /><br />
-              <strong>Bạn có chắc chắn muốn rời trang?</strong>
+            <DialogTitle className="text-lg font-semibold">Xác nhận</DialogTitle>
+            <DialogDescription className="text-base">
+              Bạn đang làm bài thi, bạn có rời bài thi không?
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter>
+          <DialogFooter className="gap-3">
             <Button 
               variant="outline" 
-              onClick={handleNavigationCancel}
+              onClick={handleExitCancel}
               data-testid="button-cancel-exit"
             >
-              Ở lại và tiếp tục
+              Hủy
             </Button>
             <Button 
-              variant="destructive" 
-              onClick={handleNavigationConfirm}
+              onClick={handleExitConfirm}
               data-testid="button-confirm-exit"
+              className="bg-red-600 hover:bg-red-700"
             >
-              Rời trang
+              OK
             </Button>
           </DialogFooter>
         </DialogContent>
