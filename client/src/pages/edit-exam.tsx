@@ -673,7 +673,16 @@ export default function EditExam() {
       </div>
 
       {/* Save Button - Fixed at Bottom */}
-      <div className="mt-8 flex justify-end">
+      <div className="mt-8 flex justify-end gap-4">
+        <Button 
+          onClick={() => setLocation("/cpanel?tab=exams")}
+          variant="outline"
+          size="lg"
+          className="px-8 py-3 text-lg"
+          data-testid="button-cancel-bottom"
+        >
+          Hủy bỏ
+        </Button>
         <Button 
           onClick={() => form.handleSubmit(onSubmit)()}
           size="lg"
@@ -717,22 +726,6 @@ export default function EditExam() {
             
             {/* Filter Dropdowns */}
             <div className="flex gap-4">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Lọc theo category</label>
-                <Select value={selectedCategoryFilter} onValueChange={setSelectedCategoryFilter}>
-                  <SelectTrigger data-testid="select-category-filter">
-                    <SelectValue placeholder="Tất cả categories" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tất cả categories</SelectItem>
-                    <SelectItem value="vocabulary">Vocabulary</SelectItem>
-                    <SelectItem value="grammar">Grammar</SelectItem>
-                    <SelectItem value="reading">Reading</SelectItem>
-                    <SelectItem value="listening">Listening</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Lọc theo ngôn ngữ</label>
                 <Select value={selectedLanguageFilter} onValueChange={setSelectedLanguageFilter}>

@@ -476,12 +476,22 @@ export default function CreateExam() {
               </CardContent>
             </Card>
 
-            {/* Submit Button */}
-            <div className="flex justify-end">
+            {/* Submit Buttons */}
+            <div className="flex justify-end gap-4">
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                onClick={() => setLocation("/cpanel?tab=exams")}
+                data-testid="button-cancel"
+              >
+                Hủy bỏ
+              </Button>
               <Button
                 type="submit"
                 size="lg"
                 disabled={createExamMutation.isPending}
+                data-testid="button-create"
               >
                 {createExamMutation.isPending ? (
                   <>
@@ -525,22 +535,6 @@ export default function CreateExam() {
               
               {/* Filter Dropdowns */}
               <div className="flex gap-4">
-                <div className="flex-1">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Lọc theo category</label>
-                  <Select value={selectedCategoryFilter} onValueChange={setSelectedCategoryFilter}>
-                    <SelectTrigger data-testid="select-category-filter">
-                      <SelectValue placeholder="Tất cả categories" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tất cả categories</SelectItem>
-                      <SelectItem value="vocabulary">Vocabulary</SelectItem>
-                      <SelectItem value="grammar">Grammar</SelectItem>
-                      <SelectItem value="reading">Reading</SelectItem>
-                      <SelectItem value="listening">Listening</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
                 <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Lọc theo ngôn ngữ</label>
                   <Select value={selectedLanguageFilter} onValueChange={setSelectedLanguageFilter}>
