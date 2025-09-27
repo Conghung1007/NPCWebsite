@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -11,14 +11,14 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Plus, Save, ArrowLeft, Search, Trash2, HelpCircle, Volume2, Eye, X } from "lucide-react";
+import { Label } from "@/components/ui/label";
+import { Plus, Save, ArrowLeft, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
-import type { Question, Exam } from "@shared/schema";
+import { MultipleImagePreviewBox } from "@/components/MultipleImagePreviewBox";
+import { AudioUploader } from "@/components/AudioUploader";
+import type { Exam } from "@shared/schema";
 
 const questionCategories = [
   { value: "từ vựng", label: "Từ vựng" },
@@ -32,7 +32,9 @@ interface ExamSection {
   id: string;
   type: "từ vựng" | "ngữ pháp" | "đọc hiểu" | "nghe hiểu";
   timeLimit: number;
-  questions: Question[];
+  content?: string;
+  descriptionImageUrls?: string[];
+  descriptionAudioUrl?: string;
 }
 
 // Form validation schema for exam information
@@ -53,11 +55,10 @@ export default function EditExam() {
 
   // State for dynamic exam sections
   const [examSections, setExamSections] = useState<ExamSection[]>([]);
-  const [isQuestionSelectOpen, setIsQuestionSelectOpen] = useState(false);
-  const [currentSectionId, setCurrentSectionId] = useState<string>("");
-  const [questionSearchQuery, setQuestionSearchQuery] = useState("");
-  const [selectedLanguageFilter, setSelectedLanguageFilter] = useState<string>("all");
-  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
+  
+  // Refs for handling file uploads
+  const sectionImageInputRefs = useRef<Map<string, HTMLInputElement | null>>(new Map());
+  const sectionAudioInputRefs = useRef<Map<string, HTMLInputElement | null>>(new Map());
 
   const form = useForm<ExamFormData>({
     resolver: zodResolver(examSchema),
@@ -81,15 +82,9 @@ export default function EditExam() {
     }
   }, [authLoading, user, hasImageEditPermission, setLocation]);
 
-  // Fetch questions from question bank - only when authenticated
-  const { data: availableQuestions = [], isLoading: questionsLoading } = useQuery<Question[]>({
-    queryKey: ["/api/questions"],
-    enabled: !!user && hasImageEditPermission,
-  });
-
   // Load existing exam data into sections
   useEffect(() => {
-    if (exam && availableQuestions.length > 0) {
+    if (exam) {
       console.log('Loading exam data into sections:', exam);
       
       // Set form values
@@ -102,57 +97,64 @@ export default function EditExam() {
       // Convert existing exam structure to dynamic sections
       const sections: ExamSection[] = [];
       
-      // Add sections based on existing question arrays
-      if (exam.vocabularyQuestions && Array.isArray(exam.vocabularyQuestions) && exam.vocabularyQuestions.length > 0) {
-        const vocabularyQs = exam.vocabularyQuestions
-          .map(id => availableQuestions.find(q => q.id === id))
-          .filter(Boolean) as Question[];
-        
-        sections.push({
-          id: "vocab-section",
-          type: "từ vựng",
-          timeLimit: exam.vocabularyTimeLimit || 10,
-          questions: vocabularyQs
+      // Check if exam has new sections format
+      if (exam.sections && Array.isArray(exam.sections) && exam.sections.length > 0) {
+        // Load from new sections format
+        exam.sections.forEach((section: any) => {
+          sections.push({
+            id: section.id || `section-${Date.now()}-${Math.random()}`,
+            type: section.type,
+            timeLimit: section.timeLimit || 10,
+            content: section.content || "",
+            descriptionImageUrls: section.descriptionImageUrls || [],
+            descriptionAudioUrl: section.descriptionAudioUrl || ""
+          });
         });
-      }
+      } else {
+        // Legacy: Add sections based on existing question arrays for backward compatibility
+        if (exam.vocabularyQuestions && Array.isArray(exam.vocabularyQuestions) && exam.vocabularyQuestions.length > 0) {
+          sections.push({
+            id: "vocab-section",
+            type: "từ vựng",
+            timeLimit: exam.vocabularyTimeLimit || 10,
+            content: "",
+            descriptionImageUrls: [],
+            descriptionAudioUrl: ""
+          });
+        }
 
-      if (exam.grammarQuestions && Array.isArray(exam.grammarQuestions) && exam.grammarQuestions.length > 0) {
-        const grammarQs = exam.grammarQuestions
-          .map(id => availableQuestions.find(q => q.id === id))
-          .filter(Boolean) as Question[];
-        
-        sections.push({
-          id: "grammar-section",
-          type: "ngữ pháp",
-          timeLimit: exam.grammarTimeLimit || 10,
-          questions: grammarQs
-        });
-      }
+        if (exam.grammarQuestions && Array.isArray(exam.grammarQuestions) && exam.grammarQuestions.length > 0) {
+          sections.push({
+            id: "grammar-section",
+            type: "ngữ pháp",
+            timeLimit: exam.grammarTimeLimit || 10,
+            content: "",
+            descriptionImageUrls: [],
+            descriptionAudioUrl: ""
+          });
+        }
 
-      if (exam.listeningQuestions && Array.isArray(exam.listeningQuestions) && exam.listeningQuestions.length > 0) {
-        const listeningQs = exam.listeningQuestions
-          .map(id => availableQuestions.find(q => q.id === id))
-          .filter(Boolean) as Question[];
-        
-        sections.push({
-          id: "listening-section",
-          type: "nghe hiểu",
-          timeLimit: exam.listeningTimeLimit || 10,
-          questions: listeningQs
-        });
-      }
+        if (exam.listeningQuestions && Array.isArray(exam.listeningQuestions) && exam.listeningQuestions.length > 0) {
+          sections.push({
+            id: "listening-section",
+            type: "nghe hiểu",
+            timeLimit: exam.listeningTimeLimit || 10,
+            content: "",
+            descriptionImageUrls: [],
+            descriptionAudioUrl: ""
+          });
+        }
 
-      if (exam.readingQuestions && Array.isArray(exam.readingQuestions) && exam.readingQuestions.length > 0) {
-        const readingQs = exam.readingQuestions
-          .map(id => availableQuestions.find(q => q.id === id))
-          .filter(Boolean) as Question[];
-        
-        sections.push({
-          id: "reading-section",
-          type: "đọc hiểu",
-          timeLimit: exam.readingTimeLimit || 10,
-          questions: readingQs
-        });
+        if (exam.readingQuestions && Array.isArray(exam.readingQuestions) && exam.readingQuestions.length > 0) {
+          sections.push({
+            id: "reading-section",
+            type: "đọc hiểu",
+            timeLimit: exam.readingTimeLimit || 10,
+            content: "",
+            descriptionImageUrls: [],
+            descriptionAudioUrl: ""
+          });
+        }
       }
 
       // If no sections found, create a default section
@@ -161,34 +163,25 @@ export default function EditExam() {
           id: "section-1",
           type: "từ vựng",
           timeLimit: 10,
-          questions: []
+          content: "",
+          descriptionImageUrls: [],
+          descriptionAudioUrl: ""
         });
       }
 
       setExamSections(sections);
     }
-  }, [exam, availableQuestions, form]);
+  }, [exam, form]);
 
   // Helper functions for managing dynamic sections
   const addExamSection = () => {
-    // Find available section types (not already used)
-    const usedTypes = examSections.map(s => s.type);
-    const availableTypes = questionCategories.filter(c => !usedTypes.includes(c.value as ExamSection['type']));
-    
-    if (availableTypes.length === 0) {
-      toast({
-        title: "Thông báo",
-        description: "Bạn đã thêm đủ tất cả các loại phần thi. Mỗi loại chỉ được thêm 1 lần.",
-        variant: "destructive",
-      });
-      return;
-    }
-
     const newSection: ExamSection = {
       id: `section-${Date.now()}`,
-      type: availableTypes[0].value as ExamSection['type'],
+      type: "từ vựng",
       timeLimit: 10,
-      questions: []
+      content: "",
+      descriptionImageUrls: [],
+      descriptionAudioUrl: ""
     };
     setExamSections(prev => [...prev, newSection]);
   };
@@ -206,20 +199,9 @@ export default function EditExam() {
   };
 
   const updateSectionType = (sectionId: string, type: ExamSection['type']) => {
-    // Check if this type is already used in another section
-    const existingSection = examSections.find(s => s.type === type && s.id !== sectionId);
-    if (existingSection) {
-      toast({
-        title: "Lỗi",
-        description: `Loại phần thi "${questionCategories.find(c => c.value === type)?.label}" đã được sử dụng. Mỗi loại chỉ được sử dụng 1 lần.`,
-        variant: "destructive",
-      });
-      return;
-    }
-
     setExamSections(prev => prev.map(section => 
       section.id === sectionId 
-        ? { ...section, type, questions: [] } // Clear questions when type changes
+        ? { ...section, type }
         : section
     ));
   };
@@ -232,88 +214,67 @@ export default function EditExam() {
     ));
   };
 
-  const addQuestionToSection = (sectionId: string, question: Question) => {
+  const updateSectionContent = (sectionId: string, content: string) => {
     setExamSections(prev => prev.map(section => 
       section.id === sectionId 
-        ? { ...section, questions: [...section.questions, question] }
+        ? { ...section, content }
         : section
     ));
   };
 
-  const removeQuestionFromSection = (sectionId: string, questionId: string) => {
+  const updateSectionDescriptionImages = (sectionId: string, imageUrls: string[]) => {
     setExamSections(prev => prev.map(section => 
       section.id === sectionId 
-        ? { ...section, questions: section.questions.filter(q => q.id !== questionId) }
+        ? { ...section, descriptionImageUrls: imageUrls }
         : section
     ));
   };
 
-  const openQuestionSelector = (sectionId: string) => {
-    setCurrentSectionId(sectionId);
-    setIsQuestionSelectOpen(true);
-    setQuestionSearchQuery("");
-    setSelectedLanguageFilter("all");
-    setSelectedCategoryFilter("all");
+  const updateSectionDescriptionAudio = (sectionId: string, audioUrl: string) => {
+    setExamSections(prev => prev.map(section => 
+      section.id === sectionId 
+        ? { ...section, descriptionAudioUrl: audioUrl }
+        : section
+    ));
   };
 
-  // Category mapping between English and Vietnamese
-  const categoryMapping: Record<string, string> = {
-    "vocabulary": "từ vựng",
-    "grammar": "ngữ pháp", 
-    "reading": "đọc hiểu",
-    "listening": "nghe hiểu",
-    "từ vựng": "từ vựng",
-    "ngữ pháp": "ngữ pháp",
-    "đọc hiểu": "đọc hiểu", 
-    "nghe hiểu": "nghe hiểu"
+  // File upload handlers
+  const handleSectionImageUpload = async (sectionId: string, files: FileList) => {
+    const file = files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('image', file);
+
+    try {
+      const response = await fetch('/api/temp-description-images/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to upload image');
+      }
+
+      const data = await response.json();
+      const currentUrls = examSections.find(s => s.id === sectionId)?.descriptionImageUrls || [];
+      const newUrls = [...currentUrls, data.url];
+      updateSectionDescriptionImages(sectionId, newUrls);
+      
+      toast({
+        title: "Thành công",
+        description: "Đã tải lên hình ảnh",
+      });
+    } catch (error) {
+      toast({
+        title: "Lỗi",
+        description: "Không thể tải lên hình ảnh",
+        variant: "destructive",
+      });
+    }
   };
 
-  // Filter questions for selection based on current section type
-  const getFilteredQuestionsForSection = () => {
-    if (!currentSectionId) return [];
-    
-    const currentSection = examSections.find(s => s.id === currentSectionId);
-    if (!currentSection) return [];
-
-    // Get all questions already used in ANY section
-    const usedQuestionIds = examSections.flatMap(section => section.questions.map(q => q.id));
-    
-    console.log('Debug filter:', {
-      currentSectionType: currentSection.type,
-      availableQuestionsCount: availableQuestions.length,
-      sampleQuestionCategory: availableQuestions[0]?.category,
-      usedQuestionIds: usedQuestionIds.length
-    });
-    
-    return availableQuestions.filter(question => {
-      // Don't show questions already used
-      if (usedQuestionIds.includes(question.id)) return false;
-      
-      // Only show questions of the current section type (with mapping)
-      const questionCategoryVietnamese = categoryMapping[question.category] || question.category;
-      if (questionCategoryVietnamese !== currentSection.type) return false;
-      
-      // Apply search filter
-      if (questionSearchQuery && !question.questionText.toLowerCase().includes(questionSearchQuery.toLowerCase())) {
-        return false;
-      }
-      
-      // Apply category filter
-      if (selectedCategoryFilter && selectedCategoryFilter !== "all" && question.category !== selectedCategoryFilter) {
-        return false;
-      }
-      
-      // Apply language filter  
-      if (selectedLanguageFilter && selectedLanguageFilter !== "all" && question.language !== selectedLanguageFilter) {
-        return false;
-      }
-      
-      return true;
-    });
-  };
-
-  // Calculate total questions and time
-  const totalQuestions = examSections.reduce((sum, section) => sum + section.questions.length, 0);
+  // Calculate total time
   const totalTimeLimit = examSections.reduce((sum, section) => sum + section.timeLimit, 0);
 
   // Update exam mutation with new section structure
@@ -324,32 +285,18 @@ export default function EditExam() {
         throw new Error("Bài thi phải có ít nhất 1 phần thi");
       }
 
-      if (totalQuestions === 0) {
-        throw new Error("Bài thi phải có ít nhất 1 câu hỏi");
-      }
-
-      // Prepare exam data with BOTH new sections format and legacy format
+      // Prepare exam data with new sections format
       const examData = {
         ...data,
         timeLimit: totalTimeLimit,
-        questionCount: totalQuestions,
-        // NEW: Include sections format to save the flexible structure
         sections: examSections.map(section => ({
           id: section.id,
           type: section.type,
           timeLimit: section.timeLimit,
-          questionIds: section.questions.map(q => q.id)
-        })),
-        // LEGACY: Section question arrays for backward compatibility
-        vocabularyQuestions: examSections.find(s => s.type === "từ vựng")?.questions.map(q => q.id) || [],
-        grammarQuestions: examSections.find(s => s.type === "ngữ pháp")?.questions.map(q => q.id) || [],
-        listeningQuestions: examSections.find(s => s.type === "nghe hiểu")?.questions.map(q => q.id) || [],
-        readingQuestions: examSections.find(s => s.type === "đọc hiểu")?.questions.map(q => q.id) || [],
-        // LEGACY: Section time limits for backward compatibility
-        vocabularyTimeLimit: examSections.find(s => s.type === "từ vựng")?.timeLimit || 0,
-        grammarTimeLimit: examSections.find(s => s.type === "ngữ pháp")?.timeLimit || 0,
-        listeningTimeLimit: examSections.find(s => s.type === "nghe hiểu")?.timeLimit || 0,
-        readingTimeLimit: examSections.find(s => s.type === "đọc hiểu")?.timeLimit || 0,
+          content: section.content || "",
+          descriptionImageUrls: section.descriptionImageUrls || [],
+          descriptionAudioUrl: section.descriptionAudioUrl || ""
+        }))
       };
 
       return await apiRequest("PUT", `/api/exams/${examId}`, examData);
@@ -376,21 +323,6 @@ export default function EditExam() {
     updateExamMutation.mutate(data);
   };
 
-  const getCategoryBadge = (category: string) => {
-    const categoryConfig = questionCategories.find(cat => cat.value === category);
-    const variants: any = {
-      "từ vựng": "default",
-      "ngữ pháp": "secondary", 
-      "đọc hiểu": "outline",
-      "nghe hiểu": "destructive"
-    };
-    return (
-      <Badge variant={variants[category] || "outline"}>
-        {categoryConfig?.label || category}
-      </Badge>
-    );
-  };
-
   // Show loading while checking authentication
   if (authLoading) {
     return (
@@ -407,7 +339,7 @@ export default function EditExam() {
     return null; // Will redirect via useEffect
   }
 
-  if (examLoading || questionsLoading) {
+  if (examLoading) {
     return (
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="flex justify-center py-8">
@@ -529,15 +461,26 @@ export default function EditExam() {
                         <span className="font-medium">{examSections.length}</span>
                       </div>
                       <div className="flex justify-between">
-                        <span>Tổng câu hỏi:</span>
-                        <span className="font-medium">{totalQuestions}</span>
-                      </div>
-                      <div className="flex justify-between">
                         <span>Tổng thời gian:</span>
                         <span className="font-medium">{totalTimeLimit} phút</span>
                       </div>
                     </div>
                   </div>
+
+                  {/* Save Button */}
+                  <Button 
+                    type="submit" 
+                    className="w-full mt-6"
+                    disabled={updateExamMutation.isPending}
+                    data-testid="button-save"
+                  >
+                    {updateExamMutation.isPending ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    ) : (
+                      <Save className="w-4 h-4 mr-2" />
+                    )}
+                    Lưu thay đổi
+                  </Button>
 
                 </form>
               </Form>
@@ -569,9 +512,9 @@ export default function EditExam() {
                 </div>
               ) : (
                 examSections.map((section, index) => (
-                  <div key={section.id} className="border border-gray-200 rounded-lg p-4">
-                    <div className="flex justify-between items-start mb-4">
-                      <h4 className="font-medium text-gray-900">Phần {index + 1}</h4>
+                  <div key={section.id} className="border border-gray-200 rounded-lg p-6">
+                    <div className="flex justify-between items-start mb-6">
+                      <h4 className="font-medium text-gray-900 text-lg">Phần thi {index + 1}</h4>
                       <Button
                         onClick={() => removeExamSection(section.id)}
                         variant="ghost"
@@ -583,93 +526,112 @@ export default function EditExam() {
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    {/* Section Content */}
+                    <div className="space-y-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Loại phần thi
-                        </label>
-                        <Select 
-                          value={section.type} 
-                          onValueChange={(value) => updateSectionType(section.id, value as ExamSection['type'])}
-                        >
-                          <SelectTrigger data-testid={`select-section-type-${section.id}`}>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {questionCategories.map(category => (
-                              <SelectItem key={category.value} value={category.value}>
-                                {category.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Thời gian (phút)
-                        </label>
-                        <Input
-                          type="number"
-                          min="1"
-                          max="120"
-                          value={section.timeLimit}
-                          onChange={(e) => updateSectionTimeLimit(section.id, parseInt(e.target.value) || 1)}
-                          data-testid={`input-time-limit-${section.id}`}
+                        <Label htmlFor={`content-${section.id}`} className="text-sm font-medium text-gray-700">
+                          Nội dung phần thi
+                        </Label>
+                        <Textarea
+                          id={`content-${section.id}`}
+                          placeholder="Nhập nội dung, hướng dẫn hoặc mô tả cho phần thi này..."
+                          value={section.content || ""}
+                          onChange={(e) => updateSectionContent(section.id, e.target.value)}
+                          rows={4}
+                          className="mt-2"
+                          data-testid={`textarea-content-${section.id}`}
                         />
                       </div>
-                    </div>
 
-                    {/* Section Questions */}
-                    <div>
-                      <div className="flex justify-between items-center mb-3">
-                        <span className="text-sm font-medium text-gray-700">
-                          Câu hỏi ({section.questions.length})
-                        </span>
-                        <Button
-                          onClick={() => openQuestionSelector(section.id)}
-                          variant="outline"
-                          size="sm"
-                          data-testid={`button-add-questions-${section.id}`}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Thêm câu hỏi
-                        </Button>
+                      {/* Description Images */}
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">
+                          Hình ảnh mô tả (tối đa 5 ảnh)
+                        </Label>
+                        <div className="mt-2">
+                          <MultipleImagePreviewBox
+                            imageUrls={section.descriptionImageUrls || []}
+                            onRemove={(imageIndex) => {
+                              const currentUrls = section.descriptionImageUrls || [];
+                              const newUrls = currentUrls.filter((_, i) => i !== imageIndex);
+                              updateSectionDescriptionImages(section.id, newUrls);
+                            }}
+                            onChooseImage={() => {
+                              const inputRef = sectionImageInputRefs.current.get(section.id);
+                              inputRef?.click();
+                            }}
+                            title="Hình ảnh mô tả phần thi"
+                            maxImages={5}
+                          />
+                          
+                          {/* Hidden file input for section description image */}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            className="hidden"
+                            ref={(el) => sectionImageInputRefs.current.set(section.id, el)}
+                            onChange={(e) => {
+                              if (e.target.files) {
+                                handleSectionImageUpload(section.id, e.target.files);
+                              }
+                            }}
+                            data-testid={`input-section-images-${section.id}`}
+                          />
+                        </div>
                       </div>
 
-                      {section.questions.length === 0 ? (
-                        <div className="text-center py-4 text-gray-500 bg-gray-50 rounded-lg">
-                          <p className="text-sm">Chưa có câu hỏi nào</p>
+                      {/* Description Audio */}
+                      <div>
+                        <Label className="text-sm font-medium text-gray-700">
+                          Audio mô tả
+                        </Label>
+                        <div className="mt-2">
+                          <AudioUploader
+                            audioUrl={section.descriptionAudioUrl || ""}
+                            onAudioChange={(audioUrl) => updateSectionDescriptionAudio(section.id, audioUrl)}
+                            uploadEndpoint="/api/temp-description-audio/upload"
+                            data-testid={`audio-${section.id}`}
+                          />
                         </div>
-                      ) : (
-                        <div className="space-y-2">
-                          {section.questions.map((question, qIndex) => (
-                            <div key={question.id} className="flex items-start justify-between p-3 bg-gray-50 rounded-lg">
-                              <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-sm font-medium text-gray-900">
-                                    #{qIndex + 1}
-                                  </span>
-                                  {getCategoryBadge(question.category)}
-                                  {question.audioUrl && <Volume2 className="w-4 h-4 text-blue-600" />}
-                                </div>
-                                <p className="text-sm text-gray-700 line-clamp-2">
-                                  {question.questionText}
-                                </p>
-                              </div>
-                              <Button
-                                onClick={() => removeQuestionFromSection(section.id, question.id)}
-                                variant="ghost"
-                                size="sm"
-                                className="text-red-600 hover:text-red-700 ml-2"
-                                data-testid={`button-remove-question-${question.id}`}
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          ))}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">
+                            Loại phần thi
+                          </Label>
+                          <Select 
+                            value={section.type} 
+                            onValueChange={(value) => updateSectionType(section.id, value as ExamSection['type'])}
+                          >
+                            <SelectTrigger className="mt-2" data-testid={`select-section-type-${section.id}`}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {questionCategories.map(category => (
+                                <SelectItem key={category.value} value={category.value}>
+                                  {category.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
-                      )}
+                        <div>
+                          <Label className="text-sm font-medium text-gray-700">
+                            Thời gian thi (phút)
+                          </Label>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="120"
+                            value={section.timeLimit}
+                            onChange={(e) => updateSectionTimeLimit(section.id, parseInt(e.target.value) || 1)}
+                            className="mt-2"
+                            data-testid={`input-time-limit-${section.id}`}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -678,142 +640,6 @@ export default function EditExam() {
           </Card>
         </div>
       </div>
-
-      {/* Save Button - Fixed at Bottom */}
-      <div className="mt-8 flex justify-end gap-4">
-        <Button 
-          onClick={() => setLocation("/cpanel?tab=exams")}
-          variant="outline"
-          size="lg"
-          className="px-8 py-3 text-lg"
-          data-testid="button-cancel-bottom"
-        >
-          Hủy bỏ
-        </Button>
-        <Button 
-          onClick={() => form.handleSubmit(onSubmit)()}
-          size="lg"
-          className="px-8 py-3 text-lg"
-          disabled={updateExamMutation.isPending}
-          data-testid="button-save-bottom"
-        >
-          <Save className="w-5 h-5 mr-3" />
-          {updateExamMutation.isPending ? "Đang lưu..." : "Lưu bài thi"}
-        </Button>
-      </div>
-
-      {/* Question Selection Dialog */}
-      <Dialog open={isQuestionSelectOpen} onOpenChange={setIsQuestionSelectOpen}>
-        <DialogContent 
-          className="max-h-[80vh] overflow-y-auto"
-          style={{
-            width: "95vw",
-            maxWidth: "1000px"
-          }}
-        >
-          <DialogHeader>
-            <DialogTitle>Chọn câu hỏi</DialogTitle>
-            <DialogDescription>
-              Chọn câu hỏi cho phần thi "{questionCategories.find(c => c.value === examSections.find(s => s.id === currentSectionId)?.type)?.label}"
-            </DialogDescription>
-          </DialogHeader>
-
-          <div className="mb-4 space-y-4">
-            {/* Search Box */}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-              <Input
-                placeholder="Tìm kiếm câu hỏi..."
-                value={questionSearchQuery}
-                onChange={(e) => setQuestionSearchQuery(e.target.value)}
-                className="pl-10"
-                data-testid="input-search-questions"
-              />
-            </div>
-            
-            {/* Filter Dropdowns */}
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-1">Lọc theo ngôn ngữ</label>
-                <Select value={selectedLanguageFilter} onValueChange={setSelectedLanguageFilter}>
-                  <SelectTrigger data-testid="select-language-filter">
-                    <SelectValue placeholder="Tất cả ngôn ngữ" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tất cả ngôn ngữ</SelectItem>
-                    <SelectItem value="japanese">Tiếng Nhật</SelectItem>
-                    <SelectItem value="english">Tiếng Anh</SelectItem>
-                    <SelectItem value="german">Tiếng Đức</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
-
-          <div className="max-h-96 overflow-y-auto">
-            {getFilteredQuestionsForSection().length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <p>Không có câu hỏi phù hợp</p>
-              </div>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Câu hỏi</TableHead>
-                    <TableHead>Category</TableHead>
-                    <TableHead>Ngôn ngữ</TableHead>
-                    <TableHead>Thao tác</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {getFilteredQuestionsForSection().map((question) => (
-                    <TableRow key={question.id}>
-                      <TableCell>
-                        <div className="max-w-md">
-                          <p className="text-sm line-clamp-2">{question.questionText}</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getCategoryBadge(question.category)}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">
-                          {question.language === "japanese" && "Tiếng Nhật"}
-                          {question.language === "english" && "Tiếng Anh"}
-                          {question.language === "german" && "Tiếng Đức"}
-                          {!["japanese", "english", "german"].includes(question.language) && question.language}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Button
-                          onClick={() => {
-                            addQuestionToSection(currentSectionId, question);
-                            toast({
-                              title: "Đã thêm",
-                              description: "Câu hỏi đã được thêm vào phần thi",
-                            });
-                          }}
-                          variant="outline"
-                          size="sm"
-                          data-testid={`button-select-question-${question.id}`}
-                        >
-                          Chọn
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button onClick={() => setIsQuestionSelectOpen(false)} variant="outline">
-              Đóng
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

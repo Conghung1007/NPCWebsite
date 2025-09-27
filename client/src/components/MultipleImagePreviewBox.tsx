@@ -18,14 +18,16 @@ export function MultipleImagePreviewBox({
   className = "",
   maxImages = 5
 }: MultipleImagePreviewBoxProps) {
-  const canAddMore = imageUrls.length < maxImages;
+  // Ensure imageUrls is always an array
+  const safeImageUrls = imageUrls || [];
+  const canAddMore = safeImageUrls.length < maxImages;
 
   return (
     <div className={`space-y-2 ${className}`}>
       {/* Images Grid */}
-      {imageUrls.length > 0 && (
+      {safeImageUrls.length > 0 && (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-          {imageUrls.map((imageUrl, index) => (
+          {safeImageUrls.map((imageUrl, index) => (
             <div
               key={index}
               className="relative bg-white rounded-lg border overflow-hidden group hover:shadow-md transition-all"
@@ -81,7 +83,7 @@ export function MultipleImagePreviewBox({
           onClick={onChooseImage}
         >
           <div className="flex-shrink-0 w-12 h-12 bg-gray-100 rounded border flex items-center justify-center">
-            {imageUrls.length === 0 ? (
+            {safeImageUrls.length === 0 ? (
               <Upload className="w-6 h-6 text-gray-400" />
             ) : (
               <Plus className="w-6 h-6 text-gray-400" />
@@ -90,12 +92,12 @@ export function MultipleImagePreviewBox({
 
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium text-foreground">
-              {imageUrls.length === 0 ? title : `Thêm ${title.toLowerCase()}`}
+              {safeImageUrls.length === 0 ? title : `Thêm ${title.toLowerCase()}`}
             </p>
             <p className="text-xs text-muted-foreground">
-              {imageUrls.length === 0 
+              {safeImageUrls.length === 0 
                 ? "Click để chọn hình ảnh" 
-                : `${imageUrls.length}/${maxImages} hình ảnh`
+                : `${safeImageUrls.length}/${maxImages} hình ảnh`
               }
             </p>
           </div>
