@@ -773,7 +773,7 @@ export function QuestionBankManager() {
 
       {/* Create/Edit Question Dialog */}
       <Dialog open={isAddingQuestion || !!editingQuestion} onOpenChange={(open) => !open && cancelForm()}>
-        <DialogContent className="w-full max-w-[1000px] max-h-[90vh] overflow-y-auto mx-auto">
+        <DialogContent className="w-[95vw] max-w-[1000px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingQuestion ? "Chỉnh sửa câu hỏi" : "Thêm câu hỏi mới"}
@@ -1101,7 +1101,7 @@ export function QuestionBankManager() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteConfirm.isOpen} onOpenChange={(open) => !open && cancelDelete()}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[90vw] max-w-md">
           <DialogHeader>
             <DialogTitle>Xác nhận xóa câu hỏi</DialogTitle>
             <DialogDescription>

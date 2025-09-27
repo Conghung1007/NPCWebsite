@@ -758,7 +758,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
       {/* Section Complete Confirmation Dialog */}
       <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[90vw] max-w-md">
           <DialogHeader>
             <DialogTitle>
               {getNextSection(currentSection) ? `Hoàn thành phần ${sectionConfig.title}` : "Hoàn thành bài thi"}
@@ -822,7 +822,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
       {/* Exit Confirmation Dialog */}
       <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="w-[90vw] max-w-md">
           <DialogHeader>
             <DialogTitle className="text-red-600">Xác nhận rời trang</DialogTitle>
             <DialogDescription>

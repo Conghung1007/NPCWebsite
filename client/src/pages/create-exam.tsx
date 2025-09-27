@@ -542,7 +542,7 @@ export default function CreateExam() {
 
         {/* Question Selection Dialog */}
         <Dialog open={isQuestionSelectOpen} onOpenChange={setIsQuestionSelectOpen}>
-          <DialogContent className="w-full max-w-[1000px] max-h-[80vh] overflow-hidden mx-auto">
+          <DialogContent className="w-[95vw] max-w-[1000px] max-h-[80vh] overflow-hidden">
             <DialogHeader>
               <DialogTitle>
                 Chọn câu hỏi - {questionCategories.find(c => c.value === getCurrentSection()?.type)?.label}
