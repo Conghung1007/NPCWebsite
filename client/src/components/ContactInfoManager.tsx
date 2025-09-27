@@ -424,7 +424,7 @@ export function ContactInfoManager() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteConfirm.isOpen} onOpenChange={(open) => !open && setDeleteConfirm({ isOpen: false, contactInfo: null })}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Xác nhận xóa</DialogTitle>
             <DialogDescription>

@@ -1101,7 +1101,7 @@ export function QuestionBankManager() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={deleteConfirm.isOpen} onOpenChange={(open) => !open && cancelDelete()}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Xác nhận xóa câu hỏi</DialogTitle>
             <DialogDescription>

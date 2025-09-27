@@ -758,7 +758,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
       {/* Section Complete Confirmation Dialog */}
       <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>
               {getNextSection(currentSection) ? `Hoàn thành phần ${sectionConfig.title}` : "Hoàn thành bài thi"}

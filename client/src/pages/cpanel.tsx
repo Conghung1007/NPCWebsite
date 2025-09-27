@@ -912,7 +912,7 @@ export function CpanelPage() {
 
         {/* Delete User Confirmation Dialog */}
         <Dialog open={deleteConfirm.isOpen} onOpenChange={(open) => !open && cancelDeleteUser()}>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Xác nhận xóa người dùng</DialogTitle>
               <DialogDescription>
@@ -934,7 +934,7 @@ export function CpanelPage() {
 
         {/* Message Detail Dialog */}
         <Dialog open={messageDetail.isOpen} onOpenChange={(open) => !open && setMessageDetail({ isOpen: false, message: null })}>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-[1000px]">
             <DialogHeader>
               <DialogTitle>Chi tiết tin nhắn</DialogTitle>
             </DialogHeader>
@@ -984,7 +984,7 @@ export function CpanelPage() {
 
         {/* Delete Message Confirmation Dialog */}
         <Dialog open={deleteMessageConfirm.isOpen} onOpenChange={(open) => !open && cancelDeleteMessage()}>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Xác nhận xóa tin nhắn</DialogTitle>
               <DialogDescription>
@@ -1006,7 +1006,7 @@ export function CpanelPage() {
 
         {/* Delete Registration Confirmation Dialog */}
         <Dialog open={deleteRegistrationConfirm.isOpen} onOpenChange={(open) => !open && cancelDeleteRegistration()}>
-          <DialogContent>
+          <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle>Xác nhận xóa yêu cầu đăng ký</DialogTitle>
               <DialogDescription>
