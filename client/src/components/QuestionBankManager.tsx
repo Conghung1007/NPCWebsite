@@ -442,6 +442,7 @@ export function QuestionBankManager() {
       category: question.category,
       description: question.description || "",
       descriptionImageUrl: (question as any).descriptionImageUrl || "",
+      descriptionImageUrls: (question as any).descriptionImageUrls || [],
       descriptionAudioUrl: (question as any).descriptionAudioUrl || "",
       questions: [{
         questionText: question.questionText,
@@ -449,6 +450,7 @@ export function QuestionBankManager() {
         correctAnswer: question.correctAnswer,
         explanation: question.explanation || "",
         imageUrl: question.imageUrl || "",
+        imageUrls: (question as any).imageUrls || [],
         audioUrl: question.audioUrl || "",
       }],
     });

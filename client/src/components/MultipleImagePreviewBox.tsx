@@ -54,7 +54,11 @@ export function MultipleImagePreviewBox({
                 type="button"
                 variant="ghost"
                 size="sm"
-                onClick={() => onRemove(index)}
+                onMouseDown={(event) => {
+                  event.stopPropagation();
+                  event.preventDefault();
+                  onRemove(index);
+                }}
                 className="absolute top-1 right-1 w-6 h-6 p-0 bg-red-500 hover:bg-red-600 text-white opacity-0 group-hover:opacity-100 transition-opacity"
                 data-testid={`button-remove-image-${index}`}
               >
