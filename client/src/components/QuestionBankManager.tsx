@@ -693,6 +693,18 @@ export function QuestionBankManager() {
                 Hiển thị {startIndex + 1}-{Math.min(endIndex, filteredQuestions.length)} trong tổng số {filteredQuestions.length} câu hỏi
               </div>
               <div className="flex items-center gap-2">
+                {/* First Page */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(1)}
+                  disabled={currentPage === 1}
+                  data-testid="button-first-page"
+                >
+                  Đầu
+                </Button>
+                
+                {/* Previous Page */}
                 <Button
                   variant="outline"
                   size="sm"
@@ -731,6 +743,7 @@ export function QuestionBankManager() {
                     return null;
                   })}
                 </div>
+                {/* Next Page */}
                 <Button
                   variant="outline"
                   size="sm"
@@ -741,6 +754,17 @@ export function QuestionBankManager() {
                   Tiếp
                   <ChevronRight className="w-4 h-4" />
                 </Button>
+                
+                {/* Last Page */}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage(totalPages)}
+                  disabled={currentPage === totalPages}
+                  data-testid="button-last-page"
+                >
+                  Cuối
+                </Button>
               </div>
             </div>
           </CardContent>
@@ -749,7 +773,7 @@ export function QuestionBankManager() {
 
       {/* Create/Edit Question Dialog */}
       <Dialog open={isAddingQuestion || !!editingQuestion} onOpenChange={(open) => !open && cancelForm()}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-[1000px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingQuestion ? "Chỉnh sửa câu hỏi" : "Thêm câu hỏi mới"}
