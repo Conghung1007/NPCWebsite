@@ -151,16 +151,34 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     });
   }, [examStarted, completedSections.size, isExamInProgress]);
 
-  // Simple exit confirmation with immediate toast
+  // Comprehensive exit confirmation
   useEffect(() => {
     if (!isExamInProgress) return;
 
+    // Browser close/refresh confirmation
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
       e.preventDefault();
       e.returnValue = "Bạn đang làm bài thi, bạn có rời bài thi không?";
       return e.returnValue;
     };
 
+    // Handle browser back/forward navigation
+    const handlePopState = (e: PopStateEvent) => {
+      console.log('Browser navigation detected during exam');
+      e.preventDefault();
+      const confirmed = window.confirm("Bạn đang làm bài thi, bạn có rời bài thi không?");
+      if (confirmed) {
+        console.log('User confirmed navigation via browser back/forward');
+        // Allow navigation by not pushing back to history
+      } else {
+        console.log('User cancelled navigation via browser back/forward');
+        // Stay on current page - push current state back
+        window.history.pushState(null, '', window.location.href);
+        setShowStayNotification(true);
+      }
+    };
+
+    // Handle keyboard shortcuts
     const handleKeyDown = (e: KeyboardEvent) => {
       // Block F5, Ctrl+R refresh
       if (e.key === 'F5' || (e.ctrlKey && e.key === 'r')) {
@@ -174,12 +192,40 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       }
     };
 
+    // Intercept all link clicks during exam
+    const handleLinkClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const link = target.closest('a');
+      if (link && link.href && !link.href.includes('#')) {
+        console.log('Link click detected during exam:', link.href);
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const confirmed = window.confirm("Bạn đang làm bài thi, bạn có rời bài thi không?");
+        if (confirmed) {
+          console.log('User confirmed exit via link click');
+          // Allow navigation
+          window.location.href = link.href;
+        } else {
+          console.log('User cancelled exit via link click');
+          setShowStayNotification(true);
+        }
+      }
+    };
+
+    // Add a history entry to detect back button
+    window.history.pushState(null, '', window.location.href);
+    
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
     window.addEventListener('keydown', handleKeyDown);
+    document.addEventListener('click', handleLinkClick, true); // Use capture phase
     
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('click', handleLinkClick, true);
     };
   }, [isExamInProgress]);
 
@@ -188,9 +234,11 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     if (isExamInProgress) {
       const confirmed = window.confirm("Bạn đang làm bài thi, bạn có rời bài thi không?");
       if (confirmed) {
+        console.log('User confirmed exit via keyboard shortcut');
         // User confirmed, allow exit
         setLocation("/online-exam");
       } else {
+        console.log('User cancelled exit via keyboard shortcut');
         // User cancelled, show notification dialog
         setShowStayNotification(true);
       }
@@ -211,7 +259,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     setPendingNavigation(null);
   };
 
-  // Custom setLocation with immediate confirmation
+  // Custom setLocation with immediate confirmation (kept for compatibility)
   const handleNavigateWithConfirm = (path: string) => {
     console.log('Navigation attempt:', { path, isExamInProgress });
     if (isExamInProgress) {
