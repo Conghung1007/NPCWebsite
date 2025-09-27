@@ -37,6 +37,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [examStarted, setExamStarted] = useState(false);
   const [sectionCompleted, setSectionCompleted] = useState(false); // Track if current section is completed and waiting for progression
+  const [showExitDialog, setShowExitDialog] = useState(false);
+  const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   
   // Section-specific data
   const [sectionQuestions, setSectionQuestions] = useState<Question[]>([]);
@@ -135,6 +137,50 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       return () => clearInterval(timer);
     }
   }, [sectionTimeLeft, examStarted]);
+
+  // Check if exam is in progress (started but not all sections completed)
+  const isExamInProgress = examStarted && completedSections.size < 4;
+
+  // Prevent page unload/navigation when exam is in progress
+  useEffect(() => {
+    if (!isExamInProgress) return;
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "Bạn đang trong quá trình làm bài thi. Bạn có chắc chắn muốn rời trang? Tiến độ làm bài sẽ bị mất.";
+      return e.returnValue;
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [isExamInProgress]);
+
+  // Handle navigation confirmation
+  const handleNavigationConfirm = () => {
+    if (pendingNavigation) {
+      setLocation(pendingNavigation);
+    }
+    setShowExitDialog(false);
+    setPendingNavigation(null);
+  };
+
+  const handleNavigationCancel = () => {
+    setShowExitDialog(false);
+    setPendingNavigation(null);
+  };
+
+  // Custom setLocation with confirmation
+  const handleNavigateWithConfirm = (path: string) => {
+    if (isExamInProgress) {
+      setPendingNavigation(path);
+      setShowExitDialog(true);
+    } else {
+      setLocation(path);
+    }
+  };
 
   // Submit final exam mutation (all 4 sections completed)
   const submitExamMutation = useMutation({
@@ -365,10 +411,10 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               Đây là đề thi chính thức, bạn cần đăng nhập để tham gia.
             </p>
             <div className="space-x-4">
-              <Button variant="outline" onClick={() => setLocation("/login")}>
+              <Button variant="outline" onClick={() => handleNavigateWithConfirm("/login")}>
                 Đăng nhập
               </Button>
-              <Button onClick={() => setLocation("/online-exam")}>
+              <Button onClick={() => handleNavigateWithConfirm("/online-exam")}>
                 Về trang chủ
               </Button>
             </div>
@@ -408,7 +454,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               <p className="text-gray-600 mb-6">
                 Đề thi này hiện tại chưa có câu hỏi nào. Vui lòng thử lại sau hoặc chọn đề thi khác.
               </p>
-              <Button onClick={() => setLocation("/online-exam")}>
+              <Button onClick={() => handleNavigateWithConfirm("/online-exam")}>
                 Về trang chủ
               </Button>
             </CardContent>
@@ -427,7 +473,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             <p className="text-gray-600 mb-6">
               Đề thi này không tồn tại hoặc đã bị xóa.
             </p>
-            <Button onClick={() => setLocation("/online-exam")}>
+            <Button onClick={() => handleNavigateWithConfirm("/online-exam")}>
               Về trang chủ
             </Button>
           </CardContent>
@@ -769,6 +815,36 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   {getNextSection(currentSection) ? "Chuyển phần tiếp theo" : "Nộp bài"}
                 </>
               )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Exit Confirmation Dialog */}
+      <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-red-600">Xác nhận rời trang</DialogTitle>
+            <DialogDescription>
+              Bạn đang trong quá trình làm bài thi. Nếu rời trang bây giờ, toàn bộ tiến độ làm bài sẽ bị mất và không thể khôi phục.
+              <br /><br />
+              <strong>Bạn có chắc chắn muốn rời trang?</strong>
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={handleNavigationCancel}
+              data-testid="button-cancel-exit"
+            >
+              Ở lại và tiếp tục
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleNavigationConfirm}
+              data-testid="button-confirm-exit"
+            >
+              Rời trang
             </Button>
           </DialogFooter>
         </DialogContent>
