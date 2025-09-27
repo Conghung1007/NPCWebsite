@@ -74,6 +74,7 @@ export function QuestionBankManager() {
   const queryClient = useQueryClient();
   
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedLanguage, setSelectedLanguage] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
