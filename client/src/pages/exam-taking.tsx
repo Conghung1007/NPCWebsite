@@ -98,7 +98,12 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             questions: sectionQuestions
           };
         });
-        setExamSections(sectionsWithQuestions.filter(s => s.questions.length > 0));
+        const filteredSections = sectionsWithQuestions.filter(s => s.questions.length > 0);
+        console.log("Setting exam sections:", {
+          allSections: sectionsWithQuestions.map(s => ({ id: s.id, type: s.type, questionCount: s.questions.length })),
+          filteredSections: filteredSections.map(s => ({ id: s.id, type: s.type, questionCount: s.questions.length }))
+        });
+        setExamSections(filteredSections);
       } else {
         // Legacy format with separate question arrays
         const legacySections: ExamSection[] = [];
@@ -436,7 +441,14 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
   // Helper function to check if there's a next section
   const hasNextSection = (): boolean => {
-    return currentSectionIndex + 1 < examSections.length;
+    const hasNext = currentSectionIndex + 1 < examSections.length;
+    console.log("hasNextSection check:", {
+      currentSectionIndex,
+      examSectionsLength: examSections.length,
+      hasNext,
+      examSections: examSections.map(s => ({ id: s.id, type: s.type }))
+    });
+    return hasNext;
   };
 
   // Handle final exam submission
