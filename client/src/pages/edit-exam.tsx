@@ -343,9 +343,15 @@ export default function EditExam() {
     // Don't show questions already selected in current section
     if (currentSection.questions.find(sq => sq.id === question.id)) return false;
     
-    // Apply search filter
-    if (questionSearchQuery && !question.questionText.toLowerCase().includes(questionSearchQuery.toLowerCase())) {
-      return false;
+    // Apply search filter (search in both question text and description)
+    if (questionSearchQuery) {
+      const searchLower = questionSearchQuery.toLowerCase();
+      const questionTextMatch = question.questionText.toLowerCase().includes(searchLower);
+      const descriptionMatch = question.description && question.description.toLowerCase().includes(searchLower);
+      
+      if (!questionTextMatch && !descriptionMatch) {
+        return false;
+      }
     }
     
     // Apply category filter - only show questions matching the current section type (with mapping)
