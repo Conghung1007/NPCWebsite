@@ -819,15 +819,15 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   </p>
                 </div>
               </div>
-              {/* Section Progress Indicator */}
+              {/* Dynamic Section Progress Indicator */}
               <div className="flex items-center gap-2">
-                {["vocabulary", "grammar", "listening", "reading"].map((section, index) => (
-                  <div key={section} className="flex items-center">
+                {examSections.map((section, index) => (
+                  <div key={section.id} className="flex items-center">
                     <div className={`w-3 h-3 rounded-full ${
-                      completedSections.has(section as ExamSection) ? 'bg-green-500' :
-                      section === currentSection ? 'bg-blue-500' : 'bg-gray-300'
+                      completedSections.has(section.id) ? 'bg-green-500' :
+                      currentSectionIndex === index ? 'bg-blue-500' : 'bg-gray-300'
                     }`} />
-                    {index < 3 && <div className="w-6 h-0.5 bg-gray-300 mx-1" />}
+                    {index < examSections.length - 1 && <div className="w-6 h-0.5 bg-gray-300 mx-1" />}
                   </div>
                 ))}
               </div>
@@ -1154,26 +1154,33 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     </div>
                   </div>
 
-                  {/* Section Navigation Info */}
+                  {/* Dynamic Section Navigation Info */}
                   <div className="pt-4 border-t border-gray-200">
-                    <h4 className="font-medium text-sm mb-2">Tiến độ bài thi</h4>
+                    <h4 className="font-medium text-sm mb-2">Tiến độ bài thi ({examSections.length} phần)</h4>
                     <div className="space-y-2 text-xs">
-                      {["vocabulary", "grammar", "listening", "reading"].map((section) => {
-                        const config = {
-                          vocabulary: { title: "Từ vựng", icon: BookOpen },
-                          grammar: { title: "Ngữ pháp", icon: MessageSquare },
-                          listening: { title: "Nghe hiểu", icon: Headphones },
-                          reading: { title: "Đọc hiểu", icon: FileInput }
-                        }[section as ExamSection];
+                      {examSections.map((section, index) => {
+                        const iconMap = {
+                          "từ vựng": BookOpen,
+                          "ngữ pháp": MessageSquare,
+                          "đọc hiểu": FileInput,
+                          "nghe hiểu": Headphones,
+                        };
+                        const SectionIcon = iconMap[section.type] || FileText;
                         
                         return (
-                          <div key={section} className="flex items-center gap-2">
+                          <div key={section.id} className="flex items-center gap-2">
                             <div className={`w-3 h-3 rounded-full ${
-                              completedSections.has(section as ExamSection) ? 'bg-green-500' :
-                              section === currentSection ? 'bg-blue-500' : 'bg-gray-300'
+                              completedSections.has(section.id) ? 'bg-green-500' :
+                              currentSectionIndex === index ? 'bg-blue-500' : 'bg-gray-300'
                             }`} />
-                            <span className={`${section === currentSection ? 'font-medium' : ''}`}>
-                              {config.title}
+                            <SectionIcon className="w-3 h-3 text-gray-500" />
+                            <span className={`flex-1 ${
+                              currentSectionIndex === index ? 'font-medium' : ''
+                            }`}>
+                              {index + 1}. {section.type.charAt(0).toUpperCase() + section.type.slice(1)}
+                            </span>
+                            <span className="text-gray-500">
+                              {section.questions.length} câu
                             </span>
                           </div>
                         );
