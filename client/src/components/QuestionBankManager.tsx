@@ -697,7 +697,6 @@ export function QuestionBankManager() {
                   <TableHead>Nội dung câu hỏi</TableHead>
                   <TableHead>Danh mục</TableHead>
                   <TableHead>Ngôn ngữ</TableHead>
-                  <TableHead>Loại</TableHead>
                   <TableHead>Mô tả</TableHead>
                   <TableHead>Thao tác</TableHead>
                 </TableRow>
@@ -719,11 +718,6 @@ export function QuestionBankManager() {
                     </TableCell>
                     <TableCell>
                       {getLanguageBadge((question as any).language || "japanese")}
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant="outline">
-                        {question.questionType === "multiple_choice" ? "Trắc nghiệm" : "Đúng/Sai"}
-                      </Badge>
                     </TableCell>
                     <TableCell className="max-w-xs">
                       <div className="truncate text-sm text-muted-foreground">
