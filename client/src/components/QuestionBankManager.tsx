@@ -48,11 +48,23 @@ const languageOptions = [
   { value: "german", label: "Tiếng Đức" },
 ];
 
+// Option schema - can be either string (legacy) or object with text + imageUrl
+const optionSchema = z.union([
+  z.string(), // Legacy string format
+  z.object({
+    text: z.string(),
+    imageUrl: z.string().optional(),
+  })
+]);
+
 // Single question schema for each question box
 const singleQuestionSchema = z.object({
   questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
-  options: z.array(z.string()).min(2, "Phải có ít nhất 2 lựa chọn").refine(
-    (options) => options.every(opt => opt.trim().length > 0),
+  options: z.array(optionSchema).min(2, "Phải có ít nhất 2 lựa chọn").refine(
+    (options) => options.every(opt => {
+      const text = typeof opt === 'string' ? opt : opt.text;
+      return text.trim().length > 0;
+    }),
     { message: "Tất cả lựa chọn phải có nội dung" }
   ),
   correctAnswer: z.string().min(1, "Phải chọn đáp án đúng"),
@@ -63,8 +75,10 @@ const singleQuestionSchema = z.object({
 }).refine(
   (data) => {
     // Validate that correctAnswer is one of the provided options
-    const nonEmptyOptions = data.options.filter(option => option.trim() !== "");
-    return nonEmptyOptions.includes(data.correctAnswer);
+    const optionTexts = data.options.map(opt => 
+      typeof opt === 'string' ? opt : opt.text
+    ).filter(text => text.trim() !== "");
+    return optionTexts.includes(data.correctAnswer);
   },
   {
     message: "Đáp án đúng phải là một trong các lựa chọn đã nhập",
@@ -109,7 +123,10 @@ export function QuestionBankManager() {
       category: "ngữ pháp",
       questions: [{
         questionText: "",
-        options: ["", ""],
+        options: [
+          { text: "", imageUrl: "" },
+          { text: "", imageUrl: "" }
+        ],
         correctAnswer: "",
         explanation: "",
         imageUrl: "",
@@ -926,39 +943,83 @@ export function QuestionBankManager() {
                             </Button>
                           </div>
                           
-                          <div className="space-y-2">
+                          <div className="space-y-4">
                             {question.options.map((option, optionIndex) => (
-                              <div key={optionIndex} className="flex items-center gap-2">
-                                <div className="flex-1">
-                                  <Input
-                                    placeholder={`Lựa chọn ${optionIndex + 1}`}
-                                    value={option}
-                                    onChange={(e) => {
+                              <div key={optionIndex} className="border rounded-lg p-3 space-y-3">
+                                <div className="flex items-center gap-2">
+                                  <div className="flex-1">
+                                    <Input
+                                      placeholder={`Lựa chọn ${optionIndex + 1}`}
+                                      value={typeof option === 'string' ? option : option.text}
+                                      onChange={(e) => {
+                                        const currentQuestions = form.getValues("questions");
+                                        const updatedQuestions = [...currentQuestions];
+                                        updatedQuestions[questionIndex] = {
+                                          ...updatedQuestions[questionIndex],
+                                          options: updatedQuestions[questionIndex].options.map((opt, idx) => 
+                                            idx === optionIndex ? 
+                                              (typeof opt === 'string' ? e.target.value : { ...opt, text: e.target.value }) : 
+                                              opt
+                                          )
+                                        };
+                                        form.setValue("questions", updatedQuestions);
+                                      }}
+                                      data-testid={`input-option-${questionIndex}-${optionIndex}`}
+                                    />
+                                  </div>
+                                  {question.options.length > 2 && (
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => handleRemoveOption(questionIndex, optionIndex)}
+                                      className="text-red-600 hover:text-red-700"
+                                      data-testid={`button-remove-option-${questionIndex}-${optionIndex}`}
+                                    >
+                                      <Minus className="w-4 h-4" />
+                                    </Button>
+                                  )}
+                                </div>
+                                {/* Option Image Upload */}
+                                <div>
+                                  <Label className="text-xs text-gray-600">Hình ảnh lựa chọn (tùy chọn)</Label>
+                                  <QuestionImageUploader
+                                    onImageUpload={(imageUrl) => {
                                       const currentQuestions = form.getValues("questions");
                                       const updatedQuestions = [...currentQuestions];
                                       updatedQuestions[questionIndex] = {
                                         ...updatedQuestions[questionIndex],
                                         options: updatedQuestions[questionIndex].options.map((opt, idx) => 
-                                          idx === optionIndex ? e.target.value : opt
+                                          idx === optionIndex ? 
+                                            (typeof opt === 'string' ? 
+                                              { text: opt, imageUrl } : 
+                                              { ...opt, imageUrl }) : 
+                                            opt
                                         )
                                       };
                                       form.setValue("questions", updatedQuestions);
                                     }}
-                                    data-testid={`input-option-${questionIndex}-${optionIndex}`}
+                                    currentImageUrl={typeof option === 'string' ? '' : option.imageUrl || ''}
+                                    onRemoveImage={() => {
+                                      const currentQuestions = form.getValues("questions");
+                                      const updatedQuestions = [...currentQuestions];
+                                      updatedQuestions[questionIndex] = {
+                                        ...updatedQuestions[questionIndex],
+                                        options: updatedQuestions[questionIndex].options.map((opt, idx) => 
+                                          idx === optionIndex ? 
+                                            (typeof opt === 'string' ? 
+                                              { text: opt, imageUrl: '' } : 
+                                              { ...opt, imageUrl: '' }) : 
+                                            opt
+                                        )
+                                      };
+                                      form.setValue("questions", updatedQuestions);
+                                    }}
+                                    type="answer"
+                                    maxSizeMB={2}
+                                    label={`Hình lựa chọn ${optionIndex + 1}`}
                                   />
                                 </div>
-                                {question.options.length > 2 && (
-                                  <Button
-                                    type="button"
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleRemoveOption(questionIndex, optionIndex)}
-                                    className="text-red-600 hover:text-red-700"
-                                    data-testid={`button-remove-option-${questionIndex}-${optionIndex}`}
-                                  >
-                                    <Minus className="w-4 h-4" />
-                                  </Button>
-                                )}
                               </div>
                             ))}
                           </div>
@@ -978,13 +1039,14 @@ export function QuestionBankManager() {
                                   </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
-                                  {question.options.map((option, index) => (
-                                    option.trim() && (
-                                      <SelectItem key={index} value={option}>
-                                        {option}
+                                  {question.options.map((option, index) => {
+                                    const optionText = typeof option === 'string' ? option : option.text;
+                                    return optionText.trim() && (
+                                      <SelectItem key={index} value={optionText}>
+                                        {optionText}
                                       </SelectItem>
-                                    )
-                                  ))}
+                                    );
+                                  })}
                                 </SelectContent>
                               </Select>
                               <FormMessage />

@@ -481,7 +481,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   };
 
   const handleNext = () => {
-    if (currentQuestionIndex < sectionQuestions.length - 1) {
+    const currentSection = getCurrentSection();
+    if (currentSection && currentQuestionIndex < currentSection.questions.length - 1) {
       setCurrentQuestionIndex(prev => prev + 1);
     }
   };
@@ -636,8 +637,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     );
   }
 
-  const currentQuestion = sectionQuestions[currentQuestionIndex];
-  const progress = sectionQuestions.length > 0 ? ((currentQuestionIndex + 1) / sectionQuestions.length) * 100 : 0;
+  const currentSection = getCurrentSection();
+  const currentQuestion = currentSection?.questions[currentQuestionIndex];
+  const progress = currentSection?.questions.length > 0 ? ((currentQuestionIndex + 1) / currentSection.questions.length) * 100 : 0;
   const answeredCount = Object.keys(sectionAnswers).length;
   const sectionConfig = getSectionConfig();
   const SectionIcon = sectionConfig.icon;
