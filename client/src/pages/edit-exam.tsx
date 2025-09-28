@@ -11,14 +11,17 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Plus, Save, ArrowLeft, Trash2 } from "lucide-react";
+import { Plus, Save, ArrowLeft, Trash2, Search, HelpCircle, Volume2, Eye, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
 import { apiRequest } from "@/lib/queryClient";
 import { MultipleImagePreviewBox } from "@/components/MultipleImagePreviewBox";
 import { AudioUploader } from "@/components/AudioUploader";
-import type { Exam } from "@shared/schema";
+import type { Question, Exam } from "@shared/schema";
 
 const questionCategories = [
   { value: "từ vựng", label: "Từ vựng" },
@@ -35,6 +38,7 @@ interface ExamSection {
   content?: string;
   descriptionImageUrls?: string[];
   descriptionAudioUrl?: string;
+  questions: Question[];
 }
 
 // Form validation schema for exam information
@@ -55,6 +59,13 @@ export default function EditExam() {
 
   // State for dynamic exam sections
   const [examSections, setExamSections] = useState<ExamSection[]>([]);
+  
+  // State for question selection dialog
+  const [isQuestionSelectOpen, setIsQuestionSelectOpen] = useState(false);
+  const [currentSectionId, setCurrentSectionId] = useState<string>("");
+  const [questionSearchQuery, setQuestionSearchQuery] = useState("");
+  const [selectedLanguageFilter, setSelectedLanguageFilter] = useState<string>("all");
+  const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
   
   // Refs for handling file uploads
   const sectionImageInputRefs = useRef<Map<string, HTMLInputElement | null>>(new Map());
@@ -82,9 +93,15 @@ export default function EditExam() {
     }
   }, [authLoading, user, hasImageEditPermission, setLocation]);
 
+  // Fetch questions from question bank - only when authenticated
+  const { data: availableQuestions = [], isLoading: questionsLoading } = useQuery<Question[]>({
+    queryKey: ["/api/questions"],
+    enabled: !!user && hasImageEditPermission,
+  });
+
   // Load existing exam data into sections
   useEffect(() => {
-    if (exam) {
+    if (exam && availableQuestions.length > 0) {
       console.log('Loading exam data into sections:', exam);
       
       // Set form values
@@ -101,58 +118,83 @@ export default function EditExam() {
       if (exam.sections && Array.isArray(exam.sections) && exam.sections.length > 0) {
         // Load from new sections format
         exam.sections.forEach((section: any) => {
+          const sectionQuestions = (section.questionIds || [])
+            .map((id: string) => availableQuestions.find((q: Question) => q.id === id))
+            .filter(Boolean) as Question[];
+            
           sections.push({
             id: section.id || `section-${Date.now()}-${Math.random()}`,
             type: section.type,
             timeLimit: section.timeLimit || 10,
             content: section.content || "",
             descriptionImageUrls: section.descriptionImageUrls || [],
-            descriptionAudioUrl: section.descriptionAudioUrl || ""
+            descriptionAudioUrl: section.descriptionAudioUrl || "",
+            questions: sectionQuestions
           });
         });
       } else {
         // Legacy: Add sections based on existing question arrays for backward compatibility
         if (exam.vocabularyQuestions && Array.isArray(exam.vocabularyQuestions) && exam.vocabularyQuestions.length > 0) {
+          const vocabularyQs = exam.vocabularyQuestions
+            .map((id: string) => availableQuestions.find((q: Question) => q.id === id))
+            .filter(Boolean) as Question[];
+            
           sections.push({
             id: "vocab-section",
             type: "từ vựng",
             timeLimit: exam.vocabularyTimeLimit || 10,
             content: "",
             descriptionImageUrls: [],
-            descriptionAudioUrl: ""
+            descriptionAudioUrl: "",
+            questions: vocabularyQs
           });
         }
 
         if (exam.grammarQuestions && Array.isArray(exam.grammarQuestions) && exam.grammarQuestions.length > 0) {
+          const grammarQs = exam.grammarQuestions
+            .map((id: string) => availableQuestions.find((q: Question) => q.id === id))
+            .filter(Boolean) as Question[];
+            
           sections.push({
             id: "grammar-section",
             type: "ngữ pháp",
             timeLimit: exam.grammarTimeLimit || 10,
             content: "",
             descriptionImageUrls: [],
-            descriptionAudioUrl: ""
+            descriptionAudioUrl: "",
+            questions: grammarQs
           });
         }
 
         if (exam.listeningQuestions && Array.isArray(exam.listeningQuestions) && exam.listeningQuestions.length > 0) {
+          const listeningQs = exam.listeningQuestions
+            .map((id: string) => availableQuestions.find((q: Question) => q.id === id))
+            .filter(Boolean) as Question[];
+            
           sections.push({
             id: "listening-section",
             type: "nghe hiểu",
             timeLimit: exam.listeningTimeLimit || 10,
             content: "",
             descriptionImageUrls: [],
-            descriptionAudioUrl: ""
+            descriptionAudioUrl: "",
+            questions: listeningQs
           });
         }
 
         if (exam.readingQuestions && Array.isArray(exam.readingQuestions) && exam.readingQuestions.length > 0) {
+          const readingQs = exam.readingQuestions
+            .map((id: string) => availableQuestions.find((q: Question) => q.id === id))
+            .filter(Boolean) as Question[];
+            
           sections.push({
             id: "reading-section",
             type: "đọc hiểu",
             timeLimit: exam.readingTimeLimit || 10,
             content: "",
             descriptionImageUrls: [],
-            descriptionAudioUrl: ""
+            descriptionAudioUrl: "",
+            questions: readingQs
           });
         }
       }
@@ -165,13 +207,14 @@ export default function EditExam() {
           timeLimit: 10,
           content: "",
           descriptionImageUrls: [],
-          descriptionAudioUrl: ""
+          descriptionAudioUrl: "",
+          questions: []
         });
       }
 
       setExamSections(sections);
     }
-  }, [exam, form]);
+  }, [exam, availableQuestions, form]);
 
   // Helper functions for managing dynamic sections
   const addExamSection = () => {
@@ -181,7 +224,8 @@ export default function EditExam() {
       timeLimit: 10,
       content: "",
       descriptionImageUrls: [],
-      descriptionAudioUrl: ""
+      descriptionAudioUrl: "",
+      questions: []
     };
     setExamSections(prev => [...prev, newSection]);
   };
@@ -238,6 +282,95 @@ export default function EditExam() {
     ));
   };
 
+  // Question management functions
+  const addQuestionToSection = (sectionId: string, question: Question) => {
+    setExamSections(prev => prev.map(section => 
+      section.id === sectionId 
+        ? { ...section, questions: [...section.questions, question] }
+        : section
+    ));
+  };
+
+  const removeQuestionFromSection = (sectionId: string, questionId: string) => {
+    setExamSections(prev => prev.map(section => 
+      section.id === sectionId 
+        ? { ...section, questions: section.questions.filter(q => q.id !== questionId) }
+        : section
+    ));
+  };
+
+  const openQuestionSelector = (sectionId: string) => {
+    setCurrentSectionId(sectionId);
+    setIsQuestionSelectOpen(true);
+    setQuestionSearchQuery("");
+    setSelectedLanguageFilter("all");
+    setSelectedCategoryFilter("all");
+  };
+
+  // Category mapping between English and Vietnamese
+  const categoryMapping: Record<string, string> = {
+    "vocabulary": "từ vựng",
+    "grammar": "ngữ pháp", 
+    "reading": "đọc hiểu",
+    "listening": "nghe hiểu",
+    "từ vựng": "từ vựng",
+    "ngữ pháp": "ngữ pháp",
+    "đọc hiểu": "đọc hiểu", 
+    "nghe hiểu": "nghe hiểu"
+  };
+
+  // Filter questions for selection based on current section type
+  const getFilteredQuestionsForSection = () => {
+    if (!currentSectionId) return [];
+    
+    const currentSection = examSections.find(s => s.id === currentSectionId);
+    if (!currentSection) return [];
+
+    // Get all questions already used in ANY section
+    const usedQuestionIds = examSections.flatMap(section => section.questions.map(q => q.id));
+    
+    return availableQuestions.filter(question => {
+      // Don't show questions already used
+      if (usedQuestionIds.includes(question.id)) return false;
+      
+      // Only show questions of the current section type (with mapping)
+      const questionCategoryVietnamese = categoryMapping[question.category] || question.category;
+      if (questionCategoryVietnamese !== currentSection.type) return false;
+      
+      // Apply search filter
+      if (questionSearchQuery && !question.questionText.toLowerCase().includes(questionSearchQuery.toLowerCase())) {
+        return false;
+      }
+      
+      // Apply category filter
+      if (selectedCategoryFilter && selectedCategoryFilter !== "all" && question.category !== selectedCategoryFilter) {
+        return false;
+      }
+      
+      // Apply language filter  
+      if (selectedLanguageFilter && selectedLanguageFilter !== "all" && question.language !== selectedLanguageFilter) {
+        return false;
+      }
+      
+      return true;
+    });
+  };
+
+  const getCategoryBadge = (category: string) => {
+    const categoryConfig = questionCategories.find(cat => cat.value === category);
+    const variants: any = {
+      "từ vựng": "default",
+      "ngữ pháp": "secondary", 
+      "đọc hiểu": "outline",
+      "nghe hiểu": "destructive"
+    };
+    return (
+      <Badge variant={variants[category] || "outline"}>
+        {categoryConfig?.label || category}
+      </Badge>
+    );
+  };
+
   // File upload handlers
   const handleSectionImageUpload = async (sectionId: string, files: FileList) => {
     const file = files[0];
@@ -274,7 +407,8 @@ export default function EditExam() {
     }
   };
 
-  // Calculate total time
+  // Calculate total questions and time
+  const totalQuestions = examSections.reduce((sum, section) => sum + section.questions.length, 0);
   const totalTimeLimit = examSections.reduce((sum, section) => sum + section.timeLimit, 0);
 
   // Update exam mutation with new section structure
@@ -295,7 +429,8 @@ export default function EditExam() {
           timeLimit: section.timeLimit,
           content: section.content || "",
           descriptionImageUrls: section.descriptionImageUrls || [],
-          descriptionAudioUrl: section.descriptionAudioUrl || ""
+          descriptionAudioUrl: section.descriptionAudioUrl || "",
+          questionIds: section.questions.map(q => q.id)
         }))
       };
 
@@ -461,6 +596,10 @@ export default function EditExam() {
                         <span className="font-medium">{examSections.length}</span>
                       </div>
                       <div className="flex justify-between">
+                        <span>Tổng câu hỏi:</span>
+                        <span className="font-medium">{totalQuestions}</span>
+                      </div>
+                      <div className="flex justify-between">
                         <span>Tổng thời gian:</span>
                         <span className="font-medium">{totalTimeLimit} phút</span>
                       </div>
@@ -588,10 +727,9 @@ export default function EditExam() {
                         </Label>
                         <div className="mt-2">
                           <AudioUploader
-                            audioUrl={section.descriptionAudioUrl || ""}
-                            onAudioChange={(audioUrl) => updateSectionDescriptionAudio(section.id, audioUrl)}
-                            uploadEndpoint="/api/temp-description-audio/upload"
-                            data-testid={`audio-${section.id}`}
+                            currentAudioUrl={section.descriptionAudioUrl || ""}
+                            onAudioUpload={(audioUrl: string) => updateSectionDescriptionAudio(section.id, audioUrl)}
+                            onRemoveAudio={() => updateSectionDescriptionAudio(section.id, "")}
                           />
                         </div>
                       </div>
@@ -632,6 +770,93 @@ export default function EditExam() {
                           />
                         </div>
                       </div>
+
+                      {/* Question Management */}
+                      <div>
+                        <div className="flex justify-between items-center mb-4">
+                          <Label className="text-sm font-medium text-gray-700">
+                            Câu hỏi ({section.questions.length})
+                          </Label>
+                          <Button
+                            onClick={() => openQuestionSelector(section.id)}
+                            variant="outline"
+                            size="sm"
+                            disabled={questionsLoading}
+                            data-testid={`button-add-questions-${section.id}`}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Thêm câu hỏi
+                          </Button>
+                        </div>
+
+                        {/* Questions List */}
+                        <div className="space-y-3">
+                          {section.questions.length === 0 ? (
+                            <div className="text-sm text-gray-500 p-4 border border-dashed border-gray-300 rounded-lg text-center">
+                              Chưa có câu hỏi nào. Nhấn "Thêm câu hỏi" để chọn từ ngân hàng câu hỏi.
+                            </div>
+                          ) : (
+                            section.questions.map((question) => (
+                              <div
+                                key={question.id}
+                                className="p-4 border border-gray-200 rounded-lg"
+                                data-testid={`question-${question.id}`}
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="flex-1">
+                                    <div className="flex items-center gap-2 mb-2">
+                                      {getCategoryBadge(question.category)}
+                                      <Badge variant="outline">{question.language}</Badge>
+                                    </div>
+                                    
+                                    <p className="text-sm text-gray-800 mb-2">{question.questionText}</p>
+                                    
+                                    {/* Question Image Preview */}
+                                    {question.imageUrl && (
+                                      <div className="mb-2">
+                                        <img 
+                                          src={question.imageUrl} 
+                                          alt="Question image"
+                                          className="h-20 w-auto object-cover rounded border"
+                                          onError={(e) => {
+                                            const target = e.target as HTMLImageElement;
+                                            target.style.display = 'none';
+                                          }}
+                                        />
+                                      </div>
+                                    )}
+
+                                    {/* Answer Options */}
+                                    <div className="grid grid-cols-2 gap-2 text-xs">
+                                      {[question.optionA, question.optionB, question.optionC, question.optionD]
+                                        .filter(Boolean)
+                                        .map((option, index) => (
+                                          <div key={index} className={`p-2 rounded ${
+                                            String.fromCharCode(65 + index) === question.correctAnswer 
+                                              ? 'bg-green-50 text-green-800 border border-green-200' 
+                                              : 'bg-gray-50 text-gray-600'
+                                          }`}>
+                                            <span className="font-medium">{String.fromCharCode(65 + index)}.</span> {option}
+                                          </div>
+                                        ))}
+                                    </div>
+                                  </div>
+                                  
+                                  <Button
+                                    onClick={() => removeQuestionFromSection(section.id, question.id)}
+                                    variant="ghost"
+                                    size="sm"
+                                    className="text-red-600 hover:text-red-700 ml-2"
+                                    data-testid={`button-remove-question-${question.id}`}
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 ))
@@ -640,6 +865,166 @@ export default function EditExam() {
           </Card>
         </div>
       </div>
+
+      {/* Question Selection Dialog */}
+      <Dialog open={isQuestionSelectOpen} onOpenChange={setIsQuestionSelectOpen}>
+        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Chọn câu hỏi từ ngân hàng</DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            {/* Search and Filter Controls */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <Label>Tìm kiếm</Label>
+                <Input
+                  placeholder="Tìm kiếm câu hỏi..."
+                  value={questionSearchQuery}
+                  onChange={(e) => setQuestionSearchQuery(e.target.value)}
+                  data-testid="input-search-questions"
+                />
+              </div>
+              
+              <div>
+                <Label>Ngôn ngữ</Label>
+                <Select value={selectedLanguageFilter || "all"} onValueChange={setSelectedLanguageFilter}>
+                  <SelectTrigger data-testid="select-language-filter">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả ngôn ngữ</SelectItem>
+                    <SelectItem value="vi">Tiếng Việt</SelectItem>
+                    <SelectItem value="ja">Tiếng Nhật</SelectItem>
+                    <SelectItem value="en">Tiếng Anh</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              
+              <div>
+                <Label>Danh mục</Label>
+                <Select value={selectedCategoryFilter || "all"} onValueChange={setSelectedCategoryFilter}>
+                  <SelectTrigger data-testid="select-category-filter">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Tất cả danh mục</SelectItem>
+                    {questionCategories.map(category => (
+                      <SelectItem key={category.value} value={category.value}>
+                        {category.label}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {/* Available Questions */}
+            <div className="border rounded-lg">
+              <div className="p-4 border-b bg-gray-50">
+                <h4 className="font-medium">
+                  Câu hỏi có sẵn ({getFilteredQuestionsForSection().length})
+                </h4>
+              </div>
+              
+              <div className="max-h-96 overflow-y-auto">
+                {questionsLoading ? (
+                  <div className="p-8 text-center">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
+                    <p className="mt-2 text-sm text-gray-500">Đang tải câu hỏi...</p>
+                  </div>
+                ) : getFilteredQuestionsForSection().length === 0 ? (
+                  <div className="p-8 text-center text-gray-500">
+                    <p>Không có câu hỏi phù hợp với bộ lọc hiện tại.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {getFilteredQuestionsForSection().map((question) => (
+                      <div
+                        key={question.id}
+                        className="p-4 hover:bg-gray-50 cursor-pointer"
+                        onClick={() => {
+                          if (currentSectionId) {
+                            addQuestionToSection(currentSectionId, question);
+                            // Don't close dialog immediately - let user add multiple questions
+                          }
+                        }}
+                        data-testid={`selectable-question-${question.id}`}
+                      >
+                        <div className="flex items-start justify-between">
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-2">
+                              {getCategoryBadge(question.category)}
+                              <Badge variant="outline">{question.language}</Badge>
+                            </div>
+                            
+                            <p className="text-sm text-gray-800 mb-2">{question.questionText}</p>
+                            
+                            {/* Question Image Preview */}
+                            {question.imageUrl && (
+                              <div className="mb-2">
+                                <img 
+                                  src={question.imageUrl} 
+                                  alt="Question image"
+                                  className="h-16 w-auto object-cover rounded border"
+                                  onError={(e) => {
+                                    const target = e.target as HTMLImageElement;
+                                    target.style.display = 'none';
+                                  }}
+                                />
+                              </div>
+                            )}
+
+                            {/* Answer Options */}
+                            <div className="grid grid-cols-2 gap-1 text-xs">
+                              {[question.optionA, question.optionB, question.optionC, question.optionD]
+                                .filter(Boolean)
+                                .map((option, index) => (
+                                  <div key={index} className={`p-1 rounded ${
+                                    String.fromCharCode(65 + index) === question.correctAnswer 
+                                      ? 'bg-green-50 text-green-800' 
+                                      : 'bg-gray-50 text-gray-600'
+                                  }`}>
+                                    <span className="font-medium">{String.fromCharCode(65 + index)}.</span> {option}
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                          
+                          <Button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (currentSectionId) {
+                                addQuestionToSection(currentSectionId, question);
+                              }
+                            }}
+                            variant="outline"
+                            size="sm"
+                            className="ml-2"
+                            data-testid={`button-add-question-${question.id}`}
+                          >
+                            <Plus className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end space-x-2 pt-4">
+            <Button
+              variant="outline"
+              onClick={() => setIsQuestionSelectOpen(false)}
+              data-testid="button-close-dialog"
+            >
+              Đóng
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
