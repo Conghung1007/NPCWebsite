@@ -393,15 +393,31 @@ export function QuestionBankManager() {
           : [];
       
       // Convert string array to object array format for backward compatibility
-      options = rawOptions.map((opt: any) => 
-        typeof opt === 'string' 
-          ? { text: opt, imageUrl: "", imageUrls: [] }
-          : { 
-              text: opt.text || "", 
-              imageUrl: opt.imageUrl || "", 
-              imageUrls: opt.imageUrls || [] 
-            }
-      );
+      options = rawOptions.map((opt: any) => {
+        if (typeof opt === 'string') {
+          return { text: opt, imageUrl: "", imageUrls: [] };
+        } else {
+          // Parse opt.imageUrls if it's stored as a JSON string
+          let optionImageUrls;
+          try {
+            const rawOptImageUrls = opt.imageUrls;
+            optionImageUrls = typeof rawOptImageUrls === 'string' 
+              ? JSON.parse(rawOptImageUrls) 
+              : Array.isArray(rawOptImageUrls) 
+                ? rawOptImageUrls 
+                : [];
+          } catch (error) {
+            console.warn('Failed to parse option imageUrls:', error);
+            optionImageUrls = [];
+          }
+          
+          return { 
+            text: opt.text || "", 
+            imageUrl: opt.imageUrl || "", 
+            imageUrls: optionImageUrls
+          };
+        }
+      });
     } catch (error) {
       console.warn('Failed to parse question options:', error);
       options = [{ text: "", imageUrl: "", imageUrls: [] }, { text: "", imageUrl: "", imageUrls: [] }];
@@ -442,6 +458,7 @@ export function QuestionBankManager() {
       questions: [{
         questionText: question.questionText,
         description: question.description || "",
+        descriptionImageUrls: descriptionImageUrls,
         options,
         correctAnswer: question.correctAnswer,
         explanation: question.explanation || "",
