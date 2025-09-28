@@ -142,12 +142,17 @@ export function QuestionBankManager() {
     return matchesSearch && matchesCategory && matchesLanguage;
   });
 
+  // Sort questions by newest first and then paginate
+  const sortedQuestions = [...filteredQuestions].sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+
   // Pagination logic
-  const totalPages = Math.max(1, Math.ceil(filteredQuestions.length / itemsPerPage));
+  const totalPages = Math.max(1, Math.ceil(sortedQuestions.length / itemsPerPage));
   const safePage = Math.min(currentPage, totalPages);
   const startIndex = (safePage - 1) * itemsPerPage;
   const endIndex = startIndex + itemsPerPage;
-  const paginatedQuestions = filteredQuestions.slice(startIndex, endIndex);
+  const paginatedQuestions = sortedQuestions.slice(startIndex, endIndex);
 
   // Auto-correct current page if it's out of bounds
   if (currentPage > totalPages && totalPages > 0) {

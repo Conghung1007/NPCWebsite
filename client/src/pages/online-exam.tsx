@@ -21,9 +21,13 @@ export function OnlineExamPage() {
     retry: false,
   });
 
-  // Separate demo and official exams
-  const allDemoExams = exams.filter(exam => exam.isDemo && exam.isActive);
-  const allOfficialExams = exams.filter(exam => !exam.isDemo && exam.isActive);
+  // Separate demo and official exams, then sort by newest first
+  const allDemoExams = exams
+    .filter(exam => exam.isDemo && exam.isActive)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  const allOfficialExams = exams
+    .filter(exam => !exam.isDemo && exam.isActive)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
   // Calculate pagination for demo exams
   const demoTotalPages = Math.ceil(allDemoExams.length / examsPerPage);
