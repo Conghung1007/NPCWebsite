@@ -897,6 +897,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     <div className="flex justify-center">
                       <audio 
                         controls 
+                        controlsList="nodownload"
                         className="w-full max-w-md" 
                         data-testid="section-audio"
                         key={`section-audio-${currentSectionIndex}`}
@@ -961,7 +962,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   {/* Question Audio */}
                   {currentQuestion.audioUrl && (
                     <div className="flex justify-center">
-                      <audio controls className="w-full max-w-md" key={currentQuestion.id}>
+                      <audio controls controlsList="nodownload" className="w-full max-w-md" key={currentQuestion.id}>
                         <source src={currentQuestion.audioUrl.startsWith('/api/') 
                           ? currentQuestion.audioUrl 
                           : `/api/${currentQuestion.audioUrl}`} type="audio/mpeg" />
