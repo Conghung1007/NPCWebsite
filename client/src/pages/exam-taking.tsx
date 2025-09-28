@@ -642,7 +642,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const progress = currentSection?.questions.length > 0 ? ((currentQuestionIndex + 1) / currentSection.questions.length) * 100 : 0;
   const answeredCount = Object.keys(sectionAnswers).length;
   const sectionConfig = getSectionConfig();
-  const SectionIcon = sectionConfig.icon;
+  const SectionIcon = sectionConfig?.icon;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -652,15 +652,15 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
           <div className="flex items-center justify-between">
             <div>
               <div className="flex items-center gap-3 mb-2">
-                <div className={`p-2 rounded-lg ${sectionConfig.color} text-white`}>
-                  <SectionIcon className="w-5 h-5" />
+                <div className={`p-2 rounded-lg ${sectionConfig?.color || 'bg-blue-500'} text-white`}>
+                  {SectionIcon && <SectionIcon className="w-5 h-5" />}
                 </div>
                 <div>
                   <h1 className="text-xl font-semibold text-gray-900">
-                    {sectionConfig.title} - {exam.title}
+                    {sectionConfig?.title || 'Đang tải'} - {exam.title}
                   </h1>
                   <p className="text-sm text-gray-600">
-                    Câu {currentQuestionIndex + 1} / {sectionQuestions.length}
+                    Câu {currentQuestionIndex + 1} / {currentSection?.questions.length || 0}
                   </p>
                 </div>
               </div>
@@ -761,10 +761,10 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                 </CardHeader>
                 <CardContent className="space-y-6">
                   {/* Question Images */}
-                  {(currentQuestion.imageUrls && currentQuestion.imageUrls.length > 0) || currentQuestion.imageUrl ? (
+                  {((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) || (currentQuestion as any).imageUrl ? (
                     <div className="flex justify-center flex-wrap gap-4">
                       {/* Show imageUrls array first (new format) */}
-                      {currentQuestion.imageUrls && currentQuestion.imageUrls.map((imageUrl, index) => (
+                      {(currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.map((imageUrl: string, index: number) => (
                         <img
                           key={index}
                           src={imageUrl}
@@ -773,9 +773,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                         />
                       ))}
                       {/* Show single imageUrl if no imageUrls (legacy support) */}
-                      {currentQuestion.imageUrl && (!currentQuestion.imageUrls || currentQuestion.imageUrls.length === 0) && (
+                      {(currentQuestion as any).imageUrl && (!(currentQuestion as any).imageUrls || (currentQuestion as any).imageUrls.length === 0) && (
                         <img
-                          src={currentQuestion.imageUrl}
+                          src={(currentQuestion as any).imageUrl}
                           alt="Question illustration"
                           className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
                         />
@@ -800,7 +800,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     value={sectionAnswers[currentQuestion.id] || ""}
                     onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
                   >
-                    {currentQuestion.options.map((option, index) => {
+                    {(currentQuestion.options as any[]).map((option: any, index: number) => {
                       const optionText = typeof option === 'string' ? option : option.text;
                       const optionImageUrl = typeof option === 'string' ? '' : option.imageUrl;
                       const optionImageUrls = typeof option === 'string' ? [] : (option.imageUrls || []);
@@ -824,7 +824,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                               {/* Display multiple option images (new format) */}
                               {optionImageUrls.length > 0 && (
                                 <div className="flex flex-wrap gap-2">
-                                  {optionImageUrls.map((imageUrl, imgIndex) => (
+                                  {optionImageUrls.map((imageUrl: string, imgIndex: number) => (
                                     <img
                                       key={imgIndex}
                                       src={imageUrl}
@@ -866,7 +866,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                 </Button>
                 <Button
                   onClick={handleNext}
-                  disabled={currentQuestionIndex === sectionQuestions.length - 1 || sectionCompleted}
+                  disabled={currentQuestionIndex === (currentSection?.questions.length || 0) - 1 || sectionCompleted}
                 >
                   Câu sau
                   <ChevronRight className="w-4 h-4 ml-2" />
@@ -887,12 +887,12 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               <CardContent>
                 <div className="space-y-4">
                   <div className="text-sm">
-                    <p className="font-medium">Đã trả lời: {answeredCount}/{sectionQuestions.length}</p>
-                    <Progress value={(answeredCount / sectionQuestions.length) * 100} className="mt-2" />
+                    <p className="font-medium">Đã trả lời: {answeredCount}/{currentSection?.questions.length || 0}</p>
+                    <Progress value={((currentSection?.questions.length || 0) > 0) ? (answeredCount / (currentSection?.questions.length || 1)) * 100 : 0} className="mt-2" />
                   </div>
                   
                   <div className="grid grid-cols-5 gap-2">
-                    {sectionQuestions.map((question, index) => {
+                    {(currentSection?.questions || []).map((question, index) => {
                       const isCurrent = index === currentQuestionIndex;
                       const isAnswered = sectionAnswers[question.id];
                       const canNavigate = index <= currentQuestionIndex; // Allow navigation to current and previous questions
@@ -987,7 +987,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   <br />
                   <strong>Thống kê phần này:</strong>
                   <br />
-                  • Đã trả lời: {answeredCount}/{sectionQuestions.length} câu
+                  • Đã trả lời: {answeredCount}/{currentSection?.questions.length || 0} câu
                   <br />
                   • Thời gian còn lại: {formatTime(sectionTimeLeft)}
                   <br />
@@ -1003,7 +1003,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   <br />
                   <strong>Thống kê phần cuối:</strong>
                   <br />
-                  • Đã trả lời: {answeredCount}/{sectionQuestions.length} câu
+                  • Đã trả lời: {answeredCount}/{currentSection?.questions.length || 0} câu
                   <br />
                   • Thời gian còn lại: {formatTime(sectionTimeLeft)}
                   <br />

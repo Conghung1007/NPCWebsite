@@ -1054,13 +1054,12 @@ export function QuestionBankManager() {
                                           return;
                                         }
                                         
-                                        // Upload each file to MediaUploader
+                                        // Upload each file using the correct answer images endpoint
                                         const uploadPromises = files.map(async (file) => {
                                           const formData = new FormData();
-                                          formData.append('file', file);
-                                          formData.append('type', 'answer');
+                                          formData.append('image', file);
                                           
-                                          const response = await fetch('/api/upload', {
+                                          const response = await fetch('/api/answer-images/upload-direct', {
                                             method: 'POST',
                                             body: formData
                                           });
@@ -1070,7 +1069,7 @@ export function QuestionBankManager() {
                                           }
                                           
                                           const result = await response.json();
-                                          return result.url;
+                                          return result.imageUrl;
                                         });
                                         
                                         const newImageUrls = await Promise.all(uploadPromises);
