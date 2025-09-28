@@ -62,6 +62,7 @@ const optionSchema = z.union([
 const singleQuestionSchema = z.object({
   questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
   description: z.string().optional(),
+  descriptionImageUrls: z.array(z.string()).default([]), // Array of description image URLs
   options: z.array(optionSchema).min(2, "Phải có ít nhất 2 lựa chọn").refine(
     (options) => options.every(opt => {
       const text = typeof opt === 'string' ? opt : opt.text;

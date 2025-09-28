@@ -20,6 +20,11 @@ export function MultipleImagePreviewBox({
 }: MultipleImagePreviewBoxProps) {
   // Ensure imageUrls is always an array
   const safeImageUrls = imageUrls || [];
+  
+  // Debug logging
+  console.log('MultipleImagePreviewBox - title:', title);
+  console.log('MultipleImagePreviewBox - imageUrls:', imageUrls);
+  console.log('MultipleImagePreviewBox - safeImageUrls:', safeImageUrls);
   const canAddMore = safeImageUrls.length < maxImages;
 
   return (
