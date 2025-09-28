@@ -120,22 +120,25 @@ export const examAttempts = pgTable("exam_attempts", {
   examId: varchar("exam_id").notNull(),
   userId: varchar("user_id"), // Null for demo exams (anonymous)
   
-  // Section-specific answers and timing
-  vocabularyAnswers: jsonb("vocabulary_answers").notNull(), // User's answers for vocabulary section
-  vocabularyTimeSpent: integer("vocabulary_time_spent").notNull(), // Time spent in seconds
-  vocabularyScore: integer("vocabulary_score").notNull(), // Score for vocabulary section
+  // New dynamic section results structure
+  sectionResults: jsonb("section_results").notNull().default('[]'), // Array of { sectionId, type, answers, timeSpent, score }
   
-  grammarAnswers: jsonb("grammar_answers").notNull(), // User's answers for grammar section  
-  grammarTimeSpent: integer("grammar_time_spent").notNull(), // Time spent in seconds
-  grammarScore: integer("grammar_score").notNull(), // Score for grammar section
+  // Legacy section-specific answers and timing (kept for backward compatibility, now nullable)
+  vocabularyAnswers: jsonb("vocabulary_answers"), // User's answers for vocabulary section
+  vocabularyTimeSpent: integer("vocabulary_time_spent"), // Time spent in seconds
+  vocabularyScore: integer("vocabulary_score"), // Score for vocabulary section
   
-  listeningAnswers: jsonb("listening_answers").notNull(), // User's answers for listening section
-  listeningTimeSpent: integer("listening_time_spent").notNull(), // Time spent in seconds  
-  listeningScore: integer("listening_score").notNull(), // Score for listening section
+  grammarAnswers: jsonb("grammar_answers"), // User's answers for grammar section  
+  grammarTimeSpent: integer("grammar_time_spent"), // Time spent in seconds
+  grammarScore: integer("grammar_score"), // Score for grammar section
   
-  readingAnswers: jsonb("reading_answers").notNull(), // User's answers for reading section
-  readingTimeSpent: integer("reading_time_spent").notNull(), // Time spent in seconds
-  readingScore: integer("reading_score").notNull(), // Score for reading section
+  listeningAnswers: jsonb("listening_answers"), // User's answers for listening section
+  listeningTimeSpent: integer("listening_time_spent"), // Time spent in seconds  
+  listeningScore: integer("listening_score"), // Score for listening section
+  
+  readingAnswers: jsonb("reading_answers"), // User's answers for reading section
+  readingTimeSpent: integer("reading_time_spent"), // Time spent in seconds
+  readingScore: integer("reading_score"), // Score for reading section
   
   // Total scores and timing
   totalScore: integer("total_score").notNull(), // Final total score
@@ -216,9 +219,33 @@ export const insertExamQuestionSchema = createInsertSchema(examQuestions).omit({
   createdAt: true,
 });
 
+// Section result type for dynamic sections
+export const sectionResultSchema = z.object({
+  sectionId: z.string(),
+  type: z.string(),
+  answers: z.record(z.string(), z.string()), // questionId -> answer
+  timeSpent: z.number(),
+  score: z.number(),
+});
+
 export const insertExamAttemptSchema = createInsertSchema(examAttempts).omit({
   id: true,
   completedAt: true,
+  // Omit legacy fields - use sectionResults instead
+  vocabularyAnswers: true,
+  vocabularyTimeSpent: true,
+  vocabularyScore: true,
+  grammarAnswers: true,
+  grammarTimeSpent: true,
+  grammarScore: true,
+  listeningAnswers: true,
+  listeningTimeSpent: true,
+  listeningScore: true,
+  readingAnswers: true,
+  readingTimeSpent: true,
+  readingScore: true,
+}).extend({
+  sectionResults: z.array(sectionResultSchema),
 });
 
 export type InsertUser = z.infer<typeof insertUserSchema>;

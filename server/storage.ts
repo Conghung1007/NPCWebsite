@@ -913,6 +913,19 @@ export class MemStorage implements IStorage {
       id,
       userId: insertAttempt.userId ?? null,
       completedAt: new Date(),
+      // Set legacy fields to null for compatibility with new dynamic system
+      vocabularyAnswers: null,
+      vocabularyTimeSpent: null,
+      vocabularyScore: null,
+      grammarAnswers: null,
+      grammarTimeSpent: null,
+      grammarScore: null,
+      listeningAnswers: null,
+      listeningTimeSpent: null,
+      listeningScore: null,
+      readingAnswers: null,
+      readingTimeSpent: null,
+      readingScore: null,
     };
     this.examAttempts.set(id, attempt);
     return attempt;
@@ -1400,6 +1413,19 @@ export class DatabaseStorage implements IStorage {
         ...attemptData,
         id: randomUUID(),
         completedAt: new Date(),
+        // Ensure legacy fields are null for dynamic section approach
+        vocabularyAnswers: null,
+        vocabularyTimeSpent: null,
+        vocabularyScore: null,
+        grammarAnswers: null,
+        grammarTimeSpent: null,
+        grammarScore: null,
+        listeningAnswers: null,
+        listeningTimeSpent: null,
+        listeningScore: null,
+        readingAnswers: null,
+        readingTimeSpent: null,
+        readingScore: null,
       })
       .returning();
     return attempt;

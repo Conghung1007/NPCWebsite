@@ -406,6 +406,34 @@ export function QuestionBankManager() {
       console.warn('Failed to parse question options:', error);
       options = [{ text: "", imageUrl: "", imageUrls: [] }, { text: "", imageUrl: "", imageUrls: [] }];
     }
+
+    // Parse image URLs fields that may be stored as JSON strings
+    let questionImageUrls;
+    try {
+      const rawImageUrls = (question as any).imageUrls;
+      questionImageUrls = typeof rawImageUrls === 'string' 
+        ? JSON.parse(rawImageUrls) 
+        : Array.isArray(rawImageUrls) 
+          ? rawImageUrls 
+          : [];
+    } catch (error) {
+      console.warn('Failed to parse question imageUrls:', error);
+      questionImageUrls = [];
+    }
+
+    // Parse description image URLs fields that may be stored as JSON strings
+    let descriptionImageUrls;
+    try {
+      const rawDescImageUrls = (question as any).descriptionImageUrls;
+      descriptionImageUrls = typeof rawDescImageUrls === 'string' 
+        ? JSON.parse(rawDescImageUrls) 
+        : Array.isArray(rawDescImageUrls) 
+          ? rawDescImageUrls 
+          : [];
+    } catch (error) {
+      console.warn('Failed to parse question descriptionImageUrls:', error);
+      descriptionImageUrls = [];
+    }
     
     form.reset({
       language: (question as any).language || "japanese",
@@ -418,7 +446,7 @@ export function QuestionBankManager() {
         correctAnswer: question.correctAnswer,
         explanation: question.explanation || "",
         imageUrl: question.imageUrl || "",
-        imageUrls: (question as any).imageUrls || [],
+        imageUrls: questionImageUrls,
         audioUrl: question.audioUrl || "",
       }],
     });

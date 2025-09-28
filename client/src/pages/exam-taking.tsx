@@ -450,14 +450,26 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     // Calculate wait time between sections (excluding exam completion)
     const waitTime = waitStartTime ? Math.round((Date.now() - waitStartTime) / 1000) : 0;
     
+    // Transform sectionResults to the expected backend format: array of section result objects
+    const transformedSectionResults = Object.entries(sectionResults).map(([sectionId, result]) => {
+      const section = examSections.find(s => s.id === sectionId);
+      return {
+        sectionId,
+        type: section?.type || 'unknown',
+        answers: result.answers,
+        timeSpent: result.timeSpent,
+        score: result.score,
+      };
+    });
+    
     submitExamMutation.mutate({
       examId,
-      sectionResults,
+      sectionResults: transformedSectionResults,
       totalScore,
       totalTimeSpent,
       waitTimeBetweenSections: waitTime,
     });
-  }, [examId, sectionResults, waitStartTime, isSubmitting, submitExamMutation]);
+  }, [examId, sectionResults, examSections, waitStartTime, isSubmitting, submitExamMutation]);
 
   const handleAnswerChange = (questionId: string, answer: string) => {
     setSectionAnswers(prev => ({

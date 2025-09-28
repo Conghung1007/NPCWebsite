@@ -473,13 +473,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const { 
         examId,
-        vocabularyAnswers, vocabularyTimeSpent, vocabularyScore,
-        grammarAnswers, grammarTimeSpent, grammarScore,
-        listeningAnswers, listeningTimeSpent, listeningScore,
-        readingAnswers, readingTimeSpent, readingScore,
-        totalScore, totalTimeSpent, waitTimeBetweenSections
+        sectionResults,
+        totalScore, 
+        totalTimeSpent, 
+        waitTimeBetweenSections
       } = req.body;
       const sessionUser = (req.session as any)?.user;
+      
+      // Validate request body using the new schema
+      const validation = insertExamAttemptSchema.safeParse({
+        examId,
+        sectionResults,
+        totalScore,
+        totalTimeSpent,
+        waitTimeBetweenSections,
+        userId: sessionUser?.id || null,
+      });
+
+      if (!validation.success) {
+        return res.status(400).json({ 
+          message: "Dữ liệu không hợp lệ", 
+          errors: validation.error.errors 
+        });
+      }
       
       // Get exam
       const exam = await storage.getExam(examId);
@@ -492,26 +508,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Cần đăng nhập để thi đề chính thức" });
       }
 
-      // Create exam attempt with 4-section data
-      const attempt = await storage.createExamAttempt({
-        examId,
-        userId: sessionUser?.id || null,
-        vocabularyAnswers,
-        vocabularyTimeSpent,
-        vocabularyScore,
-        grammarAnswers,
-        grammarTimeSpent,
-        grammarScore,
-        listeningAnswers,
-        listeningTimeSpent,
-        listeningScore,
-        readingAnswers,
-        readingTimeSpent,
-        readingScore,
-        totalScore,
-        totalTimeSpent,
-        waitTimeBetweenSections,
-      });
+      // Create exam attempt with dynamic section data
+      const attempt = await storage.createExamAttempt(validation.data);
 
       res.json(attempt);
     } catch (error) {
