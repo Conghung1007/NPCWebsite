@@ -350,6 +350,7 @@ export function QuestionBankManager() {
         language: data.language,
         sortOrder: data.sortOrder,
         questionText: question.questionText,
+        description: question.description,
         questionType: "multiple_choice" as const,
         imageUrl: question.imageUrl,
         imageUrls: question.imageUrls,
@@ -367,6 +368,7 @@ export function QuestionBankManager() {
         language: data.language,
         sortOrder: data.sortOrder,
         questionText: question.questionText,
+        description: question.description,
         questionType: "multiple_choice" as const,
         imageUrl: question.imageUrl,
         imageUrls: question.imageUrls,
@@ -411,6 +413,7 @@ export function QuestionBankManager() {
       sortOrder: (question as any).sortOrder || 0,
       questions: [{
         questionText: question.questionText,
+        description: question.description || "",
         options,
         correctAnswer: question.correctAnswer,
         explanation: question.explanation || "",
