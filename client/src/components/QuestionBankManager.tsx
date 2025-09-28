@@ -848,6 +848,26 @@ export function QuestionBankManager() {
 
               </div>
 
+              {/* Question Description */}
+              <FormField
+                control={form.control}
+                name={`questions.0.description`}
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Mô tả câu hỏi (tùy chọn)</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Nhập mô tả hoặc ghi chú cho câu hỏi..."
+                        className="min-h-[60px]"
+                        data-testid="textarea-question-description"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
               {/* Questions Section */}
               <div className="space-y-4">
                 <div>
@@ -870,26 +890,6 @@ export function QuestionBankManager() {
                                   placeholder="Nhập nội dung câu hỏi..."
                                   className="min-h-[80px]"
                                   data-testid="textarea-question"
-                                  {...field} 
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-
-                        {/* Question Description */}
-                        <FormField
-                          control={form.control}
-                          name={`questions.${questionIndex}.description`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Mô tả câu hỏi (tùy chọn)</FormLabel>
-                              <FormControl>
-                                <Textarea 
-                                  placeholder="Nhập mô tả hoặc ghi chú cho câu hỏi..."
-                                  className="min-h-[60px]"
-                                  data-testid="textarea-question-description"
                                   {...field} 
                                 />
                               </FormControl>

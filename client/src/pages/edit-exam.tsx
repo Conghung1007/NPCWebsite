@@ -335,7 +335,7 @@ export default function EditExam() {
     "nghe hiểu": "nghe hiểu"
   };
 
-  // Filter available questions for current section
+  // Filter and sort available questions for current section
   const filteredQuestions = availableQuestions.filter(question => {
     const currentSection = getCurrentSection();
     if (!currentSection) return false;
@@ -365,6 +365,11 @@ export default function EditExam() {
     }
     
     return true;
+  }).sort((a, b) => {
+    // Sort by creation time, newest first
+    const dateA = new Date(a.createdAt);
+    const dateB = new Date(b.createdAt);
+    return dateB.getTime() - dateA.getTime();
   });
 
   const updateExamMutation = useMutation({
@@ -827,6 +832,7 @@ export default function EditExam() {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Câu hỏi</TableHead>
+                        <TableHead>Mô tả</TableHead>
                         <TableHead>Category</TableHead>
                         <TableHead>Ngôn ngữ</TableHead>
                         <TableHead>Thao tác</TableHead>
@@ -836,12 +842,10 @@ export default function EditExam() {
                       {filteredQuestions.map((question) => (
                         <TableRow key={question.id}>
                           <TableCell className="max-w-md">
-                            <div className="space-y-1">
-                              <p className="font-medium truncate">{question.questionText}</p>
-                              {question.description && (
-                                <p className="text-sm text-gray-500 truncate">{question.description}</p>
-                              )}
-                            </div>
+                            <p className="font-medium truncate">{question.questionText}</p>
+                          </TableCell>
+                          <TableCell className="max-w-xs">
+                            <p className="text-sm text-gray-500 truncate">{question.description || "Không có"}</p>
                           </TableCell>
                           <TableCell>
                             <Badge variant="outline">
