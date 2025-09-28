@@ -744,6 +744,66 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+          {/* Section Description */}
+          {currentSection && (currentSection.content || (currentSection.descriptionImageUrls && currentSection.descriptionImageUrls.length > 0) || currentSection.descriptionAudioUrl) && (
+            <div className="lg:col-span-3 mb-6">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-xl text-green-600">
+                    Phần {currentSectionIndex + 1}: {currentSection.type}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {/* Section Description Text */}
+                  {currentSection.content && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
+                      <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                        {currentSection.content}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {/* Section Description Images */}
+                  {currentSection.descriptionImageUrls && currentSection.descriptionImageUrls.length > 0 && (
+                    <div className="flex justify-center flex-wrap gap-4">
+                      {currentSection.descriptionImageUrls.map((imageUrl: string, index: number) => (
+                        <img
+                          key={index}
+                          src={imageUrl}
+                          alt={`Section description ${index + 1}`}
+                          className="max-w-full h-auto rounded-lg shadow-sm max-h-48"
+                          data-testid={`section-image-${index}`}
+                        />
+                      ))}
+                    </div>
+                  )}
+                  
+                  {/* Section Description Audio */}
+                  {currentSection.descriptionAudioUrl && (
+                    <div className="flex justify-center">
+                      <audio 
+                        controls 
+                        className="w-full max-w-md" 
+                        data-testid="section-audio"
+                        key={`section-audio-${currentSectionIndex}`}
+                      >
+                        <source src={currentSection.descriptionAudioUrl.startsWith('/api/') 
+                          ? currentSection.descriptionAudioUrl 
+                          : `/api/temp-description-audio/${currentSection.descriptionAudioUrl}`} 
+                          type="audio/mpeg" />
+                        <source src={currentSection.descriptionAudioUrl.startsWith('/api/') 
+                          ? currentSection.descriptionAudioUrl 
+                          : `/api/temp-description-audio/${currentSection.descriptionAudioUrl}`} 
+                          type="audio/wav" />
+                        Trình duyệt của bạn không hỗ trợ phát audio.
+                      </audio>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            </div>
+          )}
+          
           {/* Question Content */}
           <div className="lg:col-span-3">
             {!currentQuestion ? (
