@@ -395,7 +395,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     const currentSection = getCurrentSection();
     if (!currentSection) return;
     
-    const timeSpent = (sectionConfig.timeLimit * 60) - sectionTimeLeft;
+    const timeSpent = ((sectionConfig?.timeLimit || 0) * 60) - sectionTimeLeft;
     const score = calculateSectionScore(sectionAnswers, currentSection.questions);
     
     // Save section results
@@ -707,7 +707,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               <div className="mb-4">
                 <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
                 <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  Hoàn thành phần {sectionConfig.title}!
+                  Hoàn thành phần {sectionConfig?.title || 'Đang tải'}!
                 </h3>
                 <p className="text-gray-600 mb-6">
                   Bạn đã hoàn thành phần thi này. {hasNextSection() 
@@ -720,7 +720,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               <div className="space-y-3">
                 <div className="text-sm text-gray-500">
                   <p>Điểm số: {sectionResults[getCurrentSection()?.id || '']?.score || 0}%</p>
-                  <p>Thời gian: {formatTime((sectionConfig.timeLimit * 60) - sectionTimeLeft)}</p>
+                  <p>Thời gian: {formatTime(((sectionConfig?.timeLimit || 0) * 60) - sectionTimeLeft)}</p>
                 </div>
                 
                 <Button 
@@ -880,8 +880,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             <Card className="sticky top-24">
               <CardHeader>
                 <CardTitle className="text-base flex items-center gap-2">
-                  <SectionIcon className="w-4 h-4" />
-                  {sectionConfig.title}
+                  {SectionIcon && <SectionIcon className="w-4 h-4" />}
+                  {sectionConfig?.title || 'Đang tải'}
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -977,12 +977,12 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         <DialogContent className="w-[90vw] max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {hasNextSection() ? `Hoàn thành phần ${sectionConfig.title}` : "Hoàn thành bài thi"}
+              {hasNextSection() ? `Hoàn thành phần ${sectionConfig?.title || 'Đang tải'}` : "Hoàn thành bài thi"}
             </DialogTitle>
             <DialogDescription>
               {hasNextSection() ? (
                 <>
-                  Bạn có chắc chắn muốn hoàn thành phần {sectionConfig.title} không?
+                  Bạn có chắc chắn muốn hoàn thành phần {sectionConfig?.title || 'Đang tải'} không?
                   <br />
                   <br />
                   <strong>Thống kê phần này:</strong>
