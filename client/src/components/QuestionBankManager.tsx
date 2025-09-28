@@ -72,15 +72,12 @@ const singleQuestionSchema = z.object({
   }
 );
 
-// Form validation schema for multiple questions
+// Form validation schema for single question
 const questionSchema = z.object({
   language: z.string().min(1, "Ngôn ngữ là bắt buộc"),
   category: z.string().min(1, "Danh mục là bắt buộc"),
-  description: z.string().optional(),
-  descriptionImageUrls: z.array(z.string()).default([]),
-  descriptionAudioUrl: z.string().optional(),
   sortOrder: z.number().default(0),
-  questions: z.array(singleQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi"),
+  questions: z.array(singleQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi").max(1, "Chỉ được tạo 1 câu hỏi"),
 });
 
 type QuestionFormData = z.infer<typeof questionSchema>;
@@ -110,7 +107,6 @@ export function QuestionBankManager() {
     defaultValues: {
       language: "japanese",
       category: "ngữ pháp",
-      description: "",
       questions: [{
         questionText: "",
         options: ["", ""],
@@ -332,9 +328,6 @@ export function QuestionBankManager() {
       const backendData = { 
         category: data.category,
         language: data.language,
-        description: data.description,
-        descriptionImageUrls: data.descriptionImageUrls,
-        descriptionAudioUrl: data.descriptionAudioUrl,
         sortOrder: data.sortOrder,
         questionText: question.questionText,
         questionType: "multiple_choice" as const,
@@ -352,9 +345,6 @@ export function QuestionBankManager() {
       const backendData = {
         category: data.category,
         language: data.language,
-        description: data.description,
-        descriptionImageUrls: data.descriptionImageUrls,
-        descriptionAudioUrl: data.descriptionAudioUrl,
         sortOrder: data.sortOrder,
         questionText: question.questionText,
         questionType: "multiple_choice" as const,
@@ -387,9 +377,6 @@ export function QuestionBankManager() {
     form.reset({
       language: (question as any).language || "japanese",
       category: question.category,
-      description: question.description || "",
-      descriptionImageUrls: (question as any).descriptionImageUrls || [],
-      descriptionAudioUrl: question.descriptionAudioUrl || "",
       sortOrder: (question as any).sortOrder || 0,
       questions: [{
         questionText: question.questionText,
@@ -833,65 +820,16 @@ export function QuestionBankManager() {
 
               </div>
 
-              {/* Description */}
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Mô tả (tùy chọn)</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Mô tả hoặc ghi chú cho câu hỏi..."
-                        className="min-h-[60px]"
-                        data-testid="textarea-question-description"
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-
               {/* Questions Section */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div>
                   <Label className="text-base font-medium">Câu hỏi *</Label>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={handleAddQuestion}
-                    className="flex items-center gap-1"
-                    data-testid="button-add-question-text"
-                  >
-                    <Plus className="w-4 h-4" />
-                    Thêm câu hỏi
-                  </Button>
                 </div>
                 
                 <div className="space-y-6">
                   {(form.watch("questions") || []).map((question, questionIndex) => (
                     <Card key={questionIndex} className="p-4 border-2 border-dashed border-muted-foreground/20">
                       <div className="space-y-4">
-                        {/* Question Header */}
-                        <div className="flex items-center justify-between">
-                          <h4 className="text-lg font-medium">Câu hỏi {questionIndex + 1}</h4>
-                          {form.watch("questions").length > 1 && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleRemoveQuestion(questionIndex)}
-                              className="text-red-600 hover:text-red-700"
-                              data-testid={`button-remove-question-${questionIndex}`}
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
-                          )}
-                        </div>
-
                         {/* Question Text */}
                         <FormField
                           control={form.control}
@@ -901,9 +839,9 @@ export function QuestionBankManager() {
                               <FormLabel>Nội dung câu hỏi *</FormLabel>
                               <FormControl>
                                 <Textarea 
-                                  placeholder={`Nhập nội dung câu hỏi ${questionIndex + 1}...`}
+                                  placeholder="Nhập nội dung câu hỏi..."
                                   className="min-h-[80px]"
-                                  data-testid={`textarea-question-${questionIndex}`}
+                                  data-testid="textarea-question"
                                   {...field} 
                                 />
                               </FormControl>
@@ -926,7 +864,7 @@ export function QuestionBankManager() {
                               const inputRef = questionImageInputRefs.current.get(questionIndex);
                               inputRef?.click();
                             }}
-                            title={`Hình ảnh câu hỏi ${questionIndex + 1}`}
+                            title="Hình ảnh câu hỏi"
                             className="mt-2"
                             maxImages={5}
                           />
