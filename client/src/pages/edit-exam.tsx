@@ -307,6 +307,10 @@ export default function EditExam() {
     setSelectedCategoryFilter("all");
   };
 
+  const getCurrentSection = () => {
+    return examSections.find(section => section.id === currentSectionId);
+  };
+
   // Category mapping between English and Vietnamese
   const categoryMapping: Record<string, string> = {
     "vocabulary": "từ vựng",
@@ -828,17 +832,28 @@ export default function EditExam() {
 
                                     {/* Answer Options */}
                                     <div className="grid grid-cols-2 gap-2 text-xs">
-                                      {[question.optionA, question.optionB, question.optionC, question.optionD]
-                                        .filter(Boolean)
-                                        .map((option, index) => (
-                                          <div key={index} className={`p-2 rounded ${
-                                            String.fromCharCode(65 + index) === question.correctAnswer 
-                                              ? 'bg-green-50 text-green-800 border border-green-200' 
-                                              : 'bg-gray-50 text-gray-600'
-                                          }`}>
-                                            <span className="font-medium">{String.fromCharCode(65 + index)}.</span> {option}
-                                          </div>
-                                        ))}
+                                      {(() => {
+                                        try {
+                                          const options = typeof question.options === 'string' 
+                                            ? JSON.parse(question.options) 
+                                            : Array.isArray(question.options) 
+                                              ? question.options 
+                                              : [];
+                                          return options
+                                            .filter((option: string) => option && option.trim())
+                                            .map((option: string, index: number) => (
+                                              <div key={index} className={`p-2 rounded ${
+                                                String.fromCharCode(65 + index) === question.correctAnswer 
+                                                  ? 'bg-green-50 text-green-800 border border-green-200' 
+                                                  : 'bg-gray-50 text-gray-600'
+                                              }`}>
+                                                <span className="font-medium">{String.fromCharCode(65 + index)}.</span> {option}
+                                              </div>
+                                            ));
+                                        } catch (error) {
+                                          return <div className="text-xs text-gray-500">Không thể hiển thị lựa chọn</div>;
+                                        }
+                                      })()}
                                     </div>
                                   </div>
                                   
@@ -868,161 +883,112 @@ export default function EditExam() {
 
       {/* Question Selection Dialog */}
       <Dialog open={isQuestionSelectOpen} onOpenChange={setIsQuestionSelectOpen}>
-        <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="w-[95vw] max-w-[1000px] max-h-[80vh] overflow-hidden">
           <DialogHeader>
-            <DialogTitle>Chọn câu hỏi từ ngân hàng</DialogTitle>
+            <DialogTitle>
+              Chọn câu hỏi - {questionCategories.find(c => c.value === getCurrentSection()?.type)?.label}
+            </DialogTitle>
+            <DialogDescription>
+              Chọn các câu hỏi cho phần thi này
+            </DialogDescription>
           </DialogHeader>
-          
+
           <div className="space-y-4">
-            {/* Search and Filter Controls */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label>Tìm kiếm</Label>
-                <Input
-                  placeholder="Tìm kiếm câu hỏi..."
-                  value={questionSearchQuery}
-                  onChange={(e) => setQuestionSearchQuery(e.target.value)}
-                  data-testid="input-search-questions"
-                />
-              </div>
-              
-              <div>
-                <Label>Ngôn ngữ</Label>
-                <Select value={selectedLanguageFilter || "all"} onValueChange={setSelectedLanguageFilter}>
+            {/* Search */}
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+              <Input
+                placeholder="Tìm kiếm câu hỏi..."
+                value={questionSearchQuery}
+                onChange={(e) => setQuestionSearchQuery(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            
+            {/* Filter Dropdowns */}
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-1">Lọc theo ngôn ngữ</label>
+                <Select value={selectedLanguageFilter} onValueChange={setSelectedLanguageFilter}>
                   <SelectTrigger data-testid="select-language-filter">
-                    <SelectValue />
+                    <SelectValue placeholder="Tất cả ngôn ngữ" />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="all">Tất cả ngôn ngữ</SelectItem>
-                    <SelectItem value="vi">Tiếng Việt</SelectItem>
-                    <SelectItem value="ja">Tiếng Nhật</SelectItem>
-                    <SelectItem value="en">Tiếng Anh</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              
-              <div>
-                <Label>Danh mục</Label>
-                <Select value={selectedCategoryFilter || "all"} onValueChange={setSelectedCategoryFilter}>
-                  <SelectTrigger data-testid="select-category-filter">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Tất cả danh mục</SelectItem>
-                    {questionCategories.map(category => (
-                      <SelectItem key={category.value} value={category.value}>
-                        {category.label}
-                      </SelectItem>
-                    ))}
+                    <SelectItem value="japanese">Tiếng Nhật</SelectItem>
+                    <SelectItem value="english">Tiếng Anh</SelectItem>
+                    <SelectItem value="german">Tiếng Đức</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            {/* Available Questions */}
-            <div className="border rounded-lg">
-              <div className="p-4 border-b bg-gray-50">
-                <h4 className="font-medium">
-                  Câu hỏi có sẵn ({getFilteredQuestionsForSection().length})
-                </h4>
-              </div>
-              
-              <div className="max-h-96 overflow-y-auto">
-                {questionsLoading ? (
-                  <div className="p-8 text-center">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-                    <p className="mt-2 text-sm text-gray-500">Đang tải câu hỏi...</p>
-                  </div>
-                ) : getFilteredQuestionsForSection().length === 0 ? (
-                  <div className="p-8 text-center text-gray-500">
-                    <p>Không có câu hỏi phù hợp với bộ lọc hiện tại.</p>
-                  </div>
-                ) : (
-                  <div className="divide-y">
+            {/* Question List */}
+            <div className="max-h-96 overflow-y-auto">
+              {questionsLoading ? (
+                <div className="text-center py-4">Đang tải câu hỏi...</div>
+              ) : getFilteredQuestionsForSection().length === 0 ? (
+                <div className="text-center py-4 text-gray-500">
+                  Không tìm thấy câu hỏi phù hợp
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Câu hỏi</TableHead>
+                      <TableHead>Category</TableHead>
+                      <TableHead>Ngôn ngữ</TableHead>
+                      <TableHead>Thao tác</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
                     {getFilteredQuestionsForSection().map((question) => (
-                      <div
-                        key={question.id}
-                        className="p-4 hover:bg-gray-50 cursor-pointer"
-                        onClick={() => {
-                          if (currentSectionId) {
-                            addQuestionToSection(currentSectionId, question);
-                            // Don't close dialog immediately - let user add multiple questions
-                          }
-                        }}
-                        data-testid={`selectable-question-${question.id}`}
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              {getCategoryBadge(question.category)}
-                              <Badge variant="outline">{question.language}</Badge>
-                            </div>
-                            
-                            <p className="text-sm text-gray-800 mb-2">{question.questionText}</p>
-                            
-                            {/* Question Image Preview */}
-                            {question.imageUrl && (
-                              <div className="mb-2">
-                                <img 
-                                  src={question.imageUrl} 
-                                  alt="Question image"
-                                  className="h-16 w-auto object-cover rounded border"
-                                  onError={(e) => {
-                                    const target = e.target as HTMLImageElement;
-                                    target.style.display = 'none';
-                                  }}
-                                />
-                              </div>
+                      <TableRow key={question.id}>
+                        <TableCell className="max-w-md">
+                          <div className="space-y-1">
+                            <p className="font-medium truncate">{question.questionText}</p>
+                            {question.description && (
+                              <p className="text-sm text-gray-500 truncate">{question.description}</p>
                             )}
-
-                            {/* Answer Options */}
-                            <div className="grid grid-cols-2 gap-1 text-xs">
-                              {[question.optionA, question.optionB, question.optionC, question.optionD]
-                                .filter(Boolean)
-                                .map((option, index) => (
-                                  <div key={index} className={`p-1 rounded ${
-                                    String.fromCharCode(65 + index) === question.correctAnswer 
-                                      ? 'bg-green-50 text-green-800' 
-                                      : 'bg-gray-50 text-gray-600'
-                                  }`}>
-                                    <span className="font-medium">{String.fromCharCode(65 + index)}.</span> {option}
-                                  </div>
-                                ))}
-                            </div>
                           </div>
-                          
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {question.category}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">
+                            {question.language === "japanese" && "Tiếng Nhật"}
+                            {question.language === "english" && "Tiếng Anh"}
+                            {question.language === "german" && "Tiếng Đức"}
+                            {!["japanese", "english", "german"].includes(question.language) && question.language}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
                           <Button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (currentSectionId) {
-                                addQuestionToSection(currentSectionId, question);
-                              }
-                            }}
-                            variant="outline"
                             size="sm"
-                            className="ml-2"
-                            data-testid={`button-add-question-${question.id}`}
+                            onClick={() => {
+                              addQuestionToSection(currentSectionId, question);
+                            }}
                           >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-4 h-4 mr-1" />
+                            Chọn
                           </Button>
-                        </div>
-                      </div>
+                        </TableCell>
+                      </TableRow>
                     ))}
-                  </div>
-                )}
-              </div>
+                  </TableBody>
+                </Table>
+              )}
             </div>
           </div>
 
-          <div className="flex justify-end space-x-2 pt-4">
-            <Button
-              variant="outline"
-              onClick={() => setIsQuestionSelectOpen(false)}
-              data-testid="button-close-dialog"
-            >
+          <DialogFooter>
+            <Button onClick={() => setIsQuestionSelectOpen(false)}>
               Đóng
             </Button>
-          </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
