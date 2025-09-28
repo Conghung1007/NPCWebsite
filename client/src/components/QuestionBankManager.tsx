@@ -383,6 +383,7 @@ export function QuestionBankManager() {
   };
 
   const handleEditQuestion = (question: Question) => {
+    console.log('handleEditQuestion - Raw question data:', question);
     setEditingQuestion(question);
     // For editing, convert single question to questions array format
     let options;
@@ -393,8 +394,10 @@ export function QuestionBankManager() {
           ? question.options 
           : [];
       
+      console.log('handleEditQuestion - Raw options:', rawOptions);
+      
       // Convert string array to object array format for backward compatibility
-      options = rawOptions.map((opt: any) => {
+      options = rawOptions.map((opt: any, index: number) => {
         if (typeof opt === 'string') {
           return { text: opt, imageUrl: "", imageUrls: [] };
         } else {
@@ -402,6 +405,7 @@ export function QuestionBankManager() {
           let optionImageUrls;
           try {
             const rawOptImageUrls = opt.imageUrls;
+            console.log(`Option ${index} - rawOptImageUrls:`, rawOptImageUrls);
             optionImageUrls = typeof rawOptImageUrls === 'string' 
               ? JSON.parse(rawOptImageUrls) 
               : Array.isArray(rawOptImageUrls) 
@@ -412,11 +416,13 @@ export function QuestionBankManager() {
             optionImageUrls = [];
           }
           
-          return { 
+          const result = { 
             text: opt.text || "", 
             imageUrl: opt.imageUrl || "", 
             imageUrls: optionImageUrls
           };
+          console.log(`Option ${index} - processed result:`, result);
+          return result;
         }
       });
     } catch (error) {
@@ -428,6 +434,7 @@ export function QuestionBankManager() {
     let questionImageUrls;
     try {
       const rawImageUrls = (question as any).imageUrls;
+      console.log('handleEditQuestion - rawImageUrls:', rawImageUrls);
       questionImageUrls = typeof rawImageUrls === 'string' 
         ? JSON.parse(rawImageUrls) 
         : Array.isArray(rawImageUrls) 
@@ -442,6 +449,7 @@ export function QuestionBankManager() {
     let descriptionImageUrls;
     try {
       const rawDescImageUrls = (question as any).descriptionImageUrls;
+      console.log('handleEditQuestion - rawDescImageUrls:', rawDescImageUrls);
       descriptionImageUrls = typeof rawDescImageUrls === 'string' 
         ? JSON.parse(rawDescImageUrls) 
         : Array.isArray(rawDescImageUrls) 
@@ -451,6 +459,12 @@ export function QuestionBankManager() {
       console.warn('Failed to parse question descriptionImageUrls:', error);
       descriptionImageUrls = [];
     }
+    
+    console.log('handleEditQuestion - Final parsed data:', {
+      questionImageUrls,
+      descriptionImageUrls,
+      options
+    });
     
     form.reset({
       language: (question as any).language || "japanese",

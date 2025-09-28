@@ -2729,6 +2729,77 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Update question endpoint
+  app.put("/api/questions/:id", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { id } = req.params;
+      const {
+        category,
+        description,
+        questionText,
+        questionType,
+        imageUrl,
+        imageUrls,
+        audioUrl,
+        options,
+        correctAnswer,
+        explanation,
+        sortOrder,
+        language
+      } = req.body;
+
+      if (!questionText || !options || !correctAnswer) {
+        return res.status(400).json({ 
+          message: "Question text, options, and correct answer are required" 
+        });
+      }
+
+      // Check if question exists
+      const existingQuestion = await storage.getQuestion(id);
+      if (!existingQuestion) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+
+      // For now, keep all URLs as provided (temporary file handling will be done elsewhere)
+      const finalImageUrl = imageUrl;
+      const finalImageUrls = imageUrls;
+      const finalAudioUrl = audioUrl;
+      const processedOptions = options;
+
+      const updatedQuestion = await storage.updateQuestion(id, {
+        category: category || existingQuestion.category,
+        description: description || existingQuestion.description,
+        questionText,
+        questionType: questionType || existingQuestion.questionType,
+        imageUrl: finalImageUrl || existingQuestion.imageUrl,
+        imageUrls: finalImageUrls || existingQuestion.imageUrls,
+        audioUrl: finalAudioUrl || existingQuestion.audioUrl,
+        options: processedOptions,
+        correctAnswer,
+        explanation: explanation || existingQuestion.explanation,
+        sortOrder: sortOrder !== undefined ? sortOrder : existingQuestion.sortOrder,
+        language: language || existingQuestion.language
+      });
+
+      if (!updatedQuestion) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+
+      res.json({
+        question: updatedQuestion,
+        message: "Question updated successfully"
+      });
+    } catch (error) {
+      console.error("Error updating question:", error);
+      res.status(500).json({ message: "Failed to update question" });
+    }
+  });
+
   // Delete question endpoint
   app.delete("/api/questions/:id", async (req, res) => {
     try {
