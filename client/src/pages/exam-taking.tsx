@@ -340,22 +340,11 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     }
   };
 
-  // Submit final exam mutation (all 4 sections completed)
+  // Submit final exam mutation (all sections completed)
   const submitExamMutation = useMutation({
     mutationFn: async (examData: {
       examId: string;
-      vocabularyAnswers: Record<string, string>;
-      vocabularyTimeSpent: number;
-      vocabularyScore: number;
-      grammarAnswers: Record<string, string>;
-      grammarTimeSpent: number;
-      grammarScore: number;
-      listeningAnswers: Record<string, string>;
-      listeningTimeSpent: number;
-      listeningScore: number;
-      readingAnswers: Record<string, string>;
-      readingTimeSpent: number;
-      readingScore: number;
+      sectionResults: Record<string, { answers: Record<string, string>; timeSpent: number; score: number }>;
       totalScore: number;
       totalTimeSpent: number;
       waitTimeBetweenSections: number;
@@ -452,28 +441,18 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     
     setIsSubmitting(true);
     
-    // Calculate totals
+    // Calculate totals from dynamic sections
     const allResults = Object.values(sectionResults);
     const totalTimeSpent = allResults.reduce((sum, result) => sum + result.timeSpent, 0);
-    const totalScore = Math.round(allResults.reduce((sum, result) => sum + result.score, 0) / 4);
+    // Calculate average score based on actual number of sections
+    const totalScore = allResults.length > 0 ? Math.round(allResults.reduce((sum, result) => sum + result.score, 0) / allResults.length) : 0;
     
     // Calculate wait time between sections (excluding exam completion)
     const waitTime = waitStartTime ? Math.round((Date.now() - waitStartTime) / 1000) : 0;
     
     submitExamMutation.mutate({
       examId,
-      vocabularyAnswers: sectionResults.vocabulary?.answers || {},
-      vocabularyTimeSpent: sectionResults.vocabulary?.timeSpent || 0,
-      vocabularyScore: sectionResults.vocabulary?.score || 0,
-      grammarAnswers: sectionResults.grammar?.answers || {},
-      grammarTimeSpent: sectionResults.grammar?.timeSpent || 0,
-      grammarScore: sectionResults.grammar?.score || 0,
-      listeningAnswers: sectionResults.listening?.answers || {},
-      listeningTimeSpent: sectionResults.listening?.timeSpent || 0,
-      listeningScore: sectionResults.listening?.score || 0,
-      readingAnswers: sectionResults.reading?.answers || {},
-      readingTimeSpent: sectionResults.reading?.timeSpent || 0,
-      readingScore: sectionResults.reading?.score || 0,
+      sectionResults,
       totalScore,
       totalTimeSpent,
       waitTimeBetweenSections: waitTime,
