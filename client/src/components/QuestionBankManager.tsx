@@ -30,6 +30,18 @@ const questionCategories = [
   { value: "nghe hiểu", label: "Nghe hiểu" },
 ];
 
+// Category mapping between English and Vietnamese to handle database inconsistencies
+const categoryMapping: Record<string, string> = {
+  "vocabulary": "từ vựng",
+  "grammar": "ngữ pháp", 
+  "reading": "đọc hiểu",
+  "listening": "nghe hiểu",
+  "từ vựng": "từ vựng",
+  "ngữ pháp": "ngữ pháp",
+  "đọc hiểu": "đọc hiểu", 
+  "nghe hiểu": "nghe hiểu"
+};
+
 const languageOptions = [
   { value: "japanese", label: "Tiếng Nhật" },
   { value: "english", label: "Tiếng Anh" },
@@ -122,7 +134,9 @@ export function QuestionBankManager() {
       question.questionText.toLowerCase().includes(searchQuery.toLowerCase()) ||
       (question.description && question.description.toLowerCase().includes(searchQuery.toLowerCase()));
     
-    const matchesCategory = selectedCategory === "all" || question.category === selectedCategory;
+    // Map question category to Vietnamese for consistent filtering
+    const questionCategoryVietnamese = categoryMapping[question.category] || question.category;
+    const matchesCategory = selectedCategory === "all" || questionCategoryVietnamese === selectedCategory;
     const matchesLanguage = selectedLanguage === "all" || (question as any).language === selectedLanguage;
     
     return matchesSearch && matchesCategory && matchesLanguage;
