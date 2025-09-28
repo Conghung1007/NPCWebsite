@@ -824,17 +824,33 @@ export class MemStorage implements IStorage {
     const exam = await this.getExam(examId);
     if (!exam) return [];
 
-    // Collect all question IDs from all sections
-    const allQuestionIds = [
+    // Collect all question IDs from both new sections format and legacy format
+    const allQuestionIds = new Set<string>();
+    
+    // Handle new sections format
+    if ((exam as any).sections && Array.isArray((exam as any).sections)) {
+      for (const section of (exam as any).sections) {
+        if (section.questionIds && Array.isArray(section.questionIds)) {
+          section.questionIds.forEach((id: string) => {
+            if (typeof id === 'string') allQuestionIds.add(id);
+          });
+        }
+      }
+    }
+    
+    // Handle legacy format (for backward compatibility)
+    const legacyQuestionIds = [
       ...(Array.isArray(exam.vocabularyQuestions) ? exam.vocabularyQuestions : []),
       ...(Array.isArray(exam.grammarQuestions) ? exam.grammarQuestions : []),
       ...(Array.isArray(exam.listeningQuestions) ? exam.listeningQuestions : []),
       ...(Array.isArray(exam.readingQuestions) ? exam.readingQuestions : [])
     ].filter((id): id is string => typeof id === 'string');
+    
+    legacyQuestionIds.forEach(id => allQuestionIds.add(id));
 
     // Return questions with those IDs
     return Array.from(this.questions.values()).filter(
-      question => allQuestionIds.includes(question.id)
+      question => allQuestionIds.has(question.id)
     ).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }
   
@@ -1278,19 +1294,36 @@ export class DatabaseStorage implements IStorage {
     const exam = await this.getExam(examId);
     if (!exam) return [];
 
-    // Collect all question IDs from all sections
-    const allQuestionIds = [
+    // Collect all question IDs from both new sections format and legacy format
+    const allQuestionIds = new Set<string>();
+    
+    // Handle new sections format
+    if ((exam as any).sections && Array.isArray((exam as any).sections)) {
+      for (const section of (exam as any).sections) {
+        if (section.questionIds && Array.isArray(section.questionIds)) {
+          section.questionIds.forEach((id: string) => {
+            if (typeof id === 'string') allQuestionIds.add(id);
+          });
+        }
+      }
+    }
+    
+    // Handle legacy format (for backward compatibility)
+    const legacyQuestionIds = [
       ...(Array.isArray(exam.vocabularyQuestions) ? exam.vocabularyQuestions : []),
       ...(Array.isArray(exam.grammarQuestions) ? exam.grammarQuestions : []),
       ...(Array.isArray(exam.listeningQuestions) ? exam.listeningQuestions : []),
       ...(Array.isArray(exam.readingQuestions) ? exam.readingQuestions : [])
     ].filter((id): id is string => typeof id === 'string');
+    
+    legacyQuestionIds.forEach(id => allQuestionIds.add(id));
 
-    if (allQuestionIds.length === 0) return [];
+    const finalQuestionIds = Array.from(allQuestionIds);
+    if (finalQuestionIds.length === 0) return [];
 
     // Return questions with those IDs using 'in' query
     return await db.select().from(questions)
-      .where(inArray(questions.id, allQuestionIds))
+      .where(inArray(questions.id, finalQuestionIds))
       .orderBy(questions.sortOrder);
   }
 

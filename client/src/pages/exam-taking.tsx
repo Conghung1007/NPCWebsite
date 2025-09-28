@@ -84,23 +84,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         // New sections-based format
         const sectionsWithQuestions = exam.sections.map((section: any) => {
           const questionIds = section.questionIds || [];
-          console.log(`Processing section ${section.id} (${section.type}):`, {
-            sectionId: section.id,
-            type: section.type,
-            questionIds: questionIds,
-            allQuestionsCount: allQuestions.length,
-            allQuestionIds: allQuestions.map(q => q.id)
-          });
-          
           const sectionQuestions = questionIds
-            .map((qId: string) => {
-              const found = allQuestions.find(q => q.id === qId);
-              console.log(`Looking for question ${qId}:`, found ? 'FOUND' : 'NOT FOUND');
-              return found;
-            })
+            .map((qId: string) => allQuestions.find(q => q.id === qId))
             .filter((q: Question | undefined): q is Question => q !== undefined);
-          
-          console.log(`Section ${section.id} final questions:`, sectionQuestions.length);
           
           return {
             id: section.id,
@@ -113,10 +99,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
           };
         });
         const filteredSections = sectionsWithQuestions.filter(s => s.questions.length > 0);
-        console.log("Setting exam sections:", {
-          allSections: sectionsWithQuestions.map(s => ({ id: s.id, type: s.type, questionCount: s.questions.length })),
-          filteredSections: filteredSections.map(s => ({ id: s.id, type: s.type, questionCount: s.questions.length }))
-        });
         setExamSections(filteredSections);
       } else {
         // Legacy format with separate question arrays
@@ -455,14 +437,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
   // Helper function to check if there's a next section
   const hasNextSection = (): boolean => {
-    const hasNext = currentSectionIndex + 1 < examSections.length;
-    console.log("hasNextSection check:", {
-      currentSectionIndex,
-      examSectionsLength: examSections.length,
-      hasNext,
-      examSections: examSections.map(s => ({ id: s.id, type: s.type }))
-    });
-    return hasNext;
+    return currentSectionIndex + 1 < examSections.length;
   };
 
   // Handle final exam submission
