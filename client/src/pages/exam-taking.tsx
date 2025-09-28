@@ -13,7 +13,16 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { type Exam, type Question, type User } from "@shared/schema";
 
-type ExamSection = "vocabulary" | "grammar" | "listening" | "reading";
+// Dynamic section structure - same as create-exam and edit-exam
+interface ExamSection {
+  id: string;
+  type: "từ vựng" | "ngữ pháp" | "đọc hiểu" | "nghe hiểu";
+  timeLimit: number;
+  content?: string;
+  descriptionImageUrls?: string[];
+  descriptionAudioUrl?: string;
+  questions: Question[];
+}
 
 interface SectionResults {
   answers: Record<string, string>;
@@ -29,23 +38,23 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   
-  // 4-Section exam state
-  const [currentSection, setCurrentSection] = useState<ExamSection>("vocabulary");
+  // Dynamic section exam state
+  const [examSections, setExamSections] = useState<ExamSection[]>([]);
+  const [currentSectionIndex, setCurrentSectionIndex] = useState(0);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(0);
   const [sectionTimeLeft, setSectionTimeLeft] = useState<number>(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showSubmitDialog, setShowSubmitDialog] = useState(false);
   const [examStarted, setExamStarted] = useState(false);
-  const [sectionCompleted, setSectionCompleted] = useState(false); // Track if current section is completed and waiting for progression
+  const [sectionCompleted, setSectionCompleted] = useState(false);
   const [showExitDialog, setShowExitDialog] = useState(false);
   const [pendingNavigation, setPendingNavigation] = useState<string | null>(null);
   const [pendingExitAction, setPendingExitAction] = useState<(() => void) | null>(null);
   
   // Section-specific data
-  const [sectionQuestions, setSectionQuestions] = useState<Question[]>([]);
   const [sectionAnswers, setSectionAnswers] = useState<Record<string, string>>({});
-  const [completedSections, setCompletedSections] = useState<Set<ExamSection>>(new Set());
-  const [sectionResults, setSectionResults] = useState<Record<ExamSection, SectionResults>>({} as Record<ExamSection, SectionResults>);
+  const [completedSections, setCompletedSections] = useState<Set<string>>(new Set());
+  const [sectionResults, setSectionResults] = useState<Record<string, SectionResults>>({});
   
   // Wait time tracking between sections
   const [waitStartTime, setWaitStartTime] = useState<number | null>(null);
@@ -58,68 +67,123 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     retry: false,
   });
 
-  // Helper functions for section management
-  const getSectionConfig = () => {
-    const configs = {
-      vocabulary: { 
-        title: "Từ vựng", 
-        icon: BookOpen, 
-        color: "bg-green-500",
-        timeLimit: exam?.vocabularyTimeLimit || 10,
-        questions: exam?.vocabularyQuestions || []
-      },
-      grammar: { 
-        title: "Ngữ pháp", 
-        icon: MessageSquare, 
-        color: "bg-blue-500",
-        timeLimit: exam?.grammarTimeLimit || 10,
-        questions: exam?.grammarQuestions || []
-      },
-      listening: { 
-        title: "Nghe hiểu", 
-        icon: Headphones, 
-        color: "bg-yellow-500",
-        timeLimit: exam?.listeningTimeLimit || 5,
-        questions: exam?.listeningQuestions || []
-      },
-      reading: { 
-        title: "Đọc hiểu", 
-        icon: FileInput, 
-        color: "bg-purple-500",
-        timeLimit: exam?.readingTimeLimit || 5,
-        questions: exam?.readingQuestions || []
-      }
-    };
-    return configs[currentSection];
-  };
-
-  // Fetch questions for current section
+  // Fetch all questions
   const { data: allQuestions = [], isLoading: questionsLoading } = useQuery<Question[]>({
     queryKey: [`/api/exams/${examId}/questions`],
     enabled: !!examId && !!exam,
     retry: false,
   });
 
-  // Filter questions for current section when section changes
+  // Load exam sections when exam data is available
   useEffect(() => {
     if (exam && allQuestions.length > 0) {
-      const sectionConfig = getSectionConfig();
-      const questionIds = sectionConfig.questions as string[];
-      const filteredQuestions = allQuestions.filter(q => questionIds.includes(q.id));
-      setSectionQuestions(filteredQuestions);
+      console.log("Loading exam sections for taking:", exam);
+      
+      // Handle both new sections format and legacy format
+      if (exam.sections && Array.isArray(exam.sections) && exam.sections.length > 0) {
+        // New sections-based format
+        const sectionsWithQuestions = exam.sections.map((section: any) => {
+          const questionIds = section.questionIds || [];
+          const sectionQuestions = questionIds
+            .map((qId: string) => allQuestions.find(q => q.id === qId))
+            .filter((q: Question | undefined): q is Question => q !== undefined);
+          
+          return {
+            id: section.id,
+            type: section.type,
+            timeLimit: section.timeLimit,
+            content: section.content || "",
+            descriptionImageUrls: section.descriptionImageUrls || [],
+            descriptionAudioUrl: section.descriptionAudioUrl || "",
+            questions: sectionQuestions
+          };
+        });
+        setExamSections(sectionsWithQuestions.filter(s => s.questions.length > 0));
+      } else {
+        // Legacy format with separate question arrays
+        const legacySections: ExamSection[] = [];
+        
+        // Map legacy fields to sections
+        const legacyMapping = [
+          { type: "từ vựng" as const, questions: (exam as any).vocabularyQuestions || [], timeLimit: (exam as any).vocabularyTimeLimit || 10 },
+          { type: "ngữ pháp" as const, questions: (exam as any).grammarQuestions || [], timeLimit: (exam as any).grammarTimeLimit || 10 },
+          { type: "đọc hiểu" as const, questions: (exam as any).readingQuestions || [], timeLimit: (exam as any).readingTimeLimit || 10 },
+          { type: "nghe hiểu" as const, questions: (exam as any).listeningQuestions || [], timeLimit: (exam as any).listeningTimeLimit || 10 }
+        ];
+        
+        legacyMapping.forEach((mapping, index) => {
+          if (mapping.questions.length > 0) {
+            const sectionQuestions = mapping.questions
+              .map((qId: string) => allQuestions.find(q => q.id === qId))
+              .filter((q: Question | undefined): q is Question => q !== undefined);
+            
+            if (sectionQuestions.length > 0) {
+              legacySections.push({
+                id: `section-${index + 1}`,
+                type: mapping.type,
+                timeLimit: mapping.timeLimit,
+                content: "",
+                descriptionImageUrls: [],
+                descriptionAudioUrl: "",
+                questions: sectionQuestions
+              });
+            }
+          }
+        });
+        
+        setExamSections(legacySections);
+      }
+    }
+  }, [exam, allQuestions]);
+
+  // Helper functions for section management
+  const getCurrentSection = () => {
+    return examSections[currentSectionIndex];
+  };
+
+  const getSectionConfig = () => {
+    const currentSection = getCurrentSection();
+    if (!currentSection) return null;
+    
+    const iconMap = {
+      "từ vựng": BookOpen,
+      "ngữ pháp": MessageSquare,
+      "đọc hiểu": FileInput,
+      "nghe hiểu": Headphones,
+    };
+    
+    const colorMap = {
+      "từ vựng": "bg-green-500",
+      "ngữ pháp": "bg-blue-500", 
+      "đọc hiểu": "bg-purple-500",
+      "nghe hiểu": "bg-yellow-500",
+    };
+    
+    return {
+      title: currentSection.type.charAt(0).toUpperCase() + currentSection.type.slice(1),
+      icon: iconMap[currentSection.type],
+      color: colorMap[currentSection.type],
+      timeLimit: currentSection.timeLimit,
+      questions: currentSection.questions
+    };
+  };
+
+  // Initialize section when current section changes
+  useEffect(() => {
+    if (examSections.length > 0 && currentSectionIndex < examSections.length) {
       setCurrentQuestionIndex(0);
-      setSectionCompleted(false); // Reset section completion when changing sections
+      setSectionCompleted(false);
       setSectionAnswers({});
     }
-  }, [currentSection, exam, allQuestions]);
+  }, [currentSectionIndex, examSections]);
 
   // Initialize section timer when section starts
   useEffect(() => {
-    if (exam && examStarted && sectionQuestions.length > 0) {
-      const sectionConfig = getSectionConfig();
-      setSectionTimeLeft(sectionConfig.timeLimit * 60); // Convert minutes to seconds
+    if (examStarted && examSections.length > 0 && currentSectionIndex < examSections.length) {
+      const currentSection = examSections[currentSectionIndex];
+      setSectionTimeLeft(currentSection.timeLimit * 60); // Convert minutes to seconds
     }
-  }, [currentSection, exam, examStarted, sectionQuestions]);
+  }, [currentSectionIndex, examStarted, examSections]);
 
   // Section timer countdown
   useEffect(() => {
@@ -140,7 +204,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   }, [sectionTimeLeft, examStarted]);
 
   // Check if exam is in progress (started but not all sections completed)
-  const isExamInProgress = examStarted && completedSections.size < 4;
+  const isExamInProgress = examStarted && completedSections.size < examSections.length;
   
   // Debug logging
   useEffect(() => {
@@ -326,8 +390,13 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     if (isSubmitting) return;
     
     const sectionConfig = getSectionConfig();
+    if (!sectionConfig) return;
+    
+    const currentSection = getCurrentSection();
+    if (!currentSection) return;
+    
     const timeSpent = (sectionConfig.timeLimit * 60) - sectionTimeLeft;
-    const score = calculateSectionScore(sectionAnswers, sectionQuestions);
+    const score = calculateSectionScore(sectionAnswers, currentSection.questions);
     
     // Save section results
     const results: SectionResults = {
@@ -338,38 +407,36 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     
     setSectionResults(prev => ({
       ...prev,
-      [currentSection]: results
+      [currentSection.id]: results
     }));
     
-    setCompletedSections(prev => new Set([...Array.from(prev), currentSection]));
+    setCompletedSections(prev => new Set([...Array.from(prev), currentSection.id]));
     
     // Mark section as completed and wait for user to proceed
     setSectionCompleted(true);
-  }, [currentSection, sectionAnswers, sectionQuestions, sectionTimeLeft, isSubmitting]);
+  }, [getCurrentSection, sectionAnswers, sectionTimeLeft, isSubmitting]);
 
   // Handle manual progression to next section
   const handleProceedToNext = useCallback(() => {
-    const nextSection = getNextSection(currentSection);
-    if (nextSection) {
+    const nextSectionIndex = currentSectionIndex + 1;
+    if (nextSectionIndex < examSections.length) {
       setSectionCompleted(false);
       setWaitStartTime(Date.now());
-      setCurrentSection(nextSection);
+      setCurrentSectionIndex(nextSectionIndex);
     } else {
       // All sections completed, submit final exam
       handleFinalSubmit();
     }
-  }, [currentSection]);
+  }, [currentSectionIndex, examSections.length]);
 
   // Handle section time up
   const handleSectionTimeUp = useCallback(() => {
     handleSectionComplete();
   }, [handleSectionComplete]);
 
-  // Get next section in sequence
-  const getNextSection = (current: ExamSection): ExamSection | null => {
-    const sections: ExamSection[] = ["vocabulary", "grammar", "listening", "reading"];
-    const currentIndex = sections.indexOf(current);
-    return currentIndex < sections.length - 1 ? sections[currentIndex + 1] : null;
+  // Helper function to check if there's a next section
+  const hasNextSection = (): boolean => {
+    return currentSectionIndex + 1 < examSections.length;
   };
 
   // Handle final exam submission
@@ -620,7 +687,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                 onClick={handleSectionComplete}
                 disabled={isSubmitting || sectionCompleted}
               >
-                {getNextSection(currentSection) ? "Hoàn thành phần này" : "Nộp bài"}
+                {hasNextSection() ? "Hoàn thành phần này" : "Nộp bài"}
               </Button>
             </div>
           </div>
@@ -641,7 +708,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   Hoàn thành phần {sectionConfig.title}!
                 </h3>
                 <p className="text-gray-600 mb-6">
-                  Bạn đã hoàn thành phần thi này. {getNextSection(currentSection) 
+                  Bạn đã hoàn thành phần thi này. {hasNextSection() 
                     ? "Nhấn nút bên dưới để chuyển sang phần tiếp theo."
                     : "Nhấn nút bên dưới để nộp bài thi."
                   }
@@ -650,7 +717,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               
               <div className="space-y-3">
                 <div className="text-sm text-gray-500">
-                  <p>Điểm số: {sectionResults[currentSection]?.score || 0}%</p>
+                  <p>Điểm số: {sectionResults[getCurrentSection()?.id || '']?.score || 0}%</p>
                   <p>Thời gian: {formatTime((sectionConfig.timeLimit * 60) - sectionTimeLeft)}</p>
                 </div>
                 
@@ -659,7 +726,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   className="w-full"
                   size="lg"
                 >
-                  {getNextSection(currentSection) 
+                  {hasNextSection() 
                     ? `Chuyển sang phần tiếp theo`
                     : "Nộp bài thi"
                   }
@@ -859,10 +926,10 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         <DialogContent className="w-[90vw] max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {getNextSection(currentSection) ? `Hoàn thành phần ${sectionConfig.title}` : "Hoàn thành bài thi"}
+              {hasNextSection() ? `Hoàn thành phần ${sectionConfig.title}` : "Hoàn thành bài thi"}
             </DialogTitle>
             <DialogDescription>
-              {getNextSection(currentSection) ? (
+              {hasNextSection() ? (
                 <>
                   Bạn có chắc chắn muốn hoàn thành phần {sectionConfig.title} không?
                   <br />
@@ -899,18 +966,18 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSubmitDialog(false)}>
-              {getNextSection(currentSection) ? "Tiếp tục làm bài" : "Xem lại bài"}
+              {hasNextSection() ? "Tiếp tục làm bài" : "Xem lại bài"}
             </Button>
             <Button onClick={handleSectionComplete} disabled={isSubmitting}>
               {isSubmitting ? (
                 <>
                   <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  {getNextSection(currentSection) ? "Đang chuyển phần..." : "Đang nộp bài..."}
+                  {hasNextSection() ? "Đang chuyển phần..." : "Đang nộp bài..."}
                 </>
               ) : (
                 <>
                   <ArrowRight className="w-4 h-4 mr-2" />
-                  {getNextSection(currentSection) ? "Chuyển phần tiếp theo" : "Nộp bài"}
+                  {hasNextSection() ? "Chuyển phần tiếp theo" : "Nộp bài"}
                 </>
               )}
             </Button>
