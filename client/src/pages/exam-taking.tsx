@@ -523,8 +523,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     };
 
     return (
-      <div className="bg-gradient-to-br from-blue-50 via-white to-green-50 py-8 min-h-[80vh]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div className="bg-gradient-to-br from-blue-50 via-white to-green-50 min-h-[80vh] flex items-center">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
             
             {/* Left Column - Exam Overview */}
