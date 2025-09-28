@@ -74,68 +74,74 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     retry: false,
   });
 
+  // Shared function to derive sections from exam data
+  const deriveExamSections = useCallback((exam: any, allQuestions: Question[]): ExamSection[] => {
+    if (!exam || !allQuestions.length) return [];
+    
+    // Handle both new sections format and legacy format
+    if (exam.sections && Array.isArray(exam.sections) && exam.sections.length > 0) {
+      // New sections-based format
+      const sectionsWithQuestions = exam.sections.map((section: any) => {
+        const questionIds = section.questionIds || [];
+        const sectionQuestions = questionIds
+          .map((qId: string) => allQuestions.find(q => q.id === qId))
+          .filter((q: Question | undefined): q is Question => q !== undefined);
+        
+        return {
+          id: section.id,
+          type: section.type,
+          timeLimit: section.timeLimit,
+          content: section.content || "",
+          descriptionImageUrls: section.descriptionImageUrls || [],
+          descriptionAudioUrl: section.descriptionAudioUrl || "",
+          questions: sectionQuestions
+        };
+      });
+      return sectionsWithQuestions.filter(s => s.questions.length > 0);
+    } else {
+      // Legacy format with separate question arrays
+      const legacySections: ExamSection[] = [];
+      
+      // Map legacy fields to sections
+      const legacyMapping = [
+        { type: "từ vựng" as const, questions: (exam as any).vocabularyQuestions || [], timeLimit: (exam as any).vocabularyTimeLimit || 10 },
+        { type: "ngữ pháp" as const, questions: (exam as any).grammarQuestions || [], timeLimit: (exam as any).grammarTimeLimit || 10 },
+        { type: "đọc hiểu" as const, questions: (exam as any).readingQuestions || [], timeLimit: (exam as any).readingTimeLimit || 10 },
+        { type: "nghe hiểu" as const, questions: (exam as any).listeningQuestions || [], timeLimit: (exam as any).listeningTimeLimit || 10 }
+      ];
+      
+      legacyMapping.forEach((mapping, index) => {
+        if (mapping.questions.length > 0) {
+          const sectionQuestions = mapping.questions
+            .map((qId: string) => allQuestions.find(q => q.id === qId))
+            .filter((q: Question | undefined): q is Question => q !== undefined);
+          
+          if (sectionQuestions.length > 0) {
+            legacySections.push({
+              id: `section-${index + 1}`,
+              type: mapping.type,
+              timeLimit: mapping.timeLimit,
+              content: "",
+              descriptionImageUrls: [],
+              descriptionAudioUrl: "",
+              questions: sectionQuestions
+            });
+          }
+        }
+      });
+      
+      return legacySections;
+    }
+  }, []);
+
   // Load exam sections when exam data is available
   useEffect(() => {
     if (exam && allQuestions.length > 0) {
       console.log("Loading exam sections for taking:", exam);
-      
-      // Handle both new sections format and legacy format
-      if (exam.sections && Array.isArray(exam.sections) && exam.sections.length > 0) {
-        // New sections-based format
-        const sectionsWithQuestions = exam.sections.map((section: any) => {
-          const questionIds = section.questionIds || [];
-          const sectionQuestions = questionIds
-            .map((qId: string) => allQuestions.find(q => q.id === qId))
-            .filter((q: Question | undefined): q is Question => q !== undefined);
-          
-          return {
-            id: section.id,
-            type: section.type,
-            timeLimit: section.timeLimit,
-            content: section.content || "",
-            descriptionImageUrls: section.descriptionImageUrls || [],
-            descriptionAudioUrl: section.descriptionAudioUrl || "",
-            questions: sectionQuestions
-          };
-        });
-        const filteredSections = sectionsWithQuestions.filter(s => s.questions.length > 0);
-        setExamSections(filteredSections);
-      } else {
-        // Legacy format with separate question arrays
-        const legacySections: ExamSection[] = [];
-        
-        // Map legacy fields to sections
-        const legacyMapping = [
-          { type: "từ vựng" as const, questions: (exam as any).vocabularyQuestions || [], timeLimit: (exam as any).vocabularyTimeLimit || 10 },
-          { type: "ngữ pháp" as const, questions: (exam as any).grammarQuestions || [], timeLimit: (exam as any).grammarTimeLimit || 10 },
-          { type: "đọc hiểu" as const, questions: (exam as any).readingQuestions || [], timeLimit: (exam as any).readingTimeLimit || 10 },
-          { type: "nghe hiểu" as const, questions: (exam as any).listeningQuestions || [], timeLimit: (exam as any).listeningTimeLimit || 10 }
-        ];
-        
-        legacyMapping.forEach((mapping, index) => {
-          if (mapping.questions.length > 0) {
-            const sectionQuestions = mapping.questions
-              .map((qId: string) => allQuestions.find(q => q.id === qId))
-              .filter((q: Question | undefined): q is Question => q !== undefined);
-            
-            if (sectionQuestions.length > 0) {
-              legacySections.push({
-                id: `section-${index + 1}`,
-                type: mapping.type,
-                timeLimit: mapping.timeLimit,
-                content: "",
-                descriptionImageUrls: [],
-                descriptionAudioUrl: "",
-                questions: sectionQuestions
-              });
-            }
-          }
-        });
-        
-        setExamSections(legacySections);
-      }
+      const derivedSections = deriveExamSections(exam, allQuestions);
+      setExamSections(derivedSections);
     }
-  }, [exam, allQuestions]);
+  }, [exam, allQuestions, deriveExamSections]);
 
   // Helper functions for section management
   const getCurrentSection = () => {
@@ -512,45 +518,193 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
   // Show exam start screen
   if (!examStarted) {
+    // Calculate totals from dynamic sections
+    const totalTime = examSections.reduce((sum, section) => sum + section.timeLimit, 0);
+    const totalQuestions = examSections.reduce((sum, section) => sum + section.questions.length, 0);
+    
+    // Get section icon and color
+    const getSectionIcon = (type: string) => {
+      const iconMap = {
+        "từ vựng": BookOpen,
+        "ngữ pháp": MessageSquare,
+        "đọc hiểu": FileInput,
+        "nghe hiểu": Headphones,
+      };
+      return iconMap[type as keyof typeof iconMap] || FileText;
+    };
+    
+    const getSectionColor = (type: string) => {
+      const colorMap = {
+        "từ vựng": "text-green-600",
+        "ngữ pháp": "text-blue-600", 
+        "đọc hiểu": "text-purple-600",
+        "nghe hiểu": "text-yellow-600",
+      };
+      return colorMap[type as keyof typeof colorMap] || "text-gray-600";
+    };
+
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Card className="max-w-2xl mx-auto">
-          <CardContent className="text-center py-12">
-            <FileText className="w-16 h-16 text-primary mx-auto mb-6" />
-            <h1 className="text-2xl font-bold mb-4">{exam?.title}</h1>
-            <p className="text-gray-600 mb-8">{exam?.description}</p>
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-green-50">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
             
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8 text-left">
-              <h3 className="font-semibold text-blue-900 mb-4">Cấu trúc bài thi gồm 4 phần:</h3>
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <BookOpen className="w-5 h-5 text-green-600" />
-                  <span>1. Từ vựng ({exam?.vocabularyTimeLimit} phút)</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <MessageSquare className="w-5 h-5 text-blue-600" />
-                  <span>2. Ngữ pháp ({exam?.grammarTimeLimit} phút)</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <Headphones className="w-5 h-5 text-yellow-600" />
-                  <span>3. Nghe hiểu ({exam?.listeningTimeLimit} phút)</span>
-                </div>
-                <div className="flex items-center gap-3">
-                  <FileInput className="w-5 h-5 text-purple-600" />
-                  <span>4. Đọc hiểu ({exam?.readingTimeLimit} phút)</span>
-                </div>
-              </div>
-              <div className="mt-4 p-3 bg-yellow-100 border border-yellow-300 rounded text-yellow-800 text-sm">
-                <strong>Lưu ý:</strong> Bạn không thể quay lại phần trước đã hoàn thành. Hãy cân nhắc kỹ trước khi chuyển sang phần tiếp theo.
-              </div>
+            {/* Left Column - Exam Overview */}
+            <div className="space-y-6">
+              <Card className="shadow-lg">
+                <CardHeader className="bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-t-lg">
+                  <div className="flex items-center gap-4">
+                    <FileText className="w-8 h-8" data-testid="exam-icon" />
+                    <div>
+                      <CardTitle className="text-2xl" data-testid="exam-title">{exam?.title}</CardTitle>
+                      <p className="text-blue-100 mt-1" data-testid="exam-description">
+                        {exam?.description}
+                      </p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="grid grid-cols-2 gap-6 mb-6">
+                    <div className="text-center p-4 bg-green-50 rounded-lg">
+                      <Clock className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-green-600" data-testid="total-time">
+                        {totalTime}
+                      </div>
+                      <div className="text-sm text-gray-600">phút</div>
+                    </div>
+                    <div className="text-center p-4 bg-blue-50 rounded-lg">
+                      <FileText className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-blue-600" data-testid="total-questions">
+                        {totalQuestions}
+                      </div>
+                      <div className="text-sm text-gray-600">câu hỏi</div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+                      <div className="flex items-start gap-3">
+                        <Eye className="w-5 h-5 text-yellow-600 mt-0.5" />
+                        <div className="text-sm text-yellow-800">
+                          <strong>Lưu ý quan trọng:</strong> Bạn không thể quay lại phần trước đã hoàn thành. 
+                          Hãy cân nhắc kỹ trước khi chuyển sang phần tiếp theo.
+                        </div>
+                      </div>
+                    </div>
+
+                    {!user && (
+                      <div className="bg-orange-50 border border-orange-200 rounded-lg p-4">
+                        <div className="flex items-start gap-3">
+                          <Volume2 className="w-5 h-5 text-orange-600 mt-0.5" />
+                          <div className="text-sm text-orange-800">
+                            <strong>Thông báo:</strong> Bạn đang thi với tư cách khách. 
+                            Kết quả sẽ không được lưu vào hệ thống.
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="pt-4">
+                      <Button 
+                        onClick={startExam} 
+                        size="lg" 
+                        className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
+                        data-testid="button-start-exam"
+                      >
+                        <div className="flex items-center gap-2">
+                          <ArrowRight className="w-5 h-5" />
+                          Bắt đầu làm bài
+                        </div>
+                      </Button>
+                      
+                      <Button 
+                        variant="outline" 
+                        onClick={() => handleNavigateWithConfirm("/online-exam")}
+                        className="w-full mt-3"
+                        data-testid="button-back-to-list"
+                      >
+                        <ChevronLeft className="w-4 h-4 mr-2" />
+                        Quay về danh sách đề thi
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </div>
 
-            <Button onClick={startExam} size="lg" className="px-8">
-              <CheckCircle className="w-5 h-5 mr-2" />
-              Bắt đầu thi
-            </Button>
-          </CardContent>
-        </Card>
+            {/* Right Column - Section Timeline */}
+            <div className="space-y-6">
+              <Card className="shadow-lg">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5 text-green-600" />
+                    Cấu trúc bài thi ({examSections.length} phần)
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="space-y-4">
+                    {examSections.map((section, index) => {
+                      const SectionIcon = getSectionIcon(section.type);
+                      const sectionColor = getSectionColor(section.type);
+                      
+                      return (
+                        <div 
+                          key={section.id} 
+                          className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                          data-testid={`section-preview-${index}`}
+                        >
+                          <div className="flex-shrink-0">
+                            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
+                              <SectionIcon className={`w-5 h-5 ${sectionColor}`} />
+                            </div>
+                          </div>
+                          
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <h4 className="font-semibold text-gray-900">
+                                {index + 1}. {section.type.charAt(0).toUpperCase() + section.type.slice(1)}
+                              </h4>
+                              <div className="flex items-center gap-4 text-sm text-gray-600">
+                                <span className="flex items-center gap-1">
+                                  <Clock className="w-3 h-3" />
+                                  {section.timeLimit} phút
+                                </span>
+                                <span className="flex items-center gap-1">
+                                  <FileText className="w-3 h-3" />
+                                  {section.questions.length} câu
+                                </span>
+                              </div>
+                            </div>
+                            
+                            {section.content && (
+                              <p className="text-sm text-gray-600 truncate">
+                                {section.content}
+                              </p>
+                            )}
+                            
+                            <div className="flex items-center gap-2 mt-2">
+                              {section.descriptionImageUrls && section.descriptionImageUrls.length > 0 && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Eye className="w-3 h-3 mr-1" />
+                                  {section.descriptionImageUrls.length} hình ảnh
+                                </Badge>
+                              )}
+                              {section.descriptionAudioUrl && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Volume2 className="w-3 h-3 mr-1" />
+                                  Audio
+                                </Badge>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </div>
       </div>
     );
   }
