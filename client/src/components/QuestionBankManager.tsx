@@ -48,12 +48,13 @@ const languageOptions = [
   { value: "german", label: "Tiếng Đức" },
 ];
 
-// Option schema - can be either string (legacy) or object with text + imageUrl
+// Option schema - can be either string (legacy) or object with text + imageUrls array
 const optionSchema = z.union([
   z.string(), // Legacy string format
   z.object({
     text: z.string(),
-    imageUrl: z.string().optional(),
+    imageUrl: z.string().optional(), // Legacy single image for backward compatibility
+    imageUrls: z.array(z.string()).optional().default([]), // New multiple images array
   })
 ]);
 
@@ -114,6 +115,7 @@ export function QuestionBankManager() {
 
   // File input refs for image uploads
   const questionImageInputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
+  const optionImageInputRefs = useRef<Map<string, HTMLInputElement>>(new Map()); // questionIndex-optionIndex as key
 
   // Form for creating/editing questions
   const form = useForm<QuestionFormData>({
@@ -124,8 +126,8 @@ export function QuestionBankManager() {
       questions: [{
         questionText: "",
         options: [
-          { text: "", imageUrl: "" },
-          { text: "", imageUrl: "" }
+          { text: "", imageUrl: "", imageUrls: [] },
+          { text: "", imageUrl: "", imageUrls: [] }
         ],
         correctAnswer: "",
         explanation: "",
@@ -390,12 +392,16 @@ export function QuestionBankManager() {
       // Convert string array to object array format for backward compatibility
       options = rawOptions.map((opt: any) => 
         typeof opt === 'string' 
-          ? { text: opt, imageUrl: "" }
-          : opt
+          ? { text: opt, imageUrl: "", imageUrls: [] }
+          : { 
+              text: opt.text || "", 
+              imageUrl: opt.imageUrl || "", 
+              imageUrls: opt.imageUrls || [] 
+            }
       );
     } catch (error) {
       console.warn('Failed to parse question options:', error);
-      options = [{ text: "", imageUrl: "" }, { text: "", imageUrl: "" }];
+      options = [{ text: "", imageUrl: "", imageUrls: [] }, { text: "", imageUrl: "", imageUrls: [] }];
     }
     
     form.reset({
@@ -419,7 +425,7 @@ export function QuestionBankManager() {
     const updatedQuestions = [...currentQuestions];
     updatedQuestions[questionIndex] = {
       ...updatedQuestions[questionIndex],
-      options: [...updatedQuestions[questionIndex].options, { text: "", imageUrl: "" }]
+      options: [...updatedQuestions[questionIndex].options, { text: "", imageUrl: "", imageUrls: [] }]
     };
     form.setValue("questions", updatedQuestions);
   };
@@ -445,7 +451,7 @@ export function QuestionBankManager() {
     newQuestion.questionText = "";
     newQuestion.correctAnswer = "";
     newQuestion.explanation = "";
-    newQuestion.options = newQuestion.options.map(() => ({ text: "", imageUrl: "" })); // Keep same number of options
+    newQuestion.options = newQuestion.options.map(() => ({ text: "", imageUrl: "", imageUrls: [] })); // Keep same number of options
     form.setValue("questions", [...currentQuestions, newQuestion]);
   };
 
@@ -987,44 +993,118 @@ export function QuestionBankManager() {
                                     </Button>
                                   )}
                                 </div>
-                                {/* Option Image Upload */}
-                                <div>
+                                {/* Option Images Upload */}
+                                <div className="space-y-3">
                                   <Label className="text-xs text-gray-600">Hình ảnh lựa chọn (tùy chọn)</Label>
-                                  <QuestionImageUploader
-                                    onImageUpload={(imageUrl) => {
+                                  <MultipleImagePreviewBox
+                                    imageUrls={typeof option === 'string' ? [] : (option.imageUrls || [])}
+                                    onRemove={(imageIndex) => {
                                       const currentQuestions = form.getValues("questions");
                                       const updatedQuestions = [...currentQuestions];
+                                      const currentImageUrls = typeof updatedQuestions[questionIndex].options[optionIndex] === 'string' 
+                                        ? [] 
+                                        : (updatedQuestions[questionIndex].options[optionIndex] as any).imageUrls || [];
+                                      const newImageUrls = currentImageUrls.filter((_: string, idx: number) => idx !== imageIndex);
+                                      
                                       updatedQuestions[questionIndex] = {
                                         ...updatedQuestions[questionIndex],
                                         options: updatedQuestions[questionIndex].options.map((opt, idx) => 
                                           idx === optionIndex ? 
                                             (typeof opt === 'string' ? 
-                                              { text: opt, imageUrl } : 
-                                              { ...opt, imageUrl }) : 
+                                              { text: opt, imageUrl: '', imageUrls: newImageUrls } : 
+                                              { ...opt, imageUrls: newImageUrls }) : 
                                             opt
                                         )
                                       };
                                       form.setValue("questions", updatedQuestions);
                                     }}
-                                    currentImageUrl={typeof option === 'string' ? '' : option.imageUrl || ''}
-                                    onRemoveImage={() => {
-                                      const currentQuestions = form.getValues("questions");
-                                      const updatedQuestions = [...currentQuestions];
-                                      updatedQuestions[questionIndex] = {
-                                        ...updatedQuestions[questionIndex],
-                                        options: updatedQuestions[questionIndex].options.map((opt, idx) => 
-                                          idx === optionIndex ? 
-                                            (typeof opt === 'string' ? 
-                                              { text: opt, imageUrl: '' } : 
-                                              { ...opt, imageUrl: '' }) : 
-                                            opt
-                                        )
-                                      };
-                                      form.setValue("questions", updatedQuestions);
+                                    onChooseImage={() => {
+                                      const inputRef = optionImageInputRefs.current.get(`${questionIndex}-${optionIndex}`);
+                                      inputRef?.click();
                                     }}
-                                    type="answer"
-                                    maxSizeMB={2}
-                                    label={`Hình lựa chọn ${optionIndex + 1}`}
+                                    title={`Hình ảnh lựa chọn ${optionIndex + 1}`}
+                                    maxImages={3}
+                                  />
+                                  
+                                  <input
+                                    ref={(el) => {
+                                      if (el) {
+                                        optionImageInputRefs.current.set(`${questionIndex}-${optionIndex}`, el);
+                                      }
+                                    }}
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    style={{ display: 'none' }}
+                                    onChange={async (e) => {
+                                      const files = Array.from(e.target.files || []);
+                                      if (files.length === 0) return;
+                                      
+                                      try {
+                                        const currentQuestions = form.getValues("questions");
+                                        const currentOption = currentQuestions[questionIndex].options[optionIndex];
+                                        const currentImageUrls = typeof currentOption === 'string' ? [] : (currentOption.imageUrls || []);
+                                        
+                                        if (currentImageUrls.length + files.length > 3) {
+                                          toast({
+                                            variant: "destructive",
+                                            title: "Quá nhiều hình ảnh",
+                                            description: "Chỉ có thể tối đa 3 hình ảnh cho mỗi lựa chọn"
+                                          });
+                                          return;
+                                        }
+                                        
+                                        // Upload each file to MediaUploader
+                                        const uploadPromises = files.map(async (file) => {
+                                          const formData = new FormData();
+                                          formData.append('file', file);
+                                          formData.append('type', 'answer');
+                                          
+                                          const response = await fetch('/api/upload', {
+                                            method: 'POST',
+                                            body: formData
+                                          });
+                                          
+                                          if (!response.ok) {
+                                            throw new Error('Upload failed');
+                                          }
+                                          
+                                          const result = await response.json();
+                                          return result.url;
+                                        });
+                                        
+                                        const newImageUrls = await Promise.all(uploadPromises);
+                                        const updatedImageUrls = [...currentImageUrls, ...newImageUrls];
+                                        
+                                        const updatedQuestions = [...currentQuestions];
+                                        updatedQuestions[questionIndex] = {
+                                          ...updatedQuestions[questionIndex],
+                                          options: updatedQuestions[questionIndex].options.map((opt, idx) => 
+                                            idx === optionIndex ? 
+                                              (typeof opt === 'string' ? 
+                                                { text: opt, imageUrl: '', imageUrls: updatedImageUrls } : 
+                                                { ...opt, imageUrls: updatedImageUrls }) : 
+                                              opt
+                                          )
+                                        };
+                                        form.setValue("questions", updatedQuestions);
+                                        
+                                        toast({
+                                          title: "Upload thành công",
+                                          description: `Đã upload ${newImageUrls.length} hình ảnh`
+                                        });
+                                      } catch (error) {
+                                        console.error('Upload error:', error);
+                                        toast({
+                                          variant: "destructive",
+                                          title: "Lỗi upload",
+                                          description: "Không thể upload hình ảnh. Vui lòng thử lại."
+                                        });
+                                      } finally {
+                                        // Reset input
+                                        e.target.value = '';
+                                      }
+                                    }}
                                   />
                                 </div>
                               </div>
