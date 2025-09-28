@@ -803,6 +803,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     {currentQuestion.options.map((option, index) => {
                       const optionText = typeof option === 'string' ? option : option.text;
                       const optionImageUrl = typeof option === 'string' ? '' : option.imageUrl;
+                      const optionImageUrls = typeof option === 'string' ? [] : (option.imageUrls || []);
                       
                       return (
                         <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
@@ -819,7 +820,23 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                               <span className="text-sm">
                                 {String.fromCharCode(65 + index)}. {optionText}
                               </span>
-                              {optionImageUrl && (
+                              
+                              {/* Display multiple option images (new format) */}
+                              {optionImageUrls.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                  {optionImageUrls.map((imageUrl, imgIndex) => (
+                                    <img
+                                      key={imgIndex}
+                                      src={imageUrl}
+                                      alt={`Option ${String.fromCharCode(65 + index)} illustration ${imgIndex + 1}`}
+                                      className="max-w-full h-auto rounded-md shadow-sm max-h-48"
+                                    />
+                                  ))}
+                                </div>
+                              )}
+                              
+                              {/* Display single option image (legacy format) */}
+                              {optionImageUrl && optionImageUrls.length === 0 && (
                                 <img
                                   src={optionImageUrl}
                                   alt={`Option ${String.fromCharCode(65 + index)} illustration`}
