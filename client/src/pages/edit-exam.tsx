@@ -115,15 +115,15 @@ export default function EditExam() {
       });
       
       // Convert exam data to sections format
-      if (examData.sections && examData.sections.length > 0) {
-        const sectionsWithQuestions = examData.sections.map(section => ({
+      if (examData.sections && Array.isArray(examData.sections) && examData.sections.length > 0) {
+        const sectionsWithQuestions = examData.sections.map((section: any) => ({
           id: section.id,
           type: section.type,
           timeLimit: section.timeLimit,
           content: section.content || "",
           descriptionImageUrls: section.descriptionImageUrls || [],
           descriptionAudioUrl: section.descriptionAudioUrl || "",
-          questions: [] // Will be populated below
+          questions: [] // Will be populated below when questions are loaded
         }));
         setExamSections(sectionsWithQuestions);
       }
@@ -135,6 +135,68 @@ export default function EditExam() {
     queryKey: ["/api/questions"],
     enabled: !!user && hasImageEditPermission,
   });
+
+  // Load questions into sections after both exam data and available questions are loaded
+  useEffect(() => {
+    if (examData && availableQuestions.length > 0) {
+      console.log("Populating questions into sections...", { examData, availableQuestions });
+      
+      // Handle both new sections format and legacy format
+      if (examData.sections && Array.isArray(examData.sections) && examData.sections.length > 0) {
+        // New sections-based format
+        const sectionsWithQuestions = examData.sections.map((section: any) => {
+          const questionIds = section.questionIds || [];
+          const sectionQuestions = questionIds
+            .map((qId: string) => availableQuestions.find(q => q.id === qId))
+            .filter((q: Question | undefined): q is Question => q !== undefined);
+          
+          return {
+            id: section.id,
+            type: section.type,
+            timeLimit: section.timeLimit,
+            content: section.content || "",
+            descriptionImageUrls: section.descriptionImageUrls || [],
+            descriptionAudioUrl: section.descriptionAudioUrl || "",
+            questions: sectionQuestions
+          };
+        });
+        setExamSections(sectionsWithQuestions);
+      } else {
+        // Legacy format with separate question arrays
+        const legacySections: ExamSection[] = [];
+        
+        // Map legacy fields to sections
+        const legacyMapping = [
+          { type: "từ vựng" as const, questions: (examData as any).vocabularyQuestions || [], timeLimit: (examData as any).vocabularyTimeLimit || 10 },
+          { type: "ngữ pháp" as const, questions: (examData as any).grammarQuestions || [], timeLimit: (examData as any).grammarTimeLimit || 10 },
+          { type: "đọc hiểu" as const, questions: (examData as any).readingQuestions || [], timeLimit: (examData as any).readingTimeLimit || 10 },
+          { type: "nghe hiểu" as const, questions: (examData as any).listeningQuestions || [], timeLimit: (examData as any).listeningTimeLimit || 10 }
+        ];
+        
+        legacyMapping.forEach((mapping, index) => {
+          if (mapping.questions.length > 0 || mapping.timeLimit > 0) {
+            const sectionQuestions = mapping.questions
+              .map((qId: string) => availableQuestions.find(q => q.id === qId))
+              .filter((q: Question | undefined): q is Question => q !== undefined);
+            
+            legacySections.push({
+              id: `section-${index + 1}`,
+              type: mapping.type,
+              timeLimit: mapping.timeLimit,
+              content: "",
+              descriptionImageUrls: [],
+              descriptionAudioUrl: "",
+              questions: sectionQuestions
+            });
+          }
+        });
+        
+        if (legacySections.length > 0) {
+          setExamSections(legacySections);
+        }
+      }
+    }
+  }, [examData, availableQuestions]);
 
   // Helper functions for managing dynamic sections
   const addExamSection = () => {
