@@ -654,26 +654,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                               </div>
                             </div>
                             
-                            {section.content && (
-                              <p className="text-sm text-gray-600 truncate">
-                                {section.content}
-                              </p>
-                            )}
-                            
-                            <div className="flex items-center gap-2 mt-2">
-                              {section.descriptionImageUrls && section.descriptionImageUrls.length > 0 && (
-                                <Badge variant="secondary" className="text-xs">
-                                  <Eye className="w-3 h-3 mr-1" />
-                                  {section.descriptionImageUrls.length} hình ảnh
-                                </Badge>
-                              )}
-                              {section.descriptionAudioUrl && (
-                                <Badge variant="secondary" className="text-xs">
-                                  <Volume2 className="w-3 h-3 mr-1" />
-                                  Audio
-                                </Badge>
-                              )}
-                            </div>
                           </div>
                         </div>
                       );
