@@ -84,9 +84,23 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         // New sections-based format
         const sectionsWithQuestions = exam.sections.map((section: any) => {
           const questionIds = section.questionIds || [];
+          console.log(`Processing section ${section.id} (${section.type}):`, {
+            sectionId: section.id,
+            type: section.type,
+            questionIds: questionIds,
+            allQuestionsCount: allQuestions.length,
+            allQuestionIds: allQuestions.map(q => q.id)
+          });
+          
           const sectionQuestions = questionIds
-            .map((qId: string) => allQuestions.find(q => q.id === qId))
+            .map((qId: string) => {
+              const found = allQuestions.find(q => q.id === qId);
+              console.log(`Looking for question ${qId}:`, found ? 'FOUND' : 'NOT FOUND');
+              return found;
+            })
             .filter((q: Question | undefined): q is Question => q !== undefined);
+          
+          console.log(`Section ${section.id} final questions:`, sectionQuestions.length);
           
           return {
             id: section.id,
