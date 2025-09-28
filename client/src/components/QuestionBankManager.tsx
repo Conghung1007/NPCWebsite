@@ -61,6 +61,7 @@ const optionSchema = z.union([
 // Single question schema for each question box
 const singleQuestionSchema = z.object({
   questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
+  description: z.string().optional(),
   options: z.array(optionSchema).min(2, "Phải có ít nhất 2 lựa chọn").refine(
     (options) => options.every(opt => {
       const text = typeof opt === 'string' ? opt : opt.text;
@@ -866,6 +867,26 @@ export function QuestionBankManager() {
                                   placeholder="Nhập nội dung câu hỏi..."
                                   className="min-h-[80px]"
                                   data-testid="textarea-question"
+                                  {...field} 
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+
+                        {/* Question Description */}
+                        <FormField
+                          control={form.control}
+                          name={`questions.${questionIndex}.description`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Mô tả câu hỏi (tùy chọn)</FormLabel>
+                              <FormControl>
+                                <Textarea 
+                                  placeholder="Nhập mô tả hoặc ghi chú cho câu hỏi..."
+                                  className="min-h-[60px]"
+                                  data-testid="textarea-question-description"
                                   {...field} 
                                 />
                               </FormControl>
