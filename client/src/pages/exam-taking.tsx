@@ -760,16 +760,28 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* Question Image */}
-                  {currentQuestion.imageUrl && (
-                    <div className="flex justify-center">
-                      <img
-                        src={currentQuestion.imageUrl}
-                        alt="Question illustration"
-                        className="max-w-full h-auto rounded-lg shadow-sm"
-                      />
+                  {/* Question Images */}
+                  {(currentQuestion.imageUrls && currentQuestion.imageUrls.length > 0) || currentQuestion.imageUrl ? (
+                    <div className="flex justify-center flex-wrap gap-4">
+                      {/* Show imageUrls array first (new format) */}
+                      {currentQuestion.imageUrls && currentQuestion.imageUrls.map((imageUrl, index) => (
+                        <img
+                          key={index}
+                          src={imageUrl}
+                          alt={`Question illustration ${index + 1}`}
+                          className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
+                        />
+                      ))}
+                      {/* Show single imageUrl if no imageUrls (legacy support) */}
+                      {currentQuestion.imageUrl && (!currentQuestion.imageUrls || currentQuestion.imageUrls.length === 0) && (
+                        <img
+                          src={currentQuestion.imageUrl}
+                          alt="Question illustration"
+                          className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
+                        />
+                      )}
                     </div>
-                  )}
+                  ) : null}
 
                   {/* Question Audio */}
                   {currentQuestion.audioUrl && (
@@ -788,17 +800,37 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     value={sectionAnswers[currentQuestion.id] || ""}
                     onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
                   >
-                    {(currentQuestion.options as string[]).map((option, index) => (
-                      <div key={index} className="flex items-center space-x-2">
-                        <RadioGroupItem value={index.toString()} id={`option-${index}`} />
-                        <Label 
-                          htmlFor={`option-${index}`} 
-                          className="flex-1 cursor-pointer py-2"
-                        >
-                          {String.fromCharCode(65 + index)}. {option}
-                        </Label>
-                      </div>
-                    ))}
+                    {currentQuestion.options.map((option, index) => {
+                      const optionText = typeof option === 'string' ? option : option.text;
+                      const optionImageUrl = typeof option === 'string' ? '' : option.imageUrl;
+                      
+                      return (
+                        <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
+                          <RadioGroupItem 
+                            value={index.toString()} 
+                            id={`option-${index}`} 
+                            className="mt-1"
+                          />
+                          <div className="flex-1 cursor-pointer">
+                            <Label 
+                              htmlFor={`option-${index}`} 
+                              className="cursor-pointer flex flex-col space-y-2"
+                            >
+                              <span className="text-sm">
+                                {String.fromCharCode(65 + index)}. {optionText}
+                              </span>
+                              {optionImageUrl && (
+                                <img
+                                  src={optionImageUrl}
+                                  alt={`Option ${String.fromCharCode(65 + index)} illustration`}
+                                  className="max-w-full h-auto rounded-md shadow-sm max-h-48"
+                                />
+                              )}
+                            </Label>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </RadioGroup>
                 </CardContent>
               </Card>

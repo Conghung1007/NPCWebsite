@@ -381,14 +381,21 @@ export function QuestionBankManager() {
     // For editing, convert single question to questions array format
     let options;
     try {
-      options = typeof question.options === 'string' 
+      const rawOptions = typeof question.options === 'string' 
         ? JSON.parse(question.options) 
         : Array.isArray(question.options) 
           ? question.options 
           : [];
+      
+      // Convert string array to object array format for backward compatibility
+      options = rawOptions.map((opt: any) => 
+        typeof opt === 'string' 
+          ? { text: opt, imageUrl: "" }
+          : opt
+      );
     } catch (error) {
       console.warn('Failed to parse question options:', error);
-      options = [];
+      options = [{ text: "", imageUrl: "" }, { text: "", imageUrl: "" }];
     }
     
     form.reset({
@@ -412,7 +419,7 @@ export function QuestionBankManager() {
     const updatedQuestions = [...currentQuestions];
     updatedQuestions[questionIndex] = {
       ...updatedQuestions[questionIndex],
-      options: [...updatedQuestions[questionIndex].options, ""]
+      options: [...updatedQuestions[questionIndex].options, { text: "", imageUrl: "" }]
     };
     form.setValue("questions", updatedQuestions);
   };
@@ -438,7 +445,7 @@ export function QuestionBankManager() {
     newQuestion.questionText = "";
     newQuestion.correctAnswer = "";
     newQuestion.explanation = "";
-    newQuestion.options = newQuestion.options.map(() => ""); // Keep same number of options
+    newQuestion.options = newQuestion.options.map(() => ({ text: "", imageUrl: "" })); // Keep same number of options
     form.setValue("questions", [...currentQuestions, newQuestion]);
   };
 
