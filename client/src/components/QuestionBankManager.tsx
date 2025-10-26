@@ -58,6 +58,34 @@ const optionSchema = z.union([
   })
 ]);
 
+// Sub question schema (simpler than main question - no description)
+const subQuestionSchema = z.object({
+  questionText: z.string().min(1, "Nội dung câu hỏi phụ là bắt buộc"),
+  options: z.array(optionSchema).min(2, "Phải có ít nhất 2 lựa chọn").refine(
+    (options) => options.every(opt => {
+      const text = typeof opt === 'string' ? opt : opt.text;
+      return text.trim().length > 0;
+    }),
+    { message: "Tất cả lựa chọn phải có nội dung" }
+  ),
+  correctAnswer: z.string().min(1, "Phải chọn đáp án đúng"),
+  explanation: z.string().optional(),
+  imageUrls: z.array(z.string()).default([]), // Array of image URLs
+  audioUrl: z.string().optional(),
+}).refine(
+  (data) => {
+    // Validate that correctAnswer is one of the provided options
+    const optionTexts = data.options.map(opt => 
+      typeof opt === 'string' ? opt : opt.text
+    ).filter(text => text.trim() !== "");
+    return optionTexts.includes(data.correctAnswer);
+  },
+  {
+    message: "Đáp án đúng phải là một trong các lựa chọn đã nhập",
+    path: ["correctAnswer"],
+  }
+);
+
 // Single question schema for each question box
 const singleQuestionSchema = z.object({
   questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
@@ -75,6 +103,7 @@ const singleQuestionSchema = z.object({
   imageUrl: z.string().optional(), // Legacy single image for backward compatibility
   imageUrls: z.array(z.string()).default([]), // Array of image URLs
   audioUrl: z.string().optional(),
+  subQuestions: z.array(subQuestionSchema).default([]), // Array of sub-questions
 }).refine(
   (data) => {
     // Validate that correctAnswer is one of the provided options
@@ -136,6 +165,7 @@ export function QuestionBankManager() {
         imageUrl: "",
         imageUrls: [],
         audioUrl: "",
+        subQuestions: [], // Add default empty array for sub questions
       }],
     },
   });
