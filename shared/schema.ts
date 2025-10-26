@@ -102,6 +102,7 @@ export const questions = pgTable("questions", {
   options: jsonb("options").notNull(), // Array of answer options with potential image URLs
   correctAnswer: text("correct_answer").notNull(), // Index or value of correct answer
   explanation: text("explanation"), // Optional explanation for answer
+  subQuestions: jsonb("sub_questions"), // Array of sub-questions: [{questionText, imageUrls, audioUrl, options, correctAnswer, explanation}]
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
