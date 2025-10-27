@@ -102,7 +102,8 @@ export const questions = pgTable("questions", {
   options: jsonb("options").notNull(), // Array of answer options with potential image URLs
   correctAnswer: text("correct_answer").notNull(), // Index or value of correct answer
   explanation: text("explanation"), // Optional explanation for answer
-  subQuestions: jsonb("sub_questions"), // Array of sub-questions: [{questionText, imageUrls, audioUrl, options, correctAnswer, explanation}]
+  equivalentQuestions: jsonb("equivalent_questions"), // Array of equivalent questions (up to 10): [{description, descriptionImageUrls, descriptionAudioUrl, questionText, imageUrls, audioUrl, options, correctAnswer, explanation}]
+  subQuestions: jsonb("sub_questions"), // DEPRECATED: Legacy field for backward compatibility
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

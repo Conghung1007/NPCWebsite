@@ -58,34 +58,12 @@ const optionSchema = z.union([
   })
 ]);
 
-// Sub question schema (simpler than main question - text only, no images/audio)
-const subQuestionSchema = z.object({
-  questionText: z.string().min(1, "Nội dung câu hỏi phụ là bắt buộc"),
-  options: z.array(z.object({
-    text: z.string()
-  })).min(2, "Phải có ít nhất 2 lựa chọn").refine(
-    (options) => options.every(opt => opt.text.trim().length > 0),
-    { message: "Tất cả lựa chọn phải có nội dung" }
-  ),
-  correctAnswer: z.string().min(1, "Phải chọn đáp án đúng"),
-  explanation: z.string().optional(),
-}).refine(
-  (data) => {
-    // Validate that correctAnswer is one of the provided options
-    const optionTexts = data.options.map(opt => opt.text).filter(text => text.trim() !== "");
-    return optionTexts.includes(data.correctAnswer);
-  },
-  {
-    message: "Đáp án đúng phải là một trong các lựa chọn đã nhập",
-    path: ["correctAnswer"],
-  }
-);
-
-// Single question schema for each question box
-const singleQuestionSchema = z.object({
+// Equivalent question schema - full-featured question (same as main question but without nested equivalents)
+const equivalentQuestionSchema = z.object({
   questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
   description: z.string().optional(),
   descriptionImageUrls: z.array(z.string()).default([]), // Array of description image URLs
+  descriptionAudioUrl: z.string().optional(), // Audio for description
   options: z.array(optionSchema).min(2, "Phải có ít nhất 2 lựa chọn").refine(
     (options) => options.every(opt => {
       const text = typeof opt === 'string' ? opt : opt.text;
@@ -95,10 +73,8 @@ const singleQuestionSchema = z.object({
   ),
   correctAnswer: z.string().min(1, "Phải chọn đáp án đúng"),
   explanation: z.string().optional(),
-  imageUrl: z.string().optional(), // Legacy single image for backward compatibility
   imageUrls: z.array(z.string()).default([]), // Array of image URLs
   audioUrl: z.string().optional(),
-  subQuestions: z.array(subQuestionSchema).default([]), // Array of sub-questions
 }).refine(
   (data) => {
     // Validate that correctAnswer is one of the provided options
@@ -113,12 +89,12 @@ const singleQuestionSchema = z.object({
   }
 );
 
-// Form validation schema for single question
+// Form validation schema for question bank (up to 10 equivalent questions)
 const questionSchema = z.object({
   language: z.string().min(1, "Ngôn ngữ là bắt buộc"),
   category: z.string().min(1, "Danh mục là bắt buộc"),
   sortOrder: z.number().default(0),
-  questions: z.array(singleQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi").max(1, "Chỉ được tạo 1 câu hỏi"),
+  equivalentQuestions: z.array(equivalentQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi").max(10, "Chỉ được tạo tối đa 10 câu hỏi"),
 });
 
 type QuestionFormData = z.infer<typeof questionSchema>;
@@ -149,18 +125,19 @@ export function QuestionBankManager() {
     defaultValues: {
       language: "japanese",
       category: "ngữ pháp",
-      questions: [{
+      equivalentQuestions: [{
         questionText: "",
+        description: "",
+        descriptionImageUrls: [],
+        descriptionAudioUrl: "",
         options: [
           { text: "", imageUrl: "", imageUrls: [] },
           { text: "", imageUrl: "", imageUrls: [] }
         ],
         correctAnswer: "",
         explanation: "",
-        imageUrl: "",
         imageUrls: [],
         audioUrl: "",
-        subQuestions: [], // Add default empty array for sub questions
       }],
     },
   });
@@ -564,29 +541,29 @@ export function QuestionBankManager() {
   };
 
   const handleAddOption = (questionIndex: number) => {
-    const currentQuestions = form.getValues("questions");
+    const currentQuestions = form.getValues("equivalentQuestions");
     const updatedQuestions = [...currentQuestions];
     updatedQuestions[questionIndex] = {
       ...updatedQuestions[questionIndex],
       options: [...updatedQuestions[questionIndex].options, { text: "", imageUrl: "", imageUrls: [] }]
     };
-    form.setValue("questions", updatedQuestions);
+    form.setValue("equivalentQuestions", updatedQuestions);
   };
 
   const handleRemoveOption = (questionIndex: number, optionIndex: number) => {
-    const currentQuestions = form.getValues("questions");
+    const currentQuestions = form.getValues("equivalentQuestions");
     const updatedQuestions = [...currentQuestions];
     if (updatedQuestions[questionIndex].options.length > 2) {
       updatedQuestions[questionIndex] = {
         ...updatedQuestions[questionIndex],
         options: updatedQuestions[questionIndex].options.filter((_, i) => i !== optionIndex)
       };
-      form.setValue("questions", updatedQuestions);
+      form.setValue("equivalentQuestions", updatedQuestions);
     }
   };
 
   const handleAddQuestion = () => {
-    const currentQuestions = form.getValues("questions");
+    const currentQuestions = form.getValues("equivalentQuestions");
     // Create new question by deep cloning the last one (duplicate entire box)
     const lastQuestion = currentQuestions[currentQuestions.length - 1];
     const newQuestion = JSON.parse(JSON.stringify(lastQuestion));
@@ -595,19 +572,19 @@ export function QuestionBankManager() {
     newQuestion.correctAnswer = "";
     newQuestion.explanation = "";
     newQuestion.options = newQuestion.options.map(() => ({ text: "", imageUrl: "", imageUrls: [] })); // Keep same number of options
-    form.setValue("questions", [...currentQuestions, newQuestion]);
+    form.setValue("equivalentQuestions", [...currentQuestions, newQuestion]);
   };
 
   const handleRemoveQuestion = (index: number) => {
-    const currentQuestions = form.getValues("questions");
+    const currentQuestions = form.getValues("equivalentQuestions");
     if (currentQuestions.length > 1) {
-      form.setValue("questions", currentQuestions.filter((_, i) => i !== index));
+      form.setValue("equivalentQuestions", currentQuestions.filter((_, i) => i !== index));
     }
   };
 
   // Sub question handlers
   const handleAddSubQuestion = (questionIndex: number) => {
-    const currentQuestions = form.getValues("questions");
+    const currentQuestions = form.getValues("equivalentQuestions");
     const updatedQuestions = [...currentQuestions];
     const newSubQuestion = {
       questionText: "",
@@ -619,21 +596,21 @@ export function QuestionBankManager() {
       ...updatedQuestions[questionIndex],
       subQuestions: [...(updatedQuestions[questionIndex].subQuestions || []), newSubQuestion]
     };
-    form.setValue("questions", updatedQuestions);
+    form.setValue("equivalentQuestions", updatedQuestions);
   };
 
   const handleRemoveSubQuestion = (questionIndex: number, subQuestionIndex: number) => {
-    const currentQuestions = form.getValues("questions");
+    const currentQuestions = form.getValues("equivalentQuestions");
     const updatedQuestions = [...currentQuestions];
     updatedQuestions[questionIndex] = {
       ...updatedQuestions[questionIndex],
       subQuestions: (updatedQuestions[questionIndex].subQuestions || []).filter((_, i) => i !== subQuestionIndex)
     };
-    form.setValue("questions", updatedQuestions);
+    form.setValue("equivalentQuestions", updatedQuestions);
   };
 
   const handleAddSubQuestionOption = (questionIndex: number, subQuestionIndex: number) => {
-    const currentQuestions = form.getValues("questions");
+    const currentQuestions = form.getValues("equivalentQuestions");
     const updatedQuestions = [...currentQuestions];
     const subQuestions = [...(updatedQuestions[questionIndex].subQuestions || [])];
     subQuestions[subQuestionIndex] = {
@@ -644,11 +621,11 @@ export function QuestionBankManager() {
       ...updatedQuestions[questionIndex],
       subQuestions
     };
-    form.setValue("questions", updatedQuestions);
+    form.setValue("equivalentQuestions", updatedQuestions);
   };
 
   const handleRemoveSubQuestionOption = (questionIndex: number, subQuestionIndex: number, optionIndex: number) => {
-    const currentQuestions = form.getValues("questions");
+    const currentQuestions = form.getValues("equivalentQuestions");
     const updatedQuestions = [...currentQuestions];
     const subQuestions = [...(updatedQuestions[questionIndex].subQuestions || [])];
     if (subQuestions[subQuestionIndex].options.length > 2) {
@@ -660,7 +637,7 @@ export function QuestionBankManager() {
         ...updatedQuestions[questionIndex],
         subQuestions
       };
-      form.setValue("questions", updatedQuestions);
+      form.setValue("equivalentQuestions", updatedQuestions);
     }
   };
 
@@ -1181,7 +1158,7 @@ export function QuestionBankManager() {
                                       placeholder={`Lựa chọn ${optionIndex + 1}`}
                                       value={typeof option === 'string' ? option : option.text}
                                       onChange={(e) => {
-                                        const currentQuestions = form.getValues("questions");
+                                        const currentQuestions = form.getValues("equivalentQuestions");
                                         const updatedQuestions = [...currentQuestions];
                                         updatedQuestions[questionIndex] = {
                                           ...updatedQuestions[questionIndex],
@@ -1191,7 +1168,7 @@ export function QuestionBankManager() {
                                               opt
                                           )
                                         };
-                                        form.setValue("questions", updatedQuestions);
+                                        form.setValue("equivalentQuestions", updatedQuestions);
                                       }}
                                       data-testid={`input-option-${questionIndex}-${optionIndex}`}
                                     />
@@ -1215,7 +1192,7 @@ export function QuestionBankManager() {
                                   <MultipleImagePreviewBox
                                     imageUrls={typeof option === 'string' ? [] : (option.imageUrls || [])}
                                     onRemove={(imageIndex) => {
-                                      const currentQuestions = form.getValues("questions");
+                                      const currentQuestions = form.getValues("equivalentQuestions");
                                       const updatedQuestions = [...currentQuestions];
                                       const currentImageUrls = typeof updatedQuestions[questionIndex].options[optionIndex] === 'string' 
                                         ? [] 
@@ -1232,7 +1209,7 @@ export function QuestionBankManager() {
                                             opt
                                         )
                                       };
-                                      form.setValue("questions", updatedQuestions);
+                                      form.setValue("equivalentQuestions", updatedQuestions);
                                     }}
                                     onChooseImage={() => {
                                       const inputRef = optionImageInputRefs.current.get(`${questionIndex}-${optionIndex}`);
@@ -1257,7 +1234,7 @@ export function QuestionBankManager() {
                                       if (files.length === 0) return;
                                       
                                       try {
-                                        const currentQuestions = form.getValues("questions");
+                                        const currentQuestions = form.getValues("equivalentQuestions");
                                         const currentOption = currentQuestions[questionIndex].options[optionIndex];
                                         const currentImageUrls = typeof currentOption === 'string' ? [] : (currentOption.imageUrls || []);
                                         
@@ -1302,7 +1279,7 @@ export function QuestionBankManager() {
                                               opt
                                           )
                                         };
-                                        form.setValue("questions", updatedQuestions);
+                                        form.setValue("equivalentQuestions", updatedQuestions);
                                         
                                         toast({
                                           title: "Upload thành công",
@@ -1454,7 +1431,7 @@ export function QuestionBankManager() {
                                               placeholder={`Lựa chọn ${optionIndex + 1}`}
                                               value={option.text}
                                               onChange={(e) => {
-                                                const currentQuestions = form.getValues("questions");
+                                                const currentQuestions = form.getValues("equivalentQuestions");
                                                 const updatedQuestions = [...currentQuestions];
                                                 const subQuestions = [...(updatedQuestions[questionIndex].subQuestions || [])];
                                                 subQuestions[subQuestionIndex] = {
@@ -1467,7 +1444,7 @@ export function QuestionBankManager() {
                                                   ...updatedQuestions[questionIndex],
                                                   subQuestions
                                                 };
-                                                form.setValue("questions", updatedQuestions);
+                                                form.setValue("equivalentQuestions", updatedQuestions);
                                               }}
                                               data-testid={`input-subquestion-option-${questionIndex}-${subQuestionIndex}-${optionIndex}`}
                                             />
