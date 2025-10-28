@@ -58,12 +58,11 @@ const optionSchema = z.union([
   })
 ]);
 
-// Equivalent question schema - full-featured question (same as main question but without nested equivalents)
-const equivalentQuestionSchema = z.object({
+// Single question schema for each question box
+const singleQuestionSchema = z.object({
   questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
   description: z.string().optional(),
   descriptionImageUrls: z.array(z.string()).default([]), // Array of description image URLs
-  descriptionAudioUrl: z.string().optional(), // Audio for description
   options: z.array(optionSchema).min(2, "Phải có ít nhất 2 lựa chọn").refine(
     (options) => options.every(opt => {
       const text = typeof opt === 'string' ? opt : opt.text;
@@ -73,6 +72,7 @@ const equivalentQuestionSchema = z.object({
   ),
   correctAnswer: z.string().min(1, "Phải chọn đáp án đúng"),
   explanation: z.string().optional(),
+  imageUrl: z.string().optional(), // Legacy single image for backward compatibility
   imageUrls: z.array(z.string()).default([]), // Array of image URLs
   audioUrl: z.string().optional(),
 }).refine(
@@ -89,12 +89,12 @@ const equivalentQuestionSchema = z.object({
   }
 );
 
-// Form validation schema for question bank (up to 10 equivalent questions)
+// Form validation schema for single question
 const questionSchema = z.object({
   language: z.string().min(1, "Ngôn ngữ là bắt buộc"),
   category: z.string().min(1, "Danh mục là bắt buộc"),
   sortOrder: z.number().default(0),
-  equivalentQuestions: z.array(equivalentQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi").max(10, "Chỉ được tạo tối đa 10 câu hỏi"),
+  questions: z.array(singleQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi").max(1, "Chỉ được tạo 1 câu hỏi"),
 });
 
 type QuestionFormData = z.infer<typeof questionSchema>;
@@ -125,17 +125,15 @@ export function QuestionBankManager() {
     defaultValues: {
       language: "japanese",
       category: "ngữ pháp",
-      equivalentQuestions: [{
+      questions: [{
         questionText: "",
-        description: "",
-        descriptionImageUrls: [],
-        descriptionAudioUrl: "",
         options: [
           { text: "", imageUrl: "", imageUrls: [] },
           { text: "", imageUrl: "", imageUrls: [] }
         ],
         correctAnswer: "",
         explanation: "",
+        imageUrl: "",
         imageUrls: [],
         audioUrl: "",
       }],
@@ -354,7 +352,6 @@ export function QuestionBankManager() {
         sortOrder: data.sortOrder,
         questionText: question.questionText,
         description: question.description,
-        descriptionImageUrls: question.descriptionImageUrls,
         questionType: "multiple_choice" as const,
         imageUrl: question.imageUrl,
         imageUrls: question.imageUrls,
@@ -362,7 +359,6 @@ export function QuestionBankManager() {
         options: question.options,
         correctAnswer: question.correctAnswer,
         explanation: question.explanation,
-        subQuestions: question.subQuestions || [],
       };
       updateQuestionMutation.mutate({ ...backendData, id: editingQuestion.id });
     } else {
@@ -374,7 +370,6 @@ export function QuestionBankManager() {
         sortOrder: data.sortOrder,
         questionText: question.questionText,
         description: question.description,
-        descriptionImageUrls: question.descriptionImageUrls,
         questionType: "multiple_choice" as const,
         imageUrl: question.imageUrl,
         imageUrls: question.imageUrls,
@@ -382,7 +377,6 @@ export function QuestionBankManager() {
         options: question.options,
         correctAnswer: question.correctAnswer,
         explanation: question.explanation,
-        subQuestions: question.subQuestions || [],
       };
       createQuestionMutation.mutate(backendData);
     }
@@ -466,59 +460,10 @@ export function QuestionBankManager() {
       descriptionImageUrls = [];
     }
     
-    // Parse sub questions if they exist
-    let subQuestions = [];
-    try {
-      const rawSubQuestions = (question as any).subQuestions;
-      console.log('handleEditQuestion - rawSubQuestions:', rawSubQuestions);
-      const parsedSubQuestions = typeof rawSubQuestions === 'string' 
-        ? JSON.parse(rawSubQuestions) 
-        : Array.isArray(rawSubQuestions) 
-          ? rawSubQuestions 
-          : [];
-      
-      // Process each sub question
-      subQuestions = parsedSubQuestions.map((subQ: any) => {
-        // Parse sub question options - normalize to { text: string } format
-        let subOptions = [];
-        try {
-          const rawSubOptions = typeof subQ.options === 'string' 
-            ? JSON.parse(subQ.options) 
-            : Array.isArray(subQ.options) 
-              ? subQ.options 
-              : [];
-          
-          // Normalize options to { text: string } format
-          subOptions = rawSubOptions.map((opt: any) => {
-            if (typeof opt === 'string') {
-              return { text: opt };
-            } else if (opt && typeof opt === 'object') {
-              return { text: opt.text || "" };
-            }
-            return { text: "" };
-          });
-        } catch (error) {
-          console.warn('Failed to parse sub question options:', error);
-          subOptions = [{ text: "" }, { text: "" }];
-        }
-
-        return {
-          questionText: subQ.questionText || "",
-          options: subOptions,
-          correctAnswer: subQ.correctAnswer || "",
-          explanation: subQ.explanation || "",
-        };
-      });
-    } catch (error) {
-      console.warn('Failed to parse sub questions:', error);
-      subQuestions = [];
-    }
-    
     console.log('handleEditQuestion - Final parsed data:', {
       questionImageUrls,
       descriptionImageUrls,
-      options,
-      subQuestions
+      options
     });
     
     form.reset({
@@ -535,35 +480,34 @@ export function QuestionBankManager() {
         imageUrl: question.imageUrl || "",
         imageUrls: questionImageUrls,
         audioUrl: question.audioUrl || "",
-        subQuestions: subQuestions,
       }],
     });
   };
 
   const handleAddOption = (questionIndex: number) => {
-    const currentQuestions = form.getValues("equivalentQuestions");
+    const currentQuestions = form.getValues("questions");
     const updatedQuestions = [...currentQuestions];
     updatedQuestions[questionIndex] = {
       ...updatedQuestions[questionIndex],
       options: [...updatedQuestions[questionIndex].options, { text: "", imageUrl: "", imageUrls: [] }]
     };
-    form.setValue("equivalentQuestions", updatedQuestions);
+    form.setValue("questions", updatedQuestions);
   };
 
   const handleRemoveOption = (questionIndex: number, optionIndex: number) => {
-    const currentQuestions = form.getValues("equivalentQuestions");
+    const currentQuestions = form.getValues("questions");
     const updatedQuestions = [...currentQuestions];
     if (updatedQuestions[questionIndex].options.length > 2) {
       updatedQuestions[questionIndex] = {
         ...updatedQuestions[questionIndex],
         options: updatedQuestions[questionIndex].options.filter((_, i) => i !== optionIndex)
       };
-      form.setValue("equivalentQuestions", updatedQuestions);
+      form.setValue("questions", updatedQuestions);
     }
   };
 
   const handleAddQuestion = () => {
-    const currentQuestions = form.getValues("equivalentQuestions");
+    const currentQuestions = form.getValues("questions");
     // Create new question by deep cloning the last one (duplicate entire box)
     const lastQuestion = currentQuestions[currentQuestions.length - 1];
     const newQuestion = JSON.parse(JSON.stringify(lastQuestion));
@@ -572,72 +516,13 @@ export function QuestionBankManager() {
     newQuestion.correctAnswer = "";
     newQuestion.explanation = "";
     newQuestion.options = newQuestion.options.map(() => ({ text: "", imageUrl: "", imageUrls: [] })); // Keep same number of options
-    form.setValue("equivalentQuestions", [...currentQuestions, newQuestion]);
+    form.setValue("questions", [...currentQuestions, newQuestion]);
   };
 
   const handleRemoveQuestion = (index: number) => {
-    const currentQuestions = form.getValues("equivalentQuestions");
+    const currentQuestions = form.getValues("questions");
     if (currentQuestions.length > 1) {
-      form.setValue("equivalentQuestions", currentQuestions.filter((_, i) => i !== index));
-    }
-  };
-
-  // Sub question handlers
-  const handleAddSubQuestion = (questionIndex: number) => {
-    const currentQuestions = form.getValues("equivalentQuestions");
-    const updatedQuestions = [...currentQuestions];
-    const newSubQuestion = {
-      questionText: "",
-      options: [{ text: "" }, { text: "" }],
-      correctAnswer: "",
-      explanation: "",
-    };
-    updatedQuestions[questionIndex] = {
-      ...updatedQuestions[questionIndex],
-      subQuestions: [...(updatedQuestions[questionIndex].subQuestions || []), newSubQuestion]
-    };
-    form.setValue("equivalentQuestions", updatedQuestions);
-  };
-
-  const handleRemoveSubQuestion = (questionIndex: number, subQuestionIndex: number) => {
-    const currentQuestions = form.getValues("equivalentQuestions");
-    const updatedQuestions = [...currentQuestions];
-    updatedQuestions[questionIndex] = {
-      ...updatedQuestions[questionIndex],
-      subQuestions: (updatedQuestions[questionIndex].subQuestions || []).filter((_, i) => i !== subQuestionIndex)
-    };
-    form.setValue("equivalentQuestions", updatedQuestions);
-  };
-
-  const handleAddSubQuestionOption = (questionIndex: number, subQuestionIndex: number) => {
-    const currentQuestions = form.getValues("equivalentQuestions");
-    const updatedQuestions = [...currentQuestions];
-    const subQuestions = [...(updatedQuestions[questionIndex].subQuestions || [])];
-    subQuestions[subQuestionIndex] = {
-      ...subQuestions[subQuestionIndex],
-      options: [...subQuestions[subQuestionIndex].options, { text: "" }]
-    };
-    updatedQuestions[questionIndex] = {
-      ...updatedQuestions[questionIndex],
-      subQuestions
-    };
-    form.setValue("equivalentQuestions", updatedQuestions);
-  };
-
-  const handleRemoveSubQuestionOption = (questionIndex: number, subQuestionIndex: number, optionIndex: number) => {
-    const currentQuestions = form.getValues("equivalentQuestions");
-    const updatedQuestions = [...currentQuestions];
-    const subQuestions = [...(updatedQuestions[questionIndex].subQuestions || [])];
-    if (subQuestions[subQuestionIndex].options.length > 2) {
-      subQuestions[subQuestionIndex] = {
-        ...subQuestions[subQuestionIndex],
-        options: subQuestions[subQuestionIndex].options.filter((_, i) => i !== optionIndex)
-      };
-      updatedQuestions[questionIndex] = {
-        ...updatedQuestions[questionIndex],
-        subQuestions
-      };
-      form.setValue("equivalentQuestions", updatedQuestions);
+      form.setValue("questions", currentQuestions.filter((_, i) => i !== index));
     }
   };
 
@@ -1158,7 +1043,7 @@ export function QuestionBankManager() {
                                       placeholder={`Lựa chọn ${optionIndex + 1}`}
                                       value={typeof option === 'string' ? option : option.text}
                                       onChange={(e) => {
-                                        const currentQuestions = form.getValues("equivalentQuestions");
+                                        const currentQuestions = form.getValues("questions");
                                         const updatedQuestions = [...currentQuestions];
                                         updatedQuestions[questionIndex] = {
                                           ...updatedQuestions[questionIndex],
@@ -1168,7 +1053,7 @@ export function QuestionBankManager() {
                                               opt
                                           )
                                         };
-                                        form.setValue("equivalentQuestions", updatedQuestions);
+                                        form.setValue("questions", updatedQuestions);
                                       }}
                                       data-testid={`input-option-${questionIndex}-${optionIndex}`}
                                     />
@@ -1192,7 +1077,7 @@ export function QuestionBankManager() {
                                   <MultipleImagePreviewBox
                                     imageUrls={typeof option === 'string' ? [] : (option.imageUrls || [])}
                                     onRemove={(imageIndex) => {
-                                      const currentQuestions = form.getValues("equivalentQuestions");
+                                      const currentQuestions = form.getValues("questions");
                                       const updatedQuestions = [...currentQuestions];
                                       const currentImageUrls = typeof updatedQuestions[questionIndex].options[optionIndex] === 'string' 
                                         ? [] 
@@ -1209,7 +1094,7 @@ export function QuestionBankManager() {
                                             opt
                                         )
                                       };
-                                      form.setValue("equivalentQuestions", updatedQuestions);
+                                      form.setValue("questions", updatedQuestions);
                                     }}
                                     onChooseImage={() => {
                                       const inputRef = optionImageInputRefs.current.get(`${questionIndex}-${optionIndex}`);
@@ -1234,7 +1119,7 @@ export function QuestionBankManager() {
                                       if (files.length === 0) return;
                                       
                                       try {
-                                        const currentQuestions = form.getValues("equivalentQuestions");
+                                        const currentQuestions = form.getValues("questions");
                                         const currentOption = currentQuestions[questionIndex].options[optionIndex];
                                         const currentImageUrls = typeof currentOption === 'string' ? [] : (currentOption.imageUrls || []);
                                         
@@ -1279,7 +1164,7 @@ export function QuestionBankManager() {
                                               opt
                                           )
                                         };
-                                        form.setValue("equivalentQuestions", updatedQuestions);
+                                        form.setValue("questions", updatedQuestions);
                                         
                                         toast({
                                           title: "Upload thành công",
@@ -1352,172 +1237,6 @@ export function QuestionBankManager() {
                             </FormItem>
                           )}
                         />
-
-                        {/* Sub Questions Section */}
-                        <div className="space-y-4 border-t pt-4 mt-4">
-                          <div className="flex items-center justify-between">
-                            <h4 className="text-sm font-semibold text-gray-700">Câu hỏi phụ (tùy chọn)</h4>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAddSubQuestion(questionIndex)}
-                              data-testid={`button-add-subquestion-${questionIndex}`}
-                            >
-                              <Plus className="w-4 h-4 mr-1" />
-                              Thêm câu hỏi phụ
-                            </Button>
-                          </div>
-
-                          {question.subQuestions && question.subQuestions.length > 0 && (
-                            <div className="space-y-4">
-                              {question.subQuestions.map((subQuestion, subQuestionIndex) => (
-                                <Card key={subQuestionIndex} className="p-4 bg-blue-50/30 border-blue-200">
-                                  <div className="space-y-4">
-                                    <div className="flex items-center justify-between mb-2">
-                                      <h5 className="text-sm font-medium text-blue-700">
-                                        Câu hỏi phụ {subQuestionIndex + 1}
-                                      </h5>
-                                      <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => handleRemoveSubQuestion(questionIndex, subQuestionIndex)}
-                                        className="text-red-600 hover:text-red-700"
-                                        data-testid={`button-remove-subquestion-${questionIndex}-${subQuestionIndex}`}
-                                      >
-                                        <Trash2 className="w-4 h-4" />
-                                      </Button>
-                                    </div>
-
-                                    {/* Sub Question Text */}
-                                    <FormField
-                                      control={form.control}
-                                      name={`questions.${questionIndex}.subQuestions.${subQuestionIndex}.questionText`}
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel>Nội dung câu hỏi phụ *</FormLabel>
-                                          <FormControl>
-                                            <Input 
-                                              placeholder="Nhập nội dung câu hỏi phụ..."
-                                              data-testid={`input-subquestion-text-${questionIndex}-${subQuestionIndex}`}
-                                              {...field} 
-                                            />
-                                          </FormControl>
-                                          <FormMessage />
-                                        </FormItem>
-                                      )}
-                                    />
-
-                                    {/* Sub Question Options */}
-                                    <div className="space-y-2">
-                                      <div className="flex items-center justify-between">
-                                        <FormLabel>Lựa chọn *</FormLabel>
-                                        <Button
-                                          type="button"
-                                          variant="outline"
-                                          size="sm"
-                                          onClick={() => handleAddSubQuestionOption(questionIndex, subQuestionIndex)}
-                                          data-testid={`button-add-subquestion-option-${questionIndex}-${subQuestionIndex}`}
-                                        >
-                                          <Plus className="w-3 h-3 mr-1" />
-                                          Thêm lựa chọn
-                                        </Button>
-                                      </div>
-                                      <div className="space-y-2">
-                                        {subQuestion.options.map((option, optionIndex) => (
-                                          <div key={optionIndex} className="flex items-center gap-2">
-                                            <Input
-                                              placeholder={`Lựa chọn ${optionIndex + 1}`}
-                                              value={option.text}
-                                              onChange={(e) => {
-                                                const currentQuestions = form.getValues("equivalentQuestions");
-                                                const updatedQuestions = [...currentQuestions];
-                                                const subQuestions = [...(updatedQuestions[questionIndex].subQuestions || [])];
-                                                subQuestions[subQuestionIndex] = {
-                                                  ...subQuestions[subQuestionIndex],
-                                                  options: subQuestions[subQuestionIndex].options.map((opt, idx) => 
-                                                    idx === optionIndex ? { text: e.target.value } : opt
-                                                  )
-                                                };
-                                                updatedQuestions[questionIndex] = {
-                                                  ...updatedQuestions[questionIndex],
-                                                  subQuestions
-                                                };
-                                                form.setValue("equivalentQuestions", updatedQuestions);
-                                              }}
-                                              data-testid={`input-subquestion-option-${questionIndex}-${subQuestionIndex}-${optionIndex}`}
-                                            />
-                                            {subQuestion.options.length > 2 && (
-                                              <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={() => handleRemoveSubQuestionOption(questionIndex, subQuestionIndex, optionIndex)}
-                                                className="text-red-600 hover:text-red-700"
-                                                data-testid={`button-remove-subquestion-option-${questionIndex}-${subQuestionIndex}-${optionIndex}`}
-                                              >
-                                                <Minus className="w-4 h-4" />
-                                              </Button>
-                                            )}
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-
-                                    {/* Sub Question Correct Answer */}
-                                    <FormField
-                                      control={form.control}
-                                      name={`questions.${questionIndex}.subQuestions.${subQuestionIndex}.correctAnswer`}
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel>Đáp án đúng *</FormLabel>
-                                          <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl>
-                                              <SelectTrigger data-testid={`select-subquestion-correct-answer-${questionIndex}-${subQuestionIndex}`}>
-                                                <SelectValue placeholder="Chọn đáp án đúng" />
-                                              </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>
-                                              {subQuestion.options.map((option, index) => 
-                                                option.text.trim() && (
-                                                  <SelectItem key={index} value={option.text}>
-                                                    {option.text}
-                                                  </SelectItem>
-                                                )
-                                              )}
-                                            </SelectContent>
-                                          </Select>
-                                          <FormMessage />
-                                        </FormItem>
-                                      )}
-                                    />
-
-                                    {/* Sub Question Explanation */}
-                                    <FormField
-                                      control={form.control}
-                                      name={`questions.${questionIndex}.subQuestions.${subQuestionIndex}.explanation`}
-                                      render={({ field }) => (
-                                        <FormItem>
-                                          <FormLabel>Giải thích (tùy chọn)</FormLabel>
-                                          <FormControl>
-                                            <Textarea 
-                                              placeholder="Giải thích tại sao đáp án này là đúng..."
-                                              className="min-h-[50px]"
-                                              data-testid={`textarea-subquestion-explanation-${questionIndex}-${subQuestionIndex}`}
-                                              {...field} 
-                                            />
-                                          </FormControl>
-                                          <FormMessage />
-                                        </FormItem>
-                                      )}
-                                    />
-                                  </div>
-                                </Card>
-                              ))}
-                            </div>
-                          )}
-                        </div>
                       </div>
                     </Card>
                   ))}

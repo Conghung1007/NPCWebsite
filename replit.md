@@ -2,16 +2,7 @@
 
 This is a Vietnamese business website for N&P Company (Công ty TNHH N&P), a professional service company offering visa services, study abroad consulting, Japanese language training, and online examination system. The application is built as a full-stack React application with Express.js backend, designed to showcase the company's three core services with a modern, professional interface.
 
-The website serves as a comprehensive digital presence for N&P Company, featuring service pages, contact forms, testimonials, company information, and a complete online exam system with support for sub-questions within main questions. The site focuses on three main services: visa processing, study abroad consulting, and Japanese language training. It's designed to be mobile-responsive and SEO-friendly to attract potential customers seeking international services and educational assessments.
-
-# Recent Changes
-
-**October 2025 - Sub-questions Feature Implementation**
-- Implemented text-based sub-questions within main questions in the question bank
-- Sub-questions support: question text, multiple choice options (text only), correct answer, and explanation
-- Simplified UI for sub-questions without image/audio to reduce complexity
-- Backend routes updated to handle subQuestions JSONB field
-- Sub-questions stored as JSONB array in questions table
+The website serves as a comprehensive digital presence for N&P Company, featuring service pages, contact forms, testimonials, company information, and a complete online exam system. The site focuses on three main services: visa processing, study abroad consulting, and Japanese language training. It's designed to be mobile-responsive and SEO-friendly to attract potential customers seeking international services and educational assessments.
 
 # User Preferences
 
@@ -23,7 +14,6 @@ Storage: Multi-provider object storage system supporting Replit Object Storage a
 Inline Text Editing: Implemented across all main pages for Manager and Admin roles with hover-to-edit functionality (August 2025)
 Mobile Optimization: Comprehensive responsive design improvements for all components (August 2025)
 Scroll to Top: Smooth scroll-to-top button with responsive design and performance optimization (August 2025)
-Question Bank Sub-questions: Text-only format for simplicity (October 2025)
 
 # System Architecture
 
