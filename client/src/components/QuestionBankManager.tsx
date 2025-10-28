@@ -89,12 +89,12 @@ const singleQuestionSchema = z.object({
   }
 );
 
-// Form validation schema for single question
+// Form validation schema for question form (supports multiple sub-questions)
 const questionSchema = z.object({
   language: z.string().min(1, "Ngôn ngữ là bắt buộc"),
   category: z.string().min(1, "Danh mục là bắt buộc"),
   sortOrder: z.number().default(0),
-  questions: z.array(singleQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi").max(1, "Chỉ được tạo 1 câu hỏi"),
+  questions: z.array(singleQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi").max(10, "Tối đa 10 câu hỏi"),
 });
 
 type QuestionFormData = z.infer<typeof questionSchema>;
@@ -362,23 +362,43 @@ export function QuestionBankManager() {
       };
       updateQuestionMutation.mutate({ ...backendData, id: editingQuestion.id });
     } else {
-      // For creating, use mutation for each question
-      const question = data.questions[0]; // Take first question for now
-      const backendData = {
-        category: data.category,
-        language: data.language,
-        sortOrder: data.sortOrder,
-        questionText: question.questionText,
-        description: question.description,
-        questionType: "multiple_choice" as const,
-        imageUrl: question.imageUrl,
-        imageUrls: question.imageUrls,
-        audioUrl: question.audioUrl,
-        options: question.options,
-        correctAnswer: question.correctAnswer,
-        explanation: question.explanation,
-      };
-      createQuestionMutation.mutate(backendData);
+      // For creating, create all questions in the array
+      try {
+        const createPromises = data.questions.map(async (question) => {
+          const backendData = {
+            category: data.category,
+            language: data.language,
+            sortOrder: data.sortOrder,
+            questionText: question.questionText,
+            description: question.description,
+            questionType: "multiple_choice" as const,
+            imageUrl: question.imageUrl,
+            imageUrls: question.imageUrls,
+            audioUrl: question.audioUrl,
+            options: question.options,
+            correctAnswer: question.correctAnswer,
+            explanation: question.explanation,
+          };
+          return await apiRequest("POST", "/api/questions", backendData);
+        });
+
+        await Promise.all(createPromises);
+        
+        toast({
+          title: "Thành công",
+          description: `Đã tạo thành công ${data.questions.length} câu hỏi.`,
+        });
+        
+        queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
+        setIsAddingQuestion(false);
+        form.reset();
+      } catch (error: any) {
+        toast({
+          title: "Lỗi",
+          description: error.message || "Không thể tạo câu hỏi.",
+          variant: "destructive",
+        });
+      }
     }
   };
 
@@ -930,14 +950,46 @@ export function QuestionBankManager() {
 
               {/* Questions Section */}
               <div className="space-y-4">
-                <div>
+                <div className="flex items-center justify-between">
                   <Label className="text-base font-medium">Câu hỏi *</Label>
+                  {!editingQuestion && form.watch("questions").length < 10 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddQuestion}
+                      className="flex items-center gap-1"
+                      data-testid="button-add-question"
+                    >
+                      <Plus className="w-3 h-3" />
+                      Thêm câu hỏi
+                    </Button>
+                  )}
                 </div>
                 
                 <div className="space-y-6">
                   {(form.watch("questions") || []).map((question, questionIndex) => (
                     <Card key={questionIndex} className="p-4 border-2 border-dashed border-muted-foreground/20">
                       <div className="space-y-4">
+                        {/* Question Header with number and delete button */}
+                        <div className="flex items-center justify-between pb-2 border-b">
+                          <h3 className="text-lg font-semibold text-green-600">
+                            Câu hỏi {questionIndex + 1}
+                          </h3>
+                          {!editingQuestion && form.watch("questions").length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleRemoveQuestion(questionIndex)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              data-testid={`button-remove-question-${questionIndex}`}
+                            >
+                              <Trash2 className="w-4 h-4 mr-1" />
+                              Xóa câu hỏi
+                            </Button>
+                          )}
+                        </div>
                         {/* Question Text */}
                         <FormField
                           control={form.control}
