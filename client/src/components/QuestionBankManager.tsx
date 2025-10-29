@@ -585,11 +585,15 @@ export function QuestionBankManager() {
     // Create new question by deep cloning the last one (duplicate entire box)
     const lastQuestion = currentQuestions[currentQuestions.length - 1];
     const newQuestion = JSON.parse(JSON.stringify(lastQuestion));
-    // Clear the text fields but keep structure (options count, etc)
+    // Clear all content fields but keep structure (options count, etc)
     newQuestion.questionText = "";
+    newQuestion.description = "";
     newQuestion.correctAnswer = "";
     newQuestion.explanation = "";
-    newQuestion.options = newQuestion.options.map(() => ({ text: "", imageUrl: "", imageUrls: [] })); // Keep same number of options
+    newQuestion.imageUrl = "";  // Clear single image
+    newQuestion.imageUrls = []; // Clear multiple images
+    newQuestion.audioUrl = "";  // Clear audio
+    newQuestion.options = newQuestion.options.map(() => ({ text: "", imageUrl: "", imageUrls: [] })); // Keep same number of options but clear content
     form.setValue("questions", [...currentQuestions, newQuestion]);
   };
 
@@ -1004,22 +1008,7 @@ export function QuestionBankManager() {
 
               {/* Questions Section */}
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <Label className="text-base font-medium">Câu hỏi *</Label>
-                  {form.watch("questions").length < 10 && (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAddQuestion}
-                      className="flex items-center gap-1"
-                      data-testid="button-add-question"
-                    >
-                      <Plus className="w-3 h-3" />
-                      Thêm câu hỏi
-                    </Button>
-                  )}
-                </div>
+                <Label className="text-base font-medium">Câu hỏi *</Label>
                 
                 <div className="space-y-6">
                   {(form.watch("questions") || []).map((question, questionIndex) => (
@@ -1353,6 +1342,23 @@ export function QuestionBankManager() {
                     </Card>
                   ))}
                 </div>
+                
+                {/* Add Question Button at Bottom */}
+                {form.watch("questions").length < 10 && (
+                  <div className="flex justify-center pt-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={handleAddQuestion}
+                      className="flex items-center gap-1"
+                      data-testid="button-add-question"
+                    >
+                      <Plus className="w-4 h-4 mr-1" />
+                      Thêm câu hỏi
+                    </Button>
+                  </div>
+                )}
               </div>
 
               <DialogFooter className="flex gap-2">
