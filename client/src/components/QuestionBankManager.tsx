@@ -344,23 +344,77 @@ export function QuestionBankManager() {
 
   const handleSubmit = async (data: QuestionFormData) => {
     if (editingQuestion) {
-      // For editing, keep single question behavior (first question in array)
-      const question = data.questions[0];
-      const backendData = { 
-        category: data.category,
-        language: data.language,
-        sortOrder: data.sortOrder,
-        questionText: question.questionText,
-        description: question.description,
-        questionType: "multiple_choice" as const,
-        imageUrl: question.imageUrl,
-        imageUrls: question.imageUrls,
-        audioUrl: question.audioUrl,
-        options: question.options,
-        correctAnswer: question.correctAnswer,
-        explanation: question.explanation,
-      };
-      updateQuestionMutation.mutate({ ...backendData, id: editingQuestion.id });
+      // For editing: Update first question, create the rest
+      try {
+        const promises = [];
+        
+        // Update the original question (first in array)
+        const firstQuestion = data.questions[0];
+        const updateData = { 
+          category: data.category,
+          language: data.language,
+          sortOrder: data.sortOrder,
+          questionText: firstQuestion.questionText,
+          description: firstQuestion.description,
+          questionType: "multiple_choice" as const,
+          imageUrl: firstQuestion.imageUrl,
+          imageUrls: firstQuestion.imageUrls,
+          audioUrl: firstQuestion.audioUrl,
+          options: firstQuestion.options,
+          correctAnswer: firstQuestion.correctAnswer,
+          explanation: firstQuestion.explanation,
+        };
+        promises.push(
+          apiRequest("PUT", `/api/questions/${editingQuestion.id}`, updateData)
+        );
+        
+        // Create new questions for any additional questions (index > 0)
+        const newQuestions = data.questions.slice(1);
+        newQuestions.forEach((question) => {
+          const createData = {
+            category: data.category,
+            language: data.language,
+            sortOrder: data.sortOrder,
+            questionText: question.questionText,
+            description: question.description,
+            questionType: "multiple_choice" as const,
+            imageUrl: question.imageUrl,
+            imageUrls: question.imageUrls,
+            audioUrl: question.audioUrl,
+            options: question.options,
+            correctAnswer: question.correctAnswer,
+            explanation: question.explanation,
+          };
+          promises.push(apiRequest("POST", "/api/questions", createData));
+        });
+
+        await Promise.all(promises);
+        
+        const totalQuestions = data.questions.length;
+        const newQuestionsCount = newQuestions.length;
+        
+        if (newQuestionsCount > 0) {
+          toast({
+            title: "Thành công",
+            description: `Đã cập nhật 1 câu hỏi và tạo thêm ${newQuestionsCount} câu hỏi mới.`,
+          });
+        } else {
+          toast({
+            title: "Thành công",
+            description: "Câu hỏi đã được cập nhật thành công.",
+          });
+        }
+        
+        queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
+        setEditingQuestion(null);
+        form.reset();
+      } catch (error: any) {
+        toast({
+          title: "Lỗi",
+          description: error.message || "Không thể cập nhật câu hỏi.",
+          variant: "destructive",
+        });
+      }
     } else {
       // For creating, create all questions in the array
       try {
@@ -952,7 +1006,7 @@ export function QuestionBankManager() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <Label className="text-base font-medium">Câu hỏi *</Label>
-                  {!editingQuestion && form.watch("questions").length < 10 && (
+                  {form.watch("questions").length < 10 && (
                     <Button
                       type="button"
                       variant="outline"
@@ -974,9 +1028,13 @@ export function QuestionBankManager() {
                         {/* Question Header with number and delete button */}
                         <div className="flex items-center justify-between pb-2 border-b">
                           <h3 className="text-lg font-semibold text-green-600">
-                            Câu hỏi {questionIndex + 1}
+                            {editingQuestion && questionIndex === 0 ? (
+                              <span>Câu hỏi gốc (đang chỉnh sửa)</span>
+                            ) : (
+                              <span>Câu hỏi {questionIndex + 1}</span>
+                            )}
                           </h3>
-                          {!editingQuestion && form.watch("questions").length > 1 && (
+                          {form.watch("questions").length > 1 && (
                             <Button
                               type="button"
                               variant="ghost"
@@ -984,6 +1042,8 @@ export function QuestionBankManager() {
                               onClick={() => handleRemoveQuestion(questionIndex)}
                               className="text-red-600 hover:text-red-700 hover:bg-red-50"
                               data-testid={`button-remove-question-${questionIndex}`}
+                              disabled={editingQuestion !== null && questionIndex === 0}
+                              title={editingQuestion !== null && questionIndex === 0 ? "Không thể xóa câu hỏi gốc" : "Xóa câu hỏi này"}
                             >
                               <Trash2 className="w-4 h-4 mr-1" />
                               Xóa câu hỏi
