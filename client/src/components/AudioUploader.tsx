@@ -9,6 +9,7 @@ interface AudioUploaderProps {
   currentFileName?: string;
   onRemoveAudio?: () => void;
   disabled?: boolean;
+  context?: "qbank" | "exam";
 }
 
 export function AudioUploader({ 
@@ -16,7 +17,8 @@ export function AudioUploader({
   currentAudioUrl, 
   currentFileName,
   onRemoveAudio, 
-  disabled = false 
+  disabled = false,
+  context = "qbank"
 }: AudioUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -58,12 +60,22 @@ export function AudioUploader({
       setUploadProgress(0);
       setOriginalFileName(file.name);
 
-      // Cleanup previous temporary file if exists
-      if (currentAudioUrl && currentAudioUrl.includes('/api/temp-audio/')) {
+      // Cleanup previous temporary file if exists (supports both legacy and context-based URLs)
+      const isTempFile = currentAudioUrl && (
+        currentAudioUrl.includes('/api/temp-audio/') || 
+        currentAudioUrl.match(/\/api\/(qbank|exam)-temp-audio\//)
+      );
+      
+      if (isTempFile) {
         try {
           const oldFilename = currentAudioUrl.split('/').pop();
           if (oldFilename) {
-            fetch("/api/temp-audio/cleanup", {
+            // Extract context from URL if present
+            const contextMatch = currentAudioUrl.match(/\/api\/(qbank|exam)-temp-/);
+            const fileContext = contextMatch ? contextMatch[1] : undefined;
+            const cleanupUrl = fileContext ? `/api/temp-audio/cleanup?context=${fileContext}` : '/api/temp-audio/cleanup';
+            
+            fetch(cleanupUrl, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ filenames: [oldFilename] })
@@ -130,7 +142,8 @@ export function AudioUploader({
         throw new Error(`Upload failed - Network error`);
       });
 
-      xhr.open('POST', '/api/audio/upload-direct');
+      const endpointWithContext = `/api/audio/upload-direct?context=${context}`;
+      xhr.open('POST', endpointWithContext);
       xhr.send(formData);
 
     } catch (error) {
@@ -178,12 +191,22 @@ export function AudioUploader({
   };
 
   const handleRemoveAudio = async () => {
-    // If it's a temporary file, clean it up from R2 storage
-    if (currentAudioUrl && currentAudioUrl.includes('/api/temp-audio/')) {
+    // If it's a temporary file, clean it up from R2 storage (supports both legacy and context-based URLs)
+    const isTempFile = currentAudioUrl && (
+      currentAudioUrl.includes('/api/temp-audio/') || 
+      currentAudioUrl.match(/\/api\/(qbank|exam)-temp-audio\//)
+    );
+    
+    if (isTempFile) {
       try {
         const filename = currentAudioUrl.split('/').pop();
         if (filename) {
-          await fetch("/api/temp-audio/cleanup", {
+          // Extract context from URL if present
+          const contextMatch = currentAudioUrl.match(/\/api\/(qbank|exam)-temp-/);
+          const fileContext = contextMatch ? contextMatch[1] : undefined;
+          const cleanupUrl = fileContext ? `/api/temp-audio/cleanup?context=${fileContext}` : '/api/temp-audio/cleanup';
+          
+          await fetch(cleanupUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ filenames: [filename] })

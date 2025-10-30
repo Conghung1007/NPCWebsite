@@ -11,6 +11,7 @@ interface QuestionImageUploaderProps {
   type: "question" | "answer";
   maxSizeMB?: number;
   label?: string;
+  context?: "qbank" | "exam";
 }
 
 export function QuestionImageUploader({ 
@@ -20,7 +21,8 @@ export function QuestionImageUploader({
   disabled = false,
   type = "question",
   maxSizeMB = 5,
-  label
+  label,
+  context = "qbank"
 }: QuestionImageUploaderProps) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -59,12 +61,22 @@ export function QuestionImageUploader({
       setIsUploading(true);
       setUploadProgress(0);
 
-      // Cleanup previous temporary file if exists
-      if (currentImageUrl && currentImageUrl.includes(`/api/temp-${type}-images/`)) {
+      // Cleanup previous temporary file if exists (supports both legacy and context-based URLs)
+      const isTempFile = currentImageUrl && (
+        currentImageUrl.includes(`/api/temp-${type}-images/`) || 
+        currentImageUrl.match(new RegExp(`/api/(qbank|exam)-temp-${type}-images/`))
+      );
+      
+      if (isTempFile) {
         try {
           const oldFilename = currentImageUrl.split('/').pop();
           if (oldFilename) {
-            fetch(cleanupEndpoint, {
+            // Extract context from URL if present (e.g., /api/qbank-temp-images/ or /api/exam-temp-images/)
+            const contextMatch = currentImageUrl.match(/\/api\/(qbank|exam)-temp-/);
+            const fileContext = contextMatch ? contextMatch[1] : undefined;
+            const cleanupUrl = fileContext ? `${cleanupEndpoint}?context=${fileContext}` : cleanupEndpoint;
+            
+            fetch(cleanupUrl, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ filenames: [oldFilename] })
@@ -148,7 +160,8 @@ export function QuestionImageUploader({
         }
       });
 
-      xhr.open('POST', apiEndpoint);
+      const endpointWithContext = `${apiEndpoint}?context=${context}`;
+      xhr.open('POST', endpointWithContext);
       xhr.send(formData);
 
     } catch (error) {
@@ -171,12 +184,20 @@ export function QuestionImageUploader({
   const handleRemove = async () => {
     if (!currentImageUrl || !onRemoveImage) return;
 
-    // Cleanup temporary file if exists
-    if (currentImageUrl.includes(`/api/temp-${type}-images/`)) {
+    // Cleanup temporary file if exists (supports both legacy and context-based URLs)
+    const isTempFile = currentImageUrl.includes(`/api/temp-${type}-images/`) || 
+                      currentImageUrl.match(new RegExp(`/api/(qbank|exam)-temp-${type}-images/`));
+    
+    if (isTempFile) {
       try {
         const filename = currentImageUrl.split('/').pop();
         if (filename) {
-          await fetch(cleanupEndpoint, {
+          // Extract context from URL if present
+          const contextMatch = currentImageUrl.match(/\/api\/(qbank|exam)-temp-/);
+          const fileContext = contextMatch ? contextMatch[1] : undefined;
+          const cleanupUrl = fileContext ? `${cleanupEndpoint}?context=${fileContext}` : cleanupEndpoint;
+          
+          await fetch(cleanupUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ filenames: [filename] })

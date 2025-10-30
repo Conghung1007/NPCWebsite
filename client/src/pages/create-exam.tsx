@@ -193,7 +193,7 @@ export default function CreateExam() {
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/temp-description-images/upload', {
+      const response = await fetch('/api/temp-description-images/upload?context=exam', {
         method: 'POST',
         body: formData
       });
@@ -541,6 +541,7 @@ export default function CreateExam() {
                         currentAudioUrl={section.descriptionAudioUrl || ""}
                         onAudioUpload={(audioUrl) => updateSectionDescriptionAudio(section.id, audioUrl)}
                         onRemoveAudio={() => updateSectionDescriptionAudio(section.id, "")}
+                        context="exam"
                       />
                     </div>
 

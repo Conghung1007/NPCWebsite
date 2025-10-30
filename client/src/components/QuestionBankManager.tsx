@@ -686,16 +686,16 @@ export function QuestionBankManager() {
 
     // No more description media files to clean up since they're now handled at section level
 
-    // Collect temporary files from all questions
+    // Collect temporary files from all questions (supports both legacy and context-based URLs)
     formData.questions?.forEach(question => {
       // Collect temporary audio files
-      if (question.audioUrl && question.audioUrl.includes('/api/temp-audio/')) {
+      if (question.audioUrl && (question.audioUrl.includes('/api/temp-audio/') || question.audioUrl.match(/\/api\/(qbank|exam)-temp-audio\//))) {
         const filename = question.audioUrl.split('/').pop();
         if (filename) tempFilesToCleanup.audio.push(filename);
       }
 
       // Collect temporary question image files
-      if (question.imageUrl && question.imageUrl.includes('/api/temp-question-images/')) {
+      if (question.imageUrl && (question.imageUrl.includes('/api/temp-question-images/') || question.imageUrl.match(/\/api\/(qbank|exam)-temp-question-images\//))) {
         const filename = question.imageUrl.split('/').pop();
         if (filename) tempFilesToCleanup.questionImages.push(filename);
       }
@@ -706,12 +706,12 @@ export function QuestionBankManager() {
       if (question.options && Array.isArray(question.options)) {
         question.options.forEach((option: any) => {
           // Check if options are objects with imageUrl property
-          if (typeof option === 'object' && option.imageUrl && option.imageUrl.includes('/api/temp-answer-images/')) {
+          if (typeof option === 'object' && option.imageUrl && (option.imageUrl.includes('/api/temp-answer-images/') || option.imageUrl.match(/\/api\/(qbank|exam)-temp-answer-images\//))) {
             const filename = option.imageUrl.split('/').pop();
             if (filename) tempFilesToCleanup.answerImages.push(filename);
           }
           // Check if option is a string that contains an answer image URL
-          if (typeof option === 'string' && option.includes('/api/temp-answer-images/')) {
+          if (typeof option === 'string' && (option.includes('/api/temp-answer-images/') || option.match(/\/api\/(qbank|exam)-temp-answer-images\//))) {
             const filename = option.split('/').pop();
             if (filename) tempFilesToCleanup.answerImages.push(filename);
           }
@@ -719,12 +719,13 @@ export function QuestionBankManager() {
       }
     });
 
-    // Cleanup temporary files
+    // Cleanup temporary files (QuestionBankManager uses qbank context)
     const cleanupPromises = [];
+    const context = 'qbank'; // QuestionBankManager is for Question Bank only
     
     if (tempFilesToCleanup.descriptionImages.length > 0) {
       cleanupPromises.push(
-        fetch('/api/temp-description-images/cleanup', {
+        fetch(`/api/temp-description-images/cleanup?context=${context}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ filenames: tempFilesToCleanup.descriptionImages })
@@ -734,7 +735,7 @@ export function QuestionBankManager() {
 
     if (tempFilesToCleanup.descriptionAudio.length > 0) {
       cleanupPromises.push(
-        fetch('/api/temp-description-audio/cleanup', {
+        fetch(`/api/temp-description-audio/cleanup?context=${context}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ filenames: tempFilesToCleanup.descriptionAudio })
@@ -744,7 +745,7 @@ export function QuestionBankManager() {
     
     if (tempFilesToCleanup.audio.length > 0) {
       cleanupPromises.push(
-        fetch('/api/temp-audio/cleanup', {
+        fetch(`/api/temp-audio/cleanup?context=${context}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ filenames: tempFilesToCleanup.audio })
@@ -754,7 +755,7 @@ export function QuestionBankManager() {
 
     if (tempFilesToCleanup.questionImages.length > 0) {
       cleanupPromises.push(
-        fetch('/api/temp-question-images/cleanup', {
+        fetch(`/api/temp-question-images/cleanup?context=${context}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ filenames: tempFilesToCleanup.questionImages })
@@ -764,7 +765,7 @@ export function QuestionBankManager() {
 
     if (tempFilesToCleanup.answerImages.length > 0) {
       cleanupPromises.push(
-        fetch('/api/temp-answer-images/cleanup', {
+        fetch(`/api/temp-answer-images/cleanup?context=${context}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ filenames: tempFilesToCleanup.answerImages })
@@ -1126,6 +1127,7 @@ export function QuestionBankManager() {
                           currentAudioUrl={field.value}
                           onAudioUpload={(audioUrl) => field.onChange(audioUrl)}
                           onRemoveAudio={() => field.onChange("")}
+                          context="qbank"
                         />
                       </FormControl>
                       <FormMessage />
@@ -1241,6 +1243,7 @@ export function QuestionBankManager() {
                                       currentAudioUrl={field.value}
                                       onAudioUpload={(audioUrl) => field.onChange(audioUrl)}
                                       onRemoveAudio={() => field.onChange("")}
+                                      context="qbank"
                                     />
                                   </FormControl>
                                   <FormMessage />

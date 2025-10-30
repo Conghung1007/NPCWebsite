@@ -10,6 +10,7 @@ interface DescriptionMediaUploaderProps {
   onImageChange: (url: string) => void;
   onAudioChange: (url: string) => void;
   disabled?: boolean;
+  context?: "qbank" | "exam";
 }
 
 export function DescriptionMediaUploader({
@@ -17,7 +18,8 @@ export function DescriptionMediaUploader({
   audioUrl = "",
   onImageChange,
   onAudioChange,
-  disabled = false
+  disabled = false,
+  context = "qbank"
 }: DescriptionMediaUploaderProps) {
   const [isImageUploading, setIsImageUploading] = useState(false);
   const [isAudioUploading, setIsAudioUploading] = useState(false);
@@ -30,11 +32,22 @@ export function DescriptionMediaUploader({
   const { toast } = useToast();
 
   const cleanupPreviousFile = useCallback(async (currentUrl: string, cleanupEndpoint: string) => {
-    if (currentUrl && currentUrl.includes('/api/temp-')) {
+    // Check for both legacy (/api/temp-*) and context-based (/api/{context}-temp-*) URLs
+    const isTempFile = currentUrl && (
+      currentUrl.includes('/api/temp-') || 
+      currentUrl.match(/\/api\/(qbank|exam)-temp-/)
+    );
+    
+    if (isTempFile) {
       try {
         const filename = currentUrl.split('/').pop();
         if (filename) {
-          fetch(cleanupEndpoint, {
+          // Extract context from URL if present (e.g., /api/qbank-temp-images/ or /api/exam-temp-audio/)
+          const contextMatch = currentUrl.match(/\/api\/(qbank|exam)-temp-/);
+          const fileContext = contextMatch ? contextMatch[1] : undefined;
+          const cleanupUrl = fileContext ? `${cleanupEndpoint}?context=${fileContext}` : cleanupEndpoint;
+          
+          fetch(cleanupUrl, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({ filenames: [filename] })
@@ -78,7 +91,8 @@ export function DescriptionMediaUploader({
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/temp-description-images/upload', {
+      const uploadUrl = `/api/temp-description-images/upload?context=${context}`;
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData
       });
@@ -88,8 +102,12 @@ export function DescriptionMediaUploader({
       if (result.success) {
         onImageChange(result.url);
         
-        // Only cleanup previous temporary image after successful upload
-        if (previousImageUrl && previousImageUrl.includes('/api/temp-description-images/')) {
+        // Only cleanup previous temporary image after successful upload (supports both legacy and context-based URLs)
+        const isPrevTempImage = previousImageUrl && (
+          previousImageUrl.includes('/api/temp-description-images/') || 
+          previousImageUrl.match(/\/api\/(qbank|exam)-temp-description-images\//)
+        );
+        if (isPrevTempImage) {
           await cleanupPreviousFile(previousImageUrl, "/api/temp-description-images/cleanup");
         }
         
@@ -148,7 +166,8 @@ export function DescriptionMediaUploader({
       const formData = new FormData();
       formData.append('file', file);
 
-      const response = await fetch('/api/temp-description-audio/upload', {
+      const uploadUrl = `/api/temp-description-audio/upload?context=${context}`;
+      const response = await fetch(uploadUrl, {
         method: 'POST',
         body: formData
       });
@@ -158,8 +177,12 @@ export function DescriptionMediaUploader({
       if (result.success) {
         onAudioChange(result.url);
         
-        // Only cleanup previous temporary audio after successful upload
-        if (previousAudioUrl && previousAudioUrl.includes('/api/temp-description-audio/')) {
+        // Only cleanup previous temporary audio after successful upload (supports both legacy and context-based URLs)
+        const isPrevTempAudio = previousAudioUrl && (
+          previousAudioUrl.includes('/api/temp-description-audio/') || 
+          previousAudioUrl.match(/\/api\/(qbank|exam)-temp-description-audio\//)
+        );
+        if (isPrevTempAudio) {
           await cleanupPreviousFile(previousAudioUrl, "/api/temp-description-audio/cleanup");
         }
         

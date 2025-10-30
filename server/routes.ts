@@ -1571,6 +1571,38 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return `qbank-${baseFolder}`;
   };
 
+  // Generic download handler for R2 files
+  const handleFileDownload = async (folder: string, filename: string, res: any, contentType: string = 'application/octet-stream', cacheMaxAge: number = 3600) => {
+    try {
+      const objectKey = `${folder}/${filename}`;
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
+      
+      if (downloadUrl) {
+        try {
+          const response = await fetch(downloadUrl);
+          if (response.ok) {
+            const actualContentType = response.headers.get('content-type') || contentType;
+            res.set({
+              'Content-Type': actualContentType,
+              'Cache-Control': `public, max-age=${cacheMaxAge}`,
+              'Access-Control-Allow-Origin': '*'
+            });
+            
+            const buffer = await response.arrayBuffer();
+            return res.send(Buffer.from(buffer));
+          }
+        } catch (proxyError) {
+          console.error(`Error proxying file from ${folder}:`, proxyError);
+        }
+      }
+      
+      res.status(404).json({ error: "File not found" });
+    } catch (error) {
+      console.error(`Error serving file from ${folder}:`, error);
+      res.status(500).json({ error: "Failed to serve file" });
+    }
+  };
+
   // Question image upload endpoint (direct upload using multipart/form-data)
   // Supports context parameter: ?context=qbank (default) or ?context=exam
   app.post("/api/question-images/upload-direct", upload.single('file'), async (req, res) => {
@@ -1832,6 +1864,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ DOWNLOAD ENDPOINTS FOR CONTEXT-SPECIFIC FOLDERS ============
+  
+  // Question Bank download endpoints
+  app.get("/api/qbank-temp-images/:filename", async (req, res) => {
+    await handleFileDownload('qbank-temp-images', req.params.filename, res, 'image/jpeg', 300);
+  });
+  
+  app.get("/api/qbank-temp-answer-images/:filename", async (req, res) => {
+    await handleFileDownload('qbank-temp-answer-images', req.params.filename, res, 'image/jpeg', 300);
+  });
+  
+  app.get("/api/qbank-temp-audio/:filename", async (req, res) => {
+    await handleFileDownload('qbank-temp-audio', req.params.filename, res, 'audio/mpeg', 300);
+  });
+  
+  app.get("/api/qbank-temp-description-images/:filename", async (req, res) => {
+    await handleFileDownload('qbank-temp-description-images', req.params.filename, res, 'image/jpeg', 300);
+  });
+  
+  app.get("/api/qbank-temp-description-audio/:filename", async (req, res) => {
+    await handleFileDownload('qbank-temp-description-audio', req.params.filename, res, 'audio/mpeg', 300);
+  });
+  
+  app.get("/api/qbank-images/:filename", async (req, res) => {
+    await handleFileDownload('qbank-images', req.params.filename, res, 'image/jpeg', 31536000); // 1 year
+  });
+  
+  app.get("/api/qbank-answer-images/:filename", async (req, res) => {
+    await handleFileDownload('qbank-answer-images', req.params.filename, res, 'image/jpeg', 31536000);
+  });
+  
+  app.get("/api/qbank-audio/:filename", async (req, res) => {
+    await handleFileDownload('qbank-audio', req.params.filename, res, 'audio/mpeg', 31536000);
+  });
+  
+  app.get("/api/qbank-description-images/:filename", async (req, res) => {
+    await handleFileDownload('qbank-description-images', req.params.filename, res, 'image/jpeg', 31536000);
+  });
+  
+  app.get("/api/qbank-description-audio/:filename", async (req, res) => {
+    await handleFileDownload('qbank-description-audio', req.params.filename, res, 'audio/mpeg', 31536000);
+  });
+  
+  // Exam download endpoints
+  app.get("/api/exam-temp-images/:filename", async (req, res) => {
+    await handleFileDownload('exam-temp-images', req.params.filename, res, 'image/jpeg', 300);
+  });
+  
+  app.get("/api/exam-temp-answer-images/:filename", async (req, res) => {
+    await handleFileDownload('exam-temp-answer-images', req.params.filename, res, 'image/jpeg', 300);
+  });
+  
+  app.get("/api/exam-temp-audio/:filename", async (req, res) => {
+    await handleFileDownload('exam-temp-audio', req.params.filename, res, 'audio/mpeg', 300);
+  });
+  
+  app.get("/api/exam-temp-description-images/:filename", async (req, res) => {
+    await handleFileDownload('exam-temp-description-images', req.params.filename, res, 'image/jpeg', 300);
+  });
+  
+  app.get("/api/exam-temp-description-audio/:filename", async (req, res) => {
+    await handleFileDownload('exam-temp-description-audio', req.params.filename, res, 'audio/mpeg', 300);
+  });
+  
+  app.get("/api/exam-images/:filename", async (req, res) => {
+    await handleFileDownload('exam-images', req.params.filename, res, 'image/jpeg', 31536000);
+  });
+  
+  app.get("/api/exam-answer-images/:filename", async (req, res) => {
+    await handleFileDownload('exam-answer-images', req.params.filename, res, 'image/jpeg', 31536000);
+  });
+  
+  app.get("/api/exam-audio/:filename", async (req, res) => {
+    await handleFileDownload('exam-audio', req.params.filename, res, 'audio/mpeg', 31536000);
+  });
+  
+  app.get("/api/exam-description-images/:filename", async (req, res) => {
+    await handleFileDownload('exam-description-images', req.params.filename, res, 'image/jpeg', 31536000);
+  });
+  
+  app.get("/api/exam-description-audio/:filename", async (req, res) => {
+    await handleFileDownload('exam-description-audio', req.params.filename, res, 'audio/mpeg', 31536000);
+  });
+
+  // ============ LEGACY DOWNLOAD ENDPOINTS (kept for backward compatibility) ============
+  
   // Audio download endpoint
   app.get("/api/audio/:filename", async (req, res) => {
     try {
@@ -2141,16 +2259,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Filenames array is required" });
       }
 
+      // Get context from query string for context-based folder structure
+      const context = req.query.context as 'qbank' | 'exam' | undefined;
+      const folderName = context ? getContextFolder('temp-audio', context) : 'temp-audio';
+
       const results = [];
       for (const filename of filenames) {
-        const objectKey = `temp-audio/${filename}`;
+        const objectKey = `${folderName}/${filename}`;
         const result = await multiR2Storage.deleteFile("primary", objectKey);
         results.push({ filename, success: result.success, error: result.error });
         
         if (result.success) {
-          console.log(`✓ Cleaned up temporary audio file: ${filename}`);
+          console.log(`✓ Cleaned up temporary audio file: ${filename} from ${folderName}`);
         } else {
-          console.warn(`✗ Failed to cleanup temporary audio file: ${filename} - ${result.error}`);
+          console.warn(`✗ Failed to cleanup temporary audio file: ${filename} from ${folderName} - ${result.error}`);
         }
       }
 
@@ -2175,16 +2297,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "filenames must be an array" });
       }
 
+      // Get context from query string for context-based folder structure
+      const context = req.query.context as 'qbank' | 'exam' | undefined;
+      const folderName = context ? getContextFolder('temp-question-images', context) : 'temp-question-images';
+
       const results = [];
       for (const filename of filenames) {
-        const objectKey = `temp-question-images/${filename}`;
+        const objectKey = `${folderName}/${filename}`;
         const result = await multiR2Storage.deleteFile("primary", objectKey);
         results.push({ filename, success: result.success, error: result.error });
         
         if (result.success) {
-          console.log(`✓ Cleaned up temporary question image: ${filename}`);
+          console.log(`✓ Cleaned up temporary question image: ${filename} from ${folderName}`);
         } else {
-          console.warn(`✗ Failed to cleanup temporary question image: ${filename} - ${result.error}`);
+          console.warn(`✗ Failed to cleanup temporary question image: ${filename} from ${folderName} - ${result.error}`);
         }
       }
 
@@ -2209,16 +2335,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "filenames must be an array" });
       }
 
+      // Get context from query string for context-based folder structure
+      const context = req.query.context as 'qbank' | 'exam' | undefined;
+      const folderName = context ? getContextFolder('temp-answer-images', context) : 'temp-answer-images';
+
       const results = [];
       for (const filename of filenames) {
-        const objectKey = `temp-answer-images/${filename}`;
+        const objectKey = `${folderName}/${filename}`;
         const result = await multiR2Storage.deleteFile("primary", objectKey);
         results.push({ filename, success: result.success, error: result.error });
         
         if (result.success) {
-          console.log(`✓ Cleaned up temporary answer image: ${filename}`);
+          console.log(`✓ Cleaned up temporary answer image: ${filename} from ${folderName}`);
         } else {
-          console.warn(`✗ Failed to cleanup temporary answer image: ${filename} - ${result.error}`);
+          console.warn(`✗ Failed to cleanup temporary answer image: ${filename} from ${folderName} - ${result.error}`);
         }
       }
 
@@ -2229,9 +2359,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Helper function to move temporary question images to permanent location
-  async function moveTemporaryQuestionImageToPermanent(tempUrl: string): Promise<string | null> {
-    if (!tempUrl || !tempUrl.includes('/api/temp-question-images/')) {
+  // Generic helper to move file from temp to permanent with context support
+  async function moveTemporaryFileToPermanent(
+    tempUrl: string, 
+    tempFolderPattern: string, 
+    contentType: string,
+    maxSizeBytes: number,
+    context: 'qbank' | 'exam' = 'qbank'
+  ): Promise<string | null> {
+    if (!tempUrl || !tempUrl.includes(tempFolderPattern)) {
       return tempUrl; // Already permanent or invalid
     }
 
@@ -2239,116 +2375,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const filename = tempUrl.split('/').pop();
       if (!filename) return null;
 
-      const tempObjectKey = `temp-question-images/${filename}`;
-      const finalObjectKey = `question-images/${filename}`;
-
-      // Download from temp location
-      const downloadUrl = await r2Manager.generateDownloadUrl("primary", tempObjectKey);
-      if (!downloadUrl) {
-        console.warn(`Temporary question image not found: ${tempObjectKey}`);
+      // Extract the base folder name from temp pattern (e.g., 'temp-images' from '/api/qbank-temp-images/')
+      const match = tempUrl.match(/\/api\/(qbank|exam)-(temp-[^/]+)\//);
+      if (!match) {
+        console.warn(`Could not extract folder pattern from: ${tempUrl}`);
         return null;
       }
 
-      const response = await fetch(downloadUrl);
-      if (!response.ok) {
-        console.warn(`Failed to download temporary question image: ${tempObjectKey}`);
-        return null;
-      }
-
-      const buffer = await response.arrayBuffer();
-
-      // Upload to final location
-      const uploadResult = await multiR2Storage.uploadFile(
-        Buffer.from(buffer),
-        filename,
-        "image/jpeg", // Default content type, can be adjusted
-        {
-          provider: "primary",
-          folder: "question-images",
-          allowedTypes: ["image/*"],
-          maxSizeBytes: 5 * 1024 * 1024
-        }
-      );
-
-      if (uploadResult.success) {
-        // Delete temporary file
-        await multiR2Storage.deleteFile("primary", tempObjectKey);
-        return `/api/question-images/${filename}`;
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Error moving temporary question image to permanent:", error);
-      return null;
-    }
-  }
-
-  // Helper function to move temporary answer images to permanent location
-  async function moveTemporaryAnswerImageToPermanent(tempUrl: string): Promise<string | null> {
-    if (!tempUrl || !tempUrl.includes('/api/temp-answer-images/')) {
-      return tempUrl; // Already permanent or invalid
-    }
-
-    try {
-      const filename = tempUrl.split('/').pop();
-      if (!filename) return null;
-
-      const tempObjectKey = `temp-answer-images/${filename}`;
-      const finalObjectKey = `answer-images/${filename}`;
-
-      // Download from temp location
-      const downloadUrl = await r2Manager.generateDownloadUrl("primary", tempObjectKey);
-      if (!downloadUrl) {
-        console.warn(`Temporary answer image not found: ${tempObjectKey}`);
-        return null;
-      }
-
-      const response = await fetch(downloadUrl);
-      if (!response.ok) {
-        console.warn(`Failed to download temporary answer image: ${tempObjectKey}`);
-        return null;
-      }
-
-      const buffer = await response.arrayBuffer();
-
-      // Upload to final location
-      const uploadResult = await multiR2Storage.uploadFile(
-        Buffer.from(buffer),
-        filename,
-        "image/jpeg", // Default content type, can be adjusted
-        {
-          provider: "primary",
-          folder: "answer-images",
-          allowedTypes: ["image/*"],
-          maxSizeBytes: 3 * 1024 * 1024
-        }
-      );
-
-      if (uploadResult.success) {
-        // Delete temporary file
-        await multiR2Storage.deleteFile("primary", tempObjectKey);
-        return `/api/answer-images/${filename}`;
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Error moving temporary answer image to permanent:", error);
-      return null;
-    }
-  }
-
-  // Helper function to move temporary audio to permanent location
-  async function moveTemporaryAudioToPermanent(tempUrl: string): Promise<string | null> {
-    if (!tempUrl || !tempUrl.includes('/api/temp-audio/')) {
-      return tempUrl; // Already permanent or invalid
-    }
-
-    try {
-      const filename = tempUrl.split('/').pop();
-      if (!filename) return null;
-
-      const tempObjectKey = `temp-audio/${filename}`;
-      const finalObjectKey = `audio/${filename}`;
+      const actualContext = match[1] as 'qbank' | 'exam';
+      const tempBaseName = match[2]; // e.g., 'temp-images'
+      const finalBaseName = tempBaseName.replace('temp-', ''); // e.g., 'images'
+      
+      const tempFolder = `${actualContext}-${tempBaseName}`;
+      const finalFolder = `${actualContext}-${finalBaseName}`;
+      const tempObjectKey = `${tempFolder}/${filename}`;
 
       // Download from temp location
       const downloadUrl = await r2Manager.generateDownloadUrl("primary", tempObjectKey);
@@ -2369,6 +2409,179 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const uploadResult = await multiR2Storage.uploadFile(
         Buffer.from(buffer),
         filename,
+        contentType,
+        {
+          provider: "primary",
+          folder: finalFolder,
+          allowedTypes: contentType.startsWith('image') ? ["image/*"] : ["audio/*"],
+          maxSizeBytes
+        }
+      );
+
+      if (uploadResult.success) {
+        // Delete temporary file
+        await multiR2Storage.deleteFile("primary", tempObjectKey);
+        console.log(`✓ Moved file: ${tempFolder}/${filename} → ${finalFolder}/${filename}`);
+        return `/api/${finalFolder}/${filename}`;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error moving temporary file to permanent:", error);
+      return null;
+    }
+  }
+
+  // Helper function to move temporary question images to permanent location (LEGACY - kept for backward compatibility)
+  async function moveTemporaryQuestionImageToPermanent(tempUrl: string): Promise<string | null> {
+    // Handle both new context-specific and old format
+    if (tempUrl?.includes('/api/qbank-temp-images/') || tempUrl?.includes('/api/exam-temp-images/')) {
+      return moveTemporaryFileToPermanent(tempUrl, 'temp-images', 'image/jpeg', 5 * 1024 * 1024);
+    }
+    
+    // Legacy format handling
+    if (!tempUrl || !tempUrl.includes('/api/temp-question-images/')) {
+      return tempUrl;
+    }
+
+    try {
+      const filename = tempUrl.split('/').pop();
+      if (!filename) return null;
+
+      const tempObjectKey = `temp-question-images/${filename}`;
+      const finalObjectKey = `question-images/${filename}`;
+
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", tempObjectKey);
+      if (!downloadUrl) {
+        console.warn(`Temporary question image not found: ${tempObjectKey}`);
+        return null;
+      }
+
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        console.warn(`Failed to download temporary question image: ${tempObjectKey}`);
+        return null;
+      }
+
+      const buffer = await response.arrayBuffer();
+
+      const uploadResult = await multiR2Storage.uploadFile(
+        Buffer.from(buffer),
+        filename,
+        "image/jpeg",
+        {
+          provider: "primary",
+          folder: "question-images",
+          allowedTypes: ["image/*"],
+          maxSizeBytes: 5 * 1024 * 1024
+        }
+      );
+
+      if (uploadResult.success) {
+        await multiR2Storage.deleteFile("primary", tempObjectKey);
+        return `/api/question-images/${filename}`;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error moving temporary question image to permanent:", error);
+      return null;
+    }
+  }
+
+  // Helper function to move temporary answer images to permanent location
+  async function moveTemporaryAnswerImageToPermanent(tempUrl: string): Promise<string | null> {
+    // Handle both new context-specific and old format
+    if (tempUrl?.includes('/api/qbank-temp-answer-images/') || tempUrl?.includes('/api/exam-temp-answer-images/')) {
+      return moveTemporaryFileToPermanent(tempUrl, 'temp-answer-images', 'image/jpeg', 3 * 1024 * 1024);
+    }
+    
+    // Legacy format handling
+    if (!tempUrl || !tempUrl.includes('/api/temp-answer-images/')) {
+      return tempUrl;
+    }
+
+    try {
+      const filename = tempUrl.split('/').pop();
+      if (!filename) return null;
+
+      const tempObjectKey = `temp-answer-images/${filename}`;
+      const finalObjectKey = `answer-images/${filename}`;
+
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", tempObjectKey);
+      if (!downloadUrl) {
+        console.warn(`Temporary answer image not found: ${tempObjectKey}`);
+        return null;
+      }
+
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        console.warn(`Failed to download temporary answer image: ${tempObjectKey}`);
+        return null;
+      }
+
+      const buffer = await response.arrayBuffer();
+
+      const uploadResult = await multiR2Storage.uploadFile(
+        Buffer.from(buffer),
+        filename,
+        "image/jpeg",
+        {
+          provider: "primary",
+          folder: "answer-images",
+          allowedTypes: ["image/*"],
+          maxSizeBytes: 3 * 1024 * 1024
+        }
+      );
+
+      if (uploadResult.success) {
+        await multiR2Storage.deleteFile("primary", tempObjectKey);
+        return `/api/answer-images/${filename}`;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error moving temporary answer image to permanent:", error);
+      return null;
+    }
+  }
+
+  // Helper function to move temporary audio to permanent location
+  async function moveTemporaryAudioToPermanent(tempUrl: string): Promise<string | null> {
+    // Handle both new context-specific and old format
+    if (tempUrl?.includes('/api/qbank-temp-audio/') || tempUrl?.includes('/api/exam-temp-audio/')) {
+      return moveTemporaryFileToPermanent(tempUrl, 'temp-audio', 'audio/mpeg', 10 * 1024 * 1024);
+    }
+    
+    // Legacy format handling
+    if (!tempUrl || !tempUrl.includes('/api/temp-audio/')) {
+      return tempUrl;
+    }
+
+    try {
+      const filename = tempUrl.split('/').pop();
+      if (!filename) return null;
+
+      const tempObjectKey = `temp-audio/${filename}`;
+      const finalObjectKey = `audio/${filename}`;
+
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", tempObjectKey);
+      if (!downloadUrl) {
+        console.warn(`Temporary file not found: ${tempObjectKey}`);
+        return null;
+      }
+
+      const response = await fetch(downloadUrl);
+      if (!response.ok) {
+        console.warn(`Failed to download temporary file: ${tempObjectKey}`);
+        return null;
+      }
+
+      const buffer = await response.arrayBuffer();
+
+      const uploadResult = await multiR2Storage.uploadFile(
+        Buffer.from(buffer),
+        filename,
         "audio/mpeg",
         {
           provider: "primary",
@@ -2379,7 +2592,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (uploadResult.success) {
-        // Delete temporary file using multiR2Storage
         await multiR2Storage.deleteFile("primary", tempObjectKey);
         return `/api/audio/${filename}`;
       }
@@ -2393,8 +2605,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Helper function to move temporary description images to permanent location
   async function moveTemporaryDescriptionImageToPermanent(tempUrl: string): Promise<string | null> {
+    // Handle both new context-specific and old format
+    if (tempUrl?.includes('/api/qbank-temp-description-images/') || tempUrl?.includes('/api/exam-temp-description-images/')) {
+      return moveTemporaryFileToPermanent(tempUrl, 'temp-description-images', 'image/jpeg', 5 * 1024 * 1024);
+    }
+    
+    // Legacy format handling
     if (!tempUrl || !tempUrl.includes('/api/temp-description-images/')) {
-      return tempUrl; // Already permanent or invalid
+      return tempUrl;
     }
 
     try {
@@ -2404,7 +2622,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tempObjectKey = `temp-description-images/${filename}`;
       const finalObjectKey = `description-images/${filename}`;
 
-      // Download from temp location
       const downloadUrl = await r2Manager.generateDownloadUrl("primary", tempObjectKey);
       if (!downloadUrl) {
         console.warn(`Temporary description image not found: ${tempObjectKey}`);
@@ -2419,7 +2636,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const buffer = await response.arrayBuffer();
 
-      // Upload to final location
       const uploadResult = await multiR2Storage.uploadFile(
         Buffer.from(buffer),
         filename,
@@ -2433,7 +2649,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (uploadResult.success) {
-        // Delete temporary file
         await multiR2Storage.deleteFile("primary", tempObjectKey);
         return `/api/description-images/${filename}`;
       }
@@ -2447,8 +2662,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Helper function to move temporary description audio to permanent location
   async function moveTemporaryDescriptionAudioToPermanent(tempUrl: string): Promise<string | null> {
+    // Handle both new context-specific and old format
+    if (tempUrl?.includes('/api/qbank-temp-description-audio/') || tempUrl?.includes('/api/exam-temp-description-audio/')) {
+      return moveTemporaryFileToPermanent(tempUrl, 'temp-description-audio', 'audio/mpeg', 10 * 1024 * 1024);
+    }
+    
+    // Legacy format handling
     if (!tempUrl || !tempUrl.includes('/api/temp-description-audio/')) {
-      return tempUrl; // Already permanent or invalid
+      return tempUrl;
     }
 
     try {
@@ -2458,7 +2679,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const tempObjectKey = `temp-description-audio/${filename}`;
       const finalObjectKey = `description-audio/${filename}`;
 
-      // Download from temp location
       const downloadUrl = await r2Manager.generateDownloadUrl("primary", tempObjectKey);
       if (!downloadUrl) {
         console.warn(`Temporary description audio not found: ${tempObjectKey}`);
@@ -2473,7 +2693,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const buffer = await response.arrayBuffer();
 
-      // Upload to final location
       const uploadResult = await multiR2Storage.uploadFile(
         Buffer.from(buffer),
         filename,
@@ -2487,7 +2706,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (uploadResult.success) {
-        // Delete temporary file
         await multiR2Storage.deleteFile("primary", tempObjectKey);
         return `/api/description-audio/${filename}`;
       }
@@ -3213,6 +3431,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============ DESCRIPTION MEDIA UPLOAD ROUTES ============
   
   // Upload temporary description images
+  // Supports context parameter: ?context=qbank (default) or ?context=exam
   app.post("/api/temp-description-images/upload", upload.single('file'), async (req, res) => {
     try {
       const sessionUser = (req.session as any)?.user;
@@ -3220,6 +3439,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
+      const context = req.query.context as string || req.body.context || 'qbank';
       const file = req.file;
       if (!file) {
         return res.status(400).json({ message: "No image file provided" });
@@ -3238,10 +3458,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timestamp = Date.now();
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
       const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      const folder = getContextFolder('temp-description-images', context);
       
       const uploadConfig: MediaUploadConfig = {
         provider: "primary",
-        folder: "temp-description-images",
+        folder: folder,
         allowedTypes: ["image/*"],
         maxSizeBytes: 5 * 1024 * 1024
       };
@@ -3254,12 +3475,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (uploadResult.success) {
-        console.log(`✓ Uploaded temporary description image: ${fileName}`);
+        console.log(`✓ Uploaded temporary description image: ${fileName} (${context})`);
         res.json({
           success: true,
           filename: fileName,
-          url: `/api/temp-description-images/${fileName}`,
-          message: "Tạm lưu hình ảnh mô tả thành công"
+          url: `/api/${folder}/${fileName}`,
+          message: "Tạm lưu hình ảnh mô tả thành công",
+          context
         });
       } else {
         console.error("Description image upload failed:", uploadResult.error);
@@ -3278,6 +3500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Upload temporary description audio
+  // Supports context parameter: ?context=qbank (default) or ?context=exam
   app.post("/api/temp-description-audio/upload", upload.single('file'), async (req, res) => {
     try {
       const sessionUser = (req.session as any)?.user;
@@ -3285,6 +3508,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
+      const context = req.query.context as string || req.body.context || 'qbank';
       const file = req.file;
       if (!file) {
         return res.status(400).json({ message: "No audio file provided" });
@@ -3303,10 +3527,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timestamp = Date.now();
       const fileExtension = file.originalname.split('.').pop() || 'mp3';
       const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      const folder = getContextFolder('temp-description-audio', context);
       
       const uploadConfig: MediaUploadConfig = {
         provider: "primary",
-        folder: "temp-description-audio",
+        folder: folder,
         allowedTypes: ["audio/*"],
         maxSizeBytes: 10 * 1024 * 1024
       };
@@ -3319,12 +3544,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
 
       if (uploadResult.success) {
-        console.log(`✓ Uploaded temporary description audio: ${fileName}`);
+        console.log(`✓ Uploaded temporary description audio: ${fileName} (${context})`);
         res.json({
           success: true,
           filename: fileName,
-          url: `/api/temp-description-audio/${fileName}`,
-          message: "Tạm lưu audio mô tả thành công"
+          url: `/api/${folder}/${fileName}`,
+          message: "Tạm lưu audio mô tả thành công",
+          context
         });
       } else {
         console.error("Description audio upload failed:", uploadResult.error);
@@ -3426,16 +3652,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "filenames must be an array" });
       }
 
+      // Get context from query string for context-based folder structure
+      const context = req.query.context as 'qbank' | 'exam' | undefined;
+      const folderName = context ? getContextFolder('temp-description-images', context) : 'temp-description-images';
+
       const results = [];
       for (const filename of filenames) {
-        const objectKey = `temp-description-images/${filename}`;
+        const objectKey = `${folderName}/${filename}`;
         const result = await multiR2Storage.deleteFile("primary", objectKey);
         results.push({ filename, success: result.success, error: result.error });
         
         if (result.success) {
-          console.log(`✓ Cleaned up temporary description image: ${filename}`);
+          console.log(`✓ Cleaned up temporary description image: ${filename} from ${folderName}`);
         } else {
-          console.warn(`✗ Failed to cleanup temporary description image: ${filename} - ${result.error}`);
+          console.warn(`✗ Failed to cleanup temporary description image: ${filename} from ${folderName} - ${result.error}`);
         }
       }
 
@@ -3460,16 +3690,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "filenames must be an array" });
       }
 
+      // Get context from query string for context-based folder structure
+      const context = req.query.context as 'qbank' | 'exam' | undefined;
+      const folderName = context ? getContextFolder('temp-description-audio', context) : 'temp-description-audio';
+
       const results = [];
       for (const filename of filenames) {
-        const objectKey = `temp-description-audio/${filename}`;
+        const objectKey = `${folderName}/${filename}`;
         const result = await multiR2Storage.deleteFile("primary", objectKey);
         results.push({ filename, success: result.success, error: result.error });
         
         if (result.success) {
-          console.log(`✓ Cleaned up temporary description audio: ${filename}`);
+          console.log(`✓ Cleaned up temporary description audio: ${filename} from ${folderName}`);
         } else {
-          console.warn(`✗ Failed to cleanup temporary description audio: ${filename} - ${result.error}`);
+          console.warn(`✗ Failed to cleanup temporary description audio: ${filename} from ${folderName} - ${result.error}`);
         }
       }
 
