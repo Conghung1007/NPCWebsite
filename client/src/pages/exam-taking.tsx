@@ -369,16 +369,48 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     },
   });
 
-  // Calculate section score
+  // Helper: Get total question count including sub-questions
+  const getTotalQuestionCount = (questions: Question[]) => {
+    let total = 0;
+    questions.forEach(question => {
+      // Count parent question (always 1)
+      total += 1;
+      // Count sub-questions if they exist
+      if ((question as any).subQuestions && Array.isArray((question as any).subQuestions)) {
+        total += (question as any).subQuestions.length;
+      }
+    });
+    return total;
+  };
+
+  // Helper: Flatten all questions (parent + sub) into a single array
+  const getAllQuestionsFlat = (questions: Question[]) => {
+    const allQuestions: any[] = [];
+    questions.forEach(question => {
+      // Add parent question
+      allQuestions.push(question);
+      // Add sub-questions if they exist
+      if ((question as any).subQuestions && Array.isArray((question as any).subQuestions)) {
+        allQuestions.push(...(question as any).subQuestions);
+      }
+    });
+    return allQuestions;
+  };
+
+  // Calculate section score (includes parent questions + sub-questions)
   const calculateSectionScore = (answers: Record<string, string>, questions: Question[]) => {
     let correct = 0;
-    questions.forEach(question => {
+    const allQuestions = getAllQuestionsFlat(questions);
+    const totalQuestions = allQuestions.length;
+    
+    allQuestions.forEach(question => {
       const userAnswer = answers[question.id];
       if (userAnswer === question.correctAnswer) {
         correct++;
       }
     });
-    return Math.round((correct / questions.length) * 100);
+    
+    return totalQuestions > 0 ? Math.round((correct / totalQuestions) * 100) : 0;
   };
 
   // Handle section completion
@@ -509,9 +541,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
   // Show exam start screen
   if (!examStarted) {
-    // Calculate totals from dynamic sections
+    // Calculate totals from dynamic sections (including sub-questions)
     const totalTime = examSections.reduce((sum, section) => sum + section.timeLimit, 0);
-    const totalQuestions = examSections.reduce((sum, section) => sum + section.questions.length, 0);
+    const totalQuestions = examSections.reduce((sum, section) => sum + getTotalQuestionCount(section.questions), 0);
     
     // Get section icon and color
     const getSectionIcon = (type: string) => {
@@ -650,7 +682,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                                 </span>
                                 <span className="flex items-center gap-1">
                                   <FileText className="w-3 h-3" />
-                                  {section.questions.length} câu
+                                  {getTotalQuestionCount(section.questions)} câu
                                 </span>
                               </div>
                             </div>
@@ -754,8 +786,12 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
   const currentSection = getCurrentSection();
   const currentQuestion = currentSection?.questions[currentQuestionIndex];
-  const progress = currentSection?.questions.length > 0 ? ((currentQuestionIndex + 1) / currentSection.questions.length) * 100 : 0;
-  const answeredCount = Object.keys(sectionAnswers).length;
+  const totalQuestionsInSection = currentSection ? getTotalQuestionCount(currentSection.questions) : 0;
+  // Calculate progress based on parent questions (since navigation is parent-based)
+  const progress = (currentSection?.questions.length || 0) > 0 ? ((currentQuestionIndex + 1) / (currentSection?.questions.length || 1)) * 100 : 0;
+  // Count all answered questions (including sub-questions)
+  const allQuestionsFlat = currentSection ? getAllQuestionsFlat(currentSection.questions) : [];
+  const answeredCount = allQuestionsFlat.filter(q => sectionAnswers[q.id] !== undefined).length;
   const sectionConfig = getSectionConfig();
   const SectionIcon = sectionConfig?.icon;
 
@@ -775,7 +811,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     {sectionConfig?.title || 'Đang tải'} - {exam.title}
                   </h1>
                   <p className="text-sm text-gray-600">
-                    Câu {currentQuestionIndex + 1} / {currentSection?.questions.length || 0}
+                    Câu {currentQuestionIndex + 1} / {currentSection?.questions.length || 0} (Tổng: {totalQuestionsInSection} câu)
                   </p>
                 </div>
               </div>
@@ -1271,14 +1307,22 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               <CardContent>
                 <div className="space-y-4">
                   <div className="text-sm">
-                    <p className="font-medium">Đã trả lời: {answeredCount}/{currentSection?.questions.length || 0}</p>
-                    <Progress value={((currentSection?.questions.length || 0) > 0) ? (answeredCount / (currentSection?.questions.length || 1)) * 100 : 0} className="mt-2" />
+                    <p className="font-medium">Đã trả lời: {answeredCount}/{totalQuestionsInSection}</p>
+                    <Progress value={totalQuestionsInSection > 0 ? (answeredCount / totalQuestionsInSection) * 100 : 0} className="mt-2" />
                   </div>
                   
                   <div className="grid grid-cols-5 gap-2">
                     {(currentSection?.questions || []).map((question, index) => {
                       const isCurrent = index === currentQuestionIndex;
-                      const isAnswered = sectionAnswers[question.id];
+                      // Check if parent question is answered
+                      const parentAnswered = sectionAnswers[question.id] !== undefined;
+                      // Check if all sub-questions are answered (if any)
+                      const subQuestions = (question as any).subQuestions || [];
+                      const allSubAnswered = subQuestions.length > 0 
+                        ? subQuestions.every((sq: any) => sectionAnswers[sq.id] !== undefined)
+                        : true; // No sub-questions means all answered
+                      // Question is fully answered if parent AND all subs are answered
+                      const isAnswered = parentAnswered && allSubAnswered;
                       const canNavigate = index <= currentQuestionIndex; // Allow navigation to current and previous questions
                       
                       return (
@@ -1349,7 +1393,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                               {index + 1}. {section.type.charAt(0).toUpperCase() + section.type.slice(1)}
                             </span>
                             <span className="text-gray-500">
-                              {section.questions.length} câu
+                              {getTotalQuestionCount(section.questions)} câu
                             </span>
                           </div>
                         );
@@ -1378,7 +1422,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   <br />
                   <strong>Thống kê phần này:</strong>
                   <br />
-                  • Đã trả lời: {answeredCount}/{currentSection?.questions.length || 0} câu
+                  • Đã trả lời: {answeredCount}/{totalQuestionsInSection} câu
                   <br />
                   • Thời gian còn lại: {formatTime(sectionTimeLeft)}
                   <br />
@@ -1394,7 +1438,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   <br />
                   <strong>Thống kê phần cuối:</strong>
                   <br />
-                  • Đã trả lời: {answeredCount}/{currentSection?.questions.length || 0} câu
+                  • Đã trả lời: {answeredCount}/{totalQuestionsInSection} câu
                   <br />
                   • Thời gian còn lại: {formatTime(sectionTimeLeft)}
                   <br />
