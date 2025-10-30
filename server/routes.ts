@@ -390,16 +390,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { q, category } = req.query;
       
-      let questions;
+      let parentQuestions;
       if (q && typeof q === 'string') {
-        questions = await storage.searchQuestions(q);
+        parentQuestions = await storage.searchQuestions(q);
       } else if (category && typeof category === 'string') {
-        questions = await storage.getQuestionsByCategory(category);
+        parentQuestions = await storage.getQuestionsByCategory(category);
       } else {
-        questions = await storage.getAllQuestions();
+        parentQuestions = await storage.getAllQuestions();
       }
       
-      res.json(questions);
+      // For each parent question, fetch its sub-questions
+      const questionsWithSubs = await Promise.all(
+        parentQuestions.map(async (parent) => {
+          const subQuestions = await storage.getSubQuestions(parent.id);
+          return {
+            ...parent,
+            subQuestions: subQuestions.length > 0 ? subQuestions : undefined
+          };
+        })
+      );
+      
+      res.json(questionsWithSubs);
     } catch (error) {
       console.error("Error fetching questions:", error);
       res.status(500).json({ message: "Có lỗi xảy ra khi lấy danh sách câu hỏi" });

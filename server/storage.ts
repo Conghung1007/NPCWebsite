@@ -66,6 +66,7 @@ export interface IStorage {
   getQuestionsByCategory(category: string): Promise<Question[]>;
   searchQuestions(searchTerm: string): Promise<Question[]>;
   getQuestionsByExamId(examId: string): Promise<Question[]>;
+  getSubQuestions(parentId: string): Promise<Question[]>;
   updateQuestion(id: string, updateData: Partial<InsertQuestion>): Promise<Question | null>;
   deleteQuestion(id: string): Promise<boolean>;
   
@@ -802,14 +803,15 @@ export class MemStorage implements IStorage {
   }
 
   async getAllQuestions(): Promise<Question[]> {
-    return Array.from(this.questions.values()).sort(
-      (a, b) => (a.sortOrder || 0) - (b.sortOrder || 0)
-    );
+    // Only return parent questions (parentId is null)
+    return Array.from(this.questions.values())
+      .filter(q => !q.parentId)
+      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }
   
   async getQuestionsByCategory(category: string): Promise<Question[]> {
     return Array.from(this.questions.values()).filter(
-      question => question.category === category
+      question => question.category === category && !question.parentId
     ).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }
   
@@ -817,9 +819,16 @@ export class MemStorage implements IStorage {
     const term = searchTerm.toLowerCase();
     return Array.from(this.questions.values()).filter(
       question => 
-        question.questionText.toLowerCase().includes(term) ||
-        (question.description && question.description.toLowerCase().includes(term))
+        !question.parentId &&
+        (question.questionText.toLowerCase().includes(term) ||
+        (question.description && question.description.toLowerCase().includes(term)))
     ).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+  }
+
+  async getSubQuestions(parentId: string): Promise<Question[]> {
+    return Array.from(this.questions.values())
+      .filter(q => q.parentId === parentId)
+      .sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }
 
   async getQuestionsByExamId(examId: string): Promise<Question[]> {
@@ -1358,12 +1367,15 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getAllQuestions(): Promise<Question[]> {
-    return await db.select().from(questions).orderBy(questions.sortOrder);
+    // Only return parent questions (parentId is null)
+    return await db.select().from(questions)
+      .where(sql`${questions.parentId} IS NULL`)
+      .orderBy(questions.sortOrder);
   }
 
   async getQuestionsByCategory(category: string): Promise<Question[]> {
     return await db.select().from(questions)
-      .where(eq(questions.category, category))
+      .where(sql`${questions.category} = ${category} AND ${questions.parentId} IS NULL`)
       .orderBy(questions.sortOrder);
   }
 
@@ -1371,8 +1383,14 @@ export class DatabaseStorage implements IStorage {
     const term = `%${searchTerm.toLowerCase()}%`;
     return await db.select().from(questions)
       .where(
-        sql`LOWER(${questions.questionText}) LIKE ${term} OR LOWER(${questions.description}) LIKE ${term}`
+        sql`${questions.parentId} IS NULL AND (LOWER(${questions.questionText}) LIKE ${term} OR LOWER(${questions.description}) LIKE ${term})`
       )
+      .orderBy(questions.sortOrder);
+  }
+
+  async getSubQuestions(parentId: string): Promise<Question[]> {
+    return await db.select().from(questions)
+      .where(eq(questions.parentId, parentId))
       .orderBy(questions.sortOrder);
   }
 
