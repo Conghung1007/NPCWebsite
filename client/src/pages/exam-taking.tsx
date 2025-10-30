@@ -423,6 +423,11 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     const currentSection = getCurrentSection();
     if (!currentSection) return;
     
+    console.log("=== SECTION COMPLETE DEBUG ===");
+    console.log("Current section:", currentSection.id, currentSection.type);
+    console.log("Section answers:", sectionAnswers);
+    console.log("Answer count:", Object.keys(sectionAnswers).length);
+    
     const timeSpent = ((sectionConfig?.timeLimit || 0) * 60) - sectionTimeLeft;
     const score = calculateSectionScore(sectionAnswers, currentSection.questions);
     
@@ -432,6 +437,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       timeSpent,
       score
     };
+    
+    console.log("Section results to save:", results);
     
     setSectionResults(prev => ({
       ...prev,
