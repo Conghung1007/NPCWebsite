@@ -104,12 +104,31 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     }
   ];
 
-  // Calculate total stats
+  // Calculate total stats (including sub-questions)
   const totalTimeLimit = exam.vocabularyTimeLimit + exam.grammarTimeLimit + exam.listeningTimeLimit + exam.readingTimeLimit;
-  const totalQuestions = questionsWithAnswers.length;
-  const correctAnswers = questionsWithAnswers.filter(item => 
-    item.userAnswer === item.question.correctAnswer
-  ).length;
+  
+  // Count all questions (parent + sub-questions)
+  let totalQuestions = 0;
+  let correctAnswers = 0;
+  
+  questionsWithAnswers.forEach(item => {
+    // Count parent question
+    totalQuestions++;
+    if (item.userAnswer === item.question.correctAnswer) {
+      correctAnswers++;
+    }
+    
+    // Count sub-questions if any
+    if (item.question.subQuestions && Array.isArray(item.question.subQuestions)) {
+      item.question.subQuestions.forEach((sub: any) => {
+        totalQuestions++;
+        if (sub.userAnswer === sub.correctAnswer) {
+          correctAnswers++;
+        }
+      });
+    }
+  });
+  
   const scorePercentage = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
 
   const totalTimeMinutes = Math.floor(attempt.totalTimeSpent / 60);
@@ -243,74 +262,221 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
               <CardTitle>Chi tiết từng câu hỏi</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
+              <div className="space-y-8">
                 {questionsWithAnswers.map((item, index) => {
-                  const isCorrect = item.userAnswer === item.question.correctAnswer;
+                  const hasSubQuestions = item.question.subQuestions && item.question.subQuestions.length > 0;
+                  
                   return (
-                    <div key={item.question.id} className="border-b pb-4 last:border-b-0">
-                      <div className="flex items-start justify-between mb-2">
-                        <h4 className="font-medium text-gray-900">
-                          Câu {index + 1}: {item.question.questionText}
-                        </h4>
-                        <div className="flex items-center ml-4">
-                          {isCorrect ? (
-                            <CheckCircle className="w-5 h-5 text-green-600" />
-                          ) : (
-                            <XCircle className="w-5 h-5 text-red-600" />
+                    <div key={item.question.id} className="border-b pb-6 last:border-b-0">
+                      {/* Parent Question Description (if has sub-questions) */}
+                      {hasSubQuestions && (
+                        <div className="mb-4 p-4 bg-gray-50 rounded-lg">
+                          {item.question.description && (
+                            <div className="mb-3">
+                              <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                                {item.question.description}
+                              </p>
+                            </div>
+                          )}
+                          
+                          {/* Parent Description Images */}
+                          {item.question.descriptionImageUrls && item.question.descriptionImageUrls.length > 0 && (
+                            <div className="flex flex-wrap gap-3 mb-3">
+                              {item.question.descriptionImageUrls.map((imgUrl: string, imgIdx: number) => (
+                                <img
+                                  key={imgIdx}
+                                  src={imgUrl}
+                                  alt={`Description ${imgIdx + 1}`}
+                                  className="max-w-sm h-auto rounded-lg border"
+                                />
+                              ))}
+                            </div>
+                          )}
+                          
+                          {/* Parent Description Audio */}
+                          {item.question.descriptionAudioUrl && (
+                            <div className="mb-3">
+                              <audio controls className="w-full max-w-md">
+                                <source src={item.question.descriptionAudioUrl} type="audio/mpeg" />
+                              </audio>
+                            </div>
                           )}
                         </div>
+                      )}
+                      
+                      {/* Parent Question */}
+                      <div className="mb-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <h4 className="font-medium text-gray-900">
+                            Câu {index + 1}{hasSubQuestions ? '.1' : ''}: {item.question.questionText}
+                          </h4>
+                          <div className="flex items-center ml-4">
+                            {item.userAnswer === item.question.correctAnswer ? (
+                              <CheckCircle className="w-5 h-5 text-green-600" />
+                            ) : (
+                              <XCircle className="w-5 h-5 text-red-600" />
+                            )}
+                          </div>
+                        </div>
+                        
+                        {/* Parent Question Images */}
+                        {item.question.imageUrls && item.question.imageUrls.length > 0 && (
+                          <div className="flex flex-wrap gap-3 mb-4">
+                            {item.question.imageUrls.map((imgUrl: string, imgIdx: number) => (
+                              <img
+                                key={imgIdx}
+                                src={imgUrl}
+                                alt={`Question ${imgIdx + 1}`}
+                                className="max-w-sm h-auto rounded-lg"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        
+                        {item.question.imageUrl && (
+                          <div className="mb-4">
+                            <img
+                              src={item.question.imageUrl}
+                              alt="Question illustration"
+                              className="max-w-sm h-auto rounded-lg"
+                            />
+                          </div>
+                        )}
+
+                        <div className="space-y-2 text-sm">
+                          {(item.question.options as string[]).map((option, optionIndex) => {
+                            const isUserAnswer = item.userAnswer === optionIndex.toString();
+                            const isCorrectAnswer = item.question.correctAnswer === optionIndex.toString();
+                            
+                            return (
+                              <div
+                                key={optionIndex}
+                                className={`p-2 rounded ${
+                                  isCorrectAnswer
+                                    ? 'bg-green-100 border border-green-300'
+                                    : isUserAnswer
+                                      ? 'bg-red-100 border border-red-300'
+                                      : 'bg-gray-50'
+                                }`}
+                              >
+                                <span className="font-medium">
+                                  {String.fromCharCode(65 + optionIndex)}.
+                                </span>{' '}
+                                {option}
+                                {isCorrectAnswer && (
+                                  <Badge variant="secondary" className="ml-2 text-xs">
+                                    Đáp án đúng
+                                  </Badge>
+                                )}
+                                {isUserAnswer && !isCorrectAnswer && (
+                                  <Badge variant="destructive" className="ml-2 text-xs">
+                                    Bạn đã chọn
+                                  </Badge>
+                                )}
+                                {isUserAnswer && isCorrectAnswer && (
+                                  <Badge className="ml-2 text-xs bg-green-600">
+                                    Bạn đã chọn đúng
+                                  </Badge>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {item.question.explanation && (
+                          <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                            <p className="text-sm text-blue-800">
+                              <strong>Giải thích:</strong> {item.question.explanation}
+                            </p>
+                          </div>
+                        )}
                       </div>
                       
-                      {item.question.imageUrl && (
-                        <div className="mb-4">
-                          <img
-                            src={item.question.imageUrl}
-                            alt="Question illustration"
-                            className="max-w-sm h-auto rounded-lg"
-                          />
-                        </div>
-                      )}
+                      {/* Sub-Questions */}
+                      {hasSubQuestions && (
+                        <div className="ml-6 space-y-4">
+                          {item.question.subQuestions.map((subQ: any, subIdx: number) => {
+                            const isSubCorrect = subQ.userAnswer === subQ.correctAnswer;
+                            
+                            return (
+                              <div key={subQ.id} className="border-l-2 border-gray-300 pl-4">
+                                <div className="flex items-start justify-between mb-2">
+                                  <h5 className="font-medium text-gray-900">
+                                    Câu {index + 1}.{subIdx + 2}: {subQ.questionText}
+                                  </h5>
+                                  <div className="flex items-center ml-4">
+                                    {isSubCorrect ? (
+                                      <CheckCircle className="w-5 h-5 text-green-600" />
+                                    ) : (
+                                      <XCircle className="w-5 h-5 text-red-600" />
+                                    )}
+                                  </div>
+                                </div>
+                                
+                                {/* Sub-Question Images */}
+                                {subQ.imageUrls && subQ.imageUrls.length > 0 && (
+                                  <div className="flex flex-wrap gap-3 mb-4">
+                                    {subQ.imageUrls.map((imgUrl: string, imgIdx: number) => (
+                                      <img
+                                        key={imgIdx}
+                                        src={imgUrl}
+                                        alt={`Sub-question ${imgIdx + 1}`}
+                                        className="max-w-sm h-auto rounded-lg"
+                                      />
+                                    ))}
+                                  </div>
+                                )}
 
-                      <div className="space-y-2 text-sm">
-                        {(item.question.options as string[]).map((option, optionIndex) => {
-                          const isUserAnswer = item.userAnswer === optionIndex.toString();
-                          const isCorrectAnswer = item.question.correctAnswer === optionIndex.toString();
-                          
-                          return (
-                            <div
-                              key={optionIndex}
-                              className={`p-2 rounded ${
-                                isCorrectAnswer
-                                  ? 'bg-green-100 border border-green-300'
-                                  : isUserAnswer
-                                    ? 'bg-red-100 border border-red-300'
-                                    : 'bg-gray-50'
-                              }`}
-                            >
-                              <span className="font-medium">
-                                {String.fromCharCode(65 + optionIndex)}.
-                              </span>{' '}
-                              {option}
-                              {isCorrectAnswer && (
-                                <Badge variant="secondary" className="ml-2 text-xs">
-                                  Đáp án đúng
-                                </Badge>
-                              )}
-                              {isUserAnswer && !isCorrectAnswer && (
-                                <Badge variant="destructive" className="ml-2 text-xs">
-                                  Bạn đã chọn
-                                </Badge>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
+                                <div className="space-y-2 text-sm">
+                                  {(subQ.options as string[]).map((option, optionIndex) => {
+                                    const isUserAnswer = subQ.userAnswer === optionIndex.toString();
+                                    const isCorrectAnswer = subQ.correctAnswer === optionIndex.toString();
+                                    
+                                    return (
+                                      <div
+                                        key={optionIndex}
+                                        className={`p-2 rounded ${
+                                          isCorrectAnswer
+                                            ? 'bg-green-100 border border-green-300'
+                                            : isUserAnswer
+                                              ? 'bg-red-100 border border-red-300'
+                                              : 'bg-gray-50'
+                                        }`}
+                                      >
+                                        <span className="font-medium">
+                                          {String.fromCharCode(65 + optionIndex)}.
+                                        </span>{' '}
+                                        {option}
+                                        {isCorrectAnswer && (
+                                          <Badge variant="secondary" className="ml-2 text-xs">
+                                            Đáp án đúng
+                                          </Badge>
+                                        )}
+                                        {isUserAnswer && !isCorrectAnswer && (
+                                          <Badge variant="destructive" className="ml-2 text-xs">
+                                            Bạn đã chọn
+                                          </Badge>
+                                        )}
+                                        {isUserAnswer && isCorrectAnswer && (
+                                          <Badge className="ml-2 text-xs bg-green-600">
+                                            Bạn đã chọn đúng
+                                          </Badge>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
 
-                      {item.question.explanation && (
-                        <div className="mt-3 p-3 bg-blue-50 rounded-lg">
-                          <p className="text-sm text-blue-800">
-                            <strong>Giải thích:</strong> {item.question.explanation}
-                          </p>
+                                {subQ.explanation && (
+                                  <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+                                    <p className="text-sm text-blue-800">
+                                      <strong>Giải thích:</strong> {subQ.explanation}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
                         </div>
                       )}
                     </div>

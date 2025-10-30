@@ -591,13 +591,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ...(attempt.readingAnswers as Record<string, string> || {})
       };
 
-      const questionsWithAnswers = orderedQuestions.map(question => {
-        if (!question) return null;
+      // Group sub-questions under parent questions
+      const parentQuestions = orderedQuestions.filter(q => !q.parentId);
+      const subQuestionsMap = new Map<string, any[]>();
+      
+      // Organize sub-questions by parent ID
+      orderedQuestions.forEach(q => {
+        if (q.parentId) {
+          if (!subQuestionsMap.has(q.parentId)) {
+            subQuestionsMap.set(q.parentId, []);
+          }
+          subQuestionsMap.get(q.parentId)!.push(q);
+        }
+      });
+
+      // Build questions with answers (including parent + sub structure)
+      const questionsWithAnswers = parentQuestions.map(question => {
+        const subQuestions = subQuestionsMap.get(question.id) || [];
+        
+        // Sort sub-questions by sortOrder
+        subQuestions.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+        
+        // Add userAnswer to sub-questions
+        const subQuestionsWithAnswers = subQuestions.map(sq => ({
+          ...sq,
+          userAnswer: allAnswers[sq.id] || null,
+        }));
+        
         return {
-          question,
+          question: {
+            ...question,
+            subQuestions: subQuestionsWithAnswers.length > 0 ? subQuestionsWithAnswers : undefined
+          },
           userAnswer: allAnswers[question.id] || null,
         };
-      }).filter(Boolean);
+      });
 
       res.json(questionsWithAnswers);
     } catch (error) {
