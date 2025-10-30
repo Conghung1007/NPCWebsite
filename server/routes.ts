@@ -654,6 +654,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       });
 
+      console.log("Questions with answers sample:", JSON.stringify(questionsWithAnswers[0], null, 2));
       res.json(questionsWithAnswers);
     } catch (error) {
       console.error("Error fetching exam attempt details:", error);
