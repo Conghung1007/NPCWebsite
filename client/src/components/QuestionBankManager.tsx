@@ -558,21 +558,89 @@ export function QuestionBankManager() {
       options
     });
     
+    // Build questions array: parent + sub-questions
+    const questionsArray = [{
+      questionText: question.questionText,
+      description: question.description || "",
+      descriptionImageUrls: descriptionImageUrls,
+      options,
+      correctAnswer: question.correctAnswer,
+      explanation: question.explanation || "",
+      imageUrl: question.imageUrl || "",
+      imageUrls: questionImageUrls,
+      audioUrl: question.audioUrl || "",
+    }];
+    
+    // Add sub-questions if they exist
+    if ((question as any).subQuestions && Array.isArray((question as any).subQuestions)) {
+      for (const subQ of (question as any).subQuestions) {
+        // Parse sub-question options
+        let subOptions;
+        try {
+          const rawSubOptions = typeof subQ.options === 'string' 
+            ? JSON.parse(subQ.options) 
+            : Array.isArray(subQ.options) 
+              ? subQ.options 
+              : [];
+          
+          subOptions = rawSubOptions.map((opt: any) => {
+            if (typeof opt === 'string') {
+              return { text: opt, imageUrl: "", imageUrls: [] };
+            } else {
+              let optionImageUrls;
+              try {
+                const rawOptImageUrls = opt.imageUrls;
+                optionImageUrls = typeof rawOptImageUrls === 'string' 
+                  ? JSON.parse(rawOptImageUrls) 
+                  : Array.isArray(rawOptImageUrls) 
+                    ? rawOptImageUrls 
+                    : [];
+              } catch (error) {
+                optionImageUrls = [];
+              }
+              return { 
+                text: opt.text || "", 
+                imageUrl: opt.imageUrl || "", 
+                imageUrls: optionImageUrls
+              };
+            }
+          });
+        } catch (error) {
+          subOptions = [{ text: "", imageUrl: "", imageUrls: [] }, { text: "", imageUrl: "", imageUrls: [] }];
+        }
+        
+        // Parse sub-question image URLs
+        let subImageUrls;
+        try {
+          const rawSubImageUrls = subQ.imageUrls;
+          subImageUrls = typeof rawSubImageUrls === 'string' 
+            ? JSON.parse(rawSubImageUrls) 
+            : Array.isArray(rawSubImageUrls) 
+              ? rawSubImageUrls 
+              : [];
+        } catch (error) {
+          subImageUrls = [];
+        }
+        
+        questionsArray.push({
+          questionText: subQ.questionText || "",
+          description: "", // Sub-questions don't have description
+          descriptionImageUrls: [],
+          options: subOptions,
+          correctAnswer: subQ.correctAnswer || "",
+          explanation: subQ.explanation || "",
+          imageUrl: subQ.imageUrl || "",
+          imageUrls: subImageUrls,
+          audioUrl: subQ.audioUrl || "",
+        });
+      }
+    }
+    
     form.reset({
       language: (question as any).language || "japanese",
       category: question.category,
       sortOrder: (question as any).sortOrder || 0,
-      questions: [{
-        questionText: question.questionText,
-        description: question.description || "",
-        descriptionImageUrls: descriptionImageUrls,
-        options,
-        correctAnswer: question.correctAnswer,
-        explanation: question.explanation || "",
-        imageUrl: question.imageUrl || "",
-        imageUrls: questionImageUrls,
-        audioUrl: question.audioUrl || "",
-      }],
+      questions: questionsArray,
     });
   };
 
