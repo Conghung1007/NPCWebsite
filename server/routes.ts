@@ -609,16 +609,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }
 
-      const orderedQuestions = sectionQuestionIds.map(questionId => 
+      // Get parent questions in order
+      const parentQuestionsInOrder = sectionQuestionIds.map(questionId => 
         questions.find(q => q.id === questionId)
       ).filter(Boolean);
+      
+      // Use all questions from storage (includes both parent and sub-questions)
+      const allQuestions = questions;
 
       // Group sub-questions under parent questions
-      const parentQuestions = orderedQuestions.filter(q => !q.parentId);
+      // Use parent questions in the specified order
+      const parentQuestions = parentQuestionsInOrder;
       const subQuestionsMap = new Map<string, any[]>();
       
-      // Organize sub-questions by parent ID
-      orderedQuestions.forEach(q => {
+      // Organize sub-questions by parent ID (from ALL questions)
+      allQuestions.forEach(q => {
         if (q.parentId) {
           if (!subQuestionsMap.has(q.parentId)) {
             subQuestionsMap.set(q.parentId, []);
