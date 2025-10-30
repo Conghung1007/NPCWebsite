@@ -860,10 +860,19 @@ export class MemStorage implements IStorage {
     
     legacyQuestionIds.forEach(id => allQuestionIds.add(id));
 
-    // Return questions with those IDs
-    return Array.from(this.questions.values()).filter(
+    // Return questions with those IDs (parent questions)
+    const parentQuestions = Array.from(this.questions.values()).filter(
       question => allQuestionIds.has(question.id)
-    ).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    );
+    
+    // Also include all sub-questions of these parent questions
+    const parentIds = new Set(parentQuestions.map(q => q.id));
+    const subQuestions = Array.from(this.questions.values()).filter(
+      question => question.parentId && parentIds.has(question.parentId)
+    );
+    
+    // Combine and sort
+    return [...parentQuestions, ...subQuestions].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }
   
   async addQuestionToExam(examId: string, questionId: string, sortOrder: number = 0): Promise<boolean> {
@@ -1346,10 +1355,23 @@ export class DatabaseStorage implements IStorage {
     const finalQuestionIds = Array.from(allQuestionIds);
     if (finalQuestionIds.length === 0) return [];
 
-    // Return questions with those IDs using 'in' query
-    return await db.select().from(questions)
+    // Get parent questions with those IDs
+    const parentQuestions = await db.select().from(questions)
       .where(inArray(questions.id, finalQuestionIds))
       .orderBy(questions.sortOrder);
+    
+    // Also get all sub-questions of these parent questions
+    if (parentQuestions.length > 0) {
+      const parentIds = parentQuestions.map(q => q.id);
+      const subQuestions = await db.select().from(questions)
+        .where(inArray(questions.parentId, parentIds))
+        .orderBy(questions.sortOrder);
+      
+      // Combine and sort by sortOrder (matching MemStorage behavior)
+      return [...parentQuestions, ...subQuestions].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
+    }
+    
+    return parentQuestions;
   }
 
   async updateQuestion(id: string, updateData: Partial<InsertQuestion>): Promise<Question | null> {
