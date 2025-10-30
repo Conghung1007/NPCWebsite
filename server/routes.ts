@@ -1562,7 +1562,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Helper function to get folder name based on context
+  const getContextFolder = (baseFolder: string, context?: string) => {
+    const ctx = context || 'qbank'; // Default to question bank
+    if (ctx === 'exam') {
+      return `exam-${baseFolder}`;
+    }
+    return `qbank-${baseFolder}`;
+  };
+
   // Question image upload endpoint (direct upload using multipart/form-data)
+  // Supports context parameter: ?context=qbank (default) or ?context=exam
   app.post("/api/question-images/upload-direct", upload.single('file'), async (req, res) => {
     try {
       const sessionUser = (req.session as any)?.user;
@@ -1570,6 +1580,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
+      const context = req.query.context as string || req.body.context || 'qbank';
       const file = req.file;
       if (!file) {
         return res.status(400).json({ message: "No image file provided" });
@@ -1588,11 +1599,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timestamp = Date.now();
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
       const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      const folder = getContextFolder('temp-images', context);
       
       try {
         const uploadConfig: MediaUploadConfig = {
           provider: "primary",
-          folder: "temp-question-images",
+          folder: folder,
           allowedTypes: ["image/*"],
           maxSizeBytes: 5 * 1024 * 1024
         };
@@ -1608,10 +1620,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ message: uploadResult.error || "Failed to upload image" });
         }
 
-        const imageUrl = `/api/temp-question-images/${fileName}`;
+        const imageUrl = `/api/${folder}/${fileName}`;
         res.json({ 
           imageUrl,
-          originalFileName: file.originalname || 'image file'
+          originalFileName: file.originalname || 'image file',
+          context
         });
       } catch (error) {
         console.error("Error uploading question image:", error);
@@ -1624,6 +1637,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Answer choice image upload endpoint (direct upload using multipart/form-data)
+  // Supports context parameter: ?context=qbank (default) or ?context=exam
   app.post("/api/answer-images/upload-direct", upload.single('image'), async (req, res) => {
     try {
       const sessionUser = (req.session as any)?.user;
@@ -1631,6 +1645,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
+      const context = req.query.context as string || req.body.context || 'qbank';
       const file = req.file;
       if (!file) {
         return res.status(400).json({ message: "No image file provided" });
@@ -1649,11 +1664,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timestamp = Date.now();
       const fileExtension = file.originalname.split('.').pop() || 'jpg';
       const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      const folder = getContextFolder('temp-answer-images', context);
       
       try {
         const uploadConfig: MediaUploadConfig = {
           provider: "primary",
-          folder: "temp-answer-images",
+          folder: folder,
           allowedTypes: ["image/*"],
           maxSizeBytes: 5 * 1024 * 1024
         };
@@ -1669,10 +1685,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(500).json({ message: uploadResult.error || "Failed to upload image" });
         }
 
-        const imageUrl = `/api/temp-answer-images/${fileName}`;
+        const imageUrl = `/api/${folder}/${fileName}`;
         res.json({ 
           imageUrl,
-          originalFileName: file.originalname || 'image file'
+          originalFileName: file.originalname || 'image file',
+          context
         });
       } catch (error) {
         console.error("Error uploading answer image:", error);
@@ -1685,6 +1702,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Audio upload via server proxy (alternative to presigned URL)
+  // Supports context parameter: ?context=qbank (default) or ?context=exam
   app.post("/api/audio/upload-direct", upload.single('audio'), async (req, res) => {
     try {
       const sessionUser = (req.session as any)?.user;
@@ -1692,6 +1710,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
+      const context = req.query.context as string || req.body.context || 'qbank';
       if (!req.file) {
         return res.status(400).json({ message: "No audio file provided" });
       }
@@ -1707,6 +1726,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timestamp = Date.now();
       const fileExtension = file.originalname.split('.').pop() || 'mp3';
       const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      const folder = getContextFolder('temp-audio', context);
       
       try {
         // Upload to temporary location first
@@ -1716,7 +1736,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           file.mimetype,
           {
             provider: "primary",
-            folder: "temp-audio",
+            folder: folder,
             allowedTypes: ["audio/*"],
             maxSizeBytes: 10 * 1024 * 1024
           }
@@ -1727,10 +1747,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Return temporary audio URL
-        const audioUrl = `/api/temp-audio/${fileName}`;
+        const audioUrl = `/api/${folder}/${fileName}`;
         res.json({ 
           audioUrl,
-          originalFileName: file.originalname || 'audio file'
+          originalFileName: file.originalname || 'audio file',
+          context
         });
         
       } catch (uploadError) {
