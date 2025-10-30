@@ -423,11 +423,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     const currentSection = getCurrentSection();
     if (!currentSection) return;
     
-    console.log("=== SECTION COMPLETE DEBUG ===");
-    console.log("Current section:", currentSection.id, currentSection.type);
-    console.log("Section answers:", sectionAnswers);
-    console.log("Answer count:", Object.keys(sectionAnswers).length);
-    
     const timeSpent = ((sectionConfig?.timeLimit || 0) * 60) - sectionTimeLeft;
     const score = calculateSectionScore(sectionAnswers, currentSection.questions);
     
@@ -438,18 +433,50 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       score
     };
     
-    console.log("Section results to save:", results);
-    
-    setSectionResults(prev => ({
-      ...prev,
+    // Update section results
+    const updatedSectionResults = {
+      ...sectionResults,
       [currentSection.id]: results
-    }));
+    };
     
+    setSectionResults(updatedSectionResults);
     setCompletedSections(prev => new Set([...Array.from(prev), currentSection.id]));
     
-    // Mark section as completed and wait for user to proceed
-    setSectionCompleted(true);
-  }, [getCurrentSection, sectionAnswers, sectionTimeLeft, isSubmitting]);
+    // Check if this is the last section
+    const isLastSection = currentSectionIndex >= examSections.length - 1;
+    
+    if (isLastSection) {
+      // Last section - submit immediately with updated results
+      setIsSubmitting(true);
+      
+      const allResults = Object.values(updatedSectionResults);
+      const totalTimeSpent = allResults.reduce((sum, result) => sum + result.timeSpent, 0);
+      const totalScore = allResults.length > 0 ? Math.round(allResults.reduce((sum, result) => sum + result.score, 0) / allResults.length) : 0;
+      const waitTime = waitStartTime ? Math.round((Date.now() - waitStartTime) / 1000) : 0;
+      
+      const transformedSectionResults = Object.entries(updatedSectionResults).map(([sectionId, result]) => {
+        const section = examSections.find(s => s.id === sectionId);
+        return {
+          sectionId,
+          type: section?.type || 'unknown',
+          answers: result.answers,
+          timeSpent: result.timeSpent,
+          score: result.score,
+        };
+      });
+      
+      submitExamMutation.mutate({
+        examId,
+        sectionResults: transformedSectionResults,
+        totalScore,
+        totalTimeSpent,
+        waitTimeBetweenSections: waitTime,
+      });
+    } else {
+      // Not last section - mark as completed and wait for user to proceed
+      setSectionCompleted(true);
+    }
+  }, [getCurrentSection, sectionAnswers, sectionTimeLeft, isSubmitting, sectionResults, currentSectionIndex, examSections, examId, submitExamMutation, waitStartTime]);
 
   // Handle manual progression to next section
   const handleProceedToNext = useCallback(() => {
