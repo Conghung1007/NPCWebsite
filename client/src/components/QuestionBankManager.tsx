@@ -416,31 +416,49 @@ export function QuestionBankManager() {
         });
       }
     } else {
-      // For creating, create all questions in the array
+      // For creating: Create parent question with sub-questions
       try {
-        const createPromises = data.questions.map(async (question) => {
-          const backendData = {
-            category: data.category,
-            language: data.language,
-            sortOrder: data.sortOrder,
-            questionText: question.questionText,
-            description: question.description,
-            questionType: "multiple_choice" as const,
-            imageUrl: question.imageUrl,
-            imageUrls: question.imageUrls,
-            audioUrl: question.audioUrl,
-            options: question.options,
-            correctAnswer: question.correctAnswer,
-            explanation: question.explanation,
-          };
-          return await apiRequest("POST", "/api/questions", backendData);
-        });
+        const firstQuestion = data.questions[0];
+        const remainingQuestions = data.questions.slice(1);
+        
+        const backendData = {
+          category: data.category,
+          language: data.language,
+          sortOrder: data.sortOrder,
+          // Parent question data (from first question)
+          questionText: firstQuestion.questionText,
+          description: firstQuestion.description,
+          descriptionImageUrls: firstQuestion.imageUrls,
+          descriptionAudioUrl: firstQuestion.audioUrl,
+          questionType: "multiple_choice" as const,
+          imageUrl: firstQuestion.imageUrl,
+          imageUrls: firstQuestion.imageUrls,
+          audioUrl: firstQuestion.audioUrl,
+          options: firstQuestion.options,
+          correctAnswer: firstQuestion.correctAnswer,
+          explanation: firstQuestion.explanation,
+          // Sub-questions array
+          subQuestions: remainingQuestions.map(q => ({
+            questionText: q.questionText,
+            imageUrl: q.imageUrl,
+            imageUrls: q.imageUrls,
+            audioUrl: q.audioUrl,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            explanation: q.explanation,
+          }))
+        };
 
-        await Promise.all(createPromises);
+        await apiRequest("POST", "/api/questions", backendData);
+        
+        const totalCount = data.questions.length;
+        const subCount = remainingQuestions.length;
         
         toast({
           title: "Thành công",
-          description: `Đã tạo thành công ${data.questions.length} câu hỏi.`,
+          description: subCount > 0 
+            ? `Đã tạo thành công câu hỏi chính với ${subCount} câu hỏi con.`
+            : "Đã tạo thành công câu hỏi.",
         });
         
         queryClient.invalidateQueries({ queryKey: ["/api/questions"] });

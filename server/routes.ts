@@ -2611,7 +2611,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const { examId, category, description, descriptionImageUrl, descriptionAudioUrl, questionText, questionType, imageUrl, audioUrl, options, correctAnswer, explanation, sortOrder } = req.body;
+      const { examId, category, description, descriptionImageUrl, descriptionImageUrls, descriptionAudioUrl, questionText, questionType, imageUrl, imageUrls, audioUrl, options, correctAnswer, explanation, sortOrder, language, parentId, subQuestions } = req.body;
 
       // For new question bank: category and questionText are required
       // For old exam questions: examId and questionText are required  
@@ -2703,26 +2703,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
         newSortOrder = maxSortOrder + 1;
       }
 
-      const question = await storage.createQuestion({
-        examId: examId || null, // Can be null for standalone questions
-        category: category || "ngữ pháp", // Default category if not provided
-        description: description || null,
-        descriptionImageUrl: finalDescriptionImageUrl || null,
-        descriptionAudioUrl: finalDescriptionAudioUrl || null,
-        questionText,
-        questionType: questionType || "multiple_choice",
-        imageUrl: finalImageUrl || null,
-        audioUrl: finalAudioUrl || null,
-        options,
-        correctAnswer,
-        explanation: explanation || null,
-        sortOrder: newSortOrder,
-      });
+      // If this is a parent question with sub-questions, create them all
+      if (subQuestions && Array.isArray(subQuestions) && subQuestions.length > 0) {
+        // Create parent question first
+        const parentQuestion = await storage.createQuestion({
+          examId: examId || null,
+          category: category || "ngữ pháp",
+          language: language || "japanese",
+          description: description || null,
+          descriptionImageUrl: finalDescriptionImageUrl || null,
+          descriptionImageUrls: descriptionImageUrls || null,
+          descriptionAudioUrl: finalDescriptionAudioUrl || null,
+          questionText, // Parent question text
+          questionType: questionType || "multiple_choice",
+          imageUrl: finalImageUrl || null,
+          imageUrls: imageUrls || null,
+          audioUrl: finalAudioUrl || null,
+          options,
+          correctAnswer,
+          explanation: explanation || null,
+          sortOrder: newSortOrder,
+          parentId: null, // This is a parent question
+        });
 
-      res.status(201).json({
-        question,
-        message: "Question created successfully"
-      });
+        // Create all sub-questions
+        const createdSubQuestions = [];
+        for (let i = 0; i < subQuestions.length; i++) {
+          const subQ = subQuestions[i];
+          
+          // Process sub-question images and audio similar to parent
+          let subFinalImageUrl = subQ.imageUrl;
+          if (subQ.imageUrl && subQ.imageUrl.includes('/api/temp-question-images/')) {
+            try {
+              subFinalImageUrl = await moveTemporaryQuestionImageToPermanent(subQ.imageUrl);
+            } catch (error) {
+              console.error("Error moving sub-question image:", error);
+              subFinalImageUrl = null;
+            }
+          }
+
+          let subFinalAudioUrl = subQ.audioUrl;
+          if (subQ.audioUrl && subQ.audioUrl.includes('/api/temp-audio/')) {
+            try {
+              subFinalAudioUrl = await moveTemporaryAudioToPermanent(subQ.audioUrl);
+            } catch (error) {
+              console.error("Error moving sub-question audio:", error);
+              subFinalAudioUrl = null;
+            }
+          }
+
+          // Process sub-question answer images
+          let processedOptions = subQ.options;
+          if (Array.isArray(subQ.options)) {
+            processedOptions = await Promise.all(subQ.options.map(async (opt: any) => {
+              if (typeof opt === 'object') {
+                const processedImageUrls = [];
+                if (opt.imageUrls && Array.isArray(opt.imageUrls)) {
+                  for (const imgUrl of opt.imageUrls) {
+                    if (imgUrl && imgUrl.includes('/api/temp-answer-images/')) {
+                      try {
+                        const movedUrl = await moveTemporaryAnswerImageToPermanent(imgUrl);
+                        if (movedUrl) processedImageUrls.push(movedUrl);
+                      } catch (error) {
+                        console.error("Error moving answer image:", error);
+                      }
+                    } else if (imgUrl) {
+                      processedImageUrls.push(imgUrl);
+                    }
+                  }
+                }
+                return { ...opt, imageUrls: processedImageUrls };
+              }
+              return opt;
+            }));
+          }
+
+          const subQuestion = await storage.createQuestion({
+            examId: examId || null,
+            category: category || "ngữ pháp",
+            language: language || "japanese",
+            description: null, // Sub-questions don't have descriptions
+            descriptionImageUrl: null,
+            descriptionImageUrls: null,
+            descriptionAudioUrl: null,
+            questionText: subQ.questionText,
+            questionType: questionType || "multiple_choice",
+            imageUrl: subFinalImageUrl || null,
+            imageUrls: subQ.imageUrls || null,
+            audioUrl: subFinalAudioUrl || null,
+            options: processedOptions,
+            correctAnswer: subQ.correctAnswer,
+            explanation: subQ.explanation || null,
+            sortOrder: newSortOrder + i + 1,
+            parentId: parentQuestion.id, // Link to parent
+          });
+          
+          createdSubQuestions.push(subQuestion);
+        }
+
+        res.status(201).json({
+          question: parentQuestion,
+          subQuestions: createdSubQuestions,
+          message: `Question group created successfully with ${createdSubQuestions.length} sub-questions`
+        });
+      } else {
+        // Create single standalone question
+        const question = await storage.createQuestion({
+          examId: examId || null,
+          category: category || "ngữ pháp",
+          language: language || "japanese",
+          description: description || null,
+          descriptionImageUrl: finalDescriptionImageUrl || null,
+          descriptionImageUrls: descriptionImageUrls || null,
+          descriptionAudioUrl: finalDescriptionAudioUrl || null,
+          questionText,
+          questionType: questionType || "multiple_choice",
+          imageUrl: finalImageUrl || null,
+          imageUrls: imageUrls || null,
+          audioUrl: finalAudioUrl || null,
+          options,
+          correctAnswer,
+          explanation: explanation || null,
+          sortOrder: newSortOrder,
+          parentId: parentId || null,
+        });
+
+        res.status(201).json({
+          question,
+          message: "Question created successfully"
+        });
+      }
     } catch (error) {
       console.error("Error creating question:", error);
       res.status(500).json({ message: "Failed to create question" });
