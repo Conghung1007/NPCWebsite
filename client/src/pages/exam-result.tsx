@@ -64,71 +64,138 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     );
   }
 
-  // Calculate 4-section results
-  const sections = [
-    { 
-      key: 'vocabulary', 
-      title: 'Từ vựng', 
-      icon: BookOpen, 
-      color: 'text-green-600',
-      score: attempt.vocabularyScore,
-      timeSpent: attempt.vocabularyTimeSpent,
-      timeLimit: exam.vocabularyTimeLimit
-    },
-    { 
-      key: 'grammar', 
-      title: 'Ngữ pháp', 
-      icon: MessageSquare, 
-      color: 'text-blue-600',
-      score: attempt.grammarScore,
-      timeSpent: attempt.grammarTimeSpent,
-      timeLimit: exam.grammarTimeLimit
-    },
-    { 
-      key: 'listening', 
-      title: 'Nghe hiểu', 
-      icon: Headphones, 
-      color: 'text-yellow-600',
-      score: attempt.listeningScore,
-      timeSpent: attempt.listeningTimeSpent,
-      timeLimit: exam.listeningTimeLimit
-    },
-    { 
-      key: 'reading', 
-      title: 'Đọc hiểu', 
-      icon: FileInput, 
-      color: 'text-purple-600',
-      score: attempt.readingScore,
-      timeSpent: attempt.readingTimeSpent,
-      timeLimit: exam.readingTimeLimit
+  // Detect sections format vs legacy format
+  const useSections = exam.sections && Array.isArray(exam.sections) && exam.sections.length > 0;
+  
+  // Helper to count questions including sub-questions
+  const countQuestions = (item: any) => {
+    let count = 1; // parent question
+    if (item.question.subQuestions && Array.isArray(item.question.subQuestions)) {
+      count += item.question.subQuestions.length;
     }
-  ];
-
-  // Calculate total stats (including sub-questions)
-  const totalTimeLimit = exam.vocabularyTimeLimit + exam.grammarTimeLimit + exam.listeningTimeLimit + exam.readingTimeLimit;
+    return count;
+  };
   
-  // Count all questions (parent + sub-questions)
-  let totalQuestions = 0;
-  let correctAnswers = 0;
-  
-  questionsWithAnswers.forEach(item => {
-    // Count parent question
-    totalQuestions++;
+  const countCorrect = (item: any) => {
+    let correct = 0;
+    // Check parent
     if (item.userAnswer === item.question.correctAnswer) {
-      correctAnswers++;
+      correct++;
     }
-    
-    // Count sub-questions if any
+    // Check sub-questions
     if (item.question.subQuestions && Array.isArray(item.question.subQuestions)) {
       item.question.subQuestions.forEach((sub: any) => {
-        totalQuestions++;
         if (sub.userAnswer === sub.correctAnswer) {
-          correctAnswers++;
+          correct++;
         }
       });
     }
-  });
+    return correct;
+  };
   
+  // Group questions by sections (new format)
+  let sectionGroups: any[] = [];
+  let totalTimeLimit = 0;
+  
+  if (useSections) {
+    // New sections format
+    sectionGroups = exam.sections.map((section: any, sectionIdx: number) => {
+      const sectionQuestionIds = section.questionIds || [];
+      const sectionQuestions = questionsWithAnswers.filter(item => 
+        sectionQuestionIds.includes(item.question.id)
+      );
+      
+      // Calculate section stats
+      let sectionTotalQuestions = 0;
+      let sectionCorrect = 0;
+      
+      sectionQuestions.forEach(item => {
+        sectionTotalQuestions += countQuestions(item);
+        sectionCorrect += countCorrect(item);
+      });
+      
+      const sectionScore = sectionTotalQuestions > 0 
+        ? (sectionCorrect / sectionTotalQuestions) * 100 
+        : 0;
+      
+      return {
+        id: section.id,
+        title: section.type || `Phần ${sectionIdx + 1}`,
+        content: section.content,
+        timeLimit: section.timeLimit || 0,
+        questions: sectionQuestions,
+        totalQuestions: sectionTotalQuestions,
+        correctAnswers: sectionCorrect,
+        score: sectionScore
+      };
+    });
+    
+    totalTimeLimit = exam.sections.reduce((sum: number, s: any) => sum + (s.timeLimit || 0), 0);
+  } else {
+    // Legacy format - create groups from legacy fields
+    const legacySections = [
+      { 
+        key: 'vocabulary', 
+        title: 'Từ vựng',
+        questionIds: exam.vocabularyQuestions || [],
+        timeLimit: exam.vocabularyTimeLimit || 0
+      },
+      { 
+        key: 'grammar', 
+        title: 'Ngữ pháp',
+        questionIds: exam.grammarQuestions || [],
+        timeLimit: exam.grammarTimeLimit || 0
+      },
+      { 
+        key: 'listening', 
+        title: 'Nghe hiểu',
+        questionIds: exam.listeningQuestions || [],
+        timeLimit: exam.listeningTimeLimit || 0
+      },
+      { 
+        key: 'reading', 
+        title: 'Đọc hiểu',
+        questionIds: exam.readingQuestions || [],
+        timeLimit: exam.readingTimeLimit || 0
+      }
+    ];
+    
+    sectionGroups = legacySections
+      .filter(section => section.questionIds.length > 0)
+      .map(section => {
+        const sectionQuestions = questionsWithAnswers.filter(item => 
+          section.questionIds.includes(item.question.id)
+        );
+        
+        let sectionTotalQuestions = 0;
+        let sectionCorrect = 0;
+        
+        sectionQuestions.forEach(item => {
+          sectionTotalQuestions += countQuestions(item);
+          sectionCorrect += countCorrect(item);
+        });
+        
+        const sectionScore = sectionTotalQuestions > 0 
+          ? (sectionCorrect / sectionTotalQuestions) * 100 
+          : 0;
+        
+        return {
+          id: section.key,
+          title: section.title,
+          timeLimit: section.timeLimit,
+          questions: sectionQuestions,
+          totalQuestions: sectionTotalQuestions,
+          correctAnswers: sectionCorrect,
+          score: sectionScore
+        };
+      });
+    
+    totalTimeLimit = exam.vocabularyTimeLimit + exam.grammarTimeLimit + exam.listeningTimeLimit + exam.readingTimeLimit;
+  }
+  
+  // Calculate overall stats
+  const totalQuestions = sectionGroups.reduce((sum, section) => sum + section.totalQuestions, 0);
+  const correctAnswers = sectionGroups.reduce((sum, section) => sum + section.correctAnswers, 0);
   const scorePercentage = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
 
   const totalTimeMinutes = Math.floor(attempt.totalTimeSpent / 60);
@@ -255,15 +322,28 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
           </CardContent>
         </Card>
 
-        {/* Detailed Answers */}
-        {questionsWithAnswers.length > 0 && (
-          <Card className="mb-8">
+        {/* Section Details with Questions */}
+        {sectionGroups.length > 0 && sectionGroups.map((section, sectionIdx) => (
+          <Card key={section.id} className="mb-8">
             <CardHeader>
-              <CardTitle>Chi tiết từng câu hỏi</CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-xl">
+                  {section.title}
+                  {section.content && <span className="text-sm font-normal text-gray-600 ml-2">- {section.content}</span>}
+                </CardTitle>
+                <div className="text-right">
+                  <div className={`text-lg font-bold ${getScoreColor(section.score)}`}>
+                    {section.score.toFixed(1)}%
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    {section.correctAnswers}/{section.totalQuestions} câu đúng
+                  </div>
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <div className="space-y-8">
-                {questionsWithAnswers.map((item, index) => {
+                {section.questions.map((item: any, qIdx: number) => {
                   const hasSubQuestions = item.question.subQuestions && item.question.subQuestions.length > 0;
                   
                   return (
@@ -308,7 +388,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                       <div className="mb-4">
                         <div className="flex items-start justify-between mb-2">
                           <h4 className="font-medium text-gray-900">
-                            Câu {index + 1}{hasSubQuestions ? '.1' : ''}: {item.question.questionText}
+                            Câu {qIdx + 1}{hasSubQuestions ? '.1' : ''}: {item.question.questionText}
                           </h4>
                           <div className="flex items-center ml-4">
                             {item.userAnswer === item.question.correctAnswer ? (
@@ -403,7 +483,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                               <div key={subQ.id} className="border-l-2 border-gray-300 pl-4">
                                 <div className="flex items-start justify-between mb-2">
                                   <h5 className="font-medium text-gray-900">
-                                    Câu {index + 1}.{subIdx + 2}: {subQ.questionText}
+                                    Câu {qIdx + 1}.{subIdx + 2}: {subQ.questionText}
                                   </h5>
                                   <div className="flex items-center ml-4">
                                     {isSubCorrect ? (
@@ -487,7 +567,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
               </div>
             </CardContent>
           </Card>
-        )}
+        ))}
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
