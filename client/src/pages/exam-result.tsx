@@ -344,9 +344,10 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                         )}
 
                         <div className="space-y-2 text-sm">
-                          {(item.question.options as string[]).map((option, optionIndex) => {
+                          {(item.question.options as any[]).map((option, optionIndex) => {
                             const isUserAnswer = item.userAnswer === optionIndex.toString();
                             const isCorrectAnswer = item.question.correctAnswer === optionIndex.toString();
+                            const optionText = typeof option === 'string' ? option : option.text;
                             
                             return (
                               <div
@@ -362,7 +363,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                                 <span className="font-medium">
                                   {String.fromCharCode(65 + optionIndex)}.
                                 </span>{' '}
-                                {option}
+                                {optionText}
                                 {isCorrectAnswer && (
                                   <Badge variant="secondary" className="ml-2 text-xs">
                                     Đáp án đúng
@@ -428,9 +429,10 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                                 )}
 
                                 <div className="space-y-2 text-sm">
-                                  {(subQ.options as string[]).map((option, optionIndex) => {
+                                  {(subQ.options as any[]).map((option, optionIndex) => {
                                     const isUserAnswer = subQ.userAnswer === optionIndex.toString();
                                     const isCorrectAnswer = subQ.correctAnswer === optionIndex.toString();
+                                    const optionText = typeof option === 'string' ? option : option.text;
                                     
                                     return (
                                       <div
@@ -446,7 +448,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                                         <span className="font-medium">
                                           {String.fromCharCode(65 + optionIndex)}.
                                         </span>{' '}
-                                        {option}
+                                        {optionText}
                                         {isCorrectAnswer && (
                                           <Badge variant="secondary" className="ml-2 text-xs">
                                             Đáp án đúng
