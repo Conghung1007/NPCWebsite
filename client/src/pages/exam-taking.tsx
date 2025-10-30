@@ -972,14 +972,82 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
                 {/* Regular Question or Sub-Questions */}
                 {(currentQuestion as any).subQuestions && (currentQuestion as any).subQuestions.length > 0 ? (
-                  /* Render Sub-Questions */
-                  (currentQuestion as any).subQuestions.map((subQuestion: any, subIndex: number) => (
-                    <Card key={subQuestion.id}>
+                  /* Render Parent + Sub-Questions */
+                  <>
+                    {/* Parent Question (Câu 1) */}
+                    <Card>
                       <CardHeader>
                         <CardTitle className="text-lg">
-                          Câu {currentQuestionIndex + 1}.{subIndex + 1}: {subQuestion.questionText}
+                          Câu {currentQuestionIndex + 1}.1: {currentQuestion.questionText}
                         </CardTitle>
                       </CardHeader>
+                      <CardContent className="space-y-6">
+                        {/* Parent Question Images (nếu có, khác với description images) */}
+                        {/* Note: Parent images được hiển thị ở trên rồi, không cần hiển thị lại */}
+
+                        {/* Answer Options for Parent Question */}
+                        <RadioGroup
+                          value={sectionAnswers[currentQuestion.id] || ""}
+                          onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
+                        >
+                          {(currentQuestion.options as any[]).map((option: any, index: number) => {
+                            const optionText = typeof option === 'string' ? option : option.text;
+                            const optionImageUrl = typeof option === 'string' ? '' : option.imageUrl;
+                            const optionImageUrls = typeof option === 'string' ? [] : (option.imageUrls || []);
+                            
+                            return (
+                              <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
+                                <RadioGroupItem 
+                                  value={index.toString()} 
+                                  id={`parent-option-${currentQuestion.id}-${index}`} 
+                                  className="mt-1"
+                                />
+                                <div className="flex-1 cursor-pointer">
+                                  <Label 
+                                    htmlFor={`parent-option-${currentQuestion.id}-${index}`} 
+                                    className="cursor-pointer flex flex-col space-y-2"
+                                  >
+                                    <span className="text-sm">
+                                      {String.fromCharCode(65 + index)}. {optionText}
+                                    </span>
+                                    
+                                    {optionImageUrls.length > 0 && (
+                                      <div className="flex flex-wrap gap-2">
+                                        {optionImageUrls.map((imageUrl: string, imgIndex: number) => (
+                                          <img
+                                            key={imgIndex}
+                                            src={imageUrl}
+                                            alt={`Option ${String.fromCharCode(65 + index)} illustration ${imgIndex + 1}`}
+                                            className="max-w-full h-auto rounded-md shadow-sm max-h-48"
+                                          />
+                                        ))}
+                                      </div>
+                                    )}
+                                    
+                                    {optionImageUrl && optionImageUrls.length === 0 && (
+                                      <img
+                                        src={optionImageUrl}
+                                        alt={`Option ${String.fromCharCode(65 + index)} illustration`}
+                                        className="max-w-full h-auto rounded-md shadow-sm max-h-48"
+                                      />
+                                    )}
+                                  </Label>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </RadioGroup>
+                      </CardContent>
+                    </Card>
+
+                    {/* Sub-Questions (Câu 2, 3, ...) */}
+                    {(currentQuestion as any).subQuestions.map((subQuestion: any, subIndex: number) => (
+                      <Card key={subQuestion.id}>
+                        <CardHeader>
+                          <CardTitle className="text-lg">
+                            Câu {currentQuestionIndex + 1}.{subIndex + 2}: {subQuestion.questionText}
+                          </CardTitle>
+                        </CardHeader>
                       <CardContent className="space-y-6">
                         {/* Sub-Question Images */}
                         {(subQuestion.imageUrls && subQuestion.imageUrls.length > 0) && (
@@ -1063,7 +1131,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                         </RadioGroup>
                       </CardContent>
                     </Card>
-                  ))
+                  ))}
+                  </>
                 ) : (
                   /* Render Regular Question (No Sub-Questions) */
                   <Card>
