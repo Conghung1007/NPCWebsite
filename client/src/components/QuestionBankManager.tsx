@@ -1442,8 +1442,8 @@ export function QuestionBankManager() {
                                   {question.options.map((option, index) => {
                                     const optionText = typeof option === 'string' ? option : option.text;
                                     return optionText.trim() && (
-                                      <SelectItem key={index} value={optionText}>
-                                        {optionText}
+                                      <SelectItem key={index} value={index.toString()}>
+                                        {String.fromCharCode(65 + index)}. {optionText}
                                       </SelectItem>
                                     );
                                   })}
