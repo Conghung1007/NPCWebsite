@@ -929,104 +929,243 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                 </CardContent>
               </Card>
             ) : (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">
-                    Câu {currentQuestionIndex + 1}: {currentQuestion.questionText}
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  {/* Question Images */}
-                  {((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) || (currentQuestion as any).imageUrl ? (
-                    <div className="flex justify-center flex-wrap gap-4">
-                      {/* Show imageUrls array first (new format) */}
-                      {(currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.map((imageUrl: string, index: number) => (
-                        <img
-                          key={index}
-                          src={imageUrl}
-                          alt={`Question illustration ${index + 1}`}
-                          className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
-                        />
-                      ))}
-                      {/* Show single imageUrl if no imageUrls (legacy support) */}
-                      {(currentQuestion as any).imageUrl && (!(currentQuestion as any).imageUrls || (currentQuestion as any).imageUrls.length === 0) && (
-                        <img
-                          src={(currentQuestion as any).imageUrl}
-                          alt="Question illustration"
-                          className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
-                        />
+              <div className="space-y-6">
+                {/* Parent Question Description/Images/Audio - If has sub-questions */}
+                {(currentQuestion as any).subQuestions && (currentQuestion as any).subQuestions.length > 0 && (
+                  <Card>
+                    <CardContent className="p-6 space-y-4">
+                      {/* Parent Description */}
+                      {(currentQuestion as any).description && (
+                        <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                          {(currentQuestion as any).description}
+                        </div>
                       )}
-                    </div>
-                  ) : null}
-
-                  {/* Question Audio */}
-                  {currentQuestion.audioUrl && (
-                    <div className="flex justify-center">
-                      <audio controls controlsList="nodownload" className="w-full max-w-md" key={currentQuestion.id}>
-                        <source src={currentQuestion.audioUrl.startsWith('/api/') 
-                          ? currentQuestion.audioUrl 
-                          : `/api/${currentQuestion.audioUrl}`} type="audio/mpeg" />
-                        Trình duyệt của bạn không hỗ trợ phát audio.
-                      </audio>
-                    </div>
-                  )}
-
-                  {/* Answer Options */}
-                  <RadioGroup
-                    value={sectionAnswers[currentQuestion.id] || ""}
-                    onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
-                  >
-                    {(currentQuestion.options as any[]).map((option: any, index: number) => {
-                      const optionText = typeof option === 'string' ? option : option.text;
-                      const optionImageUrl = typeof option === 'string' ? '' : option.imageUrl;
-                      const optionImageUrls = typeof option === 'string' ? [] : (option.imageUrls || []);
                       
-                      return (
-                        <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
-                          <RadioGroupItem 
-                            value={index.toString()} 
-                            id={`option-${index}`} 
-                            className="mt-1"
-                          />
-                          <div className="flex-1 cursor-pointer">
-                            <Label 
-                              htmlFor={`option-${index}`} 
-                              className="cursor-pointer flex flex-col space-y-2"
-                            >
-                              <span className="text-sm">
-                                {String.fromCharCode(65 + index)}. {optionText}
-                              </span>
-                              
-                              {/* Display multiple option images (new format) */}
-                              {optionImageUrls.length > 0 && (
-                                <div className="flex flex-wrap gap-2">
-                                  {optionImageUrls.map((imageUrl: string, imgIndex: number) => (
+                      {/* Parent Images */}
+                      {((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) && (
+                        <div className="flex justify-center flex-wrap gap-4">
+                          {(currentQuestion as any).imageUrls.map((imageUrl: string, index: number) => (
+                            <img
+                              key={index}
+                              src={imageUrl}
+                              alt={`Question group illustration ${index + 1}`}
+                              className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Parent Audio */}
+                      {(currentQuestion as any).audioUrl && (
+                        <div className="flex justify-center">
+                          <audio controls controlsList="nodownload" className="w-full max-w-md" key={`parent-${currentQuestion.id}`}>
+                            <source src={(currentQuestion as any).audioUrl.startsWith('/api/') 
+                              ? (currentQuestion as any).audioUrl 
+                              : `/api/${(currentQuestion as any).audioUrl}`} type="audio/mpeg" />
+                            Trình duyệt của bạn không hỗ trợ phát audio.
+                          </audio>
+                        </div>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Regular Question or Sub-Questions */}
+                {(currentQuestion as any).subQuestions && (currentQuestion as any).subQuestions.length > 0 ? (
+                  /* Render Sub-Questions */
+                  (currentQuestion as any).subQuestions.map((subQuestion: any, subIndex: number) => (
+                    <Card key={subQuestion.id}>
+                      <CardHeader>
+                        <CardTitle className="text-lg">
+                          Câu {currentQuestionIndex + 1}.{subIndex + 1}: {subQuestion.questionText}
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent className="space-y-6">
+                        {/* Sub-Question Images */}
+                        {(subQuestion.imageUrls && subQuestion.imageUrls.length > 0) && (
+                          <div className="flex justify-center flex-wrap gap-4">
+                            {subQuestion.imageUrls.map((imageUrl: string, index: number) => (
+                              <img
+                                key={index}
+                                src={imageUrl}
+                                alt={`Sub-question illustration ${index + 1}`}
+                                className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
+                              />
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Sub-Question Audio */}
+                        {subQuestion.audioUrl && (
+                          <div className="flex justify-center">
+                            <audio controls controlsList="nodownload" className="w-full max-w-md" key={subQuestion.id}>
+                              <source src={subQuestion.audioUrl.startsWith('/api/') 
+                                ? subQuestion.audioUrl 
+                                : `/api/${subQuestion.audioUrl}`} type="audio/mpeg" />
+                              Trình duyệt của bạn không hỗ trợ phát audio.
+                            </audio>
+                          </div>
+                        )}
+
+                        {/* Answer Options for Sub-Question */}
+                        <RadioGroup
+                          value={sectionAnswers[subQuestion.id] || ""}
+                          onValueChange={(value) => handleAnswerChange(subQuestion.id, value)}
+                        >
+                          {(subQuestion.options as any[]).map((option: any, index: number) => {
+                            const optionText = typeof option === 'string' ? option : option.text;
+                            const optionImageUrl = typeof option === 'string' ? '' : option.imageUrl;
+                            const optionImageUrls = typeof option === 'string' ? [] : (option.imageUrls || []);
+                            
+                            return (
+                              <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
+                                <RadioGroupItem 
+                                  value={index.toString()} 
+                                  id={`sub-option-${subQuestion.id}-${index}`} 
+                                  className="mt-1"
+                                />
+                                <div className="flex-1 cursor-pointer">
+                                  <Label 
+                                    htmlFor={`sub-option-${subQuestion.id}-${index}`} 
+                                    className="cursor-pointer flex flex-col space-y-2"
+                                  >
+                                    <span className="text-sm">
+                                      {String.fromCharCode(65 + index)}. {optionText}
+                                    </span>
+                                    
+                                    {/* Display multiple option images (new format) */}
+                                    {optionImageUrls.length > 0 && (
+                                      <div className="flex flex-wrap gap-2">
+                                        {optionImageUrls.map((imageUrl: string, imgIndex: number) => (
+                                          <img
+                                            key={imgIndex}
+                                            src={imageUrl}
+                                            alt={`Option ${String.fromCharCode(65 + index)} illustration ${imgIndex + 1}`}
+                                            className="max-w-full h-auto rounded-md shadow-sm max-h-48"
+                                          />
+                                        ))}
+                                      </div>
+                                    )}
+                                    
+                                    {/* Display single option image (legacy format) */}
+                                    {optionImageUrl && optionImageUrls.length === 0 && (
+                                      <img
+                                        src={optionImageUrl}
+                                        alt={`Option ${String.fromCharCode(65 + index)} illustration`}
+                                        className="max-w-full h-auto rounded-md shadow-sm max-h-48"
+                                      />
+                                    )}
+                                  </Label>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </RadioGroup>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  /* Render Regular Question (No Sub-Questions) */
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg">
+                        Câu {currentQuestionIndex + 1}: {currentQuestion.questionText}
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-6">
+                      {/* Question Images */}
+                      {((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) || (currentQuestion as any).imageUrl ? (
+                        <div className="flex justify-center flex-wrap gap-4">
+                          {/* Show imageUrls array first (new format) */}
+                          {(currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.map((imageUrl: string, index: number) => (
+                            <img
+                              key={index}
+                              src={imageUrl}
+                              alt={`Question illustration ${index + 1}`}
+                              className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
+                            />
+                          ))}
+                          {/* Show single imageUrl if no imageUrls (legacy support) */}
+                          {(currentQuestion as any).imageUrl && (!(currentQuestion as any).imageUrls || (currentQuestion as any).imageUrls.length === 0) && (
+                            <img
+                              src={(currentQuestion as any).imageUrl}
+                              alt="Question illustration"
+                              className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
+                            />
+                          )}
+                        </div>
+                      ) : null}
+
+                      {/* Question Audio */}
+                      {currentQuestion.audioUrl && (
+                        <div className="flex justify-center">
+                          <audio controls controlsList="nodownload" className="w-full max-w-md" key={currentQuestion.id}>
+                            <source src={currentQuestion.audioUrl.startsWith('/api/') 
+                              ? currentQuestion.audioUrl 
+                              : `/api/${currentQuestion.audioUrl}`} type="audio/mpeg" />
+                            Trình duyệt của bạn không hỗ trợ phát audio.
+                          </audio>
+                        </div>
+                      )}
+
+                      {/* Answer Options */}
+                      <RadioGroup
+                        value={sectionAnswers[currentQuestion.id] || ""}
+                        onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
+                      >
+                        {(currentQuestion.options as any[]).map((option: any, index: number) => {
+                          const optionText = typeof option === 'string' ? option : option.text;
+                          const optionImageUrl = typeof option === 'string' ? '' : option.imageUrl;
+                          const optionImageUrls = typeof option === 'string' ? [] : (option.imageUrls || []);
+                          
+                          return (
+                            <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
+                              <RadioGroupItem 
+                                value={index.toString()} 
+                                id={`option-${index}`} 
+                                className="mt-1"
+                              />
+                              <div className="flex-1 cursor-pointer">
+                                <Label 
+                                  htmlFor={`option-${index}`} 
+                                  className="cursor-pointer flex flex-col space-y-2"
+                                >
+                                  <span className="text-sm">
+                                    {String.fromCharCode(65 + index)}. {optionText}
+                                  </span>
+                                  
+                                  {/* Display multiple option images (new format) */}
+                                  {optionImageUrls.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                      {optionImageUrls.map((imageUrl: string, imgIndex: number) => (
+                                        <img
+                                          key={imgIndex}
+                                          src={imageUrl}
+                                          alt={`Option ${String.fromCharCode(65 + index)} illustration ${imgIndex + 1}`}
+                                          className="max-w-full h-auto rounded-md shadow-sm max-h-48"
+                                        />
+                                      ))}
+                                    </div>
+                                  )}
+                                  
+                                  {/* Display single option image (legacy format) */}
+                                  {optionImageUrl && optionImageUrls.length === 0 && (
                                     <img
-                                      key={imgIndex}
-                                      src={imageUrl}
-                                      alt={`Option ${String.fromCharCode(65 + index)} illustration ${imgIndex + 1}`}
+                                      src={optionImageUrl}
+                                      alt={`Option ${String.fromCharCode(65 + index)} illustration`}
                                       className="max-w-full h-auto rounded-md shadow-sm max-h-48"
                                     />
-                                  ))}
-                                </div>
-                              )}
-                              
-                              {/* Display single option image (legacy format) */}
-                              {optionImageUrl && optionImageUrls.length === 0 && (
-                                <img
-                                  src={optionImageUrl}
-                                  alt={`Option ${String.fromCharCode(65 + index)} illustration`}
-                                  className="max-w-full h-auto rounded-md shadow-sm max-h-48"
-                                />
-                              )}
-                            </Label>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </RadioGroup>
-                </CardContent>
-              </Card>
+                                  )}
+                                </Label>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </RadioGroup>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
             )}
 
             {/* Navigation - Within Section Only */}
