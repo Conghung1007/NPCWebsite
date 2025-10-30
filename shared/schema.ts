@@ -87,13 +87,18 @@ export const exams = pgTable("exams", {
 
 export const questions = pgTable("questions", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  parentId: varchar("parent_id"), // NULL for parent questions, ID for sub-questions
   examId: varchar("exam_id"), // Now nullable - questions can exist independently
   category: text("category").notNull(), // từ vựng, ngữ pháp, đọc hiểu, nghe hiểu
   language: text("language").notNull().default("japanese"), // japanese, english, german
-  description: text("description"), // Mô tả hoặc ghi chú cho câu hỏi
+  
+  // Parent-level fields (only used when parentId is NULL)
+  description: text("description"), // Mô tả hoặc ghi chú cho câu hỏi chính
   descriptionImageUrl: text("description_image_url"), // Legacy single image URL for backward compatibility
   descriptionImageUrls: jsonb("description_image_urls"), // Array of image URLs for description
   descriptionAudioUrl: text("description_audio_url"), // Optional audio for description
+  
+  // Question-level fields (used for both parent and sub-questions)
   questionText: text("question_text").notNull(),
   questionType: text("question_type").notNull().default("multiple_choice"), // multiple_choice, true_false
   imageUrl: text("image_url"), // Legacy single image URL for backward compatibility

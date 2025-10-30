@@ -778,6 +778,7 @@ export class MemStorage implements IStorage {
     const question: Question = {
       ...insertQuestion,
       id,
+      parentId: insertQuestion.parentId ?? null,
       examId: insertQuestion.examId ?? null,
       description: insertQuestion.description ?? null,
       imageUrl: insertQuestion.imageUrl ?? null,
@@ -787,7 +788,9 @@ export class MemStorage implements IStorage {
       questionType: insertQuestion.questionType ?? "multiple_choice",
       language: insertQuestion.language || "vietnamese", // Ensure language is always set
       descriptionImageUrl: insertQuestion.descriptionImageUrl ?? null,
+      descriptionImageUrls: insertQuestion.descriptionImageUrls ?? null,
       descriptionAudioUrl: insertQuestion.descriptionAudioUrl ?? null,
+      imageUrls: insertQuestion.imageUrls ?? null,
       createdAt: new Date(),
     };
     this.questions.set(id, question);
