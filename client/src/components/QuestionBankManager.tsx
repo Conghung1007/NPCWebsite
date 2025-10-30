@@ -1024,6 +1024,65 @@ export function QuestionBankManager() {
                 )}
               />
 
+              {/* Parent Question Images Upload - Moved here */}
+              <div>
+                <Label className="text-sm font-medium">Hình ảnh câu hỏi (tùy chọn)</Label>
+                <MultipleImagePreviewBox
+                  imageUrls={form.watch(`questions.0.imageUrls`) || []}
+                  onRemove={(imageIndex) => {
+                    const currentUrls = form.getValues(`questions.0.imageUrls`) || [];
+                    const newUrls = currentUrls.filter((_, i) => i !== imageIndex);
+                    form.setValue(`questions.0.imageUrls`, newUrls);
+                  }}
+                  onChooseImage={() => {
+                    const inputRef = questionImageInputRefs.current.get(0);
+                    inputRef?.click();
+                  }}
+                  title="Hình ảnh câu hỏi"
+                  className="mt-2"
+                  maxImages={5}
+                />
+                
+                {/* Hidden file input for parent question image */}
+                <input
+                  ref={(el) => {
+                    if (el) {
+                      questionImageInputRefs.current.set(0, el);
+                    }
+                  }}
+                  type="file"
+                  accept="image/*"
+                  style={{ display: 'none' }}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) {
+                      handleQuestionImageUpload(file, 0);
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Parent Question Audio Upload - Moved here */}
+              <div>
+                <FormField
+                  control={form.control}
+                  name={`questions.0.audioUrl`}
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Audio câu hỏi (tùy chọn)</FormLabel>
+                      <FormControl>
+                        <AudioUploader
+                          currentAudioUrl={field.value}
+                          onAudioUpload={(audioUrl) => field.onChange(audioUrl)}
+                          onRemoveAudio={() => field.onChange("")}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
               {/* Questions Section */}
               <div className="space-y-4">
                 <Label className="text-base font-medium">Câu hỏi *</Label>
@@ -1077,64 +1136,68 @@ export function QuestionBankManager() {
                           )}
                         />
 
-                        {/* Question Images Upload */}
-                        <div>
-                          <Label className="text-sm font-medium">Hình ảnh câu hỏi (tùy chọn)</Label>
-                          <MultipleImagePreviewBox
-                            imageUrls={form.watch(`questions.${questionIndex}.imageUrls`) || []}
-                            onRemove={(imageIndex) => {
-                              const currentUrls = form.getValues(`questions.${questionIndex}.imageUrls`) || [];
-                              const newUrls = currentUrls.filter((_, i) => i !== imageIndex);
-                              form.setValue(`questions.${questionIndex}.imageUrls`, newUrls);
-                            }}
-                            onChooseImage={() => {
-                              const inputRef = questionImageInputRefs.current.get(questionIndex);
-                              inputRef?.click();
-                            }}
-                            title="Hình ảnh câu hỏi"
-                            className="mt-2"
-                            maxImages={5}
-                          />
-                          
-                          {/* Hidden file input for question image */}
-                          <input
-                            ref={(el) => {
-                              if (el) {
-                                questionImageInputRefs.current.set(questionIndex, el);
-                              }
-                            }}
-                            type="file"
-                            accept="image/*"
-                            style={{ display: 'none' }}
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) {
-                                handleQuestionImageUpload(file, questionIndex);
-                              }
-                            }}
-                          />
-                        </div>
+                        {/* Question Images Upload - Only for sub-questions (index > 0) */}
+                        {questionIndex > 0 && (
+                          <div>
+                            <Label className="text-sm font-medium">Hình ảnh câu hỏi (tùy chọn)</Label>
+                            <MultipleImagePreviewBox
+                              imageUrls={form.watch(`questions.${questionIndex}.imageUrls`) || []}
+                              onRemove={(imageIndex) => {
+                                const currentUrls = form.getValues(`questions.${questionIndex}.imageUrls`) || [];
+                                const newUrls = currentUrls.filter((_, i) => i !== imageIndex);
+                                form.setValue(`questions.${questionIndex}.imageUrls`, newUrls);
+                              }}
+                              onChooseImage={() => {
+                                const inputRef = questionImageInputRefs.current.get(questionIndex);
+                                inputRef?.click();
+                              }}
+                              title="Hình ảnh câu hỏi"
+                              className="mt-2"
+                              maxImages={5}
+                            />
+                            
+                            {/* Hidden file input for question image */}
+                            <input
+                              ref={(el) => {
+                                if (el) {
+                                  questionImageInputRefs.current.set(questionIndex, el);
+                                }
+                              }}
+                              type="file"
+                              accept="image/*"
+                              style={{ display: 'none' }}
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  handleQuestionImageUpload(file, questionIndex);
+                                }
+                              }}
+                            />
+                          </div>
+                        )}
 
-                        {/* Question Audio Upload */}
-                        <div>
-                          <FormField
-                            control={form.control}
-                            name={`questions.${questionIndex}.audioUrl`}
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Audio câu hỏi (tùy chọn)</FormLabel>
-                                <FormControl>
-                                  <AudioUploader
-                                    currentAudioUrl={field.value}
-                                    onAudioUpload={(audioUrl) => field.onChange(audioUrl)}
-                                    onRemoveAudio={() => field.onChange("")}
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
+                        {/* Question Audio Upload - Only for sub-questions (index > 0) */}
+                        {questionIndex > 0 && (
+                          <div>
+                            <FormField
+                              control={form.control}
+                              name={`questions.${questionIndex}.audioUrl`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Audio câu hỏi (tùy chọn)</FormLabel>
+                                  <FormControl>
+                                    <AudioUploader
+                                      currentAudioUrl={field.value}
+                                      onAudioUpload={(audioUrl) => field.onChange(audioUrl)}
+                                      onRemoveAudio={() => field.onChange("")}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </div>
+                        )}
 
                         {/* Options */}
                         <div className="space-y-3">
