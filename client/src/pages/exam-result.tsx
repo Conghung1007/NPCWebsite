@@ -33,6 +33,14 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     queryKey: [`/api/exam-attempts/${attemptId}/details`],
     retry: false,
   });
+  
+  // Debug logging
+  useEffect(() => {
+    if (questionsWithAnswers.length > 0) {
+      console.log("Questions with answers received:", questionsWithAnswers);
+      console.log("First question sample:", JSON.stringify(questionsWithAnswers[0], null, 2));
+    }
+  }, [questionsWithAnswers]);
 
   if (attemptLoading || examLoading || questionsLoading) {
     return (
