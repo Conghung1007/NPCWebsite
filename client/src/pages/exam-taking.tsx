@@ -870,7 +870,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               
               <div className="space-y-3">
                 <div className="text-sm text-gray-500">
-                  <p>Điểm số: {sectionResults[getCurrentSection()?.id || '']?.score || 0}%</p>
                   <p>Thời gian: {formatTime(((sectionConfig?.timeLimit || 0) * 60) - sectionTimeLeft)}</p>
                 </div>
                 

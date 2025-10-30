@@ -572,24 +572,46 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const questions = await storage.getQuestionsByExamId(attempt.examId);
       
       // Create ordered question list from all sections
-      const sectionQuestionIds = [
-        ...(Array.isArray(exam.vocabularyQuestions) ? exam.vocabularyQuestions : []),
-        ...(Array.isArray(exam.grammarQuestions) ? exam.grammarQuestions : []),
-        ...(Array.isArray(exam.listeningQuestions) ? exam.listeningQuestions : []),
-        ...(Array.isArray(exam.readingQuestions) ? exam.readingQuestions : [])
-      ].filter((id): id is string => typeof id === 'string');
+      let sectionQuestionIds: string[] = [];
+      let allAnswers: Record<string, string> = {};
+      
+      // Check if exam uses new sections format or legacy format
+      if (exam.sections && Array.isArray(exam.sections) && exam.sections.length > 0) {
+        // New sections format
+        exam.sections.forEach((section: any) => {
+          const questionIds = section.questionIds || [];
+          sectionQuestionIds.push(...questionIds);
+        });
+        
+        // Get answers from sectionResults
+        if (attempt.sectionResults && typeof attempt.sectionResults === 'object') {
+          Object.values(attempt.sectionResults as Record<string, any>).forEach((sectionResult: any) => {
+            if (sectionResult.answers) {
+              Object.assign(allAnswers, sectionResult.answers);
+            }
+          });
+        }
+      } else {
+        // Legacy format
+        sectionQuestionIds = [
+          ...(Array.isArray(exam.vocabularyQuestions) ? exam.vocabularyQuestions : []),
+          ...(Array.isArray(exam.grammarQuestions) ? exam.grammarQuestions : []),
+          ...(Array.isArray(exam.listeningQuestions) ? exam.listeningQuestions : []),
+          ...(Array.isArray(exam.readingQuestions) ? exam.readingQuestions : [])
+        ].filter((id): id is string => typeof id === 'string');
+        
+        // Combine all section answers
+        allAnswers = {
+          ...(attempt.vocabularyAnswers as Record<string, string> || {}),
+          ...(attempt.grammarAnswers as Record<string, string> || {}),
+          ...(attempt.listeningAnswers as Record<string, string> || {}),
+          ...(attempt.readingAnswers as Record<string, string> || {})
+        };
+      }
 
       const orderedQuestions = sectionQuestionIds.map(questionId => 
         questions.find(q => q.id === questionId)
       ).filter(Boolean);
-
-      // Combine all section answers into single object
-      const allAnswers = {
-        ...(attempt.vocabularyAnswers as Record<string, string> || {}),
-        ...(attempt.grammarAnswers as Record<string, string> || {}),
-        ...(attempt.listeningAnswers as Record<string, string> || {}),
-        ...(attempt.readingAnswers as Record<string, string> || {})
-      };
 
       // Group sub-questions under parent questions
       const parentQuestions = orderedQuestions.filter(q => !q.parentId);
