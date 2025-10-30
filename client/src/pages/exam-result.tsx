@@ -475,12 +475,12 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                       
                       {/* Sub-Questions */}
                       {hasSubQuestions && (
-                        <div className="ml-6 space-y-4">
+                        <div className="space-y-4">
                           {item.question.subQuestions.map((subQ: any, subIdx: number) => {
                             const isSubCorrect = subQ.userAnswer === subQ.correctAnswer;
                             
                             return (
-                              <div key={subQ.id} className="border-l-2 border-gray-300 pl-4">
+                              <div key={subQ.id}>
                                 <div className="flex items-start justify-between mb-2">
                                   <h5 className="font-medium text-gray-900">
                                     Câu {qIdx + 1}.{subIdx + 2}: {subQ.questionText}
