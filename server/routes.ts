@@ -2874,6 +2874,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const {
         category,
         description,
+        descriptionImageUrls,
+        descriptionAudioUrl,
         questionText,
         questionType,
         imageUrl,
@@ -2883,7 +2885,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         correctAnswer,
         explanation,
         sortOrder,
-        language
+        language,
+        subQuestions
       } = req.body;
 
       if (!questionText || !options || !correctAnswer) {
@@ -2898,35 +2901,94 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Question not found" });
       }
 
-      // For now, keep all URLs as provided (temporary file handling will be done elsewhere)
-      const finalImageUrl = imageUrl;
-      const finalImageUrls = imageUrls;
-      const finalAudioUrl = audioUrl;
-      const processedOptions = options;
+      // If this is a parent question with sub-questions, handle them
+      if (subQuestions && Array.isArray(subQuestions)) {
+        // 1. Delete all existing sub-questions
+        const existingSubQuestions = await storage.getSubQuestions(id);
+        for (const subQ of existingSubQuestions) {
+          await storage.deleteQuestion(subQ.id);
+        }
 
-      const updatedQuestion = await storage.updateQuestion(id, {
-        category: category || existingQuestion.category,
-        description: description || existingQuestion.description,
-        questionText,
-        questionType: questionType || existingQuestion.questionType,
-        imageUrl: finalImageUrl || existingQuestion.imageUrl,
-        imageUrls: finalImageUrls || existingQuestion.imageUrls,
-        audioUrl: finalAudioUrl || existingQuestion.audioUrl,
-        options: processedOptions,
-        correctAnswer,
-        explanation: explanation || existingQuestion.explanation,
-        sortOrder: sortOrder !== undefined ? sortOrder : existingQuestion.sortOrder,
-        language: language || existingQuestion.language
-      });
+        // 2. Update parent question
+        const updatedQuestion = await storage.updateQuestion(id, {
+          category: category || existingQuestion.category,
+          description: description || existingQuestion.description,
+          descriptionImageUrls: descriptionImageUrls || existingQuestion.descriptionImageUrls,
+          descriptionAudioUrl: descriptionAudioUrl || existingQuestion.descriptionAudioUrl,
+          questionText,
+          questionType: questionType || existingQuestion.questionType,
+          imageUrl: imageUrl || existingQuestion.imageUrl,
+          imageUrls: imageUrls || existingQuestion.imageUrls,
+          audioUrl: audioUrl || existingQuestion.audioUrl,
+          options: options,
+          correctAnswer,
+          explanation: explanation || existingQuestion.explanation,
+          sortOrder: sortOrder !== undefined ? sortOrder : existingQuestion.sortOrder,
+          language: language || existingQuestion.language,
+          parentId: null, // Ensure parent questions have null parentId
+        });
 
-      if (!updatedQuestion) {
-        return res.status(404).json({ message: "Question not found" });
+        // 3. Create new sub-questions
+        const createdSubQuestions = [];
+        for (let i = 0; i < subQuestions.length; i++) {
+          const subQ = subQuestions[i];
+          
+          const subQuestion = await storage.createQuestion({
+            examId: existingQuestion.examId,
+            category: category || existingQuestion.category,
+            language: language || existingQuestion.language,
+            description: null,
+            descriptionImageUrl: null,
+            descriptionImageUrls: null,
+            descriptionAudioUrl: null,
+            questionText: subQ.questionText,
+            questionType: questionType || "multiple_choice",
+            imageUrl: subQ.imageUrl || null,
+            imageUrls: subQ.imageUrls || null,
+            audioUrl: subQ.audioUrl || null,
+            options: subQ.options,
+            correctAnswer: subQ.correctAnswer,
+            explanation: subQ.explanation || null,
+            sortOrder: (sortOrder || existingQuestion.sortOrder) + i + 1,
+            parentId: id, // Link to parent
+          });
+          
+          createdSubQuestions.push(subQuestion);
+        }
+
+        res.json({
+          question: updatedQuestion,
+          subQuestions: createdSubQuestions,
+          message: `Question updated successfully with ${createdSubQuestions.length} sub-questions`
+        });
+      } else {
+        // Update single standalone question
+        const updatedQuestion = await storage.updateQuestion(id, {
+          category: category || existingQuestion.category,
+          description: description || existingQuestion.description,
+          descriptionImageUrls: descriptionImageUrls || existingQuestion.descriptionImageUrls,
+          descriptionAudioUrl: descriptionAudioUrl || existingQuestion.descriptionAudioUrl,
+          questionText,
+          questionType: questionType || existingQuestion.questionType,
+          imageUrl: imageUrl || existingQuestion.imageUrl,
+          imageUrls: imageUrls || existingQuestion.imageUrls,
+          audioUrl: audioUrl || existingQuestion.audioUrl,
+          options: options,
+          correctAnswer,
+          explanation: explanation || existingQuestion.explanation,
+          sortOrder: sortOrder !== undefined ? sortOrder : existingQuestion.sortOrder,
+          language: language || existingQuestion.language
+        });
+
+        if (!updatedQuestion) {
+          return res.status(404).json({ message: "Question not found" });
+        }
+
+        res.json({
+          question: updatedQuestion,
+          message: "Question updated successfully"
+        });
       }
-
-      res.json({
-        question: updatedQuestion,
-        message: "Question updated successfully"
-      });
     } catch (error) {
       console.error("Error updating question:", error);
       res.status(500).json({ message: "Failed to update question" });

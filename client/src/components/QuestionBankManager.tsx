@@ -344,18 +344,20 @@ export function QuestionBankManager() {
 
   const handleSubmit = async (data: QuestionFormData) => {
     if (editingQuestion) {
-      // For editing: Update first question, create the rest
+      // For editing: Update parent question with sub-questions
       try {
-        const promises = [];
-        
-        // Update the original question (first in array)
         const firstQuestion = data.questions[0];
+        const remainingQuestions = data.questions.slice(1);
+        
         const updateData = { 
           category: data.category,
           language: data.language,
           sortOrder: data.sortOrder,
+          // Parent question data
           questionText: firstQuestion.questionText,
           description: firstQuestion.description,
+          descriptionImageUrls: firstQuestion.descriptionImageUrls,
+          descriptionAudioUrl: firstQuestion.audioUrl,
           questionType: "multiple_choice" as const,
           imageUrl: firstQuestion.imageUrl,
           imageUrls: firstQuestion.imageUrls,
@@ -363,47 +365,28 @@ export function QuestionBankManager() {
           options: firstQuestion.options,
           correctAnswer: firstQuestion.correctAnswer,
           explanation: firstQuestion.explanation,
+          // Sub-questions array
+          subQuestions: remainingQuestions.map(q => ({
+            questionText: q.questionText,
+            imageUrl: q.imageUrl,
+            imageUrls: q.imageUrls,
+            audioUrl: q.audioUrl,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            explanation: q.explanation,
+          }))
         };
-        promises.push(
-          apiRequest("PUT", `/api/questions/${editingQuestion.id}`, updateData)
-        );
-        
-        // Create new questions for any additional questions (index > 0)
-        const newQuestions = data.questions.slice(1);
-        newQuestions.forEach((question) => {
-          const createData = {
-            category: data.category,
-            language: data.language,
-            sortOrder: data.sortOrder,
-            questionText: question.questionText,
-            description: question.description,
-            questionType: "multiple_choice" as const,
-            imageUrl: question.imageUrl,
-            imageUrls: question.imageUrls,
-            audioUrl: question.audioUrl,
-            options: question.options,
-            correctAnswer: question.correctAnswer,
-            explanation: question.explanation,
-          };
-          promises.push(apiRequest("POST", "/api/questions", createData));
-        });
 
-        await Promise.all(promises);
+        await apiRequest("PUT", `/api/questions/${editingQuestion.id}`, updateData);
         
-        const totalQuestions = data.questions.length;
-        const newQuestionsCount = newQuestions.length;
+        const subCount = remainingQuestions.length;
         
-        if (newQuestionsCount > 0) {
-          toast({
-            title: "Thành công",
-            description: `Đã cập nhật 1 câu hỏi và tạo thêm ${newQuestionsCount} câu hỏi mới.`,
-          });
-        } else {
-          toast({
-            title: "Thành công",
-            description: "Câu hỏi đã được cập nhật thành công.",
-          });
-        }
+        toast({
+          title: "Thành công",
+          description: subCount > 0 
+            ? `Đã cập nhật câu hỏi chính với ${subCount} câu hỏi con.`
+            : "Câu hỏi đã được cập nhật thành công.",
+        });
         
         queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
         setEditingQuestion(null);
