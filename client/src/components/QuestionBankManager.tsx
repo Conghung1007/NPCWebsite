@@ -77,11 +77,10 @@ const singleQuestionSchema = z.object({
   audioUrl: z.string().optional(),
 }).refine(
   (data) => {
-    // Validate that correctAnswer is one of the provided options
-    const optionTexts = data.options.map(opt => 
-      typeof opt === 'string' ? opt : opt.text
-    ).filter(text => text.trim() !== "");
-    return optionTexts.includes(data.correctAnswer);
+    // Validate that correctAnswer is a valid index (0, 1, 2...)
+    const answerIndex = parseInt(data.correctAnswer);
+    if (isNaN(answerIndex)) return false;
+    return answerIndex >= 0 && answerIndex < data.options.length;
   },
   {
     message: "Đáp án đúng phải là một trong các lựa chọn đã nhập",
@@ -1188,70 +1187,6 @@ export function QuestionBankManager() {
                             </FormItem>
                           )}
                         />
-
-                        {/* Question Images Upload - Only for sub-questions (index > 0) */}
-                        {questionIndex > 0 && (
-                          <div>
-                            <Label className="text-sm font-medium">Hình ảnh câu hỏi (tùy chọn)</Label>
-                            <MultipleImagePreviewBox
-                              imageUrls={form.watch(`questions.${questionIndex}.imageUrls`) || []}
-                              onRemove={(imageIndex) => {
-                                const currentUrls = form.getValues(`questions.${questionIndex}.imageUrls`) || [];
-                                const newUrls = currentUrls.filter((_, i) => i !== imageIndex);
-                                form.setValue(`questions.${questionIndex}.imageUrls`, newUrls);
-                              }}
-                              onChooseImage={() => {
-                                const inputRef = questionImageInputRefs.current.get(questionIndex);
-                                inputRef?.click();
-                              }}
-                              title="Hình ảnh câu hỏi"
-                              className="mt-2"
-                              maxImages={5}
-                            />
-                            
-                            {/* Hidden file input for question image */}
-                            <input
-                              ref={(el) => {
-                                if (el) {
-                                  questionImageInputRefs.current.set(questionIndex, el);
-                                }
-                              }}
-                              type="file"
-                              accept="image/*"
-                              style={{ display: 'none' }}
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  handleQuestionImageUpload(file, questionIndex);
-                                }
-                              }}
-                            />
-                          </div>
-                        )}
-
-                        {/* Question Audio Upload - Only for sub-questions (index > 0) */}
-                        {questionIndex > 0 && (
-                          <div>
-                            <FormField
-                              control={form.control}
-                              name={`questions.${questionIndex}.audioUrl`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel>Audio câu hỏi (tùy chọn)</FormLabel>
-                                  <FormControl>
-                                    <AudioUploader
-                                      currentAudioUrl={field.value}
-                                      onAudioUpload={(audioUrl) => field.onChange(audioUrl)}
-                                      onRemoveAudio={() => field.onChange("")}
-                                      context="qbank"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-                          </div>
-                        )}
 
                         {/* Options */}
                         <div className="space-y-3">
