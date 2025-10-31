@@ -786,8 +786,8 @@ export default function EditExam() {
 
         {/* Question Selection Dialog */}
         <Dialog open={isQuestionSelectOpen} onOpenChange={setIsQuestionSelectOpen}>
-          <DialogContent className="w-[95vw] max-w-[1000px] max-h-[80vh] overflow-hidden">
-            <DialogHeader>
+          <DialogContent className="w-[95vw] max-w-[1000px] max-h-[85vh] flex flex-col gap-0 p-0">
+            <DialogHeader className="px-6 pt-6 pb-4 border-b">
               <DialogTitle>
                 Chọn câu hỏi - {questionCategories.find(c => c.value === getCurrentSection()?.type)?.label}
               </DialogTitle>
@@ -796,7 +796,7 @@ export default function EditExam() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="space-y-4">
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
               {/* Search */}
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -827,7 +827,7 @@ export default function EditExam() {
               </div>
 
               {/* Question List */}
-              <div className="max-h-96 overflow-y-auto">
+              <div>
                 {questionsLoading ? (
                   <div className="text-center py-4">Đang tải câu hỏi...</div>
                 ) : filteredQuestions.length === 0 ? (
@@ -886,7 +886,7 @@ export default function EditExam() {
               </div>
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="px-6 py-4 border-t">
               <Button onClick={() => setIsQuestionSelectOpen(false)}>
                 Đóng
               </Button>
