@@ -906,9 +906,9 @@ export function QuestionBankManager() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Mô tả</TableHead>
-                  <TableHead>Nội dung câu hỏi</TableHead>
                   <TableHead>Danh mục</TableHead>
                   <TableHead>Ngôn ngữ</TableHead>
+                  <TableHead>Nội dung câu hỏi</TableHead>
                   <TableHead>Thao tác</TableHead>
                 </TableRow>
               </TableHeader>
@@ -920,6 +920,12 @@ export function QuestionBankManager() {
                         {question.description || "Không có"}
                       </div>
                     </TableCell>
+                    <TableCell>
+                      {getCategoryBadge(question.category)}
+                    </TableCell>
+                    <TableCell>
+                      {getLanguageBadge((question as any).language || "japanese")}
+                    </TableCell>
                     <TableCell className="max-w-md">
                       <div className="flex items-start gap-2">
                         {question.audioUrl && <Volume2 className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />}
@@ -928,12 +934,6 @@ export function QuestionBankManager() {
                           {question.questionText}
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell>
-                      {getCategoryBadge(question.category)}
-                    </TableCell>
-                    <TableCell>
-                      {getLanguageBadge((question as any).language || "japanese")}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
