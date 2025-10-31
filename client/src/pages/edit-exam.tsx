@@ -827,7 +827,7 @@ export default function EditExam() {
               </div>
 
               {/* Question List */}
-              <div>
+              <div className="overflow-x-hidden">
                 {questionsLoading ? (
                   <div className="text-center py-4">Đang tải câu hỏi...</div>
                 ) : filteredQuestions.length === 0 ? (
@@ -835,53 +835,55 @@ export default function EditExam() {
                     Không tìm thấy câu hỏi phù hợp
                   </div>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Câu hỏi</TableHead>
-                        <TableHead>Mô tả</TableHead>
-                        <TableHead>Category</TableHead>
-                        <TableHead>Ngôn ngữ</TableHead>
-                        <TableHead>Thao tác</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredQuestions.map((question) => (
-                        <TableRow key={question.id}>
-                          <TableCell className="max-w-md">
-                            <p className="font-medium truncate">{question.questionText}</p>
-                          </TableCell>
-                          <TableCell className="max-w-xs">
-                            <p className="text-sm text-gray-500 truncate">{question.description || "Không có"}</p>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {question.category}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="outline">
-                              {question.language === "japanese" && "Tiếng Nhật"}
-                              {question.language === "english" && "Tiếng Anh"}
-                              {question.language === "german" && "Tiếng Đức"}
-                              {!["japanese", "english", "german"].includes(question.language) && question.language}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Button
-                              size="sm"
-                              onClick={() => {
-                                addQuestionToSection(currentSectionId, question);
-                              }}
-                            >
-                              <Plus className="w-4 h-4 mr-1" />
-                              Chọn
-                            </Button>
-                          </TableCell>
+                  <div className="w-full">
+                    <Table className="table-fixed w-full">
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead className="w-[35%]">Câu hỏi</TableHead>
+                          <TableHead className="w-[25%]">Mô tả</TableHead>
+                          <TableHead className="w-[15%]">Category</TableHead>
+                          <TableHead className="w-[13%]">Ngôn ngữ</TableHead>
+                          <TableHead className="w-[12%]">Thao tác</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {filteredQuestions.map((question) => (
+                          <TableRow key={question.id}>
+                            <TableCell className="truncate">
+                              <p className="font-medium truncate">{question.questionText}</p>
+                            </TableCell>
+                            <TableCell className="truncate">
+                              <p className="text-sm text-gray-500 truncate">{question.description || "Không có"}</p>
+                            </TableCell>
+                            <TableCell className="truncate">
+                              <Badge variant="outline" className="truncate max-w-full">
+                                {question.category}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="truncate">
+                              <Badge variant="outline" className="truncate max-w-full">
+                                {question.language === "japanese" && "Tiếng Nhật"}
+                                {question.language === "english" && "Tiếng Anh"}
+                                {question.language === "german" && "Tiếng Đức"}
+                                {!["japanese", "english", "german"].includes(question.language) && question.language}
+                              </Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  addQuestionToSection(currentSectionId, question);
+                                }}
+                              >
+                                <Plus className="w-4 h-4 mr-1" />
+                                Chọn
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
               </div>
             </div>
