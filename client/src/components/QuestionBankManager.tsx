@@ -228,6 +228,7 @@ export function QuestionBankManager() {
         description: "Câu hỏi đã được xóa thành công.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
+      queryClient.invalidateQueries({ predicate: ({ queryKey }) => queryKey[0] === '/api/exams' });
       setDeleteConfirm({ isOpen: false, question: null });
     } catch (error: any) {
       toast({
@@ -306,6 +307,7 @@ export function QuestionBankManager() {
         description: "Câu hỏi đã được tạo thành công.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
+      queryClient.invalidateQueries({ predicate: ({ queryKey }) => queryKey[0] === '/api/exams' });
       setIsAddingQuestion(false);
       form.reset();
     },
@@ -329,6 +331,7 @@ export function QuestionBankManager() {
         description: "Câu hỏi đã được cập nhật thành công.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
+      queryClient.invalidateQueries({ predicate: ({ queryKey }) => queryKey[0] === '/api/exams' });
       setEditingQuestion(null);
       form.reset();
     },
