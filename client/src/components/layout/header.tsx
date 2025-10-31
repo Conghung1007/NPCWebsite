@@ -122,7 +122,7 @@ export function Header() {
                     {user.username}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="z-[10000]">
                   <DropdownMenuItem disabled>
                     <span className="font-medium">{user.role}</span>
                   </DropdownMenuItem>
@@ -170,7 +170,7 @@ export function Header() {
                     {user.username}
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
+                <DropdownMenuContent align="end" className="z-[10000]">
                   <DropdownMenuItem disabled>
                     <span className="font-medium">{user.role}</span>
                   </DropdownMenuItem>
