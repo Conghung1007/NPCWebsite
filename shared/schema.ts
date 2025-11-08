@@ -64,9 +64,10 @@ export const exams = pgTable("exams", {
   description: text("description"),
   isDemo: boolean("is_demo").default(false), // Demo exams don't require login
   isActive: boolean("is_active").default(true),
+  passingScore: integer("passing_score"), // Overall exam passing score (number of correct answers needed)
   
   // New flexible sections structure
-  sections: jsonb("sections"), // Array of dynamic exam sections: {id, type, timeLimit, questionIds}[]
+  sections: jsonb("sections"), // Array of dynamic exam sections: {id, sectionName, timeLimit, passingScore, questionIds}[]
   
   // Legacy fields for backward compatibility (optional)
   vocabularyTimeLimit: integer("vocabulary_time_limit"), // Time limit in minutes
