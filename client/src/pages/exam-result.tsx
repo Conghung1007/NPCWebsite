@@ -120,7 +120,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
       
       // Determine if section passed based on passing score
       const sectionPassingScore = section.passingScore;
-      const sectionPassed = sectionPassingScore == null || sectionPassingScore === 0 || sectionCorrect >= sectionPassingScore;
+      const sectionPassed = (sectionPassingScore == null || sectionPassingScore === undefined) ? true : sectionCorrect >= sectionPassingScore;
       
       return {
         id: section.id,
