@@ -727,6 +727,21 @@ export default function CreateExam() {
               {/* Filter Dropdowns */}
               <div className="flex gap-4">
                 <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Lọc theo phần thi</label>
+                  <Select value={selectedCategoryFilter} onValueChange={setSelectedCategoryFilter}>
+                    <SelectTrigger data-testid="select-category-filter">
+                      <SelectValue placeholder="Tất cả phần thi" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Tất cả</SelectItem>
+                      <SelectItem value="ngữ pháp">Ngữ pháp</SelectItem>
+                      <SelectItem value="đọc hiểu">Đọc hiểu</SelectItem>
+                      <SelectItem value="từ vựng">Từ vựng</SelectItem>
+                      <SelectItem value="nghe hiểu">Nghe hiểu</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex-1">
                   <label className="block text-sm font-medium text-gray-700 mb-1">Lọc theo ngôn ngữ</label>
                   <Select value={selectedLanguageFilter} onValueChange={setSelectedLanguageFilter}>
                     <SelectTrigger data-testid="select-language-filter">
@@ -755,9 +770,9 @@ export default function CreateExam() {
                     <Table className="table-fixed w-full">
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[35%]">Câu hỏi</TableHead>
                           <TableHead className="w-[25%]">Mô tả</TableHead>
-                          <TableHead className="w-[15%]">Category</TableHead>
+                          <TableHead className="w-[35%]">Câu hỏi</TableHead>
+                          <TableHead className="w-[15%]">Phần thi</TableHead>
                           <TableHead className="w-[13%]">Ngôn ngữ</TableHead>
                           <TableHead className="w-[12%]">Thao tác</TableHead>
                         </TableRow>
@@ -766,10 +781,10 @@ export default function CreateExam() {
                         {filteredQuestions.map((question) => (
                           <TableRow key={question.id}>
                             <TableCell className="truncate">
-                              <p className="font-medium truncate">{question.questionText}</p>
+                              <p className="text-sm text-gray-500 truncate">{question.description || "Không có"}</p>
                             </TableCell>
                             <TableCell className="truncate">
-                              <p className="text-sm text-gray-500 truncate">{question.description || "Không có"}</p>
+                              <p className="font-medium truncate">{question.questionText}</p>
                             </TableCell>
                             <TableCell className="truncate">
                               <Badge variant="outline" className="truncate max-w-full">
