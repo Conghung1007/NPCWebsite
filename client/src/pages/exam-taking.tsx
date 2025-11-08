@@ -13,6 +13,16 @@ import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { type Exam, type Question, type User } from "@shared/schema";
 
+// Fisher-Yates shuffle algorithm to randomize question order
+function shuffleArray<T>(array: T[]): T[] {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
 // Dynamic section structure - same as create-exam and edit-exam
 interface ExamSection {
   id: string;
@@ -87,6 +97,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
           .map((qId: string) => allQuestions.find(q => q.id === qId))
           .filter((q: Question | undefined): q is Question => q !== undefined);
         
+        // Shuffle questions for random order each time exam is taken
+        const shuffledQuestions = shuffleArray<Question>(sectionQuestions);
+        
         return {
           id: section.id,
           sectionName: section.sectionName || section.type || "",
@@ -94,7 +107,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
           content: section.content || "",
           descriptionImageUrls: section.descriptionImageUrls || [],
           descriptionAudioUrl: section.descriptionAudioUrl || "",
-          questions: sectionQuestions
+          questions: shuffledQuestions
         };
       });
       return sectionsWithQuestions.filter((s: ExamSection) => s.questions.length > 0);
@@ -117,6 +130,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             .filter((q: Question | undefined): q is Question => q !== undefined);
           
           if (sectionQuestions.length > 0) {
+            // Shuffle questions for random order each time exam is taken
+            const shuffledQuestions = shuffleArray<Question>(sectionQuestions);
+            
             legacySections.push({
               id: `section-${index + 1}`,
               sectionName: mapping.sectionName,
@@ -124,7 +140,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               content: "",
               descriptionImageUrls: [],
               descriptionAudioUrl: "",
-              questions: sectionQuestions
+              questions: shuffledQuestions
             });
           }
         }
