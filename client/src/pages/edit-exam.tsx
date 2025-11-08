@@ -35,6 +35,7 @@ interface ExamSection {
   id: string;
   sectionName: string;
   timeLimit: number;
+  passingScore?: number;
   content?: string;
   descriptionImageUrls?: string[];
   descriptionAudioUrl?: string;
@@ -45,6 +46,7 @@ interface ExamSection {
 const examSchema = z.object({
   title: z.string().min(1, "Tiêu đề bài thi là bắt buộc"),
   description: z.string().optional(),
+  passingScore: z.number().min(0, "Số điểm đạt phải lớn hơn hoặc bằng 0").optional(),
   isDemo: z.boolean().default(false),
 });
 
@@ -85,6 +87,7 @@ export default function EditExam() {
     defaultValues: {
       title: "",
       description: "",
+      passingScore: undefined,
       isDemo: false,
     },
   });
@@ -111,6 +114,7 @@ export default function EditExam() {
       form.reset({
         title: examData.title,
         description: examData.description || "",
+        passingScore: (examData as any).passingScore || undefined,
         isDemo: examData.isDemo || false,
       });
       
@@ -120,6 +124,7 @@ export default function EditExam() {
           id: section.id,
           sectionName: section.sectionName || section.type || "",
           timeLimit: section.timeLimit,
+          passingScore: section.passingScore,
           content: section.content || "",
           descriptionImageUrls: section.descriptionImageUrls || [],
           descriptionAudioUrl: section.descriptionAudioUrl || "",
@@ -154,6 +159,7 @@ export default function EditExam() {
             id: section.id,
             sectionName: section.sectionName || section.type || "",
             timeLimit: section.timeLimit,
+            passingScore: section.passingScore,
             content: section.content || "",
             descriptionImageUrls: section.descriptionImageUrls || [],
             descriptionAudioUrl: section.descriptionAudioUrl || "",
@@ -237,6 +243,14 @@ export default function EditExam() {
     setExamSections(prev => prev.map(section => 
       section.id === sectionId 
         ? { ...section, timeLimit }
+        : section
+    ));
+  };
+
+  const updateSectionPassingScore = (sectionId: string, passingScore: number | undefined) => {
+    setExamSections(prev => prev.map(section => 
+      section.id === sectionId 
+        ? { ...section, passingScore }
         : section
     ));
   };
@@ -393,6 +407,7 @@ export default function EditExam() {
           id: section.id,
           sectionName: section.sectionName,
           timeLimit: section.timeLimit,
+          passingScore: section.passingScore,
           content: section.content || "",
           descriptionImageUrls: section.descriptionImageUrls || [],
           descriptionAudioUrl: section.descriptionAudioUrl || "",
@@ -547,25 +562,47 @@ export default function EditExam() {
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="isDemo"
-                  render={({ field }) => (
-                    <FormItem className="flex items-center space-x-3 space-y-0">
-                      <FormControl>
-                        <Checkbox
-                          checked={field.value}
-                          onCheckedChange={field.onChange}
-                        />
-                      </FormControl>
-                      <div className="space-y-1 leading-none">
-                        <FormLabel>
-                          Bài thi demo (không cần đăng nhập)
-                        </FormLabel>
-                      </div>
-                    </FormItem>
-                  )}
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                  <FormField
+                    control={form.control}
+                    name="passingScore"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Số điểm đạt (tùy chọn)</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="0"
+                            placeholder="Nhập số câu đúng tối thiểu để đạt"
+                            value={field.value ?? ""}
+                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="isDemo"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>
+                            Bài thi demo (không cần đăng nhập)
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </CardContent>
             </Card>
 
@@ -661,7 +698,7 @@ export default function EditExam() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       {/* Thời gian thi */}
                       <div>
                         <label className="block text-sm font-medium mb-2">
@@ -672,6 +709,20 @@ export default function EditExam() {
                           min="1"
                           value={section.timeLimit}
                           onChange={(e) => updateSectionTimeLimit(section.id, parseInt(e.target.value) || 1)}
+                        />
+                      </div>
+
+                      {/* Số điểm đạt */}
+                      <div>
+                        <label className="block text-sm font-medium mb-2">
+                          Số điểm đạt (tùy chọn)
+                        </label>
+                        <Input
+                          type="number"
+                          min="0"
+                          placeholder="Số câu đúng tối thiểu"
+                          value={section.passingScore ?? ""}
+                          onChange={(e) => updateSectionPassingScore(section.id, e.target.value ? parseInt(e.target.value) : undefined)}
                         />
                       </div>
 
