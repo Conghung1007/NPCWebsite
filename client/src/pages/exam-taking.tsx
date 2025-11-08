@@ -330,7 +330,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const submitExamMutation = useMutation({
     mutationFn: async (examData: {
       examId: string;
-      sectionResults: Record<string, { answers: Record<string, string>; timeSpent: number; score: number }>;
+      sectionResults: Array<{ sectionId: string; type: string; answers: Record<string, string>; timeSpent: number; score: number }>;
       totalScore: number;
       totalTimeSpent: number;
       waitTimeBetweenSections: number;
@@ -440,9 +440,18 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       const totalScore = allResults.length > 0 ? Math.round(allResults.reduce((sum, result) => sum + result.score, 0) / allResults.length) : 0;
       const waitTime = waitStartTime ? Math.round((Date.now() - waitStartTime) / 1000) : 0;
       
+      // Convert sectionResults object to array format expected by server
+      const sectionResultsArray = examSections.map(section => ({
+        sectionId: section.id,
+        type: section.sectionName,
+        answers: updatedSectionResults[section.id]?.answers || {},
+        timeSpent: updatedSectionResults[section.id]?.timeSpent || 0,
+        score: updatedSectionResults[section.id]?.score || 0,
+      }));
+      
       submitExamMutation.mutate({
         examId,
-        sectionResults: updatedSectionResults,
+        sectionResults: sectionResultsArray,
         totalScore,
         totalTimeSpent,
         waitTimeBetweenSections: waitTime,
@@ -491,9 +500,18 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     // Calculate wait time between sections (excluding exam completion)
     const waitTime = waitStartTime ? Math.round((Date.now() - waitStartTime) / 1000) : 0;
     
+    // Convert sectionResults object to array format expected by server
+    const sectionResultsArray = examSections.map(section => ({
+      sectionId: section.id,
+      type: section.sectionName,
+      answers: sectionResults[section.id]?.answers || {},
+      timeSpent: sectionResults[section.id]?.timeSpent || 0,
+      score: sectionResults[section.id]?.score || 0,
+    }));
+    
     submitExamMutation.mutate({
       examId,
-      sectionResults,
+      sectionResults: sectionResultsArray,
       totalScore,
       totalTimeSpent,
       waitTimeBetweenSections: waitTime,
