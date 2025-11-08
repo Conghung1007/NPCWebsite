@@ -247,7 +247,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     if (percentage >= 90) return { text: "Xuất sắc", variant: "default" as const, color: "bg-green-600" };
     if (percentage >= 80) return { text: "Tốt", variant: "secondary" as const, color: "bg-blue-600" };
     if (percentage >= 60) return { text: "Khá", variant: "outline" as const, color: "bg-yellow-600" };
-    return { text: "Cần cải thiện", variant: "destructive" as const, color: "bg-red-600" };
+    return { text: "Rớt", variant: "destructive" as const, color: "bg-red-600" };
   };
 
   // Determine badge based on pass/fail status
@@ -268,8 +268,11 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
               <Trophy className="w-10 h-10 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Kết quả bài thi</h1>
-          <h2 className="text-xl text-gray-600">{exam.title}</h2>
+          <h1 className="text-2xl font-bold text-gray-900 mb-1">TRI NHAN ONLINE ⽇本語能⼒試験</h1>
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">確定結果及び成績に関する証明書。</h2>
+          <h3 className="text-xl font-bold text-gray-900 mb-1">TRI NHAN ONLINE JAPANESE - LANGUAGE PROFICIENCY TEST</h3>
+          <h4 className="text-base font-semibold text-gray-800 mb-3">CERTICATE OF RESULT AND SCORES</h4>
+          <h5 className="text-lg text-gray-600 mb-2">{exam.title}</h5>
           <Badge variant={scoreBadge.variant} className="mt-3">
             {scoreBadge.text}
           </Badge>
@@ -279,10 +282,10 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
         <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
           <Card className="text-center">
             <CardContent className="pt-6">
-              <div className={`text-3xl font-bold ${getScoreColor(attempt.totalScore)}`}>
-                {attempt.totalScore}%
+              <div className={`text-3xl font-bold ${examPassed ? 'text-green-600' : 'text-red-600'}`}>
+                {examPassed ? 'Đạt' : 'Không đạt'}
               </div>
-              <p className="text-sm text-gray-600 mt-1">Điểm tổng</p>
+              <p className="text-sm text-gray-600 mt-1">Kết quả</p>
             </CardContent>
           </Card>
 
@@ -406,8 +409,8 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                   )}
                 </div>
                 <div className="text-right">
-                  <div className={`text-lg font-bold ${getScoreColor(section.score)}`}>
-                    {section.score.toFixed(1)}%
+                  <div className={`text-lg font-bold ${section.passed ? 'text-green-600' : 'text-red-600'}`}>
+                    {section.passed ? 'Đạt' : 'Không đạt'}
                   </div>
                   <div className="text-xs text-gray-600">
                     {section.correctAnswers}/{section.totalQuestions} câu đúng
