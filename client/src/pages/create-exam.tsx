@@ -46,7 +46,7 @@ interface ExamSection {
 const examSchema = z.object({
   title: z.string().min(1, "Tiêu đề bài thi là bắt buộc"),
   description: z.string().optional(),
-  passingScore: z.number().min(0, "Số điểm đạt phải lớn hơn hoặc bằng 0").optional(),
+  passingScore: z.number().min(0, "Số điểm đạt phải lớn hơn hoặc bằng 0"),
   isDemo: z.boolean().default(false),
 });
 
@@ -86,7 +86,7 @@ export default function CreateExam() {
     defaultValues: {
       title: "",
       description: "",
-      passingScore: undefined,
+      passingScore: 0,
       isDemo: false,
     },
   });
@@ -97,6 +97,15 @@ export default function CreateExam() {
       setLocation("/cpanel?tab=login");
     }
   }, [authLoading, user, hasImageEditPermission, setLocation]);
+
+  // Auto-calculate exam passing score based on max section passing score
+  useEffect(() => {
+    const maxSectionPassingScore = Math.max(
+      ...examSections.map(section => section.passingScore ?? 0),
+      0
+    );
+    form.setValue("passingScore", maxSectionPassingScore);
+  }, [examSections, form]);
 
   // Fetch questions from question bank - only when authenticated
   const { data: availableQuestions = [], isLoading: questionsLoading } = useQuery<Question[]>({
@@ -453,16 +462,21 @@ export default function CreateExam() {
                     name="passingScore"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Số điểm đạt (tùy chọn)</FormLabel>
+                        <FormLabel>Số điểm đạt của bài thi (bắt buộc)</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
                             min="0"
-                            placeholder="Nhập số câu đúng tối thiểu để đạt"
+                            placeholder="Tự động = max của các phần thi"
                             value={field.value ?? ""}
-                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                            onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
+                            disabled
+                            className="bg-gray-50"
                           />
                         </FormControl>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Tự động tính bằng số điểm đạt lớn nhất của các phần thi
+                        </p>
                         <FormMessage />
                       </FormItem>
                     )}
