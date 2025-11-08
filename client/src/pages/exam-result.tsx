@@ -230,14 +230,14 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
   if (!allSectionsPassed) {
     // If any section failed, exam fails
     examPassed = false;
-    failureReason = `Rớt do không đạt điểm tối thiểu tại: ${failedSections.map(s => s.title).join(", ")}`;
+    failureReason = `Không đạt do không đạt điểm tối thiểu tại: ${failedSections.map(s => s.title).join(", ")}`;
   } else {
     // All sections passed - now check overall exam score
     if (examPassingScore != null && examPassingScore > 0) {
       // Has explicit exam passing score
       if (correctAnswers < examPassingScore) {
         examPassed = false;
-        failureReason = `Rớt do tổng số câu đúng (${correctAnswers}) thấp hơn điểm đạt của bài thi (${examPassingScore})`;
+        failureReason = `Không đạt do tổng số câu đúng (${correctAnswers}) thấp hơn điểm đạt của bài thi (${examPassingScore})`;
       } else {
         examPassed = true;
       }
@@ -246,7 +246,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
       const requiredCorrect = Math.ceil(totalQuestions * 0.5);
       if (correctAnswers < requiredCorrect) {
         examPassed = false;
-        failureReason = `Rớt do tổng số câu đúng (${correctAnswers}) thấp hơn 50% tổng số câu (${requiredCorrect})`;
+        failureReason = `Không đạt do tổng số câu đúng (${correctAnswers}) thấp hơn 50% tổng số câu (${requiredCorrect})`;
       } else {
         examPassed = true;
       }
@@ -272,7 +272,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     if (percentage >= 90) return { text: "Xuất sắc", variant: "default" as const, color: "bg-green-600" };
     if (percentage >= 80) return { text: "Tốt", variant: "secondary" as const, color: "bg-blue-600" };
     if (percentage >= 60) return { text: "Khá", variant: "outline" as const, color: "bg-yellow-600" };
-    return { text: "Rớt", variant: "destructive" as const, color: "bg-red-600" };
+    return { text: "Không đạt", variant: "destructive" as const, color: "bg-red-600" };
   };
 
   // Determine badge based on pass/fail status
@@ -280,7 +280,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
   if (examPassed) {
     scoreBadge = getScoreBadge(attempt.totalScore);
   } else {
-    scoreBadge = { text: "Rớt", variant: "destructive" as const, color: "bg-red-600" };
+    scoreBadge = { text: "Không đạt", variant: "destructive" as const, color: "bg-red-600" };
   }
 
   return (
@@ -390,7 +390,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                   <div className="flex items-center justify-between text-sm mt-1">
                     <span className="text-gray-600">Trạng thái:</span>
                     <Badge variant={examPassed ? "default" : "destructive"}>
-                      {examPassed ? "Đạt" : "Rớt"}
+                      {examPassed ? "Đạt" : "Không đạt"}
                     </Badge>
                   </div>
                 </div>
@@ -406,7 +406,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
               <div className="flex items-start">
                 <XCircle className="w-5 h-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
                 <div>
-                  <h3 className="font-semibold text-red-900 mb-1">Lý do rớt</h3>
+                  <h3 className="font-semibold text-red-900 mb-1">Lý do không đạt</h3>
                   <p className="text-sm text-red-800">{failureReason}</p>
                 </div>
               </div>
@@ -426,7 +426,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                   </CardTitle>
                   {section.passingScore != null && section.passingScore > 0 && (
                     <Badge variant={section.passed ? "default" : "destructive"} className="ml-2">
-                      {section.passed ? "Đạt" : "Rớt"}
+                      {section.passed ? "Đạt" : "Không đạt"}
                     </Badge>
                   )}
                 </div>
