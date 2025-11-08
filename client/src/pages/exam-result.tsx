@@ -118,15 +118,21 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
         ? (sectionCorrect / sectionTotalQuestions) * 100 
         : 0;
       
+      // Determine if section passed based on passing score
+      const sectionPassingScore = section.passingScore;
+      const sectionPassed = sectionPassingScore == null || sectionPassingScore === 0 || sectionCorrect >= sectionPassingScore;
+      
       return {
         id: section.id,
         title: section.sectionName || section.type || `Phần ${sectionIdx + 1}`,
         content: section.content,
         timeLimit: section.timeLimit || 0,
+        passingScore: sectionPassingScore,
         questions: sectionQuestions,
         totalQuestions: sectionTotalQuestions,
         correctAnswers: sectionCorrect,
-        score: sectionScore
+        score: sectionScore,
+        passed: sectionPassed
       };
     });
     
@@ -179,14 +185,17 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
           ? (sectionCorrect / sectionTotalQuestions) * 100 
           : 0;
         
+        // Legacy sections don't have passing scores
         return {
           id: section.key,
           title: section.title,
           timeLimit: section.timeLimit,
+          passingScore: undefined,
           questions: sectionQuestions,
           totalQuestions: sectionTotalQuestions,
           correctAnswers: sectionCorrect,
-          score: sectionScore
+          score: sectionScore,
+          passed: true // Legacy sections always pass
         };
       });
     
@@ -197,6 +206,27 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
   const totalQuestions = sectionGroups.reduce((sum, section) => sum + section.totalQuestions, 0);
   const correctAnswers = sectionGroups.reduce((sum, section) => sum + section.correctAnswers, 0);
   const scorePercentage = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+  
+  // Determine overall exam pass/fail status
+  const examPassingScore = (exam as any).passingScore;
+  const allSectionsPassed = sectionGroups.every(section => section.passed);
+  const failedSections = sectionGroups.filter(section => !section.passed);
+  
+  let examPassed = false;
+  let failureReason = "";
+  
+  if (!allSectionsPassed) {
+    // If any section failed, exam fails
+    examPassed = false;
+    failureReason = `Rớt do không đạt điểm tối thiểu tại: ${failedSections.map(s => s.title).join(", ")}`;
+  } else if (examPassingScore != null && examPassingScore > 0 && correctAnswers < examPassingScore) {
+    // All sections passed but total score not enough
+    examPassed = false;
+    failureReason = `Rớt do tổng số câu đúng (${correctAnswers}) thấp hơn điểm đạt của bài thi (${examPassingScore})`;
+  } else {
+    // Either no passing score requirements or all requirements met
+    examPassed = true;
+  }
 
   const totalTimeMinutes = Math.floor(attempt.totalTimeSpent / 60);
   const totalTimeSeconds = attempt.totalTimeSpent % 60;
@@ -220,7 +250,13 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     return { text: "Cần cải thiện", variant: "destructive" as const, color: "bg-red-600" };
   };
 
-  const scoreBadge = getScoreBadge(attempt.totalScore);
+  // Determine badge based on pass/fail status
+  let scoreBadge;
+  if (examPassed) {
+    scoreBadge = getScoreBadge(attempt.totalScore);
+  } else {
+    scoreBadge = { text: "Rớt", variant: "destructive" as const, color: "bg-red-600" };
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 py-12">
@@ -318,25 +354,66 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                   </span>
                 </div>
               </div>
+              
+              {/* Passing score information */}
+              {examPassingScore != null && examPassingScore > 0 && (
+                <div className="pt-4 border-t">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">Số điểm đạt của bài thi:</span>
+                    <span className="font-semibold">{examPassingScore} câu đúng</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm mt-1">
+                    <span className="text-gray-600">Trạng thái:</span>
+                    <Badge variant={examPassed ? "default" : "destructive"}>
+                      {examPassed ? "Đạt" : "Rớt"}
+                    </Badge>
+                  </div>
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>
+
+        {/* Failure reason message */}
+        {!examPassed && failureReason && (
+          <Card className="mb-8 border-red-300 bg-red-50">
+            <CardContent className="pt-6">
+              <div className="flex items-start">
+                <XCircle className="w-5 h-5 text-red-600 mr-3 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h3 className="font-semibold text-red-900 mb-1">Lý do rớt</h3>
+                  <p className="text-sm text-red-800">{failureReason}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Section Details with Questions */}
         {sectionGroups.length > 0 && sectionGroups.map((section, sectionIdx) => (
           <Card key={section.id} className="mb-8">
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-xl">
-                  {section.title}
-                  {section.content && <span className="text-sm font-normal text-gray-600 ml-2">- {section.content}</span>}
-                </CardTitle>
+              <div className="flex items-center justify-between flex-wrap gap-2">
+                <div className="flex items-center gap-2">
+                  <CardTitle className="text-xl">
+                    {section.title}
+                    {section.content && <span className="text-sm font-normal text-gray-600 ml-2">- {section.content}</span>}
+                  </CardTitle>
+                  {section.passingScore != null && section.passingScore > 0 && (
+                    <Badge variant={section.passed ? "default" : "destructive"} className="ml-2">
+                      {section.passed ? "Đạt" : "Rớt"}
+                    </Badge>
+                  )}
+                </div>
                 <div className="text-right">
                   <div className={`text-lg font-bold ${getScoreColor(section.score)}`}>
                     {section.score.toFixed(1)}%
                   </div>
                   <div className="text-xs text-gray-600">
                     {section.correctAnswers}/{section.totalQuestions} câu đúng
+                    {section.passingScore != null && section.passingScore > 0 && (
+                      <span className="ml-1">(yêu cầu: {section.passingScore})</span>
+                    )}
                   </div>
                 </div>
               </div>
