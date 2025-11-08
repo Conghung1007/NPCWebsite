@@ -268,11 +268,11 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
               <Trophy className="w-10 h-10 text-white" />
             </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900 mb-1">TRI NHAN ONLINE ⽇本語能⼒試験</h1>
-          <h2 className="text-lg font-semibold text-gray-800 mb-2">確定結果及び成績に関する証明書。</h2>
-          <h3 className="text-xl font-bold text-gray-900 mb-1">TRI NHAN ONLINE JAPANESE - LANGUAGE PROFICIENCY TEST</h3>
-          <h4 className="text-base font-semibold text-gray-800 mb-3">CERTICATE OF RESULT AND SCORES</h4>
-          <h5 className="text-lg text-gray-600 mb-2">{exam.title}</h5>
+          <h1 className="text-4xl font-extrabold text-gray-900 mb-4">{exam.title}</h1>
+          <h2 className="text-2xl font-bold text-gray-900 mb-1">TRI NHAN ONLINE ⽇本語能⼒試験</h2>
+          <h3 className="text-lg font-semibold text-gray-800 mb-2">確定結果及び成績に関する証明書。</h3>
+          <h4 className="text-xl font-bold text-gray-900 mb-1">TRI NHAN ONLINE JAPANESE - LANGUAGE PROFICIENCY TEST</h4>
+          <h5 className="text-base font-semibold text-gray-800 mb-3">CERTICATE OF RESULT AND SCORES</h5>
           <Badge variant={scoreBadge.variant} className="mt-3">
             {scoreBadge.text}
           </Badge>
