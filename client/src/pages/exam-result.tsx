@@ -65,7 +65,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
   }
 
   // Detect sections format vs legacy format
-  const useSections = exam.sections && Array.isArray(exam.sections) && exam.sections.length > 0;
+  const useSections = (exam as any).sections && Array.isArray((exam as any).sections) && (exam as any).sections.length > 0;
   
   // Helper to count questions including sub-questions
   const countQuestions = (item: any) => {
@@ -99,7 +99,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
   
   if (useSections) {
     // New sections format
-    sectionGroups = exam.sections.map((section: any, sectionIdx: number) => {
+    sectionGroups = (exam as any).sections.map((section: any, sectionIdx: number) => {
       const sectionQuestionIds = section.questionIds || [];
       const sectionQuestions = questionsWithAnswers.filter(item => 
         sectionQuestionIds.includes(item.question.id)
@@ -120,7 +120,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
       
       return {
         id: section.id,
-        title: section.type || `Phần ${sectionIdx + 1}`,
+        title: section.sectionName || section.type || `Phần ${sectionIdx + 1}`,
         content: section.content,
         timeLimit: section.timeLimit || 0,
         questions: sectionQuestions,
@@ -130,33 +130,33 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
       };
     });
     
-    totalTimeLimit = exam.sections.reduce((sum: number, s: any) => sum + (s.timeLimit || 0), 0);
+    totalTimeLimit = (exam as any).sections.reduce((sum: number, s: any) => sum + (s.timeLimit || 0), 0);
   } else {
     // Legacy format - create groups from legacy fields
     const legacySections = [
       { 
         key: 'vocabulary', 
         title: 'Từ vựng',
-        questionIds: exam.vocabularyQuestions || [],
-        timeLimit: exam.vocabularyTimeLimit || 0
+        questionIds: (exam as any).vocabularyQuestions || [],
+        timeLimit: (exam as any).vocabularyTimeLimit || 0
       },
       { 
         key: 'grammar', 
         title: 'Ngữ pháp',
-        questionIds: exam.grammarQuestions || [],
-        timeLimit: exam.grammarTimeLimit || 0
+        questionIds: (exam as any).grammarQuestions || [],
+        timeLimit: (exam as any).grammarTimeLimit || 0
       },
       { 
         key: 'listening', 
         title: 'Nghe hiểu',
-        questionIds: exam.listeningQuestions || [],
-        timeLimit: exam.listeningTimeLimit || 0
+        questionIds: (exam as any).listeningQuestions || [],
+        timeLimit: (exam as any).listeningTimeLimit || 0
       },
       { 
         key: 'reading', 
         title: 'Đọc hiểu',
-        questionIds: exam.readingQuestions || [],
-        timeLimit: exam.readingTimeLimit || 0
+        questionIds: (exam as any).readingQuestions || [],
+        timeLimit: (exam as any).readingTimeLimit || 0
       }
     ];
     
@@ -190,7 +190,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
         };
       });
     
-    totalTimeLimit = exam.vocabularyTimeLimit + exam.grammarTimeLimit + exam.listeningTimeLimit + exam.readingTimeLimit;
+    totalTimeLimit = ((exam as any).vocabularyTimeLimit || 0) + ((exam as any).grammarTimeLimit || 0) + ((exam as any).listeningTimeLimit || 0) + ((exam as any).readingTimeLimit || 0);
   }
   
   // Calculate overall stats

@@ -16,7 +16,7 @@ import { type Exam, type Question, type User } from "@shared/schema";
 // Dynamic section structure - same as create-exam and edit-exam
 interface ExamSection {
   id: string;
-  type: "từ vựng" | "ngữ pháp" | "đọc hiểu" | "nghe hiểu";
+  sectionName: string;
   timeLimit: number;
   content?: string;
   descriptionImageUrls?: string[];
@@ -89,7 +89,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         
         return {
           id: section.id,
-          type: section.type,
+          sectionName: section.sectionName || section.type || "",
           timeLimit: section.timeLimit,
           content: section.content || "",
           descriptionImageUrls: section.descriptionImageUrls || [],
@@ -97,17 +97,17 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
           questions: sectionQuestions
         };
       });
-      return sectionsWithQuestions.filter(s => s.questions.length > 0);
+      return sectionsWithQuestions.filter((s: ExamSection) => s.questions.length > 0);
     } else {
       // Legacy format with separate question arrays
       const legacySections: ExamSection[] = [];
       
       // Map legacy fields to sections
       const legacyMapping = [
-        { type: "từ vựng" as const, questions: (exam as any).vocabularyQuestions || [], timeLimit: (exam as any).vocabularyTimeLimit || 10 },
-        { type: "ngữ pháp" as const, questions: (exam as any).grammarQuestions || [], timeLimit: (exam as any).grammarTimeLimit || 10 },
-        { type: "đọc hiểu" as const, questions: (exam as any).readingQuestions || [], timeLimit: (exam as any).readingTimeLimit || 10 },
-        { type: "nghe hiểu" as const, questions: (exam as any).listeningQuestions || [], timeLimit: (exam as any).listeningTimeLimit || 10 }
+        { sectionName: "Từ vựng", questions: (exam as any).vocabularyQuestions || [], timeLimit: (exam as any).vocabularyTimeLimit || 10 },
+        { sectionName: "Ngữ pháp", questions: (exam as any).grammarQuestions || [], timeLimit: (exam as any).grammarTimeLimit || 10 },
+        { sectionName: "Đọc hiểu", questions: (exam as any).readingQuestions || [], timeLimit: (exam as any).readingTimeLimit || 10 },
+        { sectionName: "Nghe hiểu", questions: (exam as any).listeningQuestions || [], timeLimit: (exam as any).listeningTimeLimit || 10 }
       ];
       
       legacyMapping.forEach((mapping, index) => {
@@ -119,7 +119,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
           if (sectionQuestions.length > 0) {
             legacySections.push({
               id: `section-${index + 1}`,
-              type: mapping.type,
+              sectionName: mapping.sectionName,
               timeLimit: mapping.timeLimit,
               content: "",
               descriptionImageUrls: [],
@@ -152,24 +152,10 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     const currentSection = getCurrentSection();
     if (!currentSection) return null;
     
-    const iconMap = {
-      "từ vựng": BookOpen,
-      "ngữ pháp": MessageSquare,
-      "đọc hiểu": FileInput,
-      "nghe hiểu": Headphones,
-    };
-    
-    const colorMap = {
-      "từ vựng": "bg-green-500",
-      "ngữ pháp": "bg-blue-500", 
-      "đọc hiểu": "bg-purple-500",
-      "nghe hiểu": "bg-yellow-500",
-    };
-    
     return {
-      title: currentSection.type.charAt(0).toUpperCase() + currentSection.type.slice(1),
-      icon: iconMap[currentSection.type],
-      color: colorMap[currentSection.type],
+      title: currentSection.sectionName || (currentSection as any).type || `Phần ${currentSectionIndex + 1}`,
+      icon: FileText,
+      color: "bg-green-500",
       timeLimit: currentSection.timeLimit,
       questions: currentSection.questions
     };
@@ -454,20 +440,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       const totalScore = allResults.length > 0 ? Math.round(allResults.reduce((sum, result) => sum + result.score, 0) / allResults.length) : 0;
       const waitTime = waitStartTime ? Math.round((Date.now() - waitStartTime) / 1000) : 0;
       
-      const transformedSectionResults = Object.entries(updatedSectionResults).map(([sectionId, result]) => {
-        const section = examSections.find(s => s.id === sectionId);
-        return {
-          sectionId,
-          type: section?.type || 'unknown',
-          answers: result.answers,
-          timeSpent: result.timeSpent,
-          score: result.score,
-        };
-      });
-      
       submitExamMutation.mutate({
         examId,
-        sectionResults: transformedSectionResults,
+        sectionResults: updatedSectionResults,
         totalScore,
         totalTimeSpent,
         waitTimeBetweenSections: waitTime,
@@ -516,21 +491,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     // Calculate wait time between sections (excluding exam completion)
     const waitTime = waitStartTime ? Math.round((Date.now() - waitStartTime) / 1000) : 0;
     
-    // Transform sectionResults to the expected backend format: array of section result objects
-    const transformedSectionResults = Object.entries(sectionResults).map(([sectionId, result]) => {
-      const section = examSections.find(s => s.id === sectionId);
-      return {
-        sectionId,
-        type: section?.type || 'unknown',
-        answers: result.answers,
-        timeSpent: result.timeSpent,
-        score: result.score,
-      };
-    });
-    
     submitExamMutation.mutate({
       examId,
-      sectionResults: transformedSectionResults,
+      sectionResults,
       totalScore,
       totalTimeSpent,
       waitTimeBetweenSections: waitTime,
@@ -689,9 +652,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                 <CardContent className="p-6">
                   <div className="space-y-4">
                     {examSections.map((section, index) => {
-                      const SectionIcon = getSectionIcon(section.type);
-                      const sectionColor = getSectionColor(section.type);
-                      
                       return (
                         <div 
                           key={section.id} 
@@ -700,14 +660,14 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                         >
                           <div className="flex-shrink-0">
                             <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                              <SectionIcon className={`w-5 h-5 ${sectionColor}`} />
+                              <FileText className="w-5 h-5 text-green-600" />
                             </div>
                           </div>
                           
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center justify-between mb-1">
                               <h4 className="font-semibold text-gray-900">
-                                {index + 1}. {section.type.charAt(0).toUpperCase() + section.type.slice(1)}
+                                {index + 1}. {section.sectionName || (section as any).type || `Phần ${index + 1}`}
                               </h4>
                               <div className="flex items-center gap-4 text-sm text-gray-600">
                                 <span className="flex items-center gap-1">
@@ -933,7 +893,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               <Card>
                 <CardHeader>
                   <CardTitle className="text-xl text-green-600">
-                    Phần {currentSectionIndex + 1}: {currentSection.type}
+                    Phần {currentSectionIndex + 1}: {currentSection.sectionName || (currentSection as any).type || ""}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
@@ -1405,25 +1365,17 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     <h4 className="font-medium text-sm mb-2">Tiến độ bài thi ({examSections.length} phần)</h4>
                     <div className="space-y-2 text-xs">
                       {examSections.map((section, index) => {
-                        const iconMap = {
-                          "từ vựng": BookOpen,
-                          "ngữ pháp": MessageSquare,
-                          "đọc hiểu": FileInput,
-                          "nghe hiểu": Headphones,
-                        };
-                        const SectionIcon = iconMap[section.type] || FileText;
-                        
                         return (
                           <div key={section.id} className="flex items-center gap-2">
                             <div className={`w-3 h-3 rounded-full ${
                               completedSections.has(section.id) ? 'bg-green-500' :
                               currentSectionIndex === index ? 'bg-blue-500' : 'bg-gray-300'
                             }`} />
-                            <SectionIcon className="w-3 h-3 text-gray-500" />
+                            <FileText className="w-3 h-3 text-gray-500" />
                             <span className={`flex-1 ${
                               currentSectionIndex === index ? 'font-medium' : ''
                             }`}>
-                              {index + 1}. {section.type.charAt(0).toUpperCase() + section.type.slice(1)}
+                              {index + 1}. {section.sectionName || (section as any).type || `Phần ${index + 1}`}
                             </span>
                             <span className="text-gray-500">
                               {getTotalQuestionCount(section.questions)} câu

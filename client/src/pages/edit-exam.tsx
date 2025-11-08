@@ -33,7 +33,7 @@ const questionCategories = [
 // Dynamic section structure
 interface ExamSection {
   id: string;
-  type: "từ vựng" | "ngữ pháp" | "đọc hiểu" | "nghe hiểu";
+  sectionName: string;
   timeLimit: number;
   content?: string;
   descriptionImageUrls?: string[];
@@ -61,7 +61,7 @@ export default function EditExam() {
   const [examSections, setExamSections] = useState<ExamSection[]>([
     {
       id: "section-1",
-      type: "từ vựng",
+      sectionName: "",
       timeLimit: 10,
       content: "",
       descriptionImageUrls: [],
@@ -118,7 +118,7 @@ export default function EditExam() {
       if (examData.sections && Array.isArray(examData.sections) && examData.sections.length > 0) {
         const sectionsWithQuestions = examData.sections.map((section: any) => ({
           id: section.id,
-          type: section.type,
+          sectionName: section.sectionName || section.type || "",
           timeLimit: section.timeLimit,
           content: section.content || "",
           descriptionImageUrls: section.descriptionImageUrls || [],
@@ -152,7 +152,7 @@ export default function EditExam() {
           
           return {
             id: section.id,
-            type: section.type,
+            sectionName: section.sectionName || section.type || "",
             timeLimit: section.timeLimit,
             content: section.content || "",
             descriptionImageUrls: section.descriptionImageUrls || [],
@@ -167,10 +167,10 @@ export default function EditExam() {
         
         // Map legacy fields to sections
         const legacyMapping = [
-          { type: "từ vựng" as const, questions: (examData as any).vocabularyQuestions || [], timeLimit: (examData as any).vocabularyTimeLimit || 10 },
-          { type: "ngữ pháp" as const, questions: (examData as any).grammarQuestions || [], timeLimit: (examData as any).grammarTimeLimit || 10 },
-          { type: "đọc hiểu" as const, questions: (examData as any).readingQuestions || [], timeLimit: (examData as any).readingTimeLimit || 10 },
-          { type: "nghe hiểu" as const, questions: (examData as any).listeningQuestions || [], timeLimit: (examData as any).listeningTimeLimit || 10 }
+          { sectionName: "Từ vựng", questions: (examData as any).vocabularyQuestions || [], timeLimit: (examData as any).vocabularyTimeLimit || 10 },
+          { sectionName: "Ngữ pháp", questions: (examData as any).grammarQuestions || [], timeLimit: (examData as any).grammarTimeLimit || 10 },
+          { sectionName: "Đọc hiểu", questions: (examData as any).readingQuestions || [], timeLimit: (examData as any).readingTimeLimit || 10 },
+          { sectionName: "Nghe hiểu", questions: (examData as any).listeningQuestions || [], timeLimit: (examData as any).listeningTimeLimit || 10 }
         ];
         
         legacyMapping.forEach((mapping, index) => {
@@ -181,7 +181,7 @@ export default function EditExam() {
             
             legacySections.push({
               id: `section-${index + 1}`,
-              type: mapping.type,
+              sectionName: mapping.sectionName,
               timeLimit: mapping.timeLimit,
               content: "",
               descriptionImageUrls: [],
@@ -200,10 +200,10 @@ export default function EditExam() {
 
   // Helper functions for managing dynamic sections
   const addExamSection = () => {
-    // Add new section with default vocabulary type
+    // Add new section with empty name
     const newSection: ExamSection = {
       id: `section-${Date.now()}`,
-      type: "từ vựng",
+      sectionName: "",
       timeLimit: 10,
       content: "",
       descriptionImageUrls: [],
@@ -225,11 +225,10 @@ export default function EditExam() {
     setExamSections(prev => prev.filter(section => section.id !== sectionId));
   };
 
-  const updateSectionType = (sectionId: string, type: ExamSection['type']) => {
-    // Allow any type to be used multiple times
+  const updateSectionName = (sectionId: string, sectionName: string) => {
     setExamSections(prev => prev.map(section => 
       section.id === sectionId 
-        ? { ...section, type, questions: [] } // Clear questions when type changes
+        ? { ...section, sectionName }
         : section
     ));
   };
@@ -354,12 +353,6 @@ export default function EditExam() {
       }
     }
     
-    // Apply category filter - only show questions matching the current section type (with mapping)
-    const questionCategoryVietnamese = categoryMapping[question.category] || question.category;
-    if (questionCategoryVietnamese !== currentSection.type) {
-      return false;
-    }
-    
     // Apply category filter
     if (selectedCategoryFilter && selectedCategoryFilter !== "all" && question.category !== selectedCategoryFilter) {
       return false;
@@ -386,9 +379,10 @@ export default function EditExam() {
       }
 
       // Validate that each section has at least one question
-      for (const section of examSections) {
+      for (let i = 0; i < examSections.length; i++) {
+        const section = examSections[i];
         if (section.questions.length === 0) {
-          throw new Error(`Phải chọn ít nhất một câu hỏi cho phần ${questionCategories.find(c => c.value === section.type)?.label}`);
+          throw new Error(`Phải chọn ít nhất một câu hỏi cho phần thi ${i + 1}`);
         }
       }
 
@@ -397,7 +391,7 @@ export default function EditExam() {
         ...data,
         sections: examSections.map(section => ({
           id: section.id,
-          type: section.type,
+          sectionName: section.sectionName,
           timeLimit: section.timeLimit,
           content: section.content || "",
           descriptionImageUrls: section.descriptionImageUrls || [],
@@ -598,6 +592,16 @@ export default function EditExam() {
                       )}
                     </div>
 
+                    {/* Section Name */}
+                    <div className="mb-6">
+                      <Label className="block text-sm font-medium mb-2">Tên phần thi</Label>
+                      <Input
+                        placeholder="Nhập tên phần thi (ví dụ: Từ vựng, Ngữ pháp, Đọc hiểu...)"
+                        value={section.sectionName}
+                        onChange={(e) => updateSectionName(section.id, e.target.value)}
+                      />
+                    </div>
+
                     {/* Section Content */}
                     <div className="mb-6">
                       <Label className="block text-sm font-medium mb-2">Nội dung phần thi (tùy chọn)</Label>
@@ -657,34 +661,7 @@ export default function EditExam() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      {/* Phần thi dropdown */}
-                      <div>
-                        <label className="block text-sm font-medium mb-2">
-                          Phần thi
-                        </label>
-                        <Select
-                          value={section.type}
-                          onValueChange={(value: ExamSection['type']) => 
-                            updateSectionType(section.id, value)
-                          }
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Chọn phần thi" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {questionCategories.map((category) => (
-                              <SelectItem 
-                                key={category.value} 
-                                value={category.value}
-                              >
-                                {category.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       {/* Thời gian thi */}
                       <div>
                         <label className="block text-sm font-medium mb-2">
@@ -789,7 +766,7 @@ export default function EditExam() {
           <DialogContent className="w-[95vw] max-w-[1000px] max-h-[85vh] flex flex-col gap-0 p-0 top-[55%]">
             <DialogHeader className="px-6 pt-6 pb-4 border-b">
               <DialogTitle>
-                Chọn câu hỏi - {questionCategories.find(c => c.value === getCurrentSection()?.type)?.label}
+                Chọn câu hỏi
               </DialogTitle>
               <DialogDescription>
                 Chọn các câu hỏi cho phần thi này
