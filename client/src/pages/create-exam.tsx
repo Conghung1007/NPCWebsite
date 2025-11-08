@@ -749,9 +749,13 @@ export default function CreateExam() {
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="all">Tất cả ngôn ngữ</SelectItem>
-                      <SelectItem value="japanese">Tiếng Nhật</SelectItem>
-                      <SelectItem value="english">Tiếng Anh</SelectItem>
-                      <SelectItem value="german">Tiếng Đức</SelectItem>
+                      <SelectItem value="vi">Tiếng Việt</SelectItem>
+                      <SelectItem value="en">Tiếng Anh</SelectItem>
+                      <SelectItem value="ja">Tiếng Nhật</SelectItem>
+                      <SelectItem value="de">Tiếng Đức</SelectItem>
+                      <SelectItem value="japanese">Japanese (legacy)</SelectItem>
+                      <SelectItem value="english">English (legacy)</SelectItem>
+                      <SelectItem value="german">German (legacy)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -793,10 +797,14 @@ export default function CreateExam() {
                             </TableCell>
                             <TableCell className="truncate">
                               <Badge variant="outline" className="truncate max-w-full">
+                                {question.language === "vi" && "Tiếng Việt"}
+                                {question.language === "en" && "Tiếng Anh"}
+                                {question.language === "ja" && "Tiếng Nhật"}
+                                {question.language === "de" && "Tiếng Đức"}
                                 {question.language === "japanese" && "Tiếng Nhật"}
                                 {question.language === "english" && "Tiếng Anh"}
                                 {question.language === "german" && "Tiếng Đức"}
-                                {!["japanese", "english", "german"].includes(question.language) && question.language}
+                                {!["vi", "en", "ja", "de", "japanese", "english", "german"].includes(question.language) && question.language}
                               </Badge>
                             </TableCell>
                             <TableCell>
