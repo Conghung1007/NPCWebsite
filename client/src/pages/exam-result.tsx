@@ -120,7 +120,16 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
       
       // Determine if section passed based on passing score
       const sectionPassingScore = section.passingScore;
-      const sectionPassed = sectionPassingScore == null || sectionPassingScore === 0 || sectionCorrect >= sectionPassingScore;
+      let sectionPassed = false;
+      
+      if (sectionPassingScore != null && sectionPassingScore > 0) {
+        // Has explicit passing score requirement
+        sectionPassed = sectionCorrect >= sectionPassingScore;
+      } else {
+        // No passing score set - require at least 50% correct
+        const requiredCorrect = Math.ceil(sectionTotalQuestions * 0.5);
+        sectionPassed = sectionCorrect >= requiredCorrect;
+      }
       
       return {
         id: section.id,
@@ -185,7 +194,10 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
           ? (sectionCorrect / sectionTotalQuestions) * 100 
           : 0;
         
-        // Legacy sections don't have passing scores
+        // Legacy sections don't have explicit passing scores - require at least 50% correct
+        const requiredCorrect = Math.ceil(sectionTotalQuestions * 0.5);
+        const sectionPassed = sectionCorrect >= requiredCorrect;
+        
         return {
           id: section.key,
           title: section.title,
@@ -195,7 +207,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
           totalQuestions: sectionTotalQuestions,
           correctAnswers: sectionCorrect,
           score: sectionScore,
-          passed: true // Legacy sections always pass
+          passed: sectionPassed
         };
       });
     
@@ -219,13 +231,26 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     // If any section failed, exam fails
     examPassed = false;
     failureReason = `Rớt do không đạt điểm tối thiểu tại: ${failedSections.map(s => s.title).join(", ")}`;
-  } else if (examPassingScore != null && examPassingScore > 0 && correctAnswers < examPassingScore) {
-    // All sections passed but total score not enough
-    examPassed = false;
-    failureReason = `Rớt do tổng số câu đúng (${correctAnswers}) thấp hơn điểm đạt của bài thi (${examPassingScore})`;
   } else {
-    // Either no passing score requirements or all requirements met
-    examPassed = true;
+    // All sections passed - now check overall exam score
+    if (examPassingScore != null && examPassingScore > 0) {
+      // Has explicit exam passing score
+      if (correctAnswers < examPassingScore) {
+        examPassed = false;
+        failureReason = `Rớt do tổng số câu đúng (${correctAnswers}) thấp hơn điểm đạt của bài thi (${examPassingScore})`;
+      } else {
+        examPassed = true;
+      }
+    } else {
+      // No exam passing score set - require at least 50% overall
+      const requiredCorrect = Math.ceil(totalQuestions * 0.5);
+      if (correctAnswers < requiredCorrect) {
+        examPassed = false;
+        failureReason = `Rớt do tổng số câu đúng (${correctAnswers}) thấp hơn 50% tổng số câu (${requiredCorrect})`;
+      } else {
+        examPassed = true;
+      }
+    }
   }
 
   const totalTimeMinutes = Math.floor(attempt.totalTimeSpent / 60);
