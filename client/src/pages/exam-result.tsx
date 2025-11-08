@@ -273,9 +273,6 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
           <h3 className="text-lg font-semibold text-gray-800 mb-2">確定結果及び成績に関する証明書。</h3>
           <h4 className="text-xl font-bold text-gray-900 mb-1">TRI NHAN ONLINE JAPANESE - LANGUAGE PROFICIENCY TEST</h4>
           <h5 className="text-base font-semibold text-gray-800 mb-3">CERTICATE OF RESULT AND SCORES</h5>
-          <Badge variant={scoreBadge.variant} className="mt-3">
-            {scoreBadge.text}
-          </Badge>
         </div>
 
         {/* Score Summary */}
