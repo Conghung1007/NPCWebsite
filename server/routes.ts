@@ -2780,7 +2780,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const { title, description, isDemo, sections } = req.body;
+      const { title, description, isDemo, sections, passingScore } = req.body;
 
       if (!title) {
         return res.status(400).json({ 
@@ -2816,6 +2816,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isDemo: isDemo || false,
         sections: sections,
         isActive: true,
+        passingScore: passingScore !== undefined ? passingScore : null,
         createdBy: sessionUser.id,
         // Legacy fields for backward compatibility (default to 0 if section doesn't exist)
         vocabularyTimeLimit: vocabularySection?.timeLimit || 0,
@@ -2847,7 +2848,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { id } = req.params;
-      const { title, description, isDemo, sections, isActive } = req.body;
+      const { title, description, isDemo, sections, isActive, passingScore } = req.body;
 
       if (!title) {
         return res.status(400).json({ 
@@ -2861,6 +2862,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isDemo: isDemo || false,
         sections: sections || undefined,
         isActive: isActive !== undefined ? isActive : true,
+        passingScore: passingScore !== undefined ? passingScore : undefined,
       });
 
       if (!updatedExam) {
