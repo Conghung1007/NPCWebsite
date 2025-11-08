@@ -98,14 +98,11 @@ export default function CreateExam() {
     }
   }, [authLoading, user, hasImageEditPermission, setLocation]);
 
-  // Auto-calculate exam passing score based on max section passing score
-  useEffect(() => {
-    const maxSectionPassingScore = Math.max(
-      ...examSections.map(section => section.passingScore ?? 0),
-      0
-    );
-    form.setValue("passingScore", maxSectionPassingScore);
-  }, [examSections, form]);
+  // Calculate max section passing score for validation
+  const maxSectionPassingScore = Math.max(
+    ...examSections.map(section => section.passingScore ?? 0),
+    0
+  );
 
   // Fetch questions from question bank - only when authenticated
   const { data: availableQuestions = [], isLoading: questionsLoading } = useQuery<Question[]>({
@@ -309,6 +306,12 @@ export default function CreateExam() {
         }
       }
 
+      // Validate exam passing score is not less than max section passing score
+      const maxSectionScore = Math.max(...examSections.map(s => s.passingScore ?? 0), 0);
+      if (data.passingScore < maxSectionScore) {
+        throw new Error(`Số điểm đạt của bài thi (${data.passingScore}) không được nhỏ hơn số điểm đạt lớn nhất của các phần thi (${maxSectionScore})`);
+      }
+
       // Create the exam with flexible sections format
       const examData: any = {
         ...data,
@@ -466,16 +469,14 @@ export default function CreateExam() {
                         <FormControl>
                           <Input
                             type="number"
-                            min="0"
-                            placeholder="Tự động = max của các phần thi"
+                            min={maxSectionPassingScore}
+                            placeholder="Nhập số câu đúng tối thiểu"
                             value={field.value ?? ""}
                             onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
-                            disabled
-                            className="bg-gray-50"
                           />
                         </FormControl>
                         <p className="text-xs text-gray-500 mt-1">
-                          Tự động tính bằng số điểm đạt lớn nhất của các phần thi
+                          Tối thiểu: {maxSectionPassingScore} (bằng số điểm đạt lớn nhất của các phần thi)
                         </p>
                         <FormMessage />
                       </FormItem>
