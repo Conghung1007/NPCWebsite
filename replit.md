@@ -6,14 +6,25 @@ The website serves as a comprehensive digital presence for N&P Company, featurin
 
 # Recent Changes
 
+**November 2025 - Decimal Point Support:**
+- Updated points system to support decimal values (e.g., 1.5, 2.25, 0.5)
+- Database: Changed `points` column from INTEGER to NUMERIC(10,2)
+- Validation: Minimum points changed from 1 to 0.1
+- UI: Input step changed from 1 to 0.1 for decimal input support
+- Parsing: Changed from parseInt to parseFloat
+
+**November 2025 - QuestionBankManager UI Improvements:**
+- Moved points input field to same row as question header ("Câu hỏi X")
+- Points field now displays inline with centered input (width: 20px)
+- Fixed bug: Form now properly resets when switching from edit to create mode
+- Added handleOpenCreate() to ensure clean form state when creating new questions
+
 **November 2025 - Point-Based Scoring System:**
-- Implemented comprehensive point-based scoring where each question has configurable point value (minimum 1 point)
+- Implemented comprehensive point-based scoring where each question has configurable point value
 - Questions default to 1 point for backward compatibility with legacy data
 - Exam scoring now sums points from correct answers instead of counting number of correct answers
 - Pass/fail validation compares earned points against passing score thresholds (both section and exam level)
 - Updated UI copy in exam creation/editing to clarify point-based thresholds
-- Database schema: Added `points` integer column (NOT NULL, default 1) to questions table
-- QuestionBankManager: Added points input field positioned between question number and question content
 
 # User Preferences
 
@@ -59,7 +70,10 @@ Scroll to Top: Smooth scroll-to-top button with responsive design and performanc
 
 ## Exam System Architecture
 - **Question Management**: QuestionBankManager with support for parent questions and sub-questions
-- **Point System**: Each question (parent and sub-questions) has configurable point value (integer >= 1, default 1)
+- **Point System**: Each question (parent and sub-questions) has configurable point value (decimal >= 0.1, default 1.0)
+  - Database: NUMERIC(10,2) supporting up to 2 decimal places
+  - Examples: 1.0, 1.5, 2.25, 0.5
+  - Minimum value: 0.1
 - **Scoring Logic**: 
   - Section score = sum of points from all correct answers in that section
   - Total exam score = sum of all section scores (not average)
