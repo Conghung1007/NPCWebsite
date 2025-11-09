@@ -580,18 +580,18 @@ export default function EditExam() {
                     name="passingScore"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Số điểm đạt của bài thi (bắt buộc)</FormLabel>
+                        <FormLabel>Tổng số điểm tối thiểu để đạt (bắt buộc)</FormLabel>
                         <FormControl>
                           <Input
                             type="number"
                             min={maxSectionPassingScore}
-                            placeholder="Nhập số câu đúng tối thiểu"
+                            placeholder="Nhập tổng số điểm tối thiểu"
                             value={field.value ?? ""}
                             onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : 0)}
                           />
                         </FormControl>
                         <p className="text-xs text-gray-500 mt-1">
-                          Tối thiểu: {maxSectionPassingScore} (bằng số điểm đạt lớn nhất của các phần thi)
+                          Tối thiểu: {maxSectionPassingScore} điểm (bằng điểm đạt cao nhất trong các phần)
                         </p>
                         <FormMessage />
                       </FormItem>
@@ -730,12 +730,12 @@ export default function EditExam() {
                       {/* Số điểm đạt */}
                       <div>
                         <label className="block text-sm font-medium mb-2">
-                          Số điểm đạt (tùy chọn)
+                          Số điểm tối thiểu để đạt phần này (tùy chọn)
                         </label>
                         <Input
                           type="number"
                           min="0"
-                          placeholder="Số câu đúng tối thiểu"
+                          placeholder="Số điểm tối thiểu"
                           value={section.passingScore ?? ""}
                           onChange={(e) => updateSectionPassingScore(section.id, e.target.value ? parseInt(e.target.value) : undefined)}
                         />
