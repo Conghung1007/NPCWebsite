@@ -2930,7 +2930,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const { examId, category, description, descriptionImageUrl, descriptionImageUrls, descriptionAudioUrl, questionText, questionType, imageUrl, imageUrls, audioUrl, options, correctAnswer, explanation, sortOrder, language, parentId, subQuestions } = req.body;
+      const { examId, category, description, descriptionImageUrl, descriptionImageUrls, descriptionAudioUrl, questionText, questionType, imageUrl, imageUrls, audioUrl, options, correctAnswer, explanation, sortOrder, language, points, parentId, subQuestions } = req.body;
 
       // For new question bank: category and questionText are required
       // For old exam questions: examId and questionText are required  
@@ -3041,6 +3041,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           options,
           correctAnswer,
           explanation: explanation || null,
+          points: points !== undefined ? points : 1,
           sortOrder: newSortOrder,
           parentId: null, // This is a parent question
         });
@@ -3113,6 +3114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             options: processedOptions,
             correctAnswer: subQ.correctAnswer,
             explanation: subQ.explanation || null,
+            points: subQ.points !== undefined ? subQ.points : 1,
             sortOrder: newSortOrder + i + 1,
             parentId: parentQuestion.id, // Link to parent
           });
@@ -3143,6 +3145,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           options,
           correctAnswer,
           explanation: explanation || null,
+          points: points !== undefined ? points : 1,
           sortOrder: newSortOrder,
           parentId: parentId || null,
         });
@@ -3182,6 +3185,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         explanation,
         sortOrder,
         language,
+        points,
         subQuestions
       } = req.body;
 
@@ -3221,6 +3225,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           explanation: explanation || existingQuestion.explanation,
           sortOrder: sortOrder !== undefined ? sortOrder : existingQuestion.sortOrder,
           language: language || existingQuestion.language,
+          points: points !== undefined ? points : (existingQuestion as any).points || 1,
           parentId: null, // Ensure parent questions have null parentId
         });
 
@@ -3245,6 +3250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             options: subQ.options,
             correctAnswer: subQ.correctAnswer,
             explanation: subQ.explanation || null,
+            points: subQ.points !== undefined ? subQ.points : 1,
             sortOrder: (sortOrder || existingQuestion.sortOrder) + i + 1,
             parentId: id, // Link to parent
           });
@@ -3273,7 +3279,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           correctAnswer,
           explanation: explanation || existingQuestion.explanation,
           sortOrder: sortOrder !== undefined ? sortOrder : existingQuestion.sortOrder,
-          language: language || existingQuestion.language
+          language: language || existingQuestion.language,
+          points: points !== undefined ? points : (existingQuestion as any).points || 1
         });
 
         if (!updatedQuestion) {

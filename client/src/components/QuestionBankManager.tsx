@@ -375,6 +375,7 @@ export function QuestionBankManager() {
           options: firstQuestion.options,
           correctAnswer: firstQuestion.correctAnswer,
           explanation: firstQuestion.explanation,
+          points: firstQuestion.points, // Include points for parent question
           // Sub-questions array
           subQuestions: remainingQuestions.map(q => ({
             questionText: q.questionText,
@@ -384,6 +385,7 @@ export function QuestionBankManager() {
             options: q.options,
             correctAnswer: q.correctAnswer,
             explanation: q.explanation,
+            points: q.points, // Include points for each sub-question
           }))
         };
 
@@ -430,6 +432,7 @@ export function QuestionBankManager() {
           options: firstQuestion.options,
           correctAnswer: firstQuestion.correctAnswer,
           explanation: firstQuestion.explanation,
+          points: firstQuestion.points, // Include points for parent question
           // Sub-questions array
           subQuestions: remainingQuestions.map(q => ({
             questionText: q.questionText,
@@ -439,6 +442,7 @@ export function QuestionBankManager() {
             options: q.options,
             correctAnswer: q.correctAnswer,
             explanation: q.explanation,
+            points: q.points, // Include points for each sub-question
           }))
         };
 
