@@ -108,6 +108,7 @@ export const questions = pgTable("questions", {
   options: jsonb("options").notNull(), // Array of answer options with potential image URLs
   correctAnswer: text("correct_answer").notNull(), // Index or value of correct answer
   explanation: text("explanation"), // Optional explanation for answer
+  points: integer("points").notNull().default(1), // Point value for this question (default 1)
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
