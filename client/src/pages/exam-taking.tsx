@@ -399,20 +399,22 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     return allQuestions;
   };
 
-  // Calculate section score (includes parent questions + sub-questions)
+  // Calculate section score based on points (includes parent questions + sub-questions)
+  // Returns total points earned (not percentage)
   const calculateSectionScore = (answers: Record<string, string>, questions: Question[]) => {
-    let correct = 0;
+    let earnedPoints = 0;
     const allQuestions = getAllQuestionsFlat(questions);
-    const totalQuestions = allQuestions.length;
     
     allQuestions.forEach(question => {
       const userAnswer = answers[question.id];
       if (userAnswer === question.correctAnswer) {
-        correct++;
+        // Add points from correct answer (default to 1 if not set for legacy data)
+        const questionPoints = (question as any).points || 1;
+        earnedPoints += questionPoints;
       }
     });
     
-    return totalQuestions > 0 ? Math.round((correct / totalQuestions) * 100) : 0;
+    return earnedPoints;
   };
 
   // Handle section completion
@@ -453,7 +455,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       
       const allResults = Object.values(updatedSectionResults);
       const totalTimeSpent = allResults.reduce((sum, result) => sum + result.timeSpent, 0);
-      const totalScore = allResults.length > 0 ? Math.round(allResults.reduce((sum, result) => sum + result.score, 0) / allResults.length) : 0;
+      // totalScore is now SUM of all section scores (points earned), not average
+      const totalScore = allResults.reduce((sum, result) => sum + result.score, 0);
       const waitTime = waitStartTime ? Math.round((Date.now() - waitStartTime) / 1000) : 0;
       
       // Convert sectionResults object to array format expected by server
@@ -510,8 +513,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     // Calculate totals from dynamic sections
     const allResults = Object.values(sectionResults);
     const totalTimeSpent = allResults.reduce((sum, result) => sum + result.timeSpent, 0);
-    // Calculate average score based on actual number of sections
-    const totalScore = allResults.length > 0 ? Math.round(allResults.reduce((sum, result) => sum + result.score, 0) / allResults.length) : 0;
+    // totalScore is now SUM of all section scores (points earned), not average
+    const totalScore = allResults.reduce((sum, result) => sum + result.score, 0);
     
     // Calculate wait time between sections (excluding exam completion)
     const waitTime = waitStartTime ? Math.round((Date.now() - waitStartTime) / 1000) : 0;
