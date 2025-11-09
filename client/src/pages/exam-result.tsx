@@ -67,7 +67,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
   // Detect sections format vs legacy format
   const useSections = (exam as any).sections && Array.isArray((exam as any).sections) && (exam as any).sections.length > 0;
   
-  // Helper to count questions including sub-questions
+  // Helper to count questions including sub-questions (kept for backward compatibility)
   const countQuestions = (item: any) => {
     let count = 1; // parent question
     if (item.question.subQuestions && Array.isArray(item.question.subQuestions)) {
@@ -82,15 +82,49 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     if (item.userAnswer === item.question.correctAnswer) {
       correct++;
     }
-    // Check sub-questions
+    // Check sub-questions - userAnswer comes from item.subAnswers array
     if (item.question.subQuestions && Array.isArray(item.question.subQuestions)) {
-      item.question.subQuestions.forEach((sub: any) => {
-        if (sub.userAnswer === sub.correctAnswer) {
+      item.question.subQuestions.forEach((sub: any, idx: number) => {
+        const subAnswer = item.subAnswers?.[idx]?.userAnswer;
+        if (subAnswer === sub.correctAnswer) {
           correct++;
         }
       });
     }
     return correct;
+  };
+  
+  // Calculate total points available (including sub-questions)
+  const calculateTotalPoints = (item: any) => {
+    let total = 0;
+    // Add parent question points (default to 1 if not set)
+    total += item.question.points || 1;
+    // Add sub-questions points
+    if (item.question.subQuestions && Array.isArray(item.question.subQuestions)) {
+      item.question.subQuestions.forEach((sub: any) => {
+        total += sub.points || 1;
+      });
+    }
+    return total;
+  };
+  
+  // Calculate earned points from correct answers (including sub-questions)
+  const calculateEarnedPoints = (item: any) => {
+    let earned = 0;
+    // Check parent
+    if (item.userAnswer === item.question.correctAnswer) {
+      earned += item.question.points || 1;
+    }
+    // Check sub-questions - userAnswer comes from item.subAnswers array
+    if (item.question.subQuestions && Array.isArray(item.question.subQuestions)) {
+      item.question.subQuestions.forEach((sub: any, idx: number) => {
+        const subAnswer = item.subAnswers?.[idx]?.userAnswer;
+        if (subAnswer === sub.correctAnswer) {
+          earned += sub.points || 1;
+        }
+      });
+    }
+    return earned;
   };
   
   // Group questions by sections (new format)
@@ -105,22 +139,26 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
         sectionQuestionIds.includes(item.question.id)
       );
       
-      // Calculate section stats
+      // Calculate section stats based on points
+      let sectionTotalPoints = 0;
+      let sectionEarnedPoints = 0;
       let sectionTotalQuestions = 0;
       let sectionCorrect = 0;
       
       sectionQuestions.forEach(item => {
-        sectionTotalQuestions += countQuestions(item);
-        sectionCorrect += countCorrect(item);
+        sectionTotalPoints += calculateTotalPoints(item);
+        sectionEarnedPoints += calculateEarnedPoints(item);
+        sectionTotalQuestions += countQuestions(item); // Keep for display
+        sectionCorrect += countCorrect(item); // Keep for display
       });
       
-      const sectionScore = sectionTotalQuestions > 0 
-        ? (sectionCorrect / sectionTotalQuestions) * 100 
+      const sectionScore = sectionTotalPoints > 0 
+        ? (sectionEarnedPoints / sectionTotalPoints) * 100 
         : 0;
       
-      // Determine if section passed based on passing score
+      // Determine if section passed based on passing score (now compares points)
       const sectionPassingScore = section.passingScore;
-      const sectionPassed = (sectionPassingScore == null || sectionPassingScore === undefined) ? true : sectionCorrect >= sectionPassingScore;
+      const sectionPassed = (sectionPassingScore == null || sectionPassingScore === undefined) ? true : sectionEarnedPoints >= sectionPassingScore;
       
       return {
         id: section.id,
@@ -131,6 +169,8 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
         questions: sectionQuestions,
         totalQuestions: sectionTotalQuestions,
         correctAnswers: sectionCorrect,
+        totalPoints: sectionTotalPoints,
+        earnedPoints: sectionEarnedPoints,
         score: sectionScore,
         passed: sectionPassed
       };
@@ -173,16 +213,20 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
           section.questionIds.includes(item.question.id)
         );
         
+        let sectionTotalPoints = 0;
+        let sectionEarnedPoints = 0;
         let sectionTotalQuestions = 0;
         let sectionCorrect = 0;
         
         sectionQuestions.forEach(item => {
-          sectionTotalQuestions += countQuestions(item);
-          sectionCorrect += countCorrect(item);
+          sectionTotalPoints += calculateTotalPoints(item);
+          sectionEarnedPoints += calculateEarnedPoints(item);
+          sectionTotalQuestions += countQuestions(item); // Keep for display
+          sectionCorrect += countCorrect(item); // Keep for display
         });
         
-        const sectionScore = sectionTotalQuestions > 0 
-          ? (sectionCorrect / sectionTotalQuestions) * 100 
+        const sectionScore = sectionTotalPoints > 0 
+          ? (sectionEarnedPoints / sectionTotalPoints) * 100 
           : 0;
         
         // Legacy sections don't have passing scores
@@ -194,6 +238,8 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
           questions: sectionQuestions,
           totalQuestions: sectionTotalQuestions,
           correctAnswers: sectionCorrect,
+          totalPoints: sectionTotalPoints,
+          earnedPoints: sectionEarnedPoints,
           score: sectionScore,
           passed: true // Legacy sections always pass
         };
@@ -202,10 +248,12 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     totalTimeLimit = ((exam as any).vocabularyTimeLimit || 0) + ((exam as any).grammarTimeLimit || 0) + ((exam as any).listeningTimeLimit || 0) + ((exam as any).readingTimeLimit || 0);
   }
   
-  // Calculate overall stats
+  // Calculate overall stats based on points
   const totalQuestions = sectionGroups.reduce((sum, section) => sum + section.totalQuestions, 0);
   const correctAnswers = sectionGroups.reduce((sum, section) => sum + section.correctAnswers, 0);
-  const scorePercentage = totalQuestions > 0 ? (correctAnswers / totalQuestions) * 100 : 0;
+  const totalPoints = sectionGroups.reduce((sum, section) => sum + section.totalPoints, 0);
+  const earnedPoints = sectionGroups.reduce((sum, section) => sum + section.earnedPoints, 0);
+  const scorePercentage = totalPoints > 0 ? (earnedPoints / totalPoints) * 100 : 0;
   
   // Determine overall exam pass/fail status
   const examPassingScore = (exam as any).passingScore;
@@ -219,10 +267,10 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     // If any section failed, exam fails
     examPassed = false;
     failureReason = `Không đạt do không đạt điểm tối thiểu tại: ${failedSections.map(s => s.title).join(", ")}`;
-  } else if (examPassingScore != null && examPassingScore > 0 && correctAnswers < examPassingScore) {
-    // All sections passed but total score not enough
+  } else if (examPassingScore != null && examPassingScore > 0 && earnedPoints < examPassingScore) {
+    // All sections passed but total points not enough
     examPassed = false;
-    failureReason = `Không đạt do tổng số câu đúng (${correctAnswers}) thấp hơn điểm đạt của bài thi (${examPassingScore})`;
+    failureReason = `Không đạt do tổng điểm (${earnedPoints}) thấp hơn điểm đạt của bài thi (${examPassingScore})`;
   } else {
     // Either no passing score requirements or all requirements met
     examPassed = true;
