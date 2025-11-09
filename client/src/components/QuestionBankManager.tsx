@@ -63,6 +63,7 @@ const singleQuestionSchema = z.object({
   questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
   description: z.string().optional(),
   descriptionImageUrls: z.array(z.string()).default([]), // Array of description image URLs
+  points: z.number().int("Điểm phải là số nguyên").min(1, "Điểm phải lớn hơn hoặc bằng 1").default(1), // Point value (default 1)
   options: z.array(optionSchema).min(2, "Phải có ít nhất 2 lựa chọn").refine(
     (options) => options.every(opt => {
       const text = typeof opt === 'string' ? opt : opt.text;
@@ -126,6 +127,7 @@ export function QuestionBankManager() {
       category: "ngữ pháp",
       questions: [{
         questionText: "",
+        points: 1,
         options: [
           { text: "", imageUrl: "", imageUrls: [] },
           { text: "", imageUrl: "", imageUrls: [] }
