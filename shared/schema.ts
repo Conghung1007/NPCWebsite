@@ -1,5 +1,5 @@
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, integer, boolean, jsonb } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, integer, boolean, jsonb, numeric } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -108,7 +108,7 @@ export const questions = pgTable("questions", {
   options: jsonb("options").notNull(), // Array of answer options with potential image URLs
   correctAnswer: text("correct_answer").notNull(), // Index or value of correct answer
   explanation: text("explanation"), // Optional explanation for answer
-  points: integer("points").notNull().default(1), // Point value for this question (default 1)
+  points: numeric("points", { precision: 10, scale: 2 }).notNull().default("1.0"), // Point value for this question (default 1.0, supports decimals like 1.5, 2.25)
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
