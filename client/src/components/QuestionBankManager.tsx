@@ -63,7 +63,7 @@ const singleQuestionSchema = z.object({
   questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
   description: z.string().optional(),
   descriptionImageUrls: z.array(z.string()).default([]), // Array of description image URLs
-  points: z.number().min(0.1, "Điểm phải lớn hơn hoặc bằng 0.1").default(1), // Point value (default 1, supports decimals like 1.5, 2.25)
+  points: z.coerce.number().min(0.1, "Điểm phải lớn hơn hoặc bằng 0.1").default(1), // Point value (default 1, supports decimals like 1.5, 2.25) - coerce to handle string from database
   options: z.array(optionSchema).min(2, "Phải có ít nhất 2 lựa chọn").refine(
     (options) => options.every(opt => {
       const text = typeof opt === 'string' ? opt : opt.text;
@@ -556,7 +556,7 @@ export function QuestionBankManager() {
       questionText: question.questionText,
       description: question.description || "",
       descriptionImageUrls: descriptionImageUrls,
-      points: (question as any).points || 1,
+      points: parseFloat((question as any).points) || 1, // Parse as float since DB returns NUMERIC as string
       options,
       correctAnswer: question.correctAnswer,
       explanation: question.explanation || "",
@@ -620,7 +620,7 @@ export function QuestionBankManager() {
           questionText: subQ.questionText || "",
           description: "", // Sub-questions don't have description
           descriptionImageUrls: [],
-          points: subQ.points || 1,
+          points: parseFloat(subQ.points) || 1, // Parse as float since DB returns NUMERIC as string
           options: subOptions,
           correctAnswer: subQ.correctAnswer || "",
           explanation: subQ.explanation || "",
@@ -1190,7 +1190,7 @@ export function QuestionBankManager() {
                                       {...field}
                                       value={field.value || 1}
                                       onChange={(e) => field.onChange(parseFloat(e.target.value) || 1)}
-                                      className="w-20 text-center"
+                                      className="w-28 text-center"
                                       data-testid={`input-points-${questionIndex}`}
                                     />
                                   </FormControl>
