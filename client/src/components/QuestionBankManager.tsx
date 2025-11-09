@@ -99,6 +99,28 @@ const questionSchema = z.object({
 
 type QuestionFormData = z.infer<typeof questionSchema>;
 
+// Default form values for creating new questions
+const defaultFormValues: QuestionFormData = {
+  language: "japanese",
+  category: "ngữ pháp",
+  sortOrder: 0,
+  questions: [{
+    questionText: "",
+    description: "",
+    descriptionImageUrls: [],
+    points: 1,
+    options: [
+      { text: "", imageUrl: "", imageUrls: [] },
+      { text: "", imageUrl: "", imageUrls: [] }
+    ],
+    correctAnswer: "",
+    explanation: "",
+    imageUrl: "",
+    imageUrls: [],
+    audioUrl: "",
+  }],
+};
+
 export function QuestionBankManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -122,23 +144,7 @@ export function QuestionBankManager() {
   // Form for creating/editing questions
   const form = useForm<QuestionFormData>({
     resolver: zodResolver(questionSchema),
-    defaultValues: {
-      language: "japanese",
-      category: "ngữ pháp",
-      questions: [{
-        questionText: "",
-        points: 1,
-        options: [
-          { text: "", imageUrl: "", imageUrls: [] },
-          { text: "", imageUrl: "", imageUrls: [] }
-        ],
-        correctAnswer: "",
-        explanation: "",
-        imageUrl: "",
-        imageUrls: [],
-        audioUrl: "",
-      }],
-    },
+    defaultValues: defaultFormValues,
   });
 
   // Fetch all questions from question bank
@@ -679,6 +685,12 @@ export function QuestionBankManager() {
     }
   };
 
+  const handleOpenCreate = () => {
+    setEditingQuestion(null);
+    form.reset(defaultFormValues);
+    setIsAddingQuestion(true);
+  };
+
   const cancelForm = async () => {
     // Cleanup any uploaded temporary files before canceling
     const formData = form.getValues();
@@ -790,7 +802,7 @@ export function QuestionBankManager() {
 
     setIsAddingQuestion(false);
     setEditingQuestion(null);
-    form.reset();
+    form.reset(defaultFormValues);
   };
 
   if (isLoading) {
@@ -887,7 +899,7 @@ export function QuestionBankManager() {
 
             {/* Add Question Button */}
             <Button 
-              onClick={() => setIsAddingQuestion(true)} 
+              onClick={handleOpenCreate} 
               className="flex items-center gap-2"
               data-testid="button-add-question"
             >
@@ -1150,8 +1162,8 @@ export function QuestionBankManager() {
                   {(form.watch("questions") || []).map((question, questionIndex) => (
                     <Card key={questionIndex} className="p-4 border-2 border-dashed border-muted-foreground/20">
                       <div className="space-y-4">
-                        {/* Question Header with number and delete button */}
-                        <div className="flex items-center justify-between pb-2 border-b">
+                        {/* Question Header with number, points, and delete button */}
+                        <div className="flex flex-wrap md:flex-nowrap items-center justify-between gap-4 pb-2 border-b">
                           <h3 className="text-lg font-semibold text-green-600">
                             {editingQuestion && questionIndex === 0 ? (
                               <span>Câu hỏi gốc (đang chỉnh sửa)</span>
@@ -1159,6 +1171,35 @@ export function QuestionBankManager() {
                               <span>Câu hỏi {questionIndex + 1}</span>
                             )}
                           </h3>
+                          
+                          {/* Points Input - inline with header */}
+                          <FormField
+                            control={form.control}
+                            name={`questions.${questionIndex}.points`}
+                            render={({ field }) => (
+                              <FormItem className="flex items-center gap-3" data-testid={`wrapper-points-${questionIndex}`}>
+                                <FormLabel className="sr-only">Điểm câu hỏi *</FormLabel>
+                                <div className="flex items-center gap-2">
+                                  <span className="text-sm font-medium whitespace-nowrap">Điểm:</span>
+                                  <FormControl>
+                                    <Input
+                                      type="number"
+                                      min="1"
+                                      step="1"
+                                      placeholder="1"
+                                      {...field}
+                                      value={field.value || 1}
+                                      onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                                      className="w-20 text-center"
+                                      data-testid={`input-points-${questionIndex}`}
+                                    />
+                                  </FormControl>
+                                </div>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          
                           {form.watch("questions").length > 1 && (
                             <Button
                               type="button"
@@ -1175,30 +1216,6 @@ export function QuestionBankManager() {
                             </Button>
                           )}
                         </div>
-                        
-                        {/* Points Input */}
-                        <FormField
-                          control={form.control}
-                          name={`questions.${questionIndex}.points`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Điểm câu hỏi *</FormLabel>
-                              <FormControl>
-                                <Input
-                                  type="number"
-                                  min="1"
-                                  step="1"
-                                  placeholder="Nhập số điểm (mặc định: 1)"
-                                  {...field}
-                                  value={field.value || 1}
-                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                                  data-testid={`input-points-${questionIndex}`}
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
                         
                         {/* Question Text */}
                         <FormField
