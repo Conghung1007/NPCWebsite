@@ -63,7 +63,7 @@ const singleQuestionSchema = z.object({
   questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
   description: z.string().optional(),
   descriptionImageUrls: z.array(z.string()).default([]), // Array of description image URLs
-  points: z.number().int("Điểm phải là số nguyên").min(1, "Điểm phải lớn hơn hoặc bằng 1").default(1), // Point value (default 1)
+  points: z.number().min(0.1, "Điểm phải lớn hơn hoặc bằng 0.1").default(1), // Point value (default 1, supports decimals like 1.5, 2.25)
   options: z.array(optionSchema).min(2, "Phải có ít nhất 2 lựa chọn").refine(
     (options) => options.every(opt => {
       const text = typeof opt === 'string' ? opt : opt.text;
@@ -1184,12 +1184,12 @@ export function QuestionBankManager() {
                                   <FormControl>
                                     <Input
                                       type="number"
-                                      min="1"
-                                      step="1"
+                                      min="0.1"
+                                      step="0.1"
                                       placeholder="1"
                                       {...field}
                                       value={field.value || 1}
-                                      onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 1)}
                                       className="w-20 text-center"
                                       data-testid={`input-points-${questionIndex}`}
                                     />
