@@ -550,6 +550,7 @@ export function QuestionBankManager() {
       questionText: question.questionText,
       description: question.description || "",
       descriptionImageUrls: descriptionImageUrls,
+      points: (question as any).points || 1,
       options,
       correctAnswer: question.correctAnswer,
       explanation: question.explanation || "",
@@ -613,6 +614,7 @@ export function QuestionBankManager() {
           questionText: subQ.questionText || "",
           description: "", // Sub-questions don't have description
           descriptionImageUrls: [],
+          points: subQ.points || 1,
           options: subOptions,
           correctAnswer: subQ.correctAnswer || "",
           explanation: subQ.explanation || "",
@@ -1173,6 +1175,31 @@ export function QuestionBankManager() {
                             </Button>
                           )}
                         </div>
+                        
+                        {/* Points Input */}
+                        <FormField
+                          control={form.control}
+                          name={`questions.${questionIndex}.points`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Điểm câu hỏi *</FormLabel>
+                              <FormControl>
+                                <Input
+                                  type="number"
+                                  min="1"
+                                  step="1"
+                                  placeholder="Nhập số điểm (mặc định: 1)"
+                                  {...field}
+                                  value={field.value || 1}
+                                  onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                                  data-testid={`input-points-${questionIndex}`}
+                                />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        
                         {/* Question Text */}
                         <FormField
                           control={form.control}
