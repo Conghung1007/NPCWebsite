@@ -2,7 +2,18 @@
 
 This is a Vietnamese business website for N&P Company (Công ty TNHH N&P), a professional service company offering visa services, study abroad consulting, Japanese language training, and online examination system. The application is built as a full-stack React application with Express.js backend, designed to showcase the company's three core services with a modern, professional interface.
 
-The website serves as a comprehensive digital presence for N&P Company, featuring service pages, contact forms, testimonials, company information, and a complete online exam system. The site focuses on three main services: visa processing, study abroad consulting, and Japanese language training. It's designed to be mobile-responsive and SEO-friendly to attract potential customers seeking international services and educational assessments.
+The website serves as a comprehensive digital presence for N&P Company, featuring service pages, contact forms, testimonials, company information, and a complete online exam system with point-based scoring. The site focuses on three main services: visa processing, study abroad consulting, and Japanese language training. It's designed to be mobile-responsive and SEO-friendly to attract potential customers seeking international services and educational assessments.
+
+# Recent Changes
+
+**November 2025 - Point-Based Scoring System:**
+- Implemented comprehensive point-based scoring where each question has configurable point value (minimum 1 point)
+- Questions default to 1 point for backward compatibility with legacy data
+- Exam scoring now sums points from correct answers instead of counting number of correct answers
+- Pass/fail validation compares earned points against passing score thresholds (both section and exam level)
+- Updated UI copy in exam creation/editing to clarify point-based thresholds
+- Database schema: Added `points` integer column (NOT NULL, default 1) to questions table
+- QuestionBankManager: Added points input field positioned between question number and question content
 
 # User Preferences
 
@@ -45,6 +56,20 @@ Scroll to Top: Smooth scroll-to-top button with responsive design and performanc
 - Session management with PostgreSQL session storage
 - Authentication middleware protecting admin routes and edit permissions
 - Inline text editing permissions restricted to Manager and Admin roles
+
+## Exam System Architecture
+- **Question Management**: QuestionBankManager with support for parent questions and sub-questions
+- **Point System**: Each question (parent and sub-questions) has configurable point value (integer >= 1, default 1)
+- **Scoring Logic**: 
+  - Section score = sum of points from all correct answers in that section
+  - Total exam score = sum of all section scores (not average)
+  - Legacy questions without explicit points default to 1 point each
+- **Pass/Fail Validation**:
+  - Section fails if earned points < section.passingScore
+  - Exam fails if any section fails OR total earned points < exam.passingScore
+  - Passing scores are point-based thresholds, not percentage-based
+- **Exam Taking Flow**: exam-taking.tsx calculates scores in real-time based on points
+- **Result Display**: exam-result.tsx shows earned/total points with bilingual Japanese/English headers
 
 ## External Dependencies
 - **Database**: Neon Database serverless PostgreSQL (@neondatabase/serverless)
