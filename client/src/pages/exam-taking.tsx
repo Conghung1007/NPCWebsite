@@ -92,25 +92,36 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     if (exam.sections && Array.isArray(exam.sections) && exam.sections.length > 0) {
       // New sections-based format
       const sectionsWithQuestions = exam.sections.map((section: any) => {
-        // Extract question IDs from either questionSets (new) or questionIds (legacy)
-        let questionIds: string[] = [];
+        // Map questions with their question set names
+        let questionsWithSetNames: Array<Question & { questionSetName?: string }> = [];
         
         if (section.questionSets && Array.isArray(section.questionSets)) {
-          // New structure: flatten all questionIds from all question sets
-          questionIds = section.questionSets.flatMap((qs: any) => 
-            qs.questionIds || []
-          );
+          // New structure: process each question set to attach set name
+          section.questionSets.forEach((qs: any) => {
+            const setQuestions = (qs.questionIds || [])
+              .map((qId: string) => {
+                const question = allQuestions.find(q => q.id === qId);
+                if (question) {
+                  return {
+                    ...question,
+                    questionSetName: qs.name || "Bộ câu hỏi"
+                  };
+                }
+                return undefined;
+              })
+              .filter((q: any): q is Question & { questionSetName: string } => q !== undefined);
+            
+            questionsWithSetNames.push(...setQuestions);
+          });
         } else if (section.questionIds) {
-          // Legacy structure: use questionIds directly
-          questionIds = section.questionIds;
+          // Legacy structure: use questionIds directly without set names
+          questionsWithSetNames = section.questionIds
+            .map((qId: string) => allQuestions.find(q => q.id === qId))
+            .filter((q: Question | undefined): q is Question => q !== undefined);
         }
         
-        const sectionQuestions = questionIds
-          .map((qId: string) => allQuestions.find(q => q.id === qId))
-          .filter((q: Question | undefined): q is Question => q !== undefined);
-        
         // Shuffle questions for random order each time exam is taken
-        const shuffledQuestions = shuffleArray<Question>(sectionQuestions);
+        const shuffledQuestions = shuffleArray(questionsWithSetNames);
         
         return {
           id: section.id,
@@ -1072,8 +1083,14 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     {/* Parent Question (Câu 1) */}
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-lg">
-                          Câu {currentQuestionIndex + 1}.1: {currentQuestion.questionText}
+                        <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
+                          <span>Câu {currentQuestionIndex + 1}.1:</span>
+                          {(currentQuestion as any).questionSetName && (
+                            <span className="text-sm font-medium px-3 py-1 bg-green-100 text-green-700 rounded-full">
+                              {(currentQuestion as any).questionSetName}
+                            </span>
+                          )}
+                          <span>{currentQuestion.questionText}</span>
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-6">
@@ -1139,8 +1156,14 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     {(currentQuestion as any).subQuestions.map((subQuestion: any, subIndex: number) => (
                       <Card key={subQuestion.id}>
                         <CardHeader>
-                          <CardTitle className="text-lg">
-                            Câu {currentQuestionIndex + 1}.{subIndex + 2}: {subQuestion.questionText}
+                          <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
+                            <span>Câu {currentQuestionIndex + 1}.{subIndex + 2}:</span>
+                            {(currentQuestion as any).questionSetName && (
+                              <span className="text-sm font-medium px-3 py-1 bg-green-100 text-green-700 rounded-full">
+                                {(currentQuestion as any).questionSetName}
+                              </span>
+                            )}
+                            <span>{subQuestion.questionText}</span>
                           </CardTitle>
                         </CardHeader>
                       <CardContent className="space-y-6">
@@ -1232,8 +1255,14 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   /* Render Regular Question (No Sub-Questions) */
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">
-                        Câu {currentQuestionIndex + 1}: {currentQuestion.questionText}
+                      <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
+                        <span>Câu {currentQuestionIndex + 1}:</span>
+                        {(currentQuestion as any).questionSetName && (
+                          <span className="text-sm font-medium px-3 py-1 bg-green-100 text-green-700 rounded-full">
+                            {(currentQuestion as any).questionSetName}
+                          </span>
+                        )}
+                        <span>{currentQuestion.questionText}</span>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
