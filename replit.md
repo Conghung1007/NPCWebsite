@@ -46,6 +46,8 @@ The website serves as a comprehensive digital presence for N&P Company, featurin
 - Exam scoring now sums points from correct answers instead of counting number of correct answers
 - Pass/fail validation compares earned points against passing score thresholds (both section and exam level)
 - Updated UI copy in exam creation/editing to clarify point-based thresholds
+- Fixed point parsing: All point values from database are now parsed to numbers (parseFloat) in both exam-taking and exam-result pages
+- Result display updated: Shows earned points/total points instead of correct answers/total questions throughout the interface
 
 # User Preferences
 

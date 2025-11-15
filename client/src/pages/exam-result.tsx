@@ -98,11 +98,12 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
   const calculateTotalPoints = (item: any) => {
     let total = 0;
     // Add parent question points (default to 1 if not set)
-    total += item.question.points || 1;
+    // Parse to number since points come from database as string
+    total += parseFloat(item.question.points) || 1;
     // Add sub-questions points
     if (item.question.subQuestions && Array.isArray(item.question.subQuestions)) {
       item.question.subQuestions.forEach((sub: any) => {
-        total += sub.points || 1;
+        total += parseFloat(sub.points) || 1;
       });
     }
     return total;
@@ -113,14 +114,15 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     let earned = 0;
     // Check parent
     if (item.userAnswer === item.question.correctAnswer) {
-      earned += item.question.points || 1;
+      // Parse to number since points come from database as string
+      earned += parseFloat(item.question.points) || 1;
     }
     // Check sub-questions - userAnswer comes from item.subAnswers array
     if (item.question.subQuestions && Array.isArray(item.question.subQuestions)) {
       item.question.subQuestions.forEach((sub: any, idx: number) => {
         const subAnswer = item.subAnswers?.[idx]?.userAnswer;
         if (subAnswer === sub.correctAnswer) {
-          earned += sub.points || 1;
+          earned += parseFloat(sub.points) || 1;
         }
       });
     }
@@ -392,9 +394,9 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between text-sm mb-2">
-                  <span>Tỷ lệ trả lời đúng</span>
+                  <span>Điểm số đạt được</span>
                   <span className={getScoreColor(scorePercentage)}>
-                    {correctAnswers}/{totalQuestions} ({scorePercentage.toFixed(1)}%)
+                    {earnedPoints.toFixed(1)}/{totalPoints.toFixed(1)} điểm ({scorePercentage.toFixed(1)}%)
                   </span>
                 </div>
                 <Progress value={scorePercentage} className="h-3" />
@@ -404,13 +406,13 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                 <div className="flex items-center">
                   <CheckCircle className="w-5 h-5 text-green-600 mr-2" />
                   <span className="text-sm">
-                    <strong>{correctAnswers}</strong> câu trả lời đúng
+                    <strong>{earnedPoints.toFixed(1)}</strong> điểm đạt được
                   </span>
                 </div>
                 <div className="flex items-center">
                   <XCircle className="w-5 h-5 text-red-600 mr-2" />
                   <span className="text-sm">
-                    <strong>{totalQuestions - correctAnswers}</strong> câu trả lời sai
+                    <strong>{(totalPoints - earnedPoints).toFixed(1)}</strong> điểm bị mất
                   </span>
                 </div>
               </div>
@@ -419,8 +421,8 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
               {examPassingScore != null && examPassingScore > 0 && (
                 <div className="pt-4 border-t">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Số điểm đạt của bài thi:</span>
-                    <span className="font-semibold">{examPassingScore} câu đúng</span>
+                    <span className="text-gray-600">Điểm đạt yêu cầu của bài thi:</span>
+                    <span className="font-semibold">{examPassingScore} điểm</span>
                   </div>
                   <div className="flex items-center justify-between text-sm mt-1">
                     <span className="text-gray-600">Trạng thái:</span>
@@ -470,9 +472,9 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                     {section.passed ? 'Đạt' : 'Không đạt'}
                   </div>
                   <div className="text-xs text-gray-600">
-                    {section.correctAnswers}/{section.totalQuestions} câu đúng
+                    {section.earnedPoints.toFixed(1)}/{section.totalPoints.toFixed(1)} điểm
                     {section.passingScore != null && section.passingScore > 0 && (
-                      <span className="ml-1">(yêu cầu: {section.passingScore})</span>
+                      <span className="ml-1">(yêu cầu: {section.passingScore} điểm)</span>
                     )}
                   </div>
                 </div>
@@ -728,7 +730,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
               if (navigator.share) {
                 navigator.share({
                   title: `Kết quả thi: ${exam.title}`,
-                  text: `Tôi vừa hoàn thành bài thi "${exam.title}" với kết quả ${scorePercentage.toFixed(1)}% (${correctAnswers}/${totalQuestions} câu đúng)`,
+                  text: `Tôi vừa hoàn thành bài thi "${exam.title}" với kết quả ${scorePercentage.toFixed(1)}% (${earnedPoints.toFixed(1)}/${totalPoints.toFixed(1)} điểm)`,
                   url: window.location.href,
                 });
               } else {
