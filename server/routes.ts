@@ -2879,9 +2879,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
           }
           for (const qSet of section.questionSets) {
-            if (!qSet.questions || !Array.isArray(qSet.questions)) {
+            // Accept either questionIds (from frontend) or questions (legacy)
+            if (!qSet.questionIds || !Array.isArray(qSet.questionIds)) {
               return res.status(400).json({
-                message: "Each question set must have a questions array"
+                message: "Each question set must have a questionIds array"
               });
             }
           }
