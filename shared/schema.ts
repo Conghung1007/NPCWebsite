@@ -292,3 +292,10 @@ export type ExamQuestion = typeof examQuestions.$inferSelect;
 export type InsertExamQuestion = z.infer<typeof insertExamQuestionSchema>;
 export type ExamAttempt = typeof examAttempts.$inferSelect;
 export type InsertExamAttempt = z.infer<typeof insertExamAttemptSchema>;
+
+// Question Set type (stored in sections JSONB)
+export interface QuestionSet {
+  id: string;
+  name: string;
+  questions: Question[];
+}

@@ -21,7 +21,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { MultipleImagePreviewBox } from "@/components/MultipleImagePreviewBox";
 import { AudioUploader } from "@/components/AudioUploader";
-import type { Question } from "@shared/schema";
+import type { Question, QuestionSet } from "@shared/schema";
 
 const questionCategories = [
   { value: "từ vựng", label: "Từ vựng" },
@@ -39,7 +39,7 @@ interface ExamSection {
   content?: string;
   descriptionImageUrls?: string[];
   descriptionAudioUrl?: string;
-  questions: Question[];
+  questionSets: QuestionSet[];
 }
 
 // Form validation schema for exam information
@@ -67,12 +67,21 @@ export default function CreateExam() {
       content: "",
       descriptionImageUrls: [],
       descriptionAudioUrl: "",
-      questions: []
+      questionSets: [{
+        id: "qs-1",
+        name: "",
+        questions: []
+      }]
     }
   ]);
   
-  const [isQuestionSelectOpen, setIsQuestionSelectOpen] = useState(false);
-  const [currentSectionId, setCurrentSectionId] = useState<string>("");
+  // Unified dialog state to prevent async state issues
+  const [dialogState, setDialogState] = useState<{
+    isOpen: boolean;
+    sectionId: string;
+    questionSetId: string;
+  }>({ isOpen: false, sectionId: "", questionSetId: "" });
+  
   const [questionSearchQuery, setQuestionSearchQuery] = useState("");
   const [selectedLanguageFilter, setSelectedLanguageFilter] = useState<string>("all");
   const [selectedCategoryFilter, setSelectedCategoryFilter] = useState<string>("all");
@@ -112,7 +121,7 @@ export default function CreateExam() {
 
   // Helper functions for managing dynamic sections
   const addExamSection = () => {
-    // Add new section with empty name
+    // Add new section with default question set
     const newSection: ExamSection = {
       id: `section-${Date.now()}`,
       sectionName: "",
@@ -120,7 +129,11 @@ export default function CreateExam() {
       content: "",
       descriptionImageUrls: [],
       descriptionAudioUrl: "",
-      questions: []
+      questionSets: [{
+        id: `qs-${Date.now()}`,
+        name: "",
+        questions: []
+      }]
     };
     setExamSections(prev => [...prev, newSection]);
   };
@@ -239,7 +252,157 @@ export default function CreateExam() {
   };
 
   const getCurrentSection = () => {
-    return examSections.find(section => section.id === currentSectionId);
+    return examSections.find(section => section.id === dialogState.sectionId);
+  };
+
+  // Utility functions for index-based access (O(1) operations)
+  const getSectionIndex = (sectionId: string, sections: ExamSection[]) => {
+    return sections.findIndex(s => s.id === sectionId);
+  };
+
+  const getQuestionSetIndex = (questionSetId: string, questionSets: QuestionSet[]) => {
+    return questionSets.findIndex(qs => qs.id === questionSetId);
+  };
+
+  // Helper functions for managing question sets with targeted updates
+  const addQuestionSetToSection = (sectionId: string) => {
+    setExamSections(prev => {
+      const sectionIdx = getSectionIndex(sectionId, prev);
+      if (sectionIdx === -1) return prev;
+
+      const newSections = [...prev];
+      newSections[sectionIdx] = {
+        ...newSections[sectionIdx],
+        questionSets: [
+          ...newSections[sectionIdx].questionSets,
+          {
+            id: `qs-${Date.now()}`,
+            name: "",
+            questions: []
+          }
+        ]
+      };
+      return newSections;
+    });
+  };
+
+  const removeQuestionSetFromSection = (sectionId: string, questionSetId: string) => {
+    setExamSections(prev => {
+      const sectionIdx = getSectionIndex(sectionId, prev);
+      if (sectionIdx === -1) return prev;
+
+      const section = prev[sectionIdx];
+      
+      // Guard: must have at least 1 question set
+      if (section.questionSets.length <= 1) {
+        toast({
+          title: "Lỗi",
+          description: "Phần thi phải có ít nhất 1 bộ câu hỏi",
+          variant: "destructive",
+        });
+        return prev;
+      }
+
+      const newSections = [...prev];
+      newSections[sectionIdx] = {
+        ...section,
+        questionSets: section.questionSets.filter(qs => qs.id !== questionSetId)
+      };
+      return newSections;
+    });
+  };
+
+  const updateQuestionSetName = (sectionId: string, questionSetId: string, name: string) => {
+    setExamSections(prev => {
+      const sectionIdx = getSectionIndex(sectionId, prev);
+      if (sectionIdx === -1) return prev;
+
+      const section = prev[sectionIdx];
+      const setIdx = getQuestionSetIndex(questionSetId, section.questionSets);
+      if (setIdx === -1) return prev;
+
+      const newSections = [...prev];
+      const newQuestionSets = [...section.questionSets];
+      newQuestionSets[setIdx] = {
+        ...newQuestionSets[setIdx],
+        name
+      };
+      newSections[sectionIdx] = {
+        ...section,
+        questionSets: newQuestionSets
+      };
+      return newSections;
+    });
+  };
+
+  const addQuestionToSet = (sectionId: string, questionSetId: string, question: Question) => {
+    // Defensive guard
+    if (!sectionId || !questionSetId) {
+      toast({
+        title: "Lỗi",
+        description: "Không tìm thấy bộ câu hỏi. Vui lòng thử lại.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setExamSections(prev => {
+      const sectionIdx = getSectionIndex(sectionId, prev);
+      if (sectionIdx === -1) {
+        toast({
+          title: "Lỗi",
+          description: "Không tìm thấy phần thi.",
+          variant: "destructive",
+        });
+        return prev;
+      }
+
+      const section = prev[sectionIdx];
+      const setIdx = getQuestionSetIndex(questionSetId, section.questionSets);
+      if (setIdx === -1) {
+        toast({
+          title: "Lỗi",
+          description: "Không tìm thấy bộ câu hỏi.",
+          variant: "destructive",
+        });
+        return prev;
+      }
+
+      const newSections = [...prev];
+      const newQuestionSets = [...section.questionSets];
+      newQuestionSets[setIdx] = {
+        ...newQuestionSets[setIdx],
+        questions: [...newQuestionSets[setIdx].questions, question]
+      };
+      newSections[sectionIdx] = {
+        ...section,
+        questionSets: newQuestionSets
+      };
+      return newSections;
+    });
+  };
+
+  const removeQuestionFromSet = (sectionId: string, questionSetId: string, questionId: string) => {
+    setExamSections(prev => {
+      const sectionIdx = getSectionIndex(sectionId, prev);
+      if (sectionIdx === -1) return prev;
+
+      const section = prev[sectionIdx];
+      const setIdx = getQuestionSetIndex(questionSetId, section.questionSets);
+      if (setIdx === -1) return prev;
+
+      const newSections = [...prev];
+      const newQuestionSets = [...section.questionSets];
+      newQuestionSets[setIdx] = {
+        ...newQuestionSets[setIdx],
+        questions: newQuestionSets[setIdx].questions.filter(q => q.id !== questionId)
+      };
+      newSections[sectionIdx] = {
+        ...section,
+        questionSets: newQuestionSets
+      };
+      return newSections;
+    });
   };
 
   // Category mapping between English and Vietnamese
@@ -259,8 +422,11 @@ export default function CreateExam() {
     const currentSection = getCurrentSection();
     if (!currentSection) return false;
 
-    // Don't show questions already selected in current section
-    if (currentSection.questions.find(sq => sq.id === question.id)) return false;
+    // Don't show questions already selected in ANY question set in current section
+    const isAlreadySelected = currentSection.questionSets.some(qs =>
+      qs.questions.find(sq => sq.id === question.id)
+    );
+    if (isAlreadySelected) return false;
     
     // Apply search filter (search in both question text and description)
     if (questionSearchQuery) {
@@ -298,11 +464,16 @@ export default function CreateExam() {
         throw new Error('Bài thi phải có ít nhất một phần thi.');
       }
 
-      // Validate that each section has at least one question
+      // Validate that each section has at least one question set with at least one question
       for (let i = 0; i < examSections.length; i++) {
         const section = examSections[i];
-        if (section.questions.length === 0) {
-          throw new Error(`Phải chọn ít nhất một câu hỏi cho phần thi ${i + 1}`);
+        
+        // Check each question set has at least one question
+        for (let j = 0; j < section.questionSets.length; j++) {
+          const questionSet = section.questionSets[j];
+          if (questionSet.questions.length === 0) {
+            throw new Error(`Bộ câu hỏi ${j + 1} trong phần thi ${i + 1} phải có ít nhất một câu hỏi`);
+          }
         }
       }
 
@@ -315,7 +486,7 @@ export default function CreateExam() {
       // Create the exam with flexible sections format
       const examData: any = {
         ...data,
-        sections: examSections.map(section => ({
+        sections: examSections.map((section, sectionIdx) => ({
           id: section.id,
           sectionName: section.sectionName,
           timeLimit: section.timeLimit,
@@ -323,7 +494,11 @@ export default function CreateExam() {
           content: section.content || "",
           descriptionImageUrls: section.descriptionImageUrls || [],
           descriptionAudioUrl: section.descriptionAudioUrl || "",
-          questionIds: section.questions.map(q => q.id)
+          questionSets: section.questionSets.map((qs, qsIdx) => ({
+            id: qs.id,
+            name: qs.name || `Bộ câu hỏi ${qsIdx + 1}`, // Auto-name if empty
+            questionIds: qs.questions.map(q => q.id)
+          }))
         }))
       };
       
@@ -360,31 +535,6 @@ export default function CreateExam() {
 
   const onSubmit = (data: ExamFormData) => {
     createExamMutation.mutate(data);
-  };
-
-  // Question selection functions
-  const addQuestionToSection = (sectionId: string, question: Question) => {
-    setExamSections(prev => prev.map(section => 
-      section.id === sectionId 
-        ? { ...section, questions: [...section.questions, question] }
-        : section
-    ));
-  };
-
-  const removeQuestionFromSection = (sectionId: string, questionId: string) => {
-    setExamSections(prev => prev.map(section => 
-      section.id === sectionId 
-        ? { ...section, questions: section.questions.filter(q => q.id !== questionId) }
-        : section
-    ));
-  };
-
-  const openQuestionSelect = (sectionId: string) => {
-    setCurrentSectionId(sectionId);
-    setIsQuestionSelectOpen(true);
-    setQuestionSearchQuery("");
-    setSelectedLanguageFilter("all");
-    setSelectedCategoryFilter("all");
   };
 
   // Show loading while checking authentication
@@ -598,7 +748,7 @@ export default function CreateExam() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                       {/* Thời gian thi */}
                       <div>
                         <label className="block text-sm font-medium mb-2">
@@ -625,47 +775,101 @@ export default function CreateExam() {
                           onChange={(e) => updateSectionPassingScore(section.id, e.target.value ? parseInt(e.target.value) : undefined)}
                         />
                       </div>
+                    </div>
 
-                      {/* Nút chọn câu hỏi */}
-                      <div className="flex items-end">
+                    {/* BỘ CÂU HỎI */}
+                    <div className="border-t pt-4">
+                      <h4 className="text-md font-medium mb-3">Bộ câu hỏi</h4>
+                      <div className="space-y-4">
+                        {section.questionSets.map((questionSet, qsIndex) => (
+                          <div key={questionSet.id} className="border rounded-lg p-4 bg-gray-50">
+                            <div className="flex items-center justify-between mb-3">
+                              <h5 className="text-sm font-medium">Bộ {qsIndex + 1}</h5>
+                              {section.questionSets.length > 1 && (
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => removeQuestionSetFromSection(section.id, questionSet.id)}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </div>
+
+                            {/* Tên bộ câu hỏi */}
+                            <div className="mb-3">
+                              <Label className="block text-sm font-medium mb-1">Tên bộ câu hỏi (tùy chọn)</Label>
+                              <Input
+                                placeholder={`Bộ câu hỏi ${qsIndex + 1}`}
+                                value={questionSet.name}
+                                onChange={(e) => updateQuestionSetName(section.id, questionSet.id, e.target.value)}
+                              />
+                            </div>
+
+                            {/* Nút chọn câu hỏi */}
+                            <Button
+                              type="button"
+                              onClick={() => {
+                                setDialogState({
+                                  isOpen: true,
+                                  sectionId: section.id,
+                                  questionSetId: questionSet.id
+                                });
+                                setQuestionSearchQuery("");
+                                setSelectedLanguageFilter("all");
+                                setSelectedCategoryFilter("all");
+                              }}
+                              variant="outline"
+                              className="w-full mb-3"
+                            >
+                              <Search className="w-4 h-4 mr-2" />
+                              Chọn câu hỏi ({questionSet.questions.length})
+                            </Button>
+
+                            {/* Hiển thị câu hỏi đã chọn */}
+                            {questionSet.questions.length > 0 && (
+                              <div>
+                                <h6 className="text-xs font-medium text-gray-600 mb-2">
+                                  Câu hỏi đã chọn ({questionSet.questions.length}):
+                                </h6>
+                                <div className="space-y-2">
+                                  {questionSet.questions.map((question) => (
+                                    <div key={question.id} className="flex items-center justify-between bg-white p-2 rounded border">
+                                      <span className="text-sm truncate flex-1 mr-2">
+                                        {question.questionText}
+                                      </span>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => removeQuestionFromSet(section.id, questionSet.id, question.id)}
+                                        className="text-red-600 hover:text-red-700"
+                                      >
+                                        <X className="w-4 h-4" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+
+                        {/* Nút thêm bộ câu hỏi */}
                         <Button
                           type="button"
-                          onClick={() => openQuestionSelect(section.id)}
+                          onClick={() => addQuestionSetToSection(section.id)}
                           variant="outline"
                           className="w-full"
+                          data-testid={`button-add-question-set-${section.id}`}
                         >
-                          <Search className="w-4 h-4 mr-2" />
-                          Chọn câu hỏi ({section.questions.length})
+                          <Plus className="w-4 h-4 mr-2" />
+                          Thêm bộ câu hỏi
                         </Button>
                       </div>
                     </div>
-
-                    {/* Hiển thị câu hỏi đã chọn */}
-                    {section.questions.length > 0 && (
-                      <div className="mt-4">
-                        <h4 className="text-sm font-medium mb-2">
-                          Câu hỏi đã chọn ({section.questions.length}):
-                        </h4>
-                        <div className="space-y-2">
-                          {section.questions.map((question) => (
-                            <div key={question.id} className="flex items-center justify-between bg-gray-50 p-2 rounded">
-                              <span className="text-sm truncate flex-1 mr-2">
-                                {question.questionText}
-                              </span>
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="sm"
-                                onClick={() => removeQuestionFromSection(section.id, question.id)}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                <X className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
                   </div>
                 ))}
 
@@ -716,7 +920,10 @@ export default function CreateExam() {
         </Form>
 
         {/* Question Selection Dialog */}
-        <Dialog open={isQuestionSelectOpen} onOpenChange={setIsQuestionSelectOpen}>
+        <Dialog 
+          open={dialogState.isOpen} 
+          onOpenChange={(open) => setDialogState(open ? dialogState : { isOpen: false, sectionId: "", questionSetId: "" })}
+        >
           <DialogContent className="w-[95vw] max-w-[1000px] max-h-[85vh] flex flex-col gap-0 p-0 top-[55%]">
             <DialogHeader className="px-6 pt-6 pb-4 border-b">
               <DialogTitle>
@@ -826,7 +1033,7 @@ export default function CreateExam() {
                               <Button
                                 size="sm"
                                 onClick={() => {
-                                  addQuestionToSection(currentSectionId, question);
+                                  addQuestionToSet(dialogState.sectionId, dialogState.questionSetId, question);
                                 }}
                               >
                                 <Plus className="w-4 h-4 mr-1" />
@@ -843,7 +1050,7 @@ export default function CreateExam() {
             </div>
 
             <DialogFooter className="px-6 py-4 border-t">
-              <Button onClick={() => setIsQuestionSelectOpen(false)}>
+              <Button onClick={() => setDialogState({ isOpen: false, sectionId: "", questionSetId: "" })}>
                 Đóng
               </Button>
             </DialogFooter>
