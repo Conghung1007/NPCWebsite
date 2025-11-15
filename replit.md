@@ -13,11 +13,13 @@ The website serves as a comprehensive digital presence for N&P Company, featurin
   - Defensive guards with toast notifications for validation errors
   - Each section can have multiple question sets with custom names
   - Questions organized within sets for flexible grouping
-- **Frontend (exam-taking.tsx):** Question Set Display
+- **Frontend (exam-taking.tsx):** Question Set Display and Shuffle Logic
   - deriveExamSections() now attaches questionSetName to each question during section derivation
   - Question set name displayed in green box above each question during exam taking
   - Total question count includes all sub-questions (displayed in header as "Tổng: X câu (kể cả câu con)")
   - Supports both legacy questions (no set name) and new questionSets structure
+  - Shuffle logic: Questions are shuffled within each question set only (not across entire section)
+  - Legacy exams (without question sets) still shuffle all questions in the section
 - **Backend (server/routes.ts):** Full backward compatibility migration system
   - migrateLegacySections(): Auto-converts legacy questionIds → questionSets on read (GET routes)
   - extractQuestionIds(): Flattens questionSets or returns legacy questionIds (validation/storage)

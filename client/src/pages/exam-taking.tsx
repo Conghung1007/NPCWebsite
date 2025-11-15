@@ -96,7 +96,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         let questionsWithSetNames: Array<Question & { questionSetName?: string }> = [];
         
         if (section.questionSets && Array.isArray(section.questionSets)) {
-          // New structure: process each question set to attach set name
+          // New structure: process each question set to attach set name and shuffle within each set
           section.questionSets.forEach((qs: any) => {
             const setQuestions = (qs.questionIds || [])
               .map((qId: string) => {
@@ -111,7 +111,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               })
               .filter((q: any): q is Question & { questionSetName: string } => q !== undefined);
             
-            questionsWithSetNames.push(...setQuestions);
+            // Shuffle questions within this question set only
+            const shuffledSetQuestions = shuffleArray<Question & { questionSetName: string }>(setQuestions);
+            questionsWithSetNames.push(...shuffledSetQuestions);
           });
         } else if (section.questionIds) {
           // Legacy structure: use questionIds directly without set names
@@ -120,8 +122,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             .filter((q: Question | undefined): q is Question => q !== undefined);
         }
         
-        // Shuffle questions for random order each time exam is taken
-        const shuffledQuestions = shuffleArray(questionsWithSetNames);
+        // For legacy format (no question sets), shuffle all questions in the section
+        // For new format with question sets, questions are already shuffled within each set
+        const shuffledQuestions = section.questionSets ? questionsWithSetNames : shuffleArray(questionsWithSetNames);
         
         return {
           id: section.id,
