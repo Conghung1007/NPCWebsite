@@ -96,9 +96,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         let questionIds: string[] = [];
         
         if (section.questionSets && Array.isArray(section.questionSets)) {
-          // New structure: flatten all questions from all question sets
+          // New structure: flatten all questionIds from all question sets
           questionIds = section.questionSets.flatMap((qs: any) => 
-            qs.questions ? qs.questions.map((q: any) => q.id || q) : []
+            qs.questionIds || []
           );
         } else if (section.questionIds) {
           // Legacy structure: use questionIds directly
