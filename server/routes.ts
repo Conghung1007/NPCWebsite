@@ -34,6 +34,52 @@ const requireImageEditPermission = (req: any, res: any, next: any) => {
   next();
 };
 
+/**
+ * Exam Section Data Format Helpers
+ * 
+ * These helpers ensure backward compatibility between legacy and new exam section formats:
+ * - Legacy format: section.questionIds = ["q1", "q2", ...]
+ * - New format: section.questionSets = [{id, name, questions: ["q1", "q2"]}, ...]
+ * 
+ * IMPORTANT: All backend consumers of exam.sections must use these helpers to avoid
+ * regressions when accessing section question data. Never directly access section.questionIds
+ * without first normalizing via these functions.
+ */
+
+// Helper function to migrate legacy exam sections to question sets structure
+const migrateLegacySections = (sections: any[]): any[] => {
+  if (!Array.isArray(sections)) return sections;
+  
+  return sections.map(section => {
+    // If section has questionIds but no questionSets, migrate to new structure
+    if (section.questionIds && !section.questionSets) {
+      return {
+        ...section,
+        questionSets: [{
+          id: "qs-1",
+          name: "",
+          questions: section.questionIds
+        }],
+        questionIds: undefined // Remove legacy field
+      };
+    }
+    return section;
+  });
+};
+
+// Helper function to extract all question IDs from question sets (supports both formats)
+const extractQuestionIds = (section: any): string[] => {
+  // New structure: questionSets array
+  if (section.questionSets && Array.isArray(section.questionSets)) {
+    return section.questionSets.flatMap((set: any) => set.questions || []);
+  }
+  // Legacy structure: questionIds array
+  if (section.questionIds && Array.isArray(section.questionIds)) {
+    return section.questionIds;
+  }
+  return [];
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth endpoint - returns current user information
   app.get("/api/auth/user", async (req, res) => {
@@ -348,7 +394,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/exams", async (req, res) => {
     try {
       const exams = await storage.getActiveExams();
-      res.json(exams);
+      // Migrate legacy sections to question sets structure
+      const migratedExams = exams.map(exam => ({
+        ...exam,
+        sections: exam.sections ? migrateLegacySections(exam.sections as any[]) : exam.sections
+      }));
+      res.json(migratedExams);
     } catch (error) {
       console.error("Error fetching exams:", error);
       res.status(500).json({ message: "Có lỗi xảy ra khi lấy danh sách đề thi" });
@@ -362,7 +413,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!exam) {
         return res.status(404).json({ message: "Không tìm thấy đề thi" });
       }
-      res.json(exam);
+      // Migrate legacy sections to question sets structure
+      const migratedExam = {
+        ...exam,
+        sections: exam.sections ? migrateLegacySections(exam.sections as any[]) : exam.sections
+      };
+      res.json(migratedExam);
     } catch (error) {
       console.error("Error fetching exam:", error);
       res.status(500).json({ message: "Có lỗi xảy ra khi lấy thông tin đề thi" });
@@ -577,9 +633,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check if exam uses new sections format or legacy format
       if (exam.sections && Array.isArray(exam.sections) && exam.sections.length > 0) {
-        // New sections format
+        // New sections format (supports both questionIds and questionSets)
         exam.sections.forEach((section: any) => {
-          const questionIds = section.questionIds || [];
+          const questionIds = extractQuestionIds(section);
           sectionQuestionIds.push(...questionIds);
         });
         
@@ -2796,10 +2852,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Validate sections
       for (const section of sections) {
-        if (!section.type || !section.timeLimit || !section.questionIds || section.questionIds.length === 0) {
+        const questionIds = extractQuestionIds(section);
+        if (!section.type || !section.timeLimit || questionIds.length === 0) {
           return res.status(400).json({ 
             message: "Each section must have type, timeLimit, and at least one question" 
           });
+        }
+        
+        // Validate questionSets structure if present
+        if (section.questionSets) {
+          if (!Array.isArray(section.questionSets)) {
+            return res.status(400).json({
+              message: "questionSets must be an array"
+            });
+          }
+          for (const qSet of section.questionSets) {
+            if (!qSet.questions || !Array.isArray(qSet.questions)) {
+              return res.status(400).json({
+                message: "Each question set must have a questions array"
+              });
+            }
+          }
         }
       }
 
@@ -2818,15 +2891,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isActive: true,
         passingScore: passingScore !== undefined ? passingScore : null,
         createdBy: sessionUser.id,
-        // Legacy fields for backward compatibility (default to 0 if section doesn't exist)
+        // Legacy fields for backward compatibility (extract question IDs from questionSets or use questionIds)
         vocabularyTimeLimit: vocabularySection?.timeLimit || 0,
-        vocabularyQuestions: vocabularySection?.questionIds || [],
+        vocabularyQuestions: vocabularySection ? extractQuestionIds(vocabularySection) : [],
         grammarTimeLimit: grammarSection?.timeLimit || 0,
-        grammarQuestions: grammarSection?.questionIds || [],
+        grammarQuestions: grammarSection ? extractQuestionIds(grammarSection) : [],
         listeningTimeLimit: listeningSection?.timeLimit || 0,
-        listeningQuestions: listeningSection?.questionIds || [],
+        listeningQuestions: listeningSection ? extractQuestionIds(listeningSection) : [],
         readingTimeLimit: readingSection?.timeLimit || 0,
-        readingQuestions: readingSection?.questionIds || [],
+        readingQuestions: readingSection ? extractQuestionIds(readingSection) : [],
       });
 
       res.json({
