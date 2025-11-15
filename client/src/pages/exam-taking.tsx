@@ -175,12 +175,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
   // Load exam sections when exam data is available
   useEffect(() => {
-    console.log("Exam sections effect:", { exam: !!exam, allQuestionsCount: allQuestions.length });
     if (exam && allQuestions.length > 0) {
-      console.log("Loading exam sections for taking:", exam);
-      console.log("All questions loaded:", allQuestions.length, allQuestions);
       const derivedSections = deriveExamSections(exam, allQuestions);
-      console.log("Derived sections:", derivedSections);
       setExamSections(derivedSections);
     }
   }, [exam, allQuestions, deriveExamSections]);
@@ -1036,6 +1032,19 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               </Card>
             ) : (
               <div className="space-y-6">
+                {/* Question Set Name Display */}
+                {(currentQuestion as any).questionSetName && (
+                  <Card className="bg-green-50 border-green-200">
+                    <CardContent className="py-3 px-4">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-green-600">
+                          {(currentQuestion as any).questionSetName}
+                        </span>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Parent Question Description/Images/Audio - If has sub-questions */}
                 {(currentQuestion as any).subQuestions && (currentQuestion as any).subQuestions.length > 0 && (
                   <Card>
@@ -1083,14 +1092,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     {/* Parent Question (Câu 1) */}
                     <Card>
                       <CardHeader>
-                        <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
-                          <span>Câu {currentQuestionIndex + 1}.1:</span>
-                          {(currentQuestion as any).questionSetName && (
-                            <span className="text-sm font-medium px-3 py-1 bg-green-100 text-green-700 rounded-full">
-                              {(currentQuestion as any).questionSetName}
-                            </span>
-                          )}
-                          <span>{currentQuestion.questionText}</span>
+                        <CardTitle className="text-lg">
+                          Câu {currentQuestionIndex + 1}.1: {currentQuestion.questionText}
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-6">
@@ -1156,14 +1159,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     {(currentQuestion as any).subQuestions.map((subQuestion: any, subIndex: number) => (
                       <Card key={subQuestion.id}>
                         <CardHeader>
-                          <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
-                            <span>Câu {currentQuestionIndex + 1}.{subIndex + 2}:</span>
-                            {(currentQuestion as any).questionSetName && (
-                              <span className="text-sm font-medium px-3 py-1 bg-green-100 text-green-700 rounded-full">
-                                {(currentQuestion as any).questionSetName}
-                              </span>
-                            )}
-                            <span>{subQuestion.questionText}</span>
+                          <CardTitle className="text-lg">
+                            Câu {currentQuestionIndex + 1}.{subIndex + 2}: {subQuestion.questionText}
                           </CardTitle>
                         </CardHeader>
                       <CardContent className="space-y-6">
@@ -1255,14 +1252,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   /* Render Regular Question (No Sub-Questions) */
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg flex items-center gap-2 flex-wrap">
-                        <span>Câu {currentQuestionIndex + 1}:</span>
-                        {(currentQuestion as any).questionSetName && (
-                          <span className="text-sm font-medium px-3 py-1 bg-green-100 text-green-700 rounded-full">
-                            {(currentQuestion as any).questionSetName}
-                          </span>
-                        )}
-                        <span>{currentQuestion.questionText}</span>
+                      <CardTitle className="text-lg">
+                        Câu {currentQuestionIndex + 1}: {currentQuestion.questionText}
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
