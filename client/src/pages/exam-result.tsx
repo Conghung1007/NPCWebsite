@@ -113,6 +113,13 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
   const calculateEarnedPoints = (item: any) => {
     let earned = 0;
     // Check parent
+    console.log("Checking answer:", {
+      questionId: item.question.id,
+      userAnswer: item.userAnswer,
+      correctAnswer: item.question.correctAnswer,
+      match: item.userAnswer === item.question.correctAnswer,
+      points: item.question.points
+    });
     if (item.userAnswer === item.question.correctAnswer) {
       // Parse to number since points come from database as string
       earned += parseFloat(item.question.points) || 1;
@@ -121,6 +128,13 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     if (item.question.subQuestions && Array.isArray(item.question.subQuestions)) {
       item.question.subQuestions.forEach((sub: any, idx: number) => {
         const subAnswer = item.subAnswers?.[idx]?.userAnswer;
+        console.log("Checking sub-question:", {
+          subQuestionId: sub.id,
+          subAnswer,
+          correctAnswer: sub.correctAnswer,
+          match: subAnswer === sub.correctAnswer,
+          points: sub.points
+        });
         if (subAnswer === sub.correctAnswer) {
           earned += parseFloat(sub.points) || 1;
         }
