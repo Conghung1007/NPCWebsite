@@ -69,9 +69,9 @@ const migrateLegacySections = (sections: any[]): any[] => {
 
 // Helper function to extract all question IDs from question sets (supports both formats)
 const extractQuestionIds = (section: any): string[] => {
-  // New structure: questionSets array
+  // New structure: questionSets array with questionIds
   if (section.questionSets && Array.isArray(section.questionSets)) {
-    return section.questionSets.flatMap((set: any) => set.questions || []);
+    return section.questionSets.flatMap((set: any) => set.questionIds || []);
   }
   // Legacy structure: questionIds array
   if (section.questionIds && Array.isArray(section.questionIds)) {
