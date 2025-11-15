@@ -783,11 +783,25 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
   // Show error if exam has no questions for any section
   if (exam && !examLoading && !questionsLoading) {
-    const hasAnyQuestions = 
-      (exam.vocabularyQuestions as string[]).length > 0 ||
-      (exam.grammarQuestions as string[]).length > 0 ||
-      (exam.listeningQuestions as string[]).length > 0 ||
-      (exam.readingQuestions as string[]).length > 0;
+    let hasAnyQuestions = false;
+    
+    // Check new sections format first
+    if ((exam as any).sections && Array.isArray((exam as any).sections) && (exam as any).sections.length > 0) {
+      // Check if any section has questions (either in questionSets or questionIds)
+      hasAnyQuestions = (exam as any).sections.some((section: any) => {
+        if (section.questionSets && Array.isArray(section.questionSets)) {
+          return section.questionSets.some((qs: any) => qs.questionIds && qs.questionIds.length > 0);
+        }
+        return section.questionIds && section.questionIds.length > 0;
+      });
+    } else {
+      // Fallback to legacy format
+      hasAnyQuestions = 
+        (exam.vocabularyQuestions as string[]).length > 0 ||
+        (exam.grammarQuestions as string[]).length > 0 ||
+        (exam.listeningQuestions as string[]).length > 0 ||
+        (exam.readingQuestions as string[]).length > 0;
+    }
 
     if (!hasAnyQuestions) {
       return (

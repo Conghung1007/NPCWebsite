@@ -477,6 +477,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Filter out null values (questions that weren't found)
       const validQuestions = questions.filter(q => q !== null);
       
+      console.log(`Returning ${validQuestions.length} questions for exam ${id}`);
       res.json(validQuestions);
     } catch (error) {
       console.error("Error fetching questions:", error);
