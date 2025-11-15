@@ -6,6 +6,20 @@ The website serves as a comprehensive digital presence for N&P Company, featurin
 
 # Recent Changes
 
+**November 2025 - Question Sets Feature:**
+- **Frontend (create-exam.tsx):** Implemented Question Sets UI allowing multiple named question groups per section
+  - Unified dialogState fix: Replaced 3 async states with single synchronized object to prevent race conditions
+  - Index-based O(1) operations: getSectionIndex/getQuestionSetIndex utilities for performance
+  - Defensive guards with toast notifications for validation errors
+  - Each section can have multiple question sets with custom names
+  - Questions organized within sets for flexible grouping
+- **Backend (server/routes.ts):** Full backward compatibility migration system
+  - migrateLegacySections(): Auto-converts legacy questionIds → questionSets on read (GET routes)
+  - extractQuestionIds(): Flattens questionSets or returns legacy questionIds (validation/storage)
+  - All consumers updated: exam creation, attempt details, legacy field population
+  - Schema validation for questionSets structure before persistence
+  - Documentation added for future developers using exam.sections data
+
 **November 2025 - Decimal Point Support:**
 - Updated points system to support decimal values (e.g., 1.5, 2.25, 0.5)
 - Database: Changed `points` column from INTEGER to NUMERIC(10,2)
