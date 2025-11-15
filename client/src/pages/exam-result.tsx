@@ -134,7 +134,19 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
   if (useSections) {
     // New sections format
     sectionGroups = (exam as any).sections.map((section: any, sectionIdx: number) => {
-      const sectionQuestionIds = section.questionIds || [];
+      // Extract question IDs from either questionSets (new) or questionIds (legacy)
+      let sectionQuestionIds: string[] = [];
+      
+      if (section.questionSets && Array.isArray(section.questionSets)) {
+        // New structure: flatten all questions from all question sets
+        sectionQuestionIds = section.questionSets.flatMap((qs: any) => 
+          qs.questions ? qs.questions.map((q: any) => q.id || q) : []
+        );
+      } else if (section.questionIds) {
+        // Legacy structure: use questionIds directly
+        sectionQuestionIds = section.questionIds;
+      }
+      
       const sectionQuestions = questionsWithAnswers.filter(item => 
         sectionQuestionIds.includes(item.question.id)
       );

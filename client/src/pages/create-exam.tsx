@@ -22,6 +22,13 @@ import { apiRequest } from "@/lib/queryClient";
 import { MultipleImagePreviewBox } from "@/components/MultipleImagePreviewBox";
 import { AudioUploader } from "@/components/AudioUploader";
 import type { Question, QuestionSet } from "@shared/schema";
+import type { ExamSection } from "@/lib/examQuestionSets";
+import { 
+  createQuestionSetActions, 
+  getSectionIndex, 
+  getQuestionSetIndex, 
+  categoryMapping 
+} from "@/lib/examQuestionSets";
 
 const questionCategories = [
   { value: "từ vựng", label: "Từ vựng" },
@@ -29,18 +36,6 @@ const questionCategories = [
   { value: "đọc hiểu", label: "Đọc hiểu" },
   { value: "nghe hiểu", label: "Nghe hiểu" },
 ];
-
-// Dynamic section structure
-interface ExamSection {
-  id: string;
-  sectionName: string;
-  timeLimit: number;
-  passingScore?: number;
-  content?: string;
-  descriptionImageUrls?: string[];
-  descriptionAudioUrl?: string;
-  questionSets: QuestionSet[];
-}
 
 // Form validation schema for exam information
 const examSchema = z.object({
@@ -255,167 +250,8 @@ export default function CreateExam() {
     return examSections.find(section => section.id === dialogState.sectionId);
   };
 
-  // Utility functions for index-based access (O(1) operations)
-  const getSectionIndex = (sectionId: string, sections: ExamSection[]) => {
-    return sections.findIndex(s => s.id === sectionId);
-  };
-
-  const getQuestionSetIndex = (questionSetId: string, questionSets: QuestionSet[]) => {
-    return questionSets.findIndex(qs => qs.id === questionSetId);
-  };
-
-  // Helper functions for managing question sets with targeted updates
-  const addQuestionSetToSection = (sectionId: string) => {
-    setExamSections(prev => {
-      const sectionIdx = getSectionIndex(sectionId, prev);
-      if (sectionIdx === -1) return prev;
-
-      const newSections = [...prev];
-      newSections[sectionIdx] = {
-        ...newSections[sectionIdx],
-        questionSets: [
-          ...newSections[sectionIdx].questionSets,
-          {
-            id: `qs-${Date.now()}`,
-            name: "",
-            questions: []
-          }
-        ]
-      };
-      return newSections;
-    });
-  };
-
-  const removeQuestionSetFromSection = (sectionId: string, questionSetId: string) => {
-    setExamSections(prev => {
-      const sectionIdx = getSectionIndex(sectionId, prev);
-      if (sectionIdx === -1) return prev;
-
-      const section = prev[sectionIdx];
-      
-      // Guard: must have at least 1 question set
-      if (section.questionSets.length <= 1) {
-        toast({
-          title: "Lỗi",
-          description: "Phần thi phải có ít nhất 1 bộ câu hỏi",
-          variant: "destructive",
-        });
-        return prev;
-      }
-
-      const newSections = [...prev];
-      newSections[sectionIdx] = {
-        ...section,
-        questionSets: section.questionSets.filter(qs => qs.id !== questionSetId)
-      };
-      return newSections;
-    });
-  };
-
-  const updateQuestionSetName = (sectionId: string, questionSetId: string, name: string) => {
-    setExamSections(prev => {
-      const sectionIdx = getSectionIndex(sectionId, prev);
-      if (sectionIdx === -1) return prev;
-
-      const section = prev[sectionIdx];
-      const setIdx = getQuestionSetIndex(questionSetId, section.questionSets);
-      if (setIdx === -1) return prev;
-
-      const newSections = [...prev];
-      const newQuestionSets = [...section.questionSets];
-      newQuestionSets[setIdx] = {
-        ...newQuestionSets[setIdx],
-        name
-      };
-      newSections[sectionIdx] = {
-        ...section,
-        questionSets: newQuestionSets
-      };
-      return newSections;
-    });
-  };
-
-  const addQuestionToSet = (sectionId: string, questionSetId: string, question: Question) => {
-    // Defensive guard
-    if (!sectionId || !questionSetId) {
-      toast({
-        title: "Lỗi",
-        description: "Không tìm thấy bộ câu hỏi. Vui lòng thử lại.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    setExamSections(prev => {
-      const sectionIdx = getSectionIndex(sectionId, prev);
-      if (sectionIdx === -1) {
-        toast({
-          title: "Lỗi",
-          description: "Không tìm thấy phần thi.",
-          variant: "destructive",
-        });
-        return prev;
-      }
-
-      const section = prev[sectionIdx];
-      const setIdx = getQuestionSetIndex(questionSetId, section.questionSets);
-      if (setIdx === -1) {
-        toast({
-          title: "Lỗi",
-          description: "Không tìm thấy bộ câu hỏi.",
-          variant: "destructive",
-        });
-        return prev;
-      }
-
-      const newSections = [...prev];
-      const newQuestionSets = [...section.questionSets];
-      newQuestionSets[setIdx] = {
-        ...newQuestionSets[setIdx],
-        questions: [...newQuestionSets[setIdx].questions, question]
-      };
-      newSections[sectionIdx] = {
-        ...section,
-        questionSets: newQuestionSets
-      };
-      return newSections;
-    });
-  };
-
-  const removeQuestionFromSet = (sectionId: string, questionSetId: string, questionId: string) => {
-    setExamSections(prev => {
-      const sectionIdx = getSectionIndex(sectionId, prev);
-      if (sectionIdx === -1) return prev;
-
-      const section = prev[sectionIdx];
-      const setIdx = getQuestionSetIndex(questionSetId, section.questionSets);
-      if (setIdx === -1) return prev;
-
-      const newSections = [...prev];
-      const newQuestionSets = [...section.questionSets];
-      newQuestionSets[setIdx] = {
-        ...newQuestionSets[setIdx],
-        questions: newQuestionSets[setIdx].questions.filter(q => q.id !== questionId)
-      };
-      newSections[sectionIdx] = {
-        ...section,
-        questionSets: newQuestionSets
-      };
-      return newSections;
-    });
-  };
-
-  // Category mapping between English and Vietnamese
-  const categoryMapping: Record<string, string> = {
-    "vocabulary": "từ vựng",
-    "grammar": "ngữ pháp", 
-    "reading": "đọc hiểu",
-    "listening": "nghe hiểu",
-    "từ vựng": "từ vựng",
-    "ngữ pháp": "ngữ pháp",
-    "đọc hiểu": "đọc hiểu", 
-    "nghe hiểu": "nghe hiểu"
-  };
+  // Initialize question set actions using the factory
+  const questionSetActions = createQuestionSetActions(setExamSections, toast);
 
   // Filter and sort available questions for current section
   const filteredQuestions = availableQuestions.filter(question => {
@@ -790,7 +626,7 @@ export default function CreateExam() {
                                   type="button"
                                   variant="ghost"
                                   size="sm"
-                                  onClick={() => removeQuestionSetFromSection(section.id, questionSet.id)}
+                                  onClick={() => questionSetActions.removeQuestionSetFromSection(section.id, questionSet.id)}
                                   className="text-red-600 hover:text-red-700"
                                 >
                                   <Trash2 className="w-4 h-4" />
@@ -804,7 +640,7 @@ export default function CreateExam() {
                               <Input
                                 placeholder={`Bộ câu hỏi ${qsIndex + 1}`}
                                 value={questionSet.name}
-                                onChange={(e) => updateQuestionSetName(section.id, questionSet.id, e.target.value)}
+                                onChange={(e) => questionSetActions.updateQuestionSetName(section.id, questionSet.id, e.target.value)}
                               />
                             </div>
 
@@ -844,7 +680,7 @@ export default function CreateExam() {
                                         type="button"
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => removeQuestionFromSet(section.id, questionSet.id, question.id)}
+                                        onClick={() => questionSetActions.removeQuestionFromSet(section.id, questionSet.id, question.id)}
                                         className="text-red-600 hover:text-red-700"
                                       >
                                         <X className="w-4 h-4" />
@@ -860,7 +696,7 @@ export default function CreateExam() {
                         {/* Nút thêm bộ câu hỏi */}
                         <Button
                           type="button"
-                          onClick={() => addQuestionSetToSection(section.id)}
+                          onClick={() => questionSetActions.addQuestionSetToSection(section.id)}
                           variant="outline"
                           className="w-full"
                           data-testid={`button-add-question-set-${section.id}`}
@@ -1033,7 +869,7 @@ export default function CreateExam() {
                               <Button
                                 size="sm"
                                 onClick={() => {
-                                  addQuestionToSet(dialogState.sectionId, dialogState.questionSetId, question);
+                                  questionSetActions.addQuestionToSet(dialogState.sectionId, dialogState.questionSetId, question);
                                 }}
                               >
                                 <Plus className="w-4 h-4 mr-1" />

@@ -92,7 +92,19 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     if (exam.sections && Array.isArray(exam.sections) && exam.sections.length > 0) {
       // New sections-based format
       const sectionsWithQuestions = exam.sections.map((section: any) => {
-        const questionIds = section.questionIds || [];
+        // Extract question IDs from either questionSets (new) or questionIds (legacy)
+        let questionIds: string[] = [];
+        
+        if (section.questionSets && Array.isArray(section.questionSets)) {
+          // New structure: flatten all questions from all question sets
+          questionIds = section.questionSets.flatMap((qs: any) => 
+            qs.questions ? qs.questions.map((q: any) => q.id || q) : []
+          );
+        } else if (section.questionIds) {
+          // Legacy structure: use questionIds directly
+          questionIds = section.questionIds;
+        }
+        
         const sectionQuestions = questionIds
           .map((qId: string) => allQuestions.find(q => q.id === qId))
           .filter((q: Question | undefined): q is Question => q !== undefined);
