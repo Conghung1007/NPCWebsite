@@ -434,7 +434,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       const userAnswer = answers[question.id];
       if (userAnswer === question.correctAnswer) {
         // Add points from correct answer (default to 1 if not set for legacy data)
-        const questionPoints = (question as any).points || 1;
+        // Parse points to number since it comes from database as string
+        const questionPoints = parseFloat((question as any).points) || 1;
         earnedPoints += questionPoints;
       }
     });
