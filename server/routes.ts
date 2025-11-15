@@ -2853,9 +2853,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Validate sections
       for (const section of sections) {
         const questionIds = extractQuestionIds(section);
-        if (!section.type || !section.timeLimit || questionIds.length === 0) {
+        // Accept either sectionName (new) or type (legacy)
+        const hasName = section.sectionName || section.type;
+        if (!hasName || !section.timeLimit || questionIds.length === 0) {
           return res.status(400).json({ 
-            message: "Each section must have type, timeLimit, and at least one question" 
+            message: "Each section must have sectionName (or type), timeLimit, and at least one question" 
           });
         }
         
@@ -2877,10 +2879,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Calculate legacy fields for backward compatibility
-      const vocabularySection = sections.find((s: any) => s.type === "từ vựng");
-      const grammarSection = sections.find((s: any) => s.type === "ngữ pháp");
-      const listeningSection = sections.find((s: any) => s.type === "nghe hiểu");
-      const readingSection = sections.find((s: any) => s.type === "đọc hiểu");
+      // Match by sectionName (new) or type (legacy)
+      const vocabularySection = sections.find((s: any) => 
+        (s.sectionName && s.sectionName.toLowerCase().includes("từ vựng")) || 
+        (s.type && s.type.toLowerCase() === "từ vựng")
+      );
+      const grammarSection = sections.find((s: any) => 
+        (s.sectionName && s.sectionName.toLowerCase().includes("ngữ pháp")) || 
+        (s.type && s.type.toLowerCase() === "ngữ pháp")
+      );
+      const listeningSection = sections.find((s: any) => 
+        (s.sectionName && s.sectionName.toLowerCase().includes("nghe")) || 
+        (s.type && s.type.toLowerCase() === "nghe hiểu")
+      );
+      const readingSection = sections.find((s: any) => 
+        (s.sectionName && s.sectionName.toLowerCase().includes("đọc")) || 
+        (s.type && s.type.toLowerCase() === "đọc hiểu")
+      );
 
       // Create the exam with flexible sections and legacy fields
       const exam = await storage.createExam({
