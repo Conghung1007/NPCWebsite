@@ -430,7 +430,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       
       // First get the exam to access its sections with questionSets
-      const exam = await storage.getExamById(id);
+      const exam = await storage.getExam(id);
       if (!exam) {
         return res.status(404).json({ message: "Exam not found" });
       }
@@ -463,7 +463,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Fetch questions by their IDs
       const questions = await Promise.all(
         allQuestionIds.map(async (qId) => {
-          const question = await storage.getQuestionById(qId);
+          const question = await storage.getQuestion(qId);
           if (!question) return null;
           
           const subQuestions = await storage.getSubQuestions(question.id);
