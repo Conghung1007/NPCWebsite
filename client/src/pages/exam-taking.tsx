@@ -164,9 +164,12 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
   // Load exam sections when exam data is available
   useEffect(() => {
+    console.log("Exam sections effect:", { exam: !!exam, allQuestionsCount: allQuestions.length });
     if (exam && allQuestions.length > 0) {
       console.log("Loading exam sections for taking:", exam);
+      console.log("All questions loaded:", allQuestions.length, allQuestions);
       const derivedSections = deriveExamSections(exam, allQuestions);
+      console.log("Derived sections:", derivedSections);
       setExamSections(derivedSections);
     }
   }, [exam, allQuestions, deriveExamSections]);
@@ -868,7 +871,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     {sectionConfig?.title || 'Đang tải'} - {exam.title}
                   </h1>
                   <p className="text-sm text-gray-600">
-                    Câu {currentQuestionIndex + 1} / {currentSection?.questions.length || 0} (Tổng: {totalQuestionsInSection} câu)
+                    Câu hỏi {currentQuestionIndex + 1} / {currentSection?.questions.length || 0} | Tổng: {totalQuestionsInSection} câu (kể cả câu con)
                   </p>
                 </div>
               </div>
