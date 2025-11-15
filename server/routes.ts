@@ -2838,6 +2838,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const { title, description, isDemo, sections, passingScore } = req.body;
 
+      console.log("Creating exam with sections:", JSON.stringify(sections, null, 2));
+
       if (!title) {
         return res.status(400).json({ 
           message: "Title is required" 
@@ -2855,6 +2857,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const questionIds = extractQuestionIds(section);
         // Accept either sectionName (new) or type (legacy)
         const hasName = section.sectionName || section.type;
+        console.log("Validating section:", { 
+          hasName, 
+          sectionName: section.sectionName, 
+          type: section.type, 
+          timeLimit: section.timeLimit, 
+          questionIdsCount: questionIds.length,
+          questionSets: section.questionSets 
+        });
         if (!hasName || !section.timeLimit || questionIds.length === 0) {
           return res.status(400).json({ 
             message: "Each section must have sectionName (or type), timeLimit, and at least one question" 
