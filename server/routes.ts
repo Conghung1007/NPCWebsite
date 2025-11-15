@@ -428,11 +428,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/exams/:id/questions", async (req, res) => {
     try {
       const { id } = req.params;
-      const questions = await storage.getQuestionsByExamId(id);
       
-      // For each question, fetch its sub-questions if it's a parent
-      const questionsWithSubs = await Promise.all(
-        questions.map(async (question) => {
+      // First get the exam to access its sections with questionSets
+      const exam = await storage.getExamById(id);
+      if (!exam) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+      
+      // Extract all question IDs from sections (supports both questionSets and legacy questionIds)
+      let allQuestionIds: string[] = [];
+      
+      if (exam.sections && Array.isArray(exam.sections)) {
+        for (const section of exam.sections) {
+          const questionIds = extractQuestionIds(section);
+          allQuestionIds.push(...questionIds);
+        }
+      }
+      
+      // Fallback to legacy format if no sections
+      if (allQuestionIds.length === 0) {
+        const legacyQuestions = await storage.getQuestionsByExamId(id);
+        const questionsWithSubs = await Promise.all(
+          legacyQuestions.map(async (question) => {
+            const subQuestions = await storage.getSubQuestions(question.id);
+            return {
+              ...question,
+              subQuestions: subQuestions.length > 0 ? subQuestions : undefined
+            };
+          })
+        );
+        return res.json(questionsWithSubs);
+      }
+      
+      // Fetch questions by their IDs
+      const questions = await Promise.all(
+        allQuestionIds.map(async (qId) => {
+          const question = await storage.getQuestionById(qId);
+          if (!question) return null;
+          
           const subQuestions = await storage.getSubQuestions(question.id);
           return {
             ...question,
@@ -441,7 +474,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         })
       );
       
-      res.json(questionsWithSubs);
+      // Filter out null values (questions that weren't found)
+      const validQuestions = questions.filter(q => q !== null);
+      
+      res.json(validQuestions);
     } catch (error) {
       console.error("Error fetching questions:", error);
       res.status(500).json({ message: "Có lỗi xảy ra khi lấy câu hỏi" });
