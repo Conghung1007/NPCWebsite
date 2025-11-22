@@ -34,6 +34,12 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     retry: false,
   });
 
+  // DEBUG: Log received data
+  console.log("=== EXAM RESULT PAGE LOADED ===");
+  console.log("Attempt:", attempt);
+  console.log("Exam:", exam);
+  console.log("Questions with answers:", questionsWithAnswers);
+
   if (attemptLoading || examLoading || questionsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
