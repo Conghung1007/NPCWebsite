@@ -1049,18 +1049,21 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   </Card>
                 )}
 
-                {/* Parent Question Description/Images/Audio - If has sub-questions */}
-                {(currentQuestion as any).subQuestions && (currentQuestion as any).subQuestions.length > 0 && (
+                {/* Common Description (for questions with sub-questions only) */}
+                {(currentQuestion as any).subQuestions && (currentQuestion as any).subQuestions.length > 0 && 
+                 ((currentQuestion as any).description || 
+                  ((currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0) || 
+                  (currentQuestion as any).descriptionAudioUrl) && (
                   <Card>
                     <CardContent className="p-6 space-y-4">
-                      {/* Parent Description Text */}
+                      {/* Description Text */}
                       {(currentQuestion as any).description && (
                         <div className="text-sm text-gray-700 whitespace-pre-wrap">
                           {(currentQuestion as any).description}
                         </div>
                       )}
                       
-                      {/* Parent Description Images */}
+                      {/* Description Images */}
                       {((currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0) && (
                         <div className="flex justify-center flex-wrap gap-4">
                           {(currentQuestion as any).descriptionImageUrls.map((imageUrl: string, index: number) => (
@@ -1074,39 +1077,13 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                         </div>
                       )}
                       
-                      {/* Parent Description Audio */}
+                      {/* Description Audio */}
                       {(currentQuestion as any).descriptionAudioUrl && (
                         <div className="flex justify-center">
-                          <audio controls controlsList="nodownload" className="w-full max-w-md" key={`parent-desc-audio-${currentQuestion.id}`}>
+                          <audio controls controlsList="nodownload" className="w-full max-w-md" key={`desc-audio-${currentQuestion.id}`}>
                             <source src={(currentQuestion as any).descriptionAudioUrl.startsWith('/api/') 
                               ? (currentQuestion as any).descriptionAudioUrl 
                               : `/api/${(currentQuestion as any).descriptionAudioUrl}`} type="audio/mpeg" />
-                            Trình duyệt của bạn không hỗ trợ phát audio.
-                          </audio>
-                        </div>
-                      )}
-                      
-                      {/* Parent Question Images (for question content) */}
-                      {((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) && (
-                        <div className="flex justify-center flex-wrap gap-4">
-                          {(currentQuestion as any).imageUrls.map((imageUrl: string, index: number) => (
-                            <img
-                              key={index}
-                              src={imageUrl}
-                              alt={`Question content illustration ${index + 1}`}
-                              className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
-                            />
-                          ))}
-                        </div>
-                      )}
-                      
-                      {/* Parent Question Audio (for question content) */}
-                      {(currentQuestion as any).audioUrl && (
-                        <div className="flex justify-center">
-                          <audio controls controlsList="nodownload" className="w-full max-w-md" key={`parent-${currentQuestion.id}`}>
-                            <source src={(currentQuestion as any).audioUrl.startsWith('/api/') 
-                              ? (currentQuestion as any).audioUrl 
-                              : `/api/${(currentQuestion as any).audioUrl}`} type="audio/mpeg" />
                             Trình duyệt của bạn không hỗ trợ phát audio.
                           </audio>
                         </div>
@@ -1127,8 +1104,31 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                         </CardTitle>
                       </CardHeader>
                       <CardContent className="space-y-6">
-                        {/* Parent Question Images (nếu có, khác với description images) */}
-                        {/* Note: Parent images được hiển thị ở trên rồi, không cần hiển thị lại */}
+                        {/* Parent Question Images */}
+                        {((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) && (
+                          <div className="flex justify-center flex-wrap gap-4">
+                            {(currentQuestion as any).imageUrls.map((imageUrl: string, index: number) => (
+                              <img
+                                key={index}
+                                src={imageUrl}
+                                alt={`Question illustration ${index + 1}`}
+                                className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Parent Question Audio */}
+                        {(currentQuestion as any).audioUrl && (
+                          <div className="flex justify-center">
+                            <audio controls controlsList="nodownload" className="w-full max-w-md" key={`parent-${currentQuestion.id}`}>
+                              <source src={(currentQuestion as any).audioUrl.startsWith('/api/') 
+                                ? (currentQuestion as any).audioUrl 
+                                : `/api/${(currentQuestion as any).audioUrl}`} type="audio/mpeg" />
+                              Trình duyệt của bạn không hỗ trợ phát audio.
+                            </audio>
+                          </div>
+                        )}
 
                         {/* Answer Options for Parent Question */}
                         <RadioGroup
@@ -1194,54 +1194,21 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                           </CardTitle>
                         </CardHeader>
                       <CardContent className="space-y-6">
-                        {/* Sub-Question Description Text */}
-                        {subQuestion.description && (
-                          <div className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg">
-                            {subQuestion.description}
-                          </div>
-                        )}
-                        
-                        {/* Sub-Question Description Images */}
-                        {(subQuestion.descriptionImageUrls && subQuestion.descriptionImageUrls.length > 0) && (
-                          <div className="flex justify-center flex-wrap gap-4">
-                            {subQuestion.descriptionImageUrls.map((imageUrl: string, index: number) => (
-                              <img
-                                key={index}
-                                src={imageUrl}
-                                alt={`Sub-question description illustration ${index + 1}`}
-                                className="max-w-full h-auto rounded-lg shadow-sm max-h-48"
-                              />
-                            ))}
-                          </div>
-                        )}
-                        
-                        {/* Sub-Question Description Audio */}
-                        {subQuestion.descriptionAudioUrl && (
-                          <div className="flex justify-center">
-                            <audio controls controlsList="nodownload" className="w-full max-w-md" key={`sub-desc-audio-${subQuestion.id}`}>
-                              <source src={subQuestion.descriptionAudioUrl.startsWith('/api/') 
-                                ? subQuestion.descriptionAudioUrl 
-                                : `/api/${subQuestion.descriptionAudioUrl}`} type="audio/mpeg" />
-                              Trình duyệt của bạn không hỗ trợ phát audio.
-                            </audio>
-                          </div>
-                        )}
-                        
-                        {/* Sub-Question Content Images */}
+                        {/* Sub-Question Images */}
                         {(subQuestion.imageUrls && subQuestion.imageUrls.length > 0) && (
                           <div className="flex justify-center flex-wrap gap-4">
                             {subQuestion.imageUrls.map((imageUrl: string, index: number) => (
                               <img
                                 key={index}
                                 src={imageUrl}
-                                alt={`Sub-question content illustration ${index + 1}`}
+                                alt={`Question illustration ${index + 1}`}
                                 className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
                               />
                             ))}
                           </div>
                         )}
 
-                        {/* Sub-Question Content Audio */}
+                        {/* Sub-Question Audio */}
                         {subQuestion.audioUrl && (
                           <div className="flex justify-center">
                             <audio controls controlsList="nodownload" className="w-full max-w-md" key={subQuestion.id}>
