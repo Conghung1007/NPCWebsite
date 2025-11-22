@@ -3134,6 +3134,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Handle temporary question imageUrls array - move to permanent location
+      let finalImageUrls = imageUrls;
+      if (imageUrls && Array.isArray(imageUrls) && imageUrls.length > 0) {
+        const processedImageUrls = [];
+        for (const imgUrl of imageUrls) {
+          if (imgUrl && (imgUrl.includes('/api/temp-question-images/') || imgUrl.includes('/api/qbank-temp-images/') || imgUrl.includes('/api/exam-temp-images/'))) {
+            try {
+              // Use existing helper to move from temporary to permanent storage
+              const movedUrl = await moveTemporaryQuestionImageToPermanent(imgUrl);
+              if (movedUrl) {
+                processedImageUrls.push(movedUrl);
+              }
+            } catch (error) {
+              console.error("Error moving question imageUrl:", error);
+            }
+          } else if (imgUrl) {
+            // Already permanent URL, keep as-is
+            processedImageUrls.push(imgUrl);
+          }
+        }
+        finalImageUrls = processedImageUrls.length > 0 ? processedImageUrls : null;
+      }
+
       // Handle temporary description image - move to permanent location
       let finalDescriptionImageUrl = descriptionImageUrl;
       if (descriptionImageUrl && descriptionImageUrl.includes('/api/temp-description-images/')) {
@@ -3191,7 +3214,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           questionText, // Parent question text
           questionType: questionType || "multiple_choice",
           imageUrl: finalImageUrl || null,
-          imageUrls: imageUrls || null,
+          imageUrls: finalImageUrls || null,
           audioUrl: finalAudioUrl || null,
           options,
           correctAnswer,
@@ -3215,6 +3238,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
               console.error("Error moving sub-question image:", error);
               subFinalImageUrl = null;
             }
+          }
+
+          // Process sub-question imageUrls array
+          let subFinalImageUrls = subQ.imageUrls;
+          if (subQ.imageUrls && Array.isArray(subQ.imageUrls) && subQ.imageUrls.length > 0) {
+            const processedImageUrls = [];
+            for (const imgUrl of subQ.imageUrls) {
+              if (imgUrl && (imgUrl.includes('/api/temp-question-images/') || imgUrl.includes('/api/qbank-temp-images/') || imgUrl.includes('/api/exam-temp-images/'))) {
+                try {
+                  const movedUrl = await moveTemporaryQuestionImageToPermanent(imgUrl);
+                  if (movedUrl) {
+                    processedImageUrls.push(movedUrl);
+                  }
+                } catch (error) {
+                  console.error("Error moving sub-question imageUrl:", error);
+                }
+              } else if (imgUrl) {
+                processedImageUrls.push(imgUrl);
+              }
+            }
+            subFinalImageUrls = processedImageUrls.length > 0 ? processedImageUrls : null;
           }
 
           let subFinalAudioUrl = subQ.audioUrl;
@@ -3264,7 +3308,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             questionText: subQ.questionText,
             questionType: questionType || "multiple_choice",
             imageUrl: subFinalImageUrl || null,
-            imageUrls: subQ.imageUrls || null,
+            imageUrls: subFinalImageUrls || null,
             audioUrl: subFinalAudioUrl || null,
             options: processedOptions,
             correctAnswer: subQ.correctAnswer,
@@ -3296,7 +3340,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           questionText,
           questionType: questionType || "multiple_choice",
           imageUrl: finalImageUrl || null,
-          imageUrls: imageUrls || null,
+          imageUrls: finalImageUrls || null,
           audioUrl: finalAudioUrl || null,
           options,
           correctAnswer,
@@ -3358,6 +3402,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Question not found" });
       }
 
+      // Process imageUrls array if provided - move temporary files to permanent storage
+      let processedImageUrls = imageUrls;
+      if (imageUrls !== undefined) {
+        if (Array.isArray(imageUrls) && imageUrls.length > 0) {
+          const finalImageUrls = [];
+          for (const imgUrl of imageUrls) {
+            if (imgUrl && (imgUrl.includes('/api/temp-question-images/') || imgUrl.includes('/api/qbank-temp-images/') || imgUrl.includes('/api/exam-temp-images/'))) {
+              try {
+                const movedUrl = await moveTemporaryQuestionImageToPermanent(imgUrl);
+                if (movedUrl) {
+                  finalImageUrls.push(movedUrl);
+                }
+              } catch (error) {
+                console.error("Error moving question imageUrl in update:", error);
+              }
+            } else if (imgUrl) {
+              finalImageUrls.push(imgUrl);
+            }
+          }
+          processedImageUrls = finalImageUrls.length > 0 ? finalImageUrls : null;
+        } else {
+          // Empty array or null - clear imageUrls
+          processedImageUrls = null;
+        }
+      } else {
+        // imageUrls not provided in request - don't modify existing value
+        processedImageUrls = undefined;
+      }
+
       // If this is a parent question with sub-questions, handle them
       if (subQuestions && Array.isArray(subQuestions)) {
         // 1. Delete all existing sub-questions
@@ -3376,7 +3449,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           questionText,
           questionType: questionType || existingQuestion.questionType,
           imageUrl: imageUrl !== undefined ? imageUrl : existingQuestion.imageUrl,
-          imageUrls: imageUrls !== undefined ? imageUrls : existingQuestion.imageUrls,
+          imageUrls: imageUrls !== undefined ? processedImageUrls : existingQuestion.imageUrls,
           audioUrl: audioUrl !== undefined ? audioUrl : existingQuestion.audioUrl,
           options: options,
           correctAnswer,
@@ -3392,6 +3465,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         for (let i = 0; i < subQuestions.length; i++) {
           const subQ = subQuestions[i];
           
+          // Process sub-question imageUrls - move temporary files to permanent storage
+          let subProcessedImageUrls = subQ.imageUrls;
+          if (subQ.imageUrls !== undefined) {
+            if (Array.isArray(subQ.imageUrls) && subQ.imageUrls.length > 0) {
+              const finalImageUrls = [];
+              for (const imgUrl of subQ.imageUrls) {
+                if (imgUrl && (imgUrl.includes('/api/temp-question-images/') || imgUrl.includes('/api/qbank-temp-images/') || imgUrl.includes('/api/exam-temp-images/'))) {
+                  try {
+                    const movedUrl = await moveTemporaryQuestionImageToPermanent(imgUrl);
+                    if (movedUrl) {
+                      finalImageUrls.push(movedUrl);
+                    }
+                  } catch (error) {
+                    console.error("Error moving sub-question imageUrl in update:", error);
+                  }
+                } else if (imgUrl) {
+                  finalImageUrls.push(imgUrl);
+                }
+              }
+              subProcessedImageUrls = finalImageUrls.length > 0 ? finalImageUrls : null;
+            } else {
+              subProcessedImageUrls = null;
+            }
+          } else {
+            subProcessedImageUrls = undefined;
+          }
+          
           const subQuestion = await storage.createQuestion({
             examId: existingQuestion.examId,
             category: category || existingQuestion.category,
@@ -3403,7 +3503,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             questionText: subQ.questionText,
             questionType: questionType || "multiple_choice",
             imageUrl: subQ.imageUrl || null,
-            imageUrls: subQ.imageUrls || null,
+            imageUrls: subProcessedImageUrls || null,
             audioUrl: subQ.audioUrl || null,
             options: subQ.options,
             correctAnswer: subQ.correctAnswer,
@@ -3432,7 +3532,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           questionText,
           questionType: questionType || existingQuestion.questionType,
           imageUrl: imageUrl !== undefined ? imageUrl : existingQuestion.imageUrl,
-          imageUrls: imageUrls !== undefined ? imageUrls : existingQuestion.imageUrls,
+          imageUrls: imageUrls !== undefined ? processedImageUrls : existingQuestion.imageUrls,
           audioUrl: audioUrl !== undefined ? audioUrl : existingQuestion.audioUrl,
           options: options,
           correctAnswer,

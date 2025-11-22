@@ -6,6 +6,15 @@ The website serves as a comprehensive digital presence for N&P Company, featurin
 
 # Recent Changes
 
+**November 2025 - Question Content Images (imageUrls) Backend Fix:**
+- Fixed critical backend bug in imageUrls array processing for question content images
+- POST /api/questions: Added proper temp-to-permanent migration for imageUrls arrays using existing helper function
+- PUT /api/questions: Added undefined guards to preserve existing imageUrls when field not provided in request
+- Supports all temp URL formats: /api/temp-question-images/, /api/qbank-temp-images/, /api/exam-temp-images/
+- Applied consistently to parent questions, sub-questions, and standalone questions
+- Files now correctly moved from temporary R2 storage to permanent storage
+- Prevents data loss when updating questions without modifying imageUrls field
+
 **November 2025 - Question Title Feature:**
 - Added optional `questionTitle` field to questions for easy identification and searching
 - Database: Added `question_title` TEXT column to questions table
