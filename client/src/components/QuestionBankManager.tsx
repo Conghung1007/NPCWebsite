@@ -63,6 +63,7 @@ const singleQuestionSchema = z.object({
   questionText: z.string().min(1, "Nội dung câu hỏi là bắt buộc"),
   description: z.string().optional(),
   descriptionImageUrls: z.array(z.string()).default([]), // Array of description image URLs
+  descriptionAudioUrl: z.string().optional(), // Audio URL for description (parent question only)
   points: z.coerce.number().min(0.1, "Điểm phải lớn hơn hoặc bằng 0.1").default(1), // Point value (default 1, supports decimals like 1.5, 2.25) - coerce to handle string from database
   options: z.array(optionSchema).min(2, "Phải có ít nhất 2 lựa chọn").refine(
     (options) => options.every(opt => {
@@ -75,7 +76,7 @@ const singleQuestionSchema = z.object({
   explanation: z.string().optional(),
   imageUrl: z.string().optional(), // Legacy single image for backward compatibility
   imageUrls: z.array(z.string()).default([]), // Array of image URLs
-  audioUrl: z.string().optional(),
+  audioUrl: z.string().optional(), // Audio URL for question content
 }).refine(
   (data) => {
     // Validate that correctAnswer is a valid index (0, 1, 2...)
@@ -110,6 +111,7 @@ const defaultFormValues: QuestionFormData = {
     questionText: "",
     description: "",
     descriptionImageUrls: [],
+    descriptionAudioUrl: "",
     points: 1,
     options: [
       { text: "", imageUrl: "", imageUrls: [] },
@@ -424,11 +426,11 @@ export function QuestionBankManager() {
           questionText: firstQuestion.questionText,
           description: firstQuestion.description,
           descriptionImageUrls: firstQuestion.descriptionImageUrls,
-          descriptionAudioUrl: firstQuestion.audioUrl,
+          descriptionAudioUrl: firstQuestion.descriptionAudioUrl, // Description audio (separate from question audio)
           questionType: "multiple_choice" as const,
           imageUrl: firstQuestion.imageUrl,
           imageUrls: firstQuestion.imageUrls,
-          audioUrl: firstQuestion.audioUrl,
+          audioUrl: firstQuestion.audioUrl, // Question audio (separate from description audio)
           options: firstQuestion.options,
           correctAnswer: firstQuestion.correctAnswer,
           explanation: firstQuestion.explanation,
@@ -481,12 +483,12 @@ export function QuestionBankManager() {
           // Parent question data (from first question)
           questionText: firstQuestion.questionText,
           description: firstQuestion.description,
-          descriptionImageUrls: firstQuestion.imageUrls,
-          descriptionAudioUrl: firstQuestion.audioUrl,
+          descriptionImageUrls: firstQuestion.descriptionImageUrls, // Description images (separate from question images)
+          descriptionAudioUrl: firstQuestion.descriptionAudioUrl, // Description audio (separate from question audio)
           questionType: "multiple_choice" as const,
           imageUrl: firstQuestion.imageUrl,
-          imageUrls: firstQuestion.imageUrls,
-          audioUrl: firstQuestion.audioUrl,
+          imageUrls: firstQuestion.imageUrls, // Question images (separate from description images)
+          audioUrl: firstQuestion.audioUrl, // Question audio (separate from description audio)
           options: firstQuestion.options,
           correctAnswer: firstQuestion.correctAnswer,
           explanation: firstQuestion.explanation,
