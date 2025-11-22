@@ -92,6 +92,7 @@ export const questions = pgTable("questions", {
   examId: varchar("exam_id"), // Now nullable - questions can exist independently
   category: text("category").notNull(), // từ vựng, ngữ pháp, đọc hiểu, nghe hiểu
   language: text("language").notNull().default("japanese"), // japanese, english, german
+  questionTitle: text("question_title"), // Optional short title for easy identification and searching
   
   // Parent-level fields (only used when parentId is NULL)
   description: text("description"), // Mô tả hoặc ghi chú cho câu hỏi chính

@@ -3084,7 +3084,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const { examId, category, description, descriptionImageUrl, descriptionImageUrls, descriptionAudioUrl, questionText, questionType, imageUrl, imageUrls, audioUrl, options, correctAnswer, explanation, sortOrder, language, points, parentId, subQuestions } = req.body;
+      const { examId, category, questionTitle, description, descriptionImageUrl, descriptionImageUrls, descriptionAudioUrl, questionText, questionType, imageUrl, imageUrls, audioUrl, options, correctAnswer, explanation, sortOrder, language, points, parentId, subQuestions } = req.body;
 
       // For new question bank: category and questionText are required
       // For old exam questions: examId and questionText are required  
@@ -3183,6 +3183,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           examId: examId || null,
           category: category || "ngữ pháp",
           language: language || "japanese",
+          questionTitle: questionTitle || null,
           description: description || null,
           descriptionImageUrl: finalDescriptionImageUrl || null,
           descriptionImageUrls: descriptionImageUrls || null,
@@ -3287,6 +3288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           examId: examId || null,
           category: category || "ngữ pháp",
           language: language || "japanese",
+          questionTitle: questionTitle || null,
           description: description || null,
           descriptionImageUrl: finalDescriptionImageUrl || null,
           descriptionImageUrls: descriptionImageUrls || null,
@@ -3326,6 +3328,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const {
         category,
+        questionTitle,
         description,
         descriptionImageUrls,
         descriptionAudioUrl,
@@ -3366,6 +3369,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // 2. Update parent question
         const updatedQuestion = await storage.updateQuestion(id, {
           category: category || existingQuestion.category,
+          questionTitle: questionTitle !== undefined ? questionTitle : (existingQuestion as any).questionTitle,
           description: description || existingQuestion.description,
           descriptionImageUrls: descriptionImageUrls || existingQuestion.descriptionImageUrls,
           descriptionAudioUrl: descriptionAudioUrl || existingQuestion.descriptionAudioUrl,
@@ -3421,6 +3425,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Update single standalone question
         const updatedQuestion = await storage.updateQuestion(id, {
           category: category || existingQuestion.category,
+          questionTitle: questionTitle !== undefined ? questionTitle : (existingQuestion as any).questionTitle,
           description: description || existingQuestion.description,
           descriptionImageUrls: descriptionImageUrls || existingQuestion.descriptionImageUrls,
           descriptionAudioUrl: descriptionAudioUrl || existingQuestion.descriptionAudioUrl,

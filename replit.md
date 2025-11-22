@@ -6,6 +6,17 @@ The website serves as a comprehensive digital presence for N&P Company, featurin
 
 # Recent Changes
 
+**November 2025 - Question Title Feature:**
+- Added optional `questionTitle` field to questions for easy identification and searching
+- Database: Added `question_title` TEXT column to questions table
+- Backend: Updated POST and PUT /api/questions routes to handle questionTitle for both parent and standalone questions
+- Frontend (QuestionBankManager): 
+  - Language and Category fields now displayed in same row (grid-cols-2) for better space utilization
+  - New "Tiêu đề câu hỏi" input field added between category and description
+  - Placeholder text: "Nhập tên câu hỏi ngắn gọn dễ tìm"
+  - Search functionality extended to search across questionTitle, questionText, and description
+  - Form properly loads/saves questionTitle in both create and edit modes
+
 **November 2025 - Question Sets Feature:**
 - **Frontend (create-exam.tsx):** Implemented Question Sets UI allowing multiple named question groups per section
   - Unified dialogState fix: Replaced 3 async states with single synchronized object to prevent race conditions

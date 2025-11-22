@@ -93,6 +93,7 @@ const singleQuestionSchema = z.object({
 const questionSchema = z.object({
   language: z.string().min(1, "Ngôn ngữ là bắt buộc"),
   category: z.string().min(1, "Danh mục là bắt buộc"),
+  questionTitle: z.string().optional(), // Optional short title for easy identification
   sortOrder: z.number().default(0),
   questions: z.array(singleQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi").max(10, "Tối đa 10 câu hỏi"),
 });
@@ -103,6 +104,7 @@ type QuestionFormData = z.infer<typeof questionSchema>;
 const defaultFormValues: QuestionFormData = {
   language: "japanese",
   category: "ngữ pháp",
+  questionTitle: "",
   sortOrder: 0,
   questions: [{
     questionText: "",
@@ -156,7 +158,8 @@ export function QuestionBankManager() {
   const filteredQuestions = questions.filter(question => {
     const matchesSearch = searchQuery === "" || 
       question.questionText.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (question.description && question.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      (question.description && question.description.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      ((question as any).questionTitle && (question as any).questionTitle.toLowerCase().includes(searchQuery.toLowerCase()));
     
     // Map question category to Vietnamese for consistent filtering
     const questionCategoryVietnamese = categoryMapping[question.category] || question.category;
@@ -362,6 +365,7 @@ export function QuestionBankManager() {
         const updateData = { 
           category: data.category,
           language: data.language,
+          questionTitle: data.questionTitle,
           sortOrder: data.sortOrder,
           // Parent question data
           questionText: firstQuestion.questionText,
@@ -419,6 +423,7 @@ export function QuestionBankManager() {
         const backendData = {
           category: data.category,
           language: data.language,
+          questionTitle: data.questionTitle,
           sortOrder: data.sortOrder,
           // Parent question data (from first question)
           questionText: firstQuestion.questionText,
@@ -638,6 +643,7 @@ export function QuestionBankManager() {
     form.reset({
       language: (question as any).language || "japanese",
       category: question.category,
+      questionTitle: (question as any).questionTitle || "",
       sortOrder: (question as any).sortOrder || 0,
       questions: questionsArray,
     });
@@ -1023,33 +1029,34 @@ export function QuestionBankManager() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-              {/* Language */}
-              <FormField
-                control={form.control}
-                name="language"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ngôn ngữ *</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-question-language">
-                          <SelectValue placeholder="Chọn ngôn ngữ" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {languageOptions.map(language => (
-                          <SelectItem key={language.value} value={language.value}>
-                            {language.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              {/* Language and Category in same row */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Language */}
+                <FormField
+                  control={form.control}
+                  name="language"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ngôn ngữ *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-question-language">
+                            <SelectValue placeholder="Chọn ngôn ngữ" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {languageOptions.map(language => (
+                            <SelectItem key={language.value} value={language.value}>
+                              {language.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
 
-              <div className="grid grid-cols-1 gap-4">
                 {/* Category */}
                 <FormField
                   control={form.control}
@@ -1075,8 +1082,26 @@ export function QuestionBankManager() {
                     </FormItem>
                   )}
                 />
-
               </div>
+
+              {/* Question Title */}
+              <FormField
+                control={form.control}
+                name="questionTitle"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Tiêu đề câu hỏi (tùy chọn)</FormLabel>
+                    <FormControl>
+                      <Input 
+                        placeholder="Nhập tên câu hỏi ngắn gọn dễ tìm"
+                        data-testid="input-question-title"
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               {/* Question Description */}
               <FormField
