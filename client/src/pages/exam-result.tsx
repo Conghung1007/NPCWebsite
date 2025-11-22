@@ -182,7 +182,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
       if (section.questionSets && Array.isArray(section.questionSets)) {
         // New structure: flatten all questions from all question sets
         sectionQuestionIds = section.questionSets.flatMap((qs: any) => 
-          qs.questions ? qs.questions.map((q: any) => q.id || q) : []
+          qs.questionIds || []
         );
       } else if (section.questionIds) {
         // Legacy structure: use questionIds directly
