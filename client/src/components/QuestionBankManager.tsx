@@ -1417,38 +1417,66 @@ export function QuestionBankManager() {
                                     </Button>
                                   )}
                                 </div>
-                                {/* Option Images Upload */}
-                                <div className="space-y-3">
-                                  <Label className="text-xs text-gray-600">Hình ảnh lựa chọn (tùy chọn)</Label>
-                                  <MultipleImagePreviewBox
-                                    imageUrls={typeof option === 'string' ? [] : (option.imageUrls || [])}
-                                    onRemove={(imageIndex) => {
-                                      const currentQuestions = form.getValues("questions");
-                                      const updatedQuestions = [...currentQuestions];
-                                      const currentImageUrls = typeof updatedQuestions[questionIndex].options[optionIndex] === 'string' 
-                                        ? [] 
-                                        : (updatedQuestions[questionIndex].options[optionIndex] as any).imageUrls || [];
-                                      const newImageUrls = currentImageUrls.filter((_: string, idx: number) => idx !== imageIndex);
-                                      
-                                      updatedQuestions[questionIndex] = {
-                                        ...updatedQuestions[questionIndex],
-                                        options: updatedQuestions[questionIndex].options.map((opt, idx) => 
-                                          idx === optionIndex ? 
-                                            (typeof opt === 'string' ? 
-                                              { text: opt, imageUrl: '', imageUrls: newImageUrls } : 
-                                              { ...opt, imageUrls: newImageUrls }) : 
-                                            opt
-                                        )
-                                      };
-                                      form.setValue("questions", updatedQuestions);
-                                    }}
-                                    onChooseImage={() => {
-                                      const inputRef = optionImageInputRefs.current.get(`${questionIndex}-${optionIndex}`);
-                                      inputRef?.click();
-                                    }}
-                                    title={`Hình ảnh lựa chọn ${optionIndex + 1}`}
-                                    maxImages={3}
-                                  />
+                                {/* Option Images Upload - Compact */}
+                                <div className="space-y-2">
+                                  <div className="flex items-center gap-2">
+                                    <Button
+                                      type="button"
+                                      variant="outline"
+                                      size="sm"
+                                      onClick={() => {
+                                        const inputRef = optionImageInputRefs.current.get(`${questionIndex}-${optionIndex}`);
+                                        inputRef?.click();
+                                      }}
+                                      className="flex items-center gap-1.5"
+                                    >
+                                      <ImageIcon className="w-3.5 h-3.5" />
+                                      Thêm hình ảnh
+                                    </Button>
+                                    
+                                    {(typeof option !== 'string' && (option.imageUrls || []).length > 0) && (
+                                      <span className="text-xs text-muted-foreground">
+                                        ({(option.imageUrls || []).length} hình)
+                                      </span>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Image Preview */}
+                                  {typeof option !== 'string' && (option.imageUrls || []).length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                      {(option.imageUrls || []).map((url: string, idx: number) => (
+                                        <div key={idx} className="relative group">
+                                          <img src={url} alt="" className="w-12 h-12 object-cover rounded border" />
+                                          <button
+                                            type="button"
+                                            onClick={() => {
+                                              const currentQuestions = form.getValues("questions");
+                                              const updatedQuestions = [...currentQuestions];
+                                              const currentImageUrls = typeof updatedQuestions[questionIndex].options[optionIndex] === 'string' 
+                                                ? [] 
+                                                : (updatedQuestions[questionIndex].options[optionIndex] as any).imageUrls || [];
+                                              const newImageUrls = currentImageUrls.filter((_: string, i: number) => i !== idx);
+                                              
+                                              updatedQuestions[questionIndex] = {
+                                                ...updatedQuestions[questionIndex],
+                                                options: updatedQuestions[questionIndex].options.map((opt, i) => 
+                                                  i === optionIndex ? 
+                                                    (typeof opt === 'string' ? 
+                                                      { text: opt, imageUrl: '', imageUrls: newImageUrls } : 
+                                                      { ...opt, imageUrls: newImageUrls }) : 
+                                                    opt
+                                                )
+                                              };
+                                              form.setValue("questions", updatedQuestions);
+                                            }}
+                                            className="absolute -top-1 -right-1 bg-red-500 text-white rounded-full w-4 h-4 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                          >
+                                            <X className="w-2.5 h-2.5" />
+                                          </button>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                   
                                   <input
                                     ref={(el) => {
