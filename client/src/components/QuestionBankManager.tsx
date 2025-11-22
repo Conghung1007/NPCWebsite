@@ -945,10 +945,10 @@ export function QuestionBankManager() {
               <TableBody>
                 {paginatedQuestions.map((question) => (
                   <TableRow key={question.id}>
-                    <TableCell>
+                    <TableCell className="max-w-24">
                       {getLanguageBadge((question as any).language || "japanese")}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="max-w-24">
                       {getCategoryBadge(question.category)}
                     </TableCell>
                     <TableCell className="max-w-[63rem]">
