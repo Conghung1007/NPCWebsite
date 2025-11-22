@@ -1363,6 +1363,70 @@ export function QuestionBankManager() {
                           )}
                         />
 
+                        {/* Question Text Images Upload - Compact */}
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                const inputRef = questionImageInputRefs.current.get(questionIndex);
+                                inputRef?.click();
+                              }}
+                              className="flex items-center gap-1.5"
+                            >
+                              <ImageIcon className="w-3.5 h-3.5" />
+                              Thêm hình ảnh cho câu hỏi
+                            </Button>
+                            
+                            {(form.watch(`questions.${questionIndex}.imageUrls`) || []).length > 0 && (
+                              <span className="text-xs text-muted-foreground">
+                                ({(form.watch(`questions.${questionIndex}.imageUrls`) || []).length} hình)
+                              </span>
+                            )}
+                          </div>
+                          
+                          {/* Image Preview */}
+                          {(form.watch(`questions.${questionIndex}.imageUrls`) || []).length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {(form.watch(`questions.${questionIndex}.imageUrls`) || []).map((url, idx) => (
+                                <div key={idx} className="relative group">
+                                  <img src={url} alt="" className="w-16 h-16 object-cover rounded border" />
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const currentUrls = form.getValues(`questions.${questionIndex}.imageUrls`) || [];
+                                      const newUrls = currentUrls.filter((_, i) => i !== idx);
+                                      form.setValue(`questions.${questionIndex}.imageUrls`, newUrls);
+                                    }}
+                                    className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          
+                          <input
+                            ref={(el) => {
+                              if (el) {
+                                questionImageInputRefs.current.set(questionIndex, el);
+                              }
+                            }}
+                            type="file"
+                            accept="image/*"
+                            style={{ display: 'none' }}
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                handleQuestionImageUpload(file, questionIndex);
+                              }
+                            }}
+                          />
+                        </div>
+
                         {/* Options */}
                         <div className="space-y-3">
                           <div className="flex items-center justify-between">
