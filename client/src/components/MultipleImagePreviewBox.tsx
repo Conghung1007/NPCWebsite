@@ -76,27 +76,32 @@ export function MultipleImagePreviewBox({
         </div>
       )}
 
-      {/* Add more button - Compact design */}
+      {/* Add more button */}
       {canAddMore && (
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
+        <div
+          className="bg-muted/30 rounded-lg border-2 border-dashed border-muted-foreground/20 h-20 w-full flex items-center gap-3 px-4 cursor-pointer hover:bg-muted/40 transition-colors"
           onClick={onChooseImage}
-          className="w-full h-10 border-dashed hover:bg-muted/40"
         >
-          {safeImageUrls.length === 0 ? (
-            <>
-              <Upload className="w-4 h-4 mr-2" />
-              <span className="text-sm">{title}</span>
-            </>
-          ) : (
-            <>
-              <Plus className="w-4 h-4 mr-2" />
-              <span className="text-sm">Thêm hình ({safeImageUrls.length}/{maxImages})</span>
-            </>
-          )}
-        </Button>
+          <div className="flex-shrink-0 w-12 h-12 bg-gray-100 rounded border flex items-center justify-center">
+            {safeImageUrls.length === 0 ? (
+              <Upload className="w-6 h-6 text-gray-400" />
+            ) : (
+              <Plus className="w-6 h-6 text-gray-400" />
+            )}
+          </div>
+
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium text-foreground">
+              {safeImageUrls.length === 0 ? title : `Thêm ${title.toLowerCase()}`}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {safeImageUrls.length === 0 
+                ? "Click để chọn hình ảnh" 
+                : `${safeImageUrls.length}/${maxImages} hình ảnh`
+              }
+            </p>
+          </div>
+        </div>
       )}
 
       {/* Max limit reached message */}
