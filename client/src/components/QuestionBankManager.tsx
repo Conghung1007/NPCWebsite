@@ -934,9 +934,10 @@ export function QuestionBankManager() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Mô tả</TableHead>
-                  <TableHead>Danh mục</TableHead>
                   <TableHead>Ngôn ngữ</TableHead>
+                  <TableHead>Danh mục</TableHead>
+                  <TableHead>Tiêu đề</TableHead>
+                  <TableHead>Mô tả</TableHead>
                   <TableHead>Nội dung câu hỏi</TableHead>
                   <TableHead>Thao tác</TableHead>
                 </TableRow>
@@ -944,16 +945,21 @@ export function QuestionBankManager() {
               <TableBody>
                 {paginatedQuestions.map((question) => (
                   <TableRow key={question.id}>
-                    <TableCell className="max-w-xs">
-                      <div className="truncate text-sm text-muted-foreground">
-                        {question.description || "Không có"}
-                      </div>
+                    <TableCell>
+                      {getLanguageBadge((question as any).language || "japanese")}
                     </TableCell>
                     <TableCell>
                       {getCategoryBadge(question.category)}
                     </TableCell>
-                    <TableCell>
-                      {getLanguageBadge((question as any).language || "japanese")}
+                    <TableCell className="max-w-xs">
+                      <div className="truncate text-sm font-medium">
+                        {(question as any).questionTitle || "-"}
+                      </div>
+                    </TableCell>
+                    <TableCell className="max-w-xs">
+                      <div className="truncate text-sm text-muted-foreground">
+                        {question.description || "-"}
+                      </div>
                     </TableCell>
                     <TableCell className="max-w-md">
                       <div className="flex items-start gap-2">
