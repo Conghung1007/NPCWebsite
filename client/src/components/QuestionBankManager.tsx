@@ -620,13 +620,14 @@ export function QuestionBankManager() {
       questionText: question.questionText,
       description: question.description || "",
       descriptionImageUrls: descriptionImageUrls,
+      descriptionAudioUrl: (question as any).descriptionAudioUrl || "", // Load description audio
       points: parseFloat((question as any).points) || 1, // Parse as float since DB returns NUMERIC as string
       options,
       correctAnswer: question.correctAnswer,
       explanation: question.explanation || "",
       imageUrl: question.imageUrl || "",
       imageUrls: questionImageUrls,
-      audioUrl: question.audioUrl || "",
+      audioUrl: "", // No audio for question content
     }];
     
     // Add sub-questions if they exist
@@ -684,13 +685,14 @@ export function QuestionBankManager() {
           questionText: subQ.questionText || "",
           description: "", // Sub-questions don't have description
           descriptionImageUrls: [],
+          descriptionAudioUrl: "", // Sub-questions don't have description audio
           points: parseFloat(subQ.points) || 1, // Parse as float since DB returns NUMERIC as string
           options: subOptions,
           correctAnswer: subQ.correctAnswer || "",
           explanation: subQ.explanation || "",
           imageUrl: subQ.imageUrl || "",
           imageUrls: subImageUrls,
-          audioUrl: subQ.audioUrl || "",
+          audioUrl: "", // No audio for question content
         });
       }
     }
@@ -1207,7 +1209,7 @@ export function QuestionBankManager() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const audioInput = document.getElementById('question-audio-input-0') as HTMLInputElement;
+                    const audioInput = document.getElementById('description-audio-input') as HTMLInputElement;
                     audioInput?.click();
                   }}
                   className="flex items-center gap-1.5"
@@ -1224,7 +1226,7 @@ export function QuestionBankManager() {
                 )}
 
                 {/* Audio Preview (only when audio exists) */}
-                {form.watch(`questions.0.audioUrl`) && (
+                {form.watch(`questions.0.descriptionAudioUrl`) && (
                   <span className="text-xs text-muted-foreground">
                     (có audio)
                   </span>
@@ -1245,7 +1247,7 @@ export function QuestionBankManager() {
                 />
                 
                 <input
-                  id="question-audio-input-0"
+                  id="description-audio-input"
                   type="file"
                   accept="audio/*"
                   style={{ display: 'none' }}
@@ -1265,11 +1267,11 @@ export function QuestionBankManager() {
                       if (!response.ok) throw new Error('Upload failed');
                       
                       const result = await response.json();
-                      form.setValue(`questions.0.audioUrl`, result.audioUrl);
+                      form.setValue(`questions.0.descriptionAudioUrl`, result.audioUrl);
                       
                       toast({
                         title: "Thành công",
-                        description: "Audio đã được tải lên"
+                        description: "Audio mô tả đã được tải lên"
                       });
                     } catch (error) {
                       toast({
@@ -1283,11 +1285,11 @@ export function QuestionBankManager() {
               </div>
 
               {/* Description Media Preview (expandable) */}
-              {((form.watch(`questions.0.descriptionImageUrls`) || []).length > 0 || form.watch(`questions.0.audioUrl`)) && (
+              {((form.watch(`questions.0.descriptionImageUrls`) || []).length > 0 || form.watch(`questions.0.descriptionAudioUrl`)) && (
                 <div className="border rounded-lg p-3 space-y-3">
                   {(form.watch(`questions.0.descriptionImageUrls`) || []).length > 0 && (
                     <div>
-                      <Label className="text-xs text-muted-foreground mb-2 block">Hình ảnh đã tải lên:</Label>
+                      <Label className="text-xs text-muted-foreground mb-2 block">Hình ảnh mô tả đã tải lên:</Label>
                       <div className="flex flex-wrap gap-2">
                         {(form.watch(`questions.0.descriptionImageUrls`) || []).map((url, idx) => (
                           <div key={idx} className="relative group">
@@ -1309,18 +1311,18 @@ export function QuestionBankManager() {
                     </div>
                   )}
                   
-                  {form.watch(`questions.0.audioUrl`) && (
+                  {form.watch(`questions.0.descriptionAudioUrl`) && (
                     <div>
-                      <Label className="text-xs text-muted-foreground mb-2 block">Audio đã tải lên:</Label>
+                      <Label className="text-xs text-muted-foreground mb-2 block">Audio mô tả đã tải lên:</Label>
                       <div className="flex items-center gap-2">
                         <audio controls className="h-8 flex-1">
-                          <source src={form.watch(`questions.0.audioUrl`)} type="audio/mpeg" />
+                          <source src={form.watch(`questions.0.descriptionAudioUrl`)} type="audio/mpeg" />
                         </audio>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
-                          onClick={() => form.setValue(`questions.0.audioUrl`, "")}
+                          onClick={() => form.setValue(`questions.0.descriptionAudioUrl`, "")}
                           className="text-red-600 hover:text-red-700"
                         >
                           <X className="w-4 h-4" />
