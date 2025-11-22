@@ -142,6 +142,7 @@ export function QuestionBankManager() {
   // File input refs for image uploads
   const questionImageInputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
   const optionImageInputRefs = useRef<Map<string, HTMLInputElement>>(new Map()); // questionIndex-optionIndex as key
+  const descriptionImageInputRef = useRef<HTMLInputElement>(null); // For description images
 
   // Form for creating/editing questions
   const form = useForm<QuestionFormData>({
@@ -254,6 +255,58 @@ export function QuestionBankManager() {
     setDeleteConfirm({ isOpen: false, question: null });
   };
 
+
+  // Handle description image upload
+  const handleDescriptionImageUpload = async (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi tải lên",
+        description: "Vui lòng chọn file hình ảnh hợp lệ."
+      });
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: "destructive", 
+        title: "Lỗi tải lên",
+        description: "Kích thước file phải nhỏ hơn 5MB."
+      });
+      return;
+    }
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await fetch('/api/description-images/upload-direct', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      
+      // Add to descriptionImageUrls array
+      const currentUrls = form.getValues(`questions.0.descriptionImageUrls`) || [];
+      form.setValue(`questions.0.descriptionImageUrls`, [...currentUrls, data.imageUrl]);
+
+      toast({
+        title: "Thành công",
+        description: "Hình ảnh mô tả đã được tải lên thành công.",
+      });
+    } catch (error: any) {
+      toast({
+        variant: "destructive",
+        title: "Lỗi tải lên",
+        description: error.message || "Không thể tải lên hình ảnh."
+      });
+    }
+  };
 
   // Handle question image upload
   const handleQuestionImageUpload = async (file: File, questionIndex: number) => {
@@ -1129,7 +1182,7 @@ export function QuestionBankManager() {
                 )}
               />
 
-              {/* Media Upload - Compact Design */}
+              {/* Description Media Upload - Compact Design */}
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Image Upload Button */}
                 <Button
@@ -1137,7 +1190,7 @@ export function QuestionBankManager() {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const inputRef = questionImageInputRefs.current.get(0);
+                    const inputRef = descriptionImageInputRef.current;
                     inputRef?.click();
                   }}
                   className="flex items-center gap-1.5"
@@ -1162,9 +1215,9 @@ export function QuestionBankManager() {
                 </Button>
 
                 {/* Image Preview (only when images exist) */}
-                {(form.watch(`questions.0.imageUrls`) || []).length > 0 && (
+                {(form.watch(`questions.0.descriptionImageUrls`) || []).length > 0 && (
                   <span className="text-xs text-muted-foreground">
-                    ({(form.watch(`questions.0.imageUrls`) || []).length} hình ảnh)
+                    ({(form.watch(`questions.0.descriptionImageUrls`) || []).length} hình ảnh)
                   </span>
                 )}
 
@@ -1175,20 +1228,16 @@ export function QuestionBankManager() {
                   </span>
                 )}
                 
-                {/* Hidden file inputs */}
+                {/* Hidden file input for description images */}
                 <input
-                  ref={(el) => {
-                    if (el) {
-                      questionImageInputRefs.current.set(0, el);
-                    }
-                  }}
+                  ref={descriptionImageInputRef}
                   type="file"
                   accept="image/*"
                   style={{ display: 'none' }}
                   onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (file) {
-                      handleQuestionImageUpload(file, 0);
+                      handleDescriptionImageUpload(file);
                     }
                   }}
                 />
@@ -1231,22 +1280,22 @@ export function QuestionBankManager() {
                 />
               </div>
 
-              {/* Full Media Preview (expandable) */}
-              {((form.watch(`questions.0.imageUrls`) || []).length > 0 || form.watch(`questions.0.audioUrl`)) && (
+              {/* Description Media Preview (expandable) */}
+              {((form.watch(`questions.0.descriptionImageUrls`) || []).length > 0 || form.watch(`questions.0.audioUrl`)) && (
                 <div className="border rounded-lg p-3 space-y-3">
-                  {(form.watch(`questions.0.imageUrls`) || []).length > 0 && (
+                  {(form.watch(`questions.0.descriptionImageUrls`) || []).length > 0 && (
                     <div>
                       <Label className="text-xs text-muted-foreground mb-2 block">Hình ảnh đã tải lên:</Label>
                       <div className="flex flex-wrap gap-2">
-                        {(form.watch(`questions.0.imageUrls`) || []).map((url, idx) => (
+                        {(form.watch(`questions.0.descriptionImageUrls`) || []).map((url, idx) => (
                           <div key={idx} className="relative group">
                             <img src={url} alt="" className="w-16 h-16 object-cover rounded border" />
                             <button
                               type="button"
                               onClick={() => {
-                                const currentUrls = form.getValues(`questions.0.imageUrls`) || [];
+                                const currentUrls = form.getValues(`questions.0.descriptionImageUrls`) || [];
                                 const newUrls = currentUrls.filter((_, i) => i !== idx);
-                                form.setValue(`questions.0.imageUrls`, newUrls);
+                                form.setValue(`questions.0.descriptionImageUrls`, newUrls);
                               }}
                               className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                             >
