@@ -1834,6 +1834,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Description image upload endpoint (direct upload using multipart/form-data)
+  // Supports context parameter: ?context=qbank (default) or ?context=exam
+  app.post("/api/description-images/upload-direct", upload.single('file'), async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const context = req.query.context as string || req.body.context || 'qbank';
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: "No image file provided" });
+      }
+
+      // Validate file type
+      if (!file.mimetype.startsWith('image/')) {
+        return res.status(400).json({ message: "Only image files are allowed" });
+      }
+
+      // Validate file size (max 5MB)
+      if (file.size > 5 * 1024 * 1024) {
+        return res.status(400).json({ message: "Image size cannot exceed 5MB" });
+      }
+
+      const timestamp = Date.now();
+      const fileExtension = file.originalname.split('.').pop() || 'jpg';
+      const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      const folder = getContextFolder('temp-description-images', context);
+      
+      try {
+        const uploadConfig: MediaUploadConfig = {
+          provider: "primary",
+          folder: folder,
+          allowedTypes: ["image/*"],
+          maxSizeBytes: 5 * 1024 * 1024
+        };
+        
+        const uploadResult = await multiR2Storage.uploadFile(
+          file.buffer,
+          fileName,
+          file.mimetype,
+          uploadConfig
+        );
+
+        if (!uploadResult.success) {
+          return res.status(500).json({ message: uploadResult.error || "Failed to upload image" });
+        }
+
+        const imageUrl = `/api/${folder}/${fileName}`;
+        res.json({ 
+          imageUrl,
+          originalFileName: file.originalname || 'image file',
+          context
+        });
+      } catch (error) {
+        console.error("Error uploading description image:", error);
+        res.status(500).json({ message: "Failed to upload image" });
+      }
+    } catch (error) {
+      console.error("Error handling description image upload:", error);
+      res.status(500).json({ message: "Failed to process image upload request" });
+    }
+  });
+
   // Answer choice image upload endpoint (direct upload using multipart/form-data)
   // Supports context parameter: ?context=qbank (default) or ?context=exam
   app.post("/api/answer-images/upload-direct", upload.single('image'), async (req, res) => {
