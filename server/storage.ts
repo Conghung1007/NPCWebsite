@@ -839,10 +839,21 @@ export class MemStorage implements IStorage {
     // Collect all question IDs from both new sections format and legacy format
     const allQuestionIds = new Set<string>();
     
-    // Handle new sections format
+    // Handle new sections format (supports both questionIds and questionSets)
     if ((exam as any).sections && Array.isArray((exam as any).sections)) {
       for (const section of (exam as any).sections) {
-        if (section.questionIds && Array.isArray(section.questionIds)) {
+        // Handle questionSets format (new)
+        if (section.questionSets && Array.isArray(section.questionSets)) {
+          for (const questionSet of section.questionSets) {
+            if (questionSet.questionIds && Array.isArray(questionSet.questionIds)) {
+              questionSet.questionIds.forEach((id: string) => {
+                if (typeof id === 'string') allQuestionIds.add(id);
+              });
+            }
+          }
+        }
+        // Handle legacy questionIds format (backward compatibility)
+        else if (section.questionIds && Array.isArray(section.questionIds)) {
           section.questionIds.forEach((id: string) => {
             if (typeof id === 'string') allQuestionIds.add(id);
           });
@@ -1331,10 +1342,21 @@ export class DatabaseStorage implements IStorage {
     // Collect all question IDs from both new sections format and legacy format
     const allQuestionIds = new Set<string>();
     
-    // Handle new sections format
+    // Handle new sections format (supports both questionIds and questionSets)
     if ((exam as any).sections && Array.isArray((exam as any).sections)) {
       for (const section of (exam as any).sections) {
-        if (section.questionIds && Array.isArray(section.questionIds)) {
+        // Handle questionSets format (new)
+        if (section.questionSets && Array.isArray(section.questionSets)) {
+          for (const questionSet of section.questionSets) {
+            if (questionSet.questionIds && Array.isArray(questionSet.questionIds)) {
+              questionSet.questionIds.forEach((id: string) => {
+                if (typeof id === 'string') allQuestionIds.add(id);
+              });
+            }
+          }
+        }
+        // Handle legacy questionIds format (backward compatibility)
+        else if (section.questionIds && Array.isArray(section.questionIds)) {
           section.questionIds.forEach((id: string) => {
             if (typeof id === 'string') allQuestionIds.add(id);
           });
