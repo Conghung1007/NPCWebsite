@@ -951,17 +951,17 @@ export function QuestionBankManager() {
                     <TableCell>
                       {getCategoryBadge(question.category)}
                     </TableCell>
-                    <TableCell className="max-w-xs">
+                    <TableCell className="max-w-2xl">
                       <div className="truncate text-sm font-medium">
                         {(question as any).questionTitle || "-"}
                       </div>
                     </TableCell>
-                    <TableCell className="max-w-xs">
+                    <TableCell className="max-w-[12rem]">
                       <div className="truncate text-sm text-muted-foreground">
                         {question.description || "-"}
                       </div>
                     </TableCell>
-                    <TableCell className="max-w-md">
+                    <TableCell className="max-w-xs">
                       <div className="flex items-start gap-2">
                         {question.audioUrl && <Volume2 className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />}
                         {question.imageUrl && <Eye className="w-4 h-4 text-green-600 mt-0.5 flex-shrink-0" />}
