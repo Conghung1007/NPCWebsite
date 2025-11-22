@@ -669,6 +669,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let allAnswers: Record<string, string> = {};
       
       console.log("=== EXAM ATTEMPT DETAILS DEBUG ===");
+      console.log("Total questions from storage:", questions.length);
+      console.log("Question IDs from storage:", questions.map(q => q.id));
       console.log("Exam sections:", exam.sections);
       console.log("Attempt sectionResults:", attempt.sectionResults);
       console.log("sectionResults type:", typeof attempt.sectionResults);
@@ -713,9 +715,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Get parent questions in order
-      const parentQuestionsInOrder = sectionQuestionIds.map(questionId => 
-        questions.find(q => q.id === questionId)
-      ).filter(Boolean);
+      console.log("Looking for parent questions with IDs:", sectionQuestionIds);
+      const parentQuestionsInOrder = sectionQuestionIds.map(questionId => {
+        const found = questions.find(q => q.id === questionId);
+        if (!found) {
+          console.log(`  ✗ Question ${questionId} NOT FOUND in storage`);
+        }
+        return found;
+      }).filter(Boolean);
+      console.log("Found parent questions:", parentQuestionsInOrder.length);
       
       // Use all questions from storage (includes both parent and sub-questions)
       const allQuestions = questions;
