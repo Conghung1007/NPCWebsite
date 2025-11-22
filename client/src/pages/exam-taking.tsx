@@ -1194,21 +1194,54 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                           </CardTitle>
                         </CardHeader>
                       <CardContent className="space-y-6">
-                        {/* Sub-Question Images */}
+                        {/* Sub-Question Description Text */}
+                        {subQuestion.description && (
+                          <div className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg">
+                            {subQuestion.description}
+                          </div>
+                        )}
+                        
+                        {/* Sub-Question Description Images */}
+                        {(subQuestion.descriptionImageUrls && subQuestion.descriptionImageUrls.length > 0) && (
+                          <div className="flex justify-center flex-wrap gap-4">
+                            {subQuestion.descriptionImageUrls.map((imageUrl: string, index: number) => (
+                              <img
+                                key={index}
+                                src={imageUrl}
+                                alt={`Sub-question description illustration ${index + 1}`}
+                                className="max-w-full h-auto rounded-lg shadow-sm max-h-48"
+                              />
+                            ))}
+                          </div>
+                        )}
+                        
+                        {/* Sub-Question Description Audio */}
+                        {subQuestion.descriptionAudioUrl && (
+                          <div className="flex justify-center">
+                            <audio controls controlsList="nodownload" className="w-full max-w-md" key={`sub-desc-audio-${subQuestion.id}`}>
+                              <source src={subQuestion.descriptionAudioUrl.startsWith('/api/') 
+                                ? subQuestion.descriptionAudioUrl 
+                                : `/api/${subQuestion.descriptionAudioUrl}`} type="audio/mpeg" />
+                              Trình duyệt của bạn không hỗ trợ phát audio.
+                            </audio>
+                          </div>
+                        )}
+                        
+                        {/* Sub-Question Content Images */}
                         {(subQuestion.imageUrls && subQuestion.imageUrls.length > 0) && (
                           <div className="flex justify-center flex-wrap gap-4">
                             {subQuestion.imageUrls.map((imageUrl: string, index: number) => (
                               <img
                                 key={index}
                                 src={imageUrl}
-                                alt={`Sub-question illustration ${index + 1}`}
+                                alt={`Sub-question content illustration ${index + 1}`}
                                 className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
                               />
                             ))}
                           </div>
                         )}
 
-                        {/* Sub-Question Audio */}
+                        {/* Sub-Question Content Audio */}
                         {subQuestion.audioUrl && (
                           <div className="flex justify-center">
                             <audio controls controlsList="nodownload" className="w-full max-w-md" key={subQuestion.id}>
