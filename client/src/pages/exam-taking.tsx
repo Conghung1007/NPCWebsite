@@ -1053,28 +1053,54 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                 {(currentQuestion as any).subQuestions && (currentQuestion as any).subQuestions.length > 0 && (
                   <Card>
                     <CardContent className="p-6 space-y-4">
-                      {/* Parent Description */}
+                      {/* Parent Description Text */}
                       {(currentQuestion as any).description && (
                         <div className="text-sm text-gray-700 whitespace-pre-wrap">
                           {(currentQuestion as any).description}
                         </div>
                       )}
                       
-                      {/* Parent Images */}
+                      {/* Parent Description Images */}
+                      {((currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0) && (
+                        <div className="flex justify-center flex-wrap gap-4">
+                          {(currentQuestion as any).descriptionImageUrls.map((imageUrl: string, index: number) => (
+                            <img
+                              key={index}
+                              src={imageUrl}
+                              alt={`Question description illustration ${index + 1}`}
+                              className="max-w-full h-auto rounded-lg shadow-sm max-h-48"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Parent Description Audio */}
+                      {(currentQuestion as any).descriptionAudioUrl && (
+                        <div className="flex justify-center">
+                          <audio controls controlsList="nodownload" className="w-full max-w-md" key={`parent-desc-audio-${currentQuestion.id}`}>
+                            <source src={(currentQuestion as any).descriptionAudioUrl.startsWith('/api/') 
+                              ? (currentQuestion as any).descriptionAudioUrl 
+                              : `/api/${(currentQuestion as any).descriptionAudioUrl}`} type="audio/mpeg" />
+                            Trình duyệt của bạn không hỗ trợ phát audio.
+                          </audio>
+                        </div>
+                      )}
+                      
+                      {/* Parent Question Images (for question content) */}
                       {((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) && (
                         <div className="flex justify-center flex-wrap gap-4">
                           {(currentQuestion as any).imageUrls.map((imageUrl: string, index: number) => (
                             <img
                               key={index}
                               src={imageUrl}
-                              alt={`Question group illustration ${index + 1}`}
+                              alt={`Question content illustration ${index + 1}`}
                               className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
                             />
                           ))}
                         </div>
                       )}
                       
-                      {/* Parent Audio */}
+                      {/* Parent Question Audio (for question content) */}
                       {(currentQuestion as any).audioUrl && (
                         <div className="flex justify-center">
                           <audio controls controlsList="nodownload" className="w-full max-w-md" key={`parent-${currentQuestion.id}`}>
@@ -1261,7 +1287,40 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-6">
-                      {/* Question Images */}
+                      {/* Description Text */}
+                      {(currentQuestion as any).description && (
+                        <div className="text-sm text-gray-700 whitespace-pre-wrap bg-gray-50 p-3 rounded-lg">
+                          {(currentQuestion as any).description}
+                        </div>
+                      )}
+                      
+                      {/* Description Images */}
+                      {((currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0) && (
+                        <div className="flex justify-center flex-wrap gap-4">
+                          {(currentQuestion as any).descriptionImageUrls.map((imageUrl: string, index: number) => (
+                            <img
+                              key={index}
+                              src={imageUrl}
+                              alt={`Question description illustration ${index + 1}`}
+                              className="max-w-full h-auto rounded-lg shadow-sm max-h-48"
+                            />
+                          ))}
+                        </div>
+                      )}
+                      
+                      {/* Description Audio */}
+                      {(currentQuestion as any).descriptionAudioUrl && (
+                        <div className="flex justify-center">
+                          <audio controls controlsList="nodownload" className="w-full max-w-md" key={`desc-audio-${currentQuestion.id}`}>
+                            <source src={(currentQuestion as any).descriptionAudioUrl.startsWith('/api/') 
+                              ? (currentQuestion as any).descriptionAudioUrl 
+                              : `/api/${(currentQuestion as any).descriptionAudioUrl}`} type="audio/mpeg" />
+                            Trình duyệt của bạn không hỗ trợ phát audio.
+                          </audio>
+                        </div>
+                      )}
+                      
+                      {/* Question Content Images */}
                       {((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) || (currentQuestion as any).imageUrl ? (
                         <div className="flex justify-center flex-wrap gap-4">
                           {/* Show imageUrls array first (new format) */}
@@ -1269,7 +1328,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                             <img
                               key={index}
                               src={imageUrl}
-                              alt={`Question illustration ${index + 1}`}
+                              alt={`Question content illustration ${index + 1}`}
                               className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
                             />
                           ))}
@@ -1277,14 +1336,14 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                           {(currentQuestion as any).imageUrl && (!(currentQuestion as any).imageUrls || (currentQuestion as any).imageUrls.length === 0) && (
                             <img
                               src={(currentQuestion as any).imageUrl}
-                              alt="Question illustration"
+                              alt="Question content illustration"
                               className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
                             />
                           )}
                         </div>
                       ) : null}
 
-                      {/* Question Audio */}
+                      {/* Question Content Audio */}
                       {currentQuestion.audioUrl && (
                         <div className="flex justify-center">
                           <audio controls controlsList="nodownload" className="w-full max-w-md" key={currentQuestion.id}>
