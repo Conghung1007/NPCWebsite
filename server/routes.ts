@@ -668,6 +668,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let sectionQuestionIds: string[] = [];
       let allAnswers: Record<string, string> = {};
       
+      console.log("=== EXAM ATTEMPT DETAILS DEBUG ===");
+      console.log("Exam sections:", exam.sections);
+      console.log("Attempt sectionResults:", attempt.sectionResults);
+      console.log("sectionResults type:", typeof attempt.sectionResults);
+      console.log("sectionResults isArray:", Array.isArray(attempt.sectionResults));
+      
       // Check if exam uses new sections format or legacy format
       if (exam.sections && Array.isArray(exam.sections) && exam.sections.length > 0) {
         // New sections format (supports both questionIds and questionSets)
@@ -675,6 +681,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const questionIds = extractQuestionIds(section);
           sectionQuestionIds.push(...questionIds);
         });
+        
+        console.log("Section question IDs:", sectionQuestionIds);
         
         // Get answers from sectionResults
         if (attempt.sectionResults && typeof attempt.sectionResults === 'object') {
@@ -684,6 +692,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
             }
           });
         }
+        
+        console.log("All answers:", allAnswers);
       } else {
         // Legacy format
         sectionQuestionIds = [
