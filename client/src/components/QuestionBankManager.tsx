@@ -1274,20 +1274,7 @@ export function QuestionBankManager() {
 
                         {/* Options */}
                         <div className="space-y-3">
-                          <div className="flex items-center justify-between">
-                            <Label className="text-sm font-medium">Lựa chọn *</Label>
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleAddOption(questionIndex)}
-                              className="flex items-center gap-1"
-                              data-testid={`button-add-option-${questionIndex}`}
-                            >
-                              <Plus className="w-3 h-3" />
-                              Thêm lựa chọn
-                            </Button>
-                          </div>
+                          <Label className="text-sm font-medium">Lựa chọn *</Label>
                           
                           <div className="space-y-4">
                             {question.options.map((option, optionIndex) => (
@@ -1441,6 +1428,19 @@ export function QuestionBankManager() {
                                 </div>
                               </div>
                             ))}
+                            
+                            {/* Add Option Button - Compact */}
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAddOption(questionIndex)}
+                              className="w-full border-dashed hover:bg-muted/40"
+                              data-testid={`button-add-option-${questionIndex}`}
+                            >
+                              <Plus className="w-4 h-4 mr-2" />
+                              Thêm lựa chọn ({question.options.length})
+                            </Button>
                           </div>
                         </div>
 
@@ -1497,21 +1497,19 @@ export function QuestionBankManager() {
                   ))}
                 </div>
                 
-                {/* Add Question Button at Bottom */}
+                {/* Add Question Button at Bottom - Compact */}
                 {form.watch("questions").length < 10 && (
-                  <div className="flex justify-center pt-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={handleAddQuestion}
-                      className="flex items-center gap-1"
-                      data-testid="button-add-question"
-                    >
-                      <Plus className="w-4 h-4 mr-1" />
-                      Thêm câu hỏi
-                    </Button>
-                  </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleAddQuestion}
+                    className="w-full border-dashed hover:bg-muted/40"
+                    data-testid="button-add-question"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Thêm câu hỏi ({form.watch("questions").length}/10)
+                  </Button>
                 )}
               </div>
 
