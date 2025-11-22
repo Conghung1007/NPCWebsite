@@ -16,7 +16,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "
 import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Search, Edit, Trash2, HelpCircle, BookOpen, Volume2, Eye, Filter, Save, X, Minus, ChevronLeft, ChevronRight } from "lucide-react";
+import { Plus, Search, Edit, Trash2, HelpCircle, BookOpen, Volume2, Eye, Filter, Save, X, Minus, ChevronLeft, ChevronRight, Image as ImageIcon } from "lucide-react";
 import { AudioUploader } from "@/components/AudioUploader";
 import { QuestionImageUploader } from "@/components/QuestionImageUploader";
 import { ImagePreviewBox } from "@/components/ImagePreviewBox";
@@ -1129,26 +1129,53 @@ export function QuestionBankManager() {
                 )}
               />
 
-              {/* Parent Question Images Upload - Moved here */}
-              <div>
-                <Label className="text-sm font-medium">Hình ảnh câu hỏi (tùy chọn)</Label>
-                <MultipleImagePreviewBox
-                  imageUrls={form.watch(`questions.0.imageUrls`) || []}
-                  onRemove={(imageIndex) => {
-                    const currentUrls = form.getValues(`questions.0.imageUrls`) || [];
-                    const newUrls = currentUrls.filter((_, i) => i !== imageIndex);
-                    form.setValue(`questions.0.imageUrls`, newUrls);
-                  }}
-                  onChooseImage={() => {
+              {/* Media Upload - Compact Design */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Image Upload Button */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
                     const inputRef = questionImageInputRefs.current.get(0);
                     inputRef?.click();
                   }}
-                  title="Hình ảnh câu hỏi"
-                  className="mt-2"
-                  maxImages={5}
-                />
+                  className="flex items-center gap-1.5"
+                >
+                  <ImageIcon className="w-3.5 h-3.5" />
+                  Thêm hình ảnh
+                </Button>
                 
-                {/* Hidden file input for parent question image */}
+                {/* Audio Upload Button */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const audioInput = document.getElementById('question-audio-input-0') as HTMLInputElement;
+                    audioInput?.click();
+                  }}
+                  className="flex items-center gap-1.5"
+                >
+                  <Volume2 className="w-3.5 h-3.5" />
+                  Thêm audio
+                </Button>
+
+                {/* Image Preview (only when images exist) */}
+                {(form.watch(`questions.0.imageUrls`) || []).length > 0 && (
+                  <span className="text-xs text-muted-foreground">
+                    ({(form.watch(`questions.0.imageUrls`) || []).length} hình ảnh)
+                  </span>
+                )}
+
+                {/* Audio Preview (only when audio exists) */}
+                {form.watch(`questions.0.audioUrl`) && (
+                  <span className="text-xs text-muted-foreground">
+                    (có audio)
+                  </span>
+                )}
+                
+                {/* Hidden file inputs */}
                 <input
                   ref={(el) => {
                     if (el) {
@@ -1165,29 +1192,93 @@ export function QuestionBankManager() {
                     }
                   }}
                 />
-              </div>
-
-              {/* Parent Question Audio Upload - Moved here */}
-              <div>
-                <FormField
-                  control={form.control}
-                  name={`questions.0.audioUrl`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Audio câu hỏi (tùy chọn)</FormLabel>
-                      <FormControl>
-                        <AudioUploader
-                          currentAudioUrl={field.value}
-                          onAudioUpload={(audioUrl) => field.onChange(audioUrl)}
-                          onRemoveAudio={() => field.onChange("")}
-                          context="qbank"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+                
+                <input
+                  id="question-audio-input-0"
+                  type="file"
+                  accept="audio/*"
+                  style={{ display: 'none' }}
+                  onChange={async (e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    
+                    try {
+                      const formData = new FormData();
+                      formData.append('audio', file);
+                      
+                      const response = await fetch('/api/qbank-temp-description-audio/upload-direct', {
+                        method: 'POST',
+                        body: formData
+                      });
+                      
+                      if (!response.ok) throw new Error('Upload failed');
+                      
+                      const result = await response.json();
+                      form.setValue(`questions.0.audioUrl`, result.audioUrl);
+                      
+                      toast({
+                        title: "Thành công",
+                        description: "Audio đã được tải lên"
+                      });
+                    } catch (error) {
+                      toast({
+                        variant: "destructive",
+                        title: "Lỗi upload",
+                        description: "Không thể tải lên audio"
+                      });
+                    }
+                  }}
                 />
               </div>
+
+              {/* Full Media Preview (expandable) */}
+              {((form.watch(`questions.0.imageUrls`) || []).length > 0 || form.watch(`questions.0.audioUrl`)) && (
+                <div className="border rounded-lg p-3 space-y-3">
+                  {(form.watch(`questions.0.imageUrls`) || []).length > 0 && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-2 block">Hình ảnh đã tải lên:</Label>
+                      <div className="flex flex-wrap gap-2">
+                        {(form.watch(`questions.0.imageUrls`) || []).map((url, idx) => (
+                          <div key={idx} className="relative group">
+                            <img src={url} alt="" className="w-16 h-16 object-cover rounded border" />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const currentUrls = form.getValues(`questions.0.imageUrls`) || [];
+                                const newUrls = currentUrls.filter((_, i) => i !== idx);
+                                form.setValue(`questions.0.imageUrls`, newUrls);
+                              }}
+                              className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="w-3 h-3" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {form.watch(`questions.0.audioUrl`) && (
+                    <div>
+                      <Label className="text-xs text-muted-foreground mb-2 block">Audio đã tải lên:</Label>
+                      <div className="flex items-center gap-2">
+                        <audio controls className="h-8 flex-1">
+                          <source src={form.watch(`questions.0.audioUrl`)} type="audio/mpeg" />
+                        </audio>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => form.setValue(`questions.0.audioUrl`, "")}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Questions Section */}
               <div className="space-y-4">
