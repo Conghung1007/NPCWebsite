@@ -596,10 +596,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } = req.body;
       const sessionUser = (req.session as any)?.user;
       
-      console.log("=== EXAM ATTEMPT SUBMISSION ===");
-      console.log("Total Score:", totalScore);
-      console.log("Section Results:", JSON.stringify(sectionResults, null, 2));
-      
       // Validate request body using the new schema
       const validation = insertExamAttemptSchema.safeParse({
         examId,

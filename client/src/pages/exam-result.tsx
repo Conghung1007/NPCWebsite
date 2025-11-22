@@ -78,15 +78,16 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
   
   const countCorrect = (item: any) => {
     let correct = 0;
-    // Check parent
-    if (item.userAnswer === item.question.correctAnswer) {
+    // Check parent - convert both to string for comparison
+    if (String(item.userAnswer) === String(item.question.correctAnswer)) {
       correct++;
     }
     // Check sub-questions - userAnswer is embedded in each sub-question object
     if (item.question.subQuestions && Array.isArray(item.question.subQuestions)) {
       item.question.subQuestions.forEach((sub: any) => {
         // userAnswer is directly in the sub object (from backend)
-        if (sub.userAnswer === sub.correctAnswer) {
+        // Convert both to string for comparison
+        if (String(sub.userAnswer) === String(sub.correctAnswer)) {
           correct++;
         }
       });
@@ -112,8 +113,8 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
   // Calculate earned points from correct answers (including sub-questions)
   const calculateEarnedPoints = (item: any) => {
     let earned = 0;
-    // Check parent
-    if (item.userAnswer === item.question.correctAnswer) {
+    // Check parent - convert both to string for comparison
+    if (String(item.userAnswer) === String(item.question.correctAnswer)) {
       // Parse to number since points come from database as string
       earned += parseFloat(item.question.points) || 1;
     }
@@ -121,7 +122,8 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     if (item.question.subQuestions && Array.isArray(item.question.subQuestions)) {
       item.question.subQuestions.forEach((sub: any) => {
         // userAnswer is directly in the sub object (from backend)
-        if (sub.userAnswer === sub.correctAnswer) {
+        // Convert both to string for comparison
+        if (String(sub.userAnswer) === String(sub.correctAnswer)) {
           earned += parseFloat(sub.points) || 1;
         }
       });
