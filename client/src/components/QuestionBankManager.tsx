@@ -1253,9 +1253,9 @@ export function QuestionBankManager() {
                     
                     try {
                       const formData = new FormData();
-                      formData.append('audio', file);
+                      formData.append('file', file);
                       
-                      const response = await fetch('/api/qbank-temp-description-audio/upload-direct', {
+                      const response = await fetch('/api/description-audio/upload-direct', {
                         method: 'POST',
                         body: formData
                       });

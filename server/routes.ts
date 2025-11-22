@@ -1964,6 +1964,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Description audio upload endpoint (direct upload using multipart/form-data)
+  // Supports context parameter: ?context=qbank (default) or ?context=exam
+  app.post("/api/description-audio/upload-direct", upload.single('file'), async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const context = req.query.context as string || req.body.context || 'qbank';
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ message: "No audio file provided" });
+      }
+
+      // Validate file type
+      if (!file.mimetype.startsWith('audio/')) {
+        return res.status(400).json({ message: "Only audio files are allowed" });
+      }
+
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        return res.status(400).json({ message: "Audio size cannot exceed 10MB" });
+      }
+
+      const timestamp = Date.now();
+      const fileExtension = file.originalname.split('.').pop() || 'mp3';
+      const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      const folder = getContextFolder('temp-description-audio', context);
+      
+      try {
+        const uploadConfig: MediaUploadConfig = {
+          provider: "primary",
+          folder: folder,
+          allowedTypes: ["audio/*"],
+          maxSizeBytes: 10 * 1024 * 1024
+        };
+        
+        const uploadResult = await multiR2Storage.uploadFile(
+          file.buffer,
+          fileName,
+          file.mimetype,
+          uploadConfig
+        );
+
+        if (!uploadResult.success) {
+          return res.status(500).json({ message: uploadResult.error || "Failed to upload audio" });
+        }
+
+        const audioUrl = `/api/${folder}/${fileName}`;
+        res.json({ 
+          audioUrl,
+          originalFileName: file.originalname || 'audio file',
+          context
+        });
+      } catch (error) {
+        console.error("Error uploading description audio:", error);
+        res.status(500).json({ message: "Failed to upload audio" });
+      }
+    } catch (error) {
+      console.error("Error handling description audio upload:", error);
+      res.status(500).json({ message: "Failed to process audio upload request" });
+    }
+  });
+
   // Audio upload via server proxy (alternative to presigned URL)
   // Supports context parameter: ?context=qbank (default) or ?context=exam
   app.post("/api/audio/upload-direct", upload.single('audio'), async (req, res) => {
