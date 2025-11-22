@@ -430,16 +430,23 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     let earnedPoints = 0;
     const allQuestions = getAllQuestionsFlat(questions);
     
+    console.log("=== CALCULATING SECTION SCORE ===");
+    console.log("Answers:", answers);
+    console.log("Total questions:", allQuestions.length);
+    
     allQuestions.forEach(question => {
       const userAnswer = answers[question.id];
-      if (userAnswer === question.correctAnswer) {
-        // Add points from correct answer (default to 1 if not set for legacy data)
-        // Parse points to number since it comes from database as string
-        const questionPoints = parseFloat((question as any).points) || 1;
+      const isCorrect = userAnswer === question.correctAnswer;
+      const questionPoints = parseFloat((question as any).points) || 1;
+      
+      console.log(`Question ${question.id}: userAnswer=${userAnswer}, correctAnswer=${question.correctAnswer}, isCorrect=${isCorrect}, points=${questionPoints}`);
+      
+      if (isCorrect) {
         earnedPoints += questionPoints;
       }
     });
     
+    console.log("Total earned points:", earnedPoints);
     return earnedPoints;
   };
 
