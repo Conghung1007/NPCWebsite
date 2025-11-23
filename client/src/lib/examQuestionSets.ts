@@ -188,6 +188,41 @@ export function createQuestionSetActions(
         };
         return newSections;
       });
+    },
+
+    moveQuestionInSet: (sectionId: string, questionSetId: string, questionId: string, direction: 'up' | 'down') => {
+      setExamSections(prev => {
+        const sectionIdx = getSectionIndex(sectionId, prev);
+        if (sectionIdx === -1) return prev;
+
+        const section = prev[sectionIdx];
+        const setIdx = getQuestionSetIndex(questionSetId, section.questionSets);
+        if (setIdx === -1) return prev;
+
+        const questions = [...section.questionSets[setIdx].questions];
+        const questionIdx = questions.findIndex(q => q.id === questionId);
+        if (questionIdx === -1) return prev;
+
+        // Check boundaries
+        if (direction === 'up' && questionIdx === 0) return prev;
+        if (direction === 'down' && questionIdx === questions.length - 1) return prev;
+
+        // Swap questions
+        const newIdx = direction === 'up' ? questionIdx - 1 : questionIdx + 1;
+        [questions[questionIdx], questions[newIdx]] = [questions[newIdx], questions[questionIdx]];
+
+        const newSections = [...prev];
+        const newQuestionSets = [...section.questionSets];
+        newQuestionSets[setIdx] = {
+          ...newQuestionSets[setIdx],
+          questions
+        };
+        newSections[sectionIdx] = {
+          ...section,
+          questionSets: newQuestionSets
+        };
+        return newSections;
+      });
     }
   };
 }

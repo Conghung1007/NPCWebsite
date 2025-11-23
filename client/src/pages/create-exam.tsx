@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Plus, Save, ArrowLeft, Search, Trash2, HelpCircle, Volume2, Eye, X, ImageIcon } from "lucide-react";
+import { Plus, Save, ArrowLeft, Search, Trash2, HelpCircle, Volume2, Eye, X, ImageIcon, ArrowUp, ArrowDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { MultipleImagePreviewBox } from "@/components/MultipleImagePreviewBox";
@@ -786,18 +786,43 @@ export default function CreateExam() {
                                   Câu hỏi đã chọn ({questionSet.questions.length}):
                                 </h6>
                                 <div className="space-y-2">
-                                  {questionSet.questions.map((question) => (
-                                    <div key={question.id} className="flex items-center justify-between bg-white p-2 rounded border">
-                                      <div className="flex-1 mr-2 min-w-0">
-                                        {question.questionTitle && (
-                                          <p className="text-xs font-semibold text-primary truncate mb-0.5">
-                                            {question.questionTitle}
-                                          </p>
-                                        )}
+                                  {questionSet.questions.map((question, idx) => (
+                                    <div key={question.id} className="flex items-center gap-2 bg-white p-2 rounded border">
+                                      {/* Move buttons */}
+                                      <div className="flex flex-col gap-0.5 flex-shrink-0">
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => questionSetActions.moveQuestionInSet(section.id, questionSet.id, question.id, 'up')}
+                                          disabled={idx === 0}
+                                          className="h-5 w-5 p-0"
+                                        >
+                                          <ArrowUp className="w-3 h-3" />
+                                        </Button>
+                                        <Button
+                                          type="button"
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => questionSetActions.moveQuestionInSet(section.id, questionSet.id, question.id, 'down')}
+                                          disabled={idx === questionSet.questions.length - 1}
+                                          className="h-5 w-5 p-0"
+                                        >
+                                          <ArrowDown className="w-3 h-3" />
+                                        </Button>
+                                      </div>
+                                      
+                                      {/* Question content */}
+                                      <div className="flex-1 min-w-0">
                                         <p className="text-sm truncate">
+                                          {question.questionTitle && (
+                                            <span className="font-semibold text-primary">{question.questionTitle}: </span>
+                                          )}
                                           {question.questionText}
                                         </p>
                                       </div>
+                                      
+                                      {/* Delete button */}
                                       <Button
                                         type="button"
                                         variant="ghost"
