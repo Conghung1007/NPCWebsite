@@ -1324,7 +1324,7 @@ export function QuestionBankManager() {
                     <div>
                       <Label className="text-xs text-muted-foreground mb-2 block">Audio mô tả đã tải lên:</Label>
                       <div className="flex items-center gap-2">
-                        <audio controls className="h-8 flex-1">
+                        <audio key={form.watch(`questions.0.descriptionAudioUrl`)} controls className="h-8 flex-1">
                           <source src={form.watch(`questions.0.descriptionAudioUrl`)} type="audio/mpeg" />
                         </audio>
                         <Button
