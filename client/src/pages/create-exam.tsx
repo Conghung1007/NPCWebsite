@@ -538,8 +538,6 @@ export default function CreateExam() {
 
                     {/* Section Description Media - Compact UI */}
                     <div className="mb-6">
-                      <Label className="block text-sm font-medium mb-2">Media mô tả (tùy chọn)</Label>
-                      
                       {/* Compact buttons row */}
                       <div className="flex flex-wrap items-center gap-2 mb-3">
                         <Button
