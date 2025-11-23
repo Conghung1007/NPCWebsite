@@ -943,7 +943,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
           {/* Left Column: Section Description + Question Content */}
           <div className="lg:col-span-8 space-y-6">
             {/* Section Description */}
@@ -1402,9 +1402,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             </div>
           </div>
 
-          {/* Sticky Control Panel */}
+          {/* Fixed Control Panel */}
           <div className="lg:col-span-4">
-            <div className="sticky top-20 space-y-4">
+            <div className="lg:fixed lg:top-20 lg:right-8 lg:w-[calc((100%-1280px)/2+320px)] lg:max-w-[400px] space-y-4 max-h-[calc(100vh-6rem)] overflow-y-auto">
               {/* Timer Card */}
               <Card className={`shadow-lg border-2 ${sectionTimeLeft < 300 ? 'border-red-400 bg-red-50' : 'border-blue-200 bg-gradient-to-br from-blue-50 to-white'}`}>
                 <CardContent className="p-6">
