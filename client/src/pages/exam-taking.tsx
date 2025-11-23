@@ -1402,9 +1402,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             </div>
           </div>
 
-          {/* Fixed Control Panel */}
+          {/* Sticky Control Panel */}
           <div className="lg:col-span-4">
-            <div className="lg:fixed lg:top-20 lg:right-8 lg:w-[calc((100%-1280px)/2+320px)] lg:max-w-[400px] space-y-4 max-h-[calc(100vh-6rem)] overflow-y-auto">
+            <div className="sticky top-20 space-y-4 max-h-[calc(100vh-6rem)] overflow-y-auto">
               {/* Timer Card */}
               <Card className={`shadow-lg border-2 ${sectionTimeLeft < 300 ? 'border-red-400 bg-red-50' : 'border-blue-200 bg-gradient-to-br from-blue-50 to-white'}`}>
                 <CardContent className="p-6">
