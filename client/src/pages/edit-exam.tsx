@@ -922,6 +922,16 @@ export default function EditExam() {
                                 <div className="space-y-2">
                                   {questionSet.questions.map((question, idx) => (
                                     <div key={question.id} className="flex items-center gap-2 bg-white p-2 rounded border">
+                                      {/* Question content */}
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm truncate">
+                                          {question.questionTitle && (
+                                            <span className="font-semibold text-primary">{question.questionTitle}: </span>
+                                          )}
+                                          {question.questionText}
+                                        </p>
+                                      </div>
+                                      
                                       {/* Move buttons */}
                                       <div className="flex flex-col gap-0.5 flex-shrink-0">
                                         <Button
@@ -944,16 +954,6 @@ export default function EditExam() {
                                         >
                                           <ArrowDown className="w-3 h-3" />
                                         </Button>
-                                      </div>
-                                      
-                                      {/* Question content */}
-                                      <div className="flex-1 min-w-0">
-                                        <p className="text-sm truncate">
-                                          {question.questionTitle && (
-                                            <span className="font-semibold text-primary">{question.questionTitle}: </span>
-                                          )}
-                                          {question.questionText}
-                                        </p>
                                       </div>
                                       
                                       {/* Delete button */}
