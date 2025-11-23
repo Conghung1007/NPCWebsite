@@ -45,11 +45,11 @@ export function AudioUploader({
       return;
     }
 
-    // Validate file size (max 10MB)
-    if (file.size > 10 * 1024 * 1024) {
+    // Validate file size (max 50MB)
+    if (file.size > 50 * 1024 * 1024) {
       toast({
         title: "Lỗi", 
-        description: "File audio không được vượt quá 10MB",
+        description: "File audio không được vượt quá 50MB",
         variant: "destructive",
       });
       return;

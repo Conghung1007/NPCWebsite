@@ -148,12 +148,12 @@ export function DescriptionMediaUploader({
       return;
     }
 
-    // Validate file size (10MB max)
-    if (file.size > 10 * 1024 * 1024) {
+    // Validate file size (50MB max)
+    if (file.size > 50 * 1024 * 1024) {
       toast({
         variant: "destructive",
         title: "Lỗi tải lên", 
-        description: "Kích thước file audio phải nhỏ hơn 10MB."
+        description: "Kích thước file audio phải nhỏ hơn 50MB."
       });
       return;
     }
