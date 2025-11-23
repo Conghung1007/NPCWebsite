@@ -264,13 +264,14 @@ export default function CreateExam() {
     );
     if (isAlreadySelected) return false;
     
-    // Apply search filter (search in both question text and description)
+    // Apply search filter (search in question title, text, and description)
     if (questionSearchQuery) {
       const searchLower = questionSearchQuery.toLowerCase();
+      const questionTitleMatch = question.questionTitle && question.questionTitle.toLowerCase().includes(searchLower);
       const questionTextMatch = question.questionText.toLowerCase().includes(searchLower);
       const descriptionMatch = question.description && question.description.toLowerCase().includes(searchLower);
       
-      if (!questionTextMatch && !descriptionMatch) {
+      if (!questionTitleMatch && !questionTextMatch && !descriptionMatch) {
         return false;
       }
     }
@@ -787,15 +788,22 @@ export default function CreateExam() {
                                 <div className="space-y-2">
                                   {questionSet.questions.map((question) => (
                                     <div key={question.id} className="flex items-center justify-between bg-white p-2 rounded border">
-                                      <span className="text-sm truncate flex-1 mr-2">
-                                        {question.questionText}
-                                      </span>
+                                      <div className="flex-1 mr-2 min-w-0">
+                                        {question.questionTitle && (
+                                          <p className="text-xs font-semibold text-primary truncate mb-0.5">
+                                            {question.questionTitle}
+                                          </p>
+                                        )}
+                                        <p className="text-sm truncate">
+                                          {question.questionText}
+                                        </p>
+                                      </div>
                                       <Button
                                         type="button"
                                         variant="ghost"
                                         size="sm"
                                         onClick={() => questionSetActions.removeQuestionFromSet(section.id, questionSet.id, question.id)}
-                                        className="text-red-600 hover:text-red-700"
+                                        className="text-red-600 hover:text-red-700 flex-shrink-0"
                                       >
                                         <X className="w-4 h-4" />
                                       </Button>
@@ -948,16 +956,20 @@ export default function CreateExam() {
                     <Table className="table-fixed w-full">
                       <TableHeader>
                         <TableRow>
-                          <TableHead className="w-[25%]">Mô tả</TableHead>
-                          <TableHead className="w-[35%]">Câu hỏi</TableHead>
-                          <TableHead className="w-[15%]">Phần thi</TableHead>
-                          <TableHead className="w-[13%]">Ngôn ngữ</TableHead>
-                          <TableHead className="w-[12%]">Thao tác</TableHead>
+                          <TableHead className="w-[18%]">Tiêu đề</TableHead>
+                          <TableHead className="w-[22%]">Mô tả</TableHead>
+                          <TableHead className="w-[25%]">Câu hỏi</TableHead>
+                          <TableHead className="w-[13%]">Phần thi</TableHead>
+                          <TableHead className="w-[11%]">Ngôn ngữ</TableHead>
+                          <TableHead className="w-[11%]">Thao tác</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {filteredQuestions.map((question) => (
                           <TableRow key={question.id}>
+                            <TableCell className="truncate">
+                              <p className="text-sm font-medium truncate">{question.questionTitle || "-"}</p>
+                            </TableCell>
                             <TableCell className="truncate">
                               <p className="text-sm text-gray-500 truncate">{question.description || "Không có"}</p>
                             </TableCell>
