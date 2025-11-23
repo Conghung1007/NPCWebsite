@@ -867,56 +867,36 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const SectionIcon = sectionConfig?.icon;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white shadow-sm sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
+      {/* Simplified Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
           <div className="flex items-center justify-between">
-            <div>
-              <div className="flex items-center gap-3 mb-2">
-                <div className={`p-2 rounded-lg ${sectionConfig?.color || 'bg-blue-500'} text-white`}>
-                  {SectionIcon && <SectionIcon className="w-5 h-5" />}
-                </div>
-                <div>
-                  <h1 className="text-xl font-semibold text-gray-900">
-                    {sectionConfig?.title || 'Đang tải'} - {exam.title}
-                  </h1>
-                  <p className="text-sm text-gray-600">
-                    Câu hỏi {currentQuestionIndex + 1} / {currentSection?.questions.length || 0} | Tổng: {totalQuestionsInSection} câu (kể cả câu con)
-                  </p>
-                </div>
+            <div className="flex items-center gap-3">
+              <div className={`p-2 rounded-lg ${sectionConfig?.color || 'bg-gradient-to-br from-blue-500 to-blue-600'} text-white shadow-md`}>
+                {SectionIcon && <SectionIcon className="w-5 h-5" />}
               </div>
-              {/* Dynamic Section Progress Indicator */}
-              <div className="flex items-center gap-2">
-                {examSections.map((section, index) => (
-                  <div key={section.id} className="flex items-center">
-                    <div className={`w-3 h-3 rounded-full ${
-                      completedSections.has(section.id) ? 'bg-green-500' :
-                      currentSectionIndex === index ? 'bg-blue-500' : 'bg-gray-300'
-                    }`} />
-                    {index < examSections.length - 1 && <div className="w-6 h-0.5 bg-gray-300 mx-1" />}
-                  </div>
-                ))}
+              <div>
+                <h1 className="text-lg font-bold text-gray-900">
+                  {exam.title}
+                </h1>
+                <p className="text-sm text-gray-500 font-medium">
+                  {sectionConfig?.title || 'Đang tải'} - Câu {currentQuestionIndex + 1}/{currentSection?.questions.length || 0}
+                </p>
               </div>
             </div>
-            <div className="flex items-center space-x-6">
-              <div className="flex items-center space-x-2">
-                <Clock className="w-5 h-5 text-gray-500" />
-                <span className={`font-mono text-lg ${sectionTimeLeft < 300 ? 'text-red-600' : 'text-gray-900'}`}>
-                  {formatTime(sectionTimeLeft)}
-                </span>
-              </div>
-              <Button 
-                variant="outline" 
-                onClick={handleSectionComplete}
-                disabled={isSubmitting || sectionCompleted}
-              >
-                {hasNextSection() ? "Hoàn thành phần này" : "Nộp bài"}
-              </Button>
+            {/* Section Progress Dots */}
+            <div className="flex items-center gap-2">
+              {examSections.map((section, index) => (
+                <div key={section.id} className="flex items-center">
+                  <div className={`w-2.5 h-2.5 rounded-full transition-all ${
+                    completedSections.has(section.id) ? 'bg-green-500 ring-2 ring-green-200' :
+                    currentSectionIndex === index ? 'bg-blue-500 ring-2 ring-blue-200 scale-125' : 'bg-gray-300'
+                  }`} />
+                  {index < examSections.length - 1 && <div className="w-4 h-0.5 bg-gray-300 mx-1" />}
+                </div>
+              ))}
             </div>
-          </div>
-          <div className="mt-4">
-            <Progress value={progress} className="w-full" />
           </div>
         </div>
       </div>
@@ -962,22 +942,23 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       )}
 
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* Section Description */}
           {currentSection && (currentSection.content || (currentSection.descriptionImageUrls && currentSection.descriptionImageUrls.length > 0) || currentSection.descriptionAudioUrl) && (
-            <div className="lg:col-span-3 mb-6">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl text-green-600">
+            <div className="lg:col-span-8 mb-6">
+              <Card className="shadow-lg border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-white">
+                <CardHeader className="bg-gradient-to-r from-emerald-100/50 to-emerald-50/50 border-b border-emerald-200">
+                  <CardTitle className="text-xl font-bold text-emerald-700 flex items-center gap-2">
+                    <div className="w-1.5 h-6 bg-emerald-600 rounded-full"></div>
                     Phần {currentSectionIndex + 1}: {currentSection.sectionName || (currentSection as any).type || ""}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 p-6">
                   {/* Section Description Text */}
                   {currentSection.content && (
-                    <div className="bg-blue-50 dark:bg-blue-900/20 p-4 rounded-lg">
-                      <p className="text-gray-800 dark:text-gray-200 whitespace-pre-wrap">
+                    <div className="bg-blue-50/80 border border-blue-200 p-5 rounded-xl">
+                      <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">
                         {currentSection.content}
                       </p>
                     </div>
@@ -1026,7 +1007,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
           )}
           
           {/* Question Content */}
-          <div className="lg:col-span-3">
+          <div className="lg:col-span-8">
             {!currentQuestion ? (
               <Card>
                 <CardContent className="p-8 text-center">
@@ -1038,10 +1019,11 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               <div className="space-y-6">
                 {/* Question Set Name Display */}
                 {(currentQuestion as any).questionSetName && (
-                  <Card className="bg-green-50 border-green-200">
-                    <CardContent className="py-3 px-4">
+                  <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 shadow-sm">
+                    <CardContent className="py-3 px-5">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-green-600">
+                        <div className="w-1 h-5 bg-green-600 rounded-full"></div>
+                        <span className="text-sm font-semibold text-green-700">
                           {(currentQuestion as any).questionSetName}
                         </span>
                       </div>
@@ -1054,11 +1036,11 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                  ((currentQuestion as any).description || 
                   ((currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0) || 
                   (currentQuestion as any).descriptionAudioUrl) && (
-                  <Card>
+                  <Card className="shadow-md border-amber-200 bg-gradient-to-br from-amber-50/50 to-white">
                     <CardContent className="p-6 space-y-4">
                       {/* Description Text */}
                       {(currentQuestion as any).description && (
-                        <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                        <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
                           {(currentQuestion as any).description}
                         </div>
                       )}
@@ -1097,9 +1079,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   /* Render Parent + Sub-Questions */
                   <>
                     {/* Parent Question (Câu 1) */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">
+                    <Card className="shadow-md border-blue-200 bg-gradient-to-br from-white to-blue-50/30">
+                      <CardHeader className="bg-gradient-to-r from-blue-100/50 to-blue-50/50 border-b border-blue-200">
+                        <CardTitle className="text-lg font-bold text-blue-900">
                           Câu {currentQuestionIndex + 1}.1: {currentQuestion.questionText}
                         </CardTitle>
                       </CardHeader>
@@ -1129,13 +1111,13 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                             const optionImageUrls = typeof option === 'string' ? [] : (option.imageUrls || []);
                             
                             return (
-                              <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
+                              <div key={index} className="flex items-start space-x-3 p-4 border-2 rounded-xl hover:border-blue-400 hover:bg-blue-50/50 transition-all cursor-pointer">
                                 <RadioGroupItem 
                                   value={index.toString()} 
                                   id={`parent-option-${currentQuestion.id}-${index}`} 
-                                  className="mt-1"
+                                  className="mt-1.5"
                                 />
-                                <div className="flex-1 cursor-pointer">
+                                <div className="flex-1">
                                   <Label 
                                     htmlFor={`parent-option-${currentQuestion.id}-${index}`} 
                                     className="cursor-pointer flex flex-col space-y-2"
@@ -1175,9 +1157,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
                     {/* Sub-Questions (Câu 2, 3, ...) */}
                     {(currentQuestion as any).subQuestions.map((subQuestion: any, subIndex: number) => (
-                      <Card key={subQuestion.id}>
-                        <CardHeader>
-                          <CardTitle className="text-lg">
+                      <Card key={subQuestion.id} className="shadow-md border-purple-200 bg-gradient-to-br from-white to-purple-50/30">
+                        <CardHeader className="bg-gradient-to-r from-purple-100/50 to-purple-50/50 border-b border-purple-200">
+                          <CardTitle className="text-lg font-bold text-purple-900">
                             Câu {currentQuestionIndex + 1}.{subIndex + 2}: {subQuestion.questionText}
                           </CardTitle>
                         </CardHeader>
@@ -1207,13 +1189,13 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                             const optionImageUrls = typeof option === 'string' ? [] : (option.imageUrls || []);
                             
                             return (
-                              <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
+                              <div key={index} className="flex items-start space-x-3 p-4 border-2 rounded-xl hover:border-purple-400 hover:bg-purple-50/50 transition-all cursor-pointer">
                                 <RadioGroupItem 
                                   value={index.toString()} 
                                   id={`sub-option-${subQuestion.id}-${index}`} 
-                                  className="mt-1"
+                                  className="mt-1.5"
                                 />
-                                <div className="flex-1 cursor-pointer">
+                                <div className="flex-1">
                                   <Label 
                                     htmlFor={`sub-option-${subQuestion.id}-${index}`} 
                                     className="cursor-pointer flex flex-col space-y-2"
@@ -1261,11 +1243,11 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     {((currentQuestion as any).description || 
                       ((currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0) || 
                       (currentQuestion as any).descriptionAudioUrl) && (
-                      <Card>
+                      <Card className="shadow-md border-amber-200 bg-gradient-to-br from-amber-50/50 to-white">
                         <CardContent className="p-6 space-y-4">
                           {/* Description Text */}
                           {(currentQuestion as any).description && (
-                            <div className="text-sm text-gray-700 whitespace-pre-wrap">
+                            <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
                               {(currentQuestion as any).description}
                             </div>
                           )}
@@ -1300,9 +1282,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     )}
                     
                     {/* Regular Question */}
-                    <Card>
-                      <CardHeader>
-                        <CardTitle className="text-lg">
+                    <Card className="shadow-md border-indigo-200 bg-gradient-to-br from-white to-indigo-50/30">
+                      <CardHeader className="bg-gradient-to-r from-indigo-100/50 to-indigo-50/50 border-b border-indigo-200">
+                        <CardTitle className="text-lg font-bold text-indigo-900">
                           Câu {currentQuestionIndex + 1}: {currentQuestion.questionText}
                         </CardTitle>
                       </CardHeader>
@@ -1341,13 +1323,13 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                           const optionImageUrls = typeof option === 'string' ? [] : (option.imageUrls || []);
                           
                           return (
-                            <div key={index} className="flex items-start space-x-3 p-3 border rounded-lg">
+                            <div key={index} className="flex items-start space-x-3 p-4 border-2 rounded-xl hover:border-indigo-400 hover:bg-indigo-50/50 transition-all cursor-pointer">
                               <RadioGroupItem 
                                 value={index.toString()} 
                                 id={`option-${index}`} 
-                                className="mt-1"
+                                className="mt-1.5"
                               />
-                              <div className="flex-1 cursor-pointer">
+                              <div className="flex-1">
                                 <Label 
                                   htmlFor={`option-${index}`} 
                                   className="cursor-pointer flex flex-col space-y-2"
@@ -1393,55 +1375,97 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
             {/* Navigation - Within Section Only */}
             {currentQuestion && (
-              <div className="flex justify-between mt-6">
+              <div className="flex justify-between mt-8 gap-4">
                 <Button
                   variant="outline"
                   onClick={handlePrevious}
                   disabled={currentQuestionIndex === 0 || sectionCompleted}
+                  size="lg"
+                  className="flex-1 border-2 hover:bg-blue-50 hover:border-blue-400 transition-all"
                 >
-                  <ChevronLeft className="w-4 h-4 mr-2" />
+                  <ChevronLeft className="w-5 h-5 mr-2" />
                   Câu trước
                 </Button>
                 <Button
                   onClick={handleNext}
                   disabled={currentQuestionIndex === (currentSection?.questions.length || 0) - 1 || sectionCompleted}
+                  size="lg"
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md"
                 >
                   Câu sau
-                  <ChevronRight className="w-4 h-4 ml-2" />
+                  <ChevronRight className="w-5 h-5 ml-2" />
                 </Button>
               </div>
             )}
           </div>
 
-          {/* Section Overview */}
-          <div className="lg:col-span-1">
-            <Card className="sticky top-24">
-              <CardHeader>
-                <CardTitle className="text-base flex items-center gap-2">
-                  {SectionIcon && <SectionIcon className="w-4 h-4" />}
-                  {sectionConfig?.title || 'Đang tải'}
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="text-sm">
-                    <p className="font-medium">Đã trả lời: {answeredCount}/{totalQuestionsInSection}</p>
-                    <Progress value={totalQuestionsInSection > 0 ? (answeredCount / totalQuestionsInSection) * 100 : 0} className="mt-2" />
+          {/* Sticky Control Panel */}
+          <div className="lg:col-span-4">
+            <div className="sticky top-20 space-y-4">
+              {/* Timer Card */}
+              <Card className={`shadow-lg border-2 ${sectionTimeLeft < 300 ? 'border-red-400 bg-red-50' : 'border-blue-200 bg-gradient-to-br from-blue-50 to-white'}`}>
+                <CardContent className="p-6">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-2 mb-3">
+                      <Clock className={`w-6 h-6 ${sectionTimeLeft < 300 ? 'text-red-600' : 'text-blue-600'}`} />
+                      <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Thời gian</span>
+                    </div>
+                    <div className={`text-4xl font-bold font-mono ${sectionTimeLeft < 300 ? 'text-red-600' : 'text-blue-700'}`}>
+                      {formatTime(sectionTimeLeft)}
+                    </div>
+                    {sectionTimeLeft < 300 && (
+                      <p className="text-xs text-red-600 mt-2 font-medium">Sắp hết giờ!</p>
+                    )}
                   </div>
-                  
-                  <div className="grid grid-cols-5 gap-2">
+                </CardContent>
+              </Card>
+
+              {/* Progress Card */}
+              <Card className="shadow-md border-green-200 bg-gradient-to-br from-green-50 to-white">
+                <CardContent className="p-5">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-semibold text-gray-700">Tiến độ</span>
+                      <span className="text-sm font-bold text-green-700">{answeredCount}/{totalQuestionsInSection}</span>
+                    </div>
+                    <Progress 
+                      value={totalQuestionsInSection > 0 ? (answeredCount / totalQuestionsInSection) * 100 : 0} 
+                      className="h-3" 
+                    />
+                    <p className="text-xs text-gray-600">Đã trả lời {answeredCount} câu</p>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Submit Button */}
+              <Button 
+                onClick={handleSectionComplete}
+                disabled={isSubmitting || sectionCompleted}
+                size="lg"
+                className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white shadow-lg text-base font-semibold py-6"
+              >
+                {hasNextSection() ? "Hoàn thành phần này" : "Nộp bài"}
+              </Button>
+
+              {/* Question Grid */}
+              <Card className="shadow-md border-gray-200">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-sm flex items-center gap-2 text-gray-700">
+                    <FileText className="w-4 h-4" />
+                    Danh sách câu hỏi
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-5 gap-2 mb-4">
                     {(currentSection?.questions || []).map((question, index) => {
                       const isCurrent = index === currentQuestionIndex;
-                      // Check if parent question is answered
                       const parentAnswered = sectionAnswers[question.id] !== undefined;
-                      // Check if all sub-questions are answered (if any)
                       const subQuestions = (question as any).subQuestions || [];
                       const allSubAnswered = subQuestions.length > 0 
                         ? subQuestions.every((sq: any) => sectionAnswers[sq.id] !== undefined)
-                        : true; // No sub-questions means all answered
-                      // Question is fully answered if parent AND all subs are answered
+                        : true;
                       const isAnswered = parentAnswered && allSubAnswered;
-                      const canNavigate = index <= currentQuestionIndex; // Allow navigation to current and previous questions
+                      const canNavigate = index <= currentQuestionIndex;
                       
                       return (
                         <button
@@ -1449,14 +1473,14 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                           onClick={() => canNavigate ? setCurrentQuestionIndex(index) : undefined}
                           disabled={!canNavigate}
                           className={`
-                            w-8 h-8 text-xs rounded font-medium border-2 transition-colors
+                            w-full aspect-square text-sm rounded-lg font-semibold border-2 transition-all
                             ${isCurrent
-                              ? 'bg-primary text-primary-foreground border-primary' 
+                              ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' 
                               : isAnswered
-                                ? 'bg-green-100 text-green-800 border-green-300 hover:bg-green-200'
+                                ? 'bg-green-100 text-green-800 border-green-400 hover:bg-green-200 hover:scale-105'
                                 : canNavigate
-                                  ? 'bg-gray-100 text-gray-600 border-gray-300 hover:bg-gray-200'
-                                  : 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed'
+                                  ? 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200 hover:scale-105'
+                                  : 'bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed opacity-50'
                             }
                           `}
                         >
@@ -1466,53 +1490,27 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     })}
                   </div>
                   
-                  <div className="text-xs text-gray-600 space-y-1">
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-primary rounded mr-2"></div>
+                  <div className="text-xs text-gray-600 space-y-1.5 border-t pt-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-blue-600 rounded-lg border-2 border-blue-600"></div>
                       <span>Câu hiện tại</span>
                     </div>
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-green-100 border border-green-300 rounded mr-2"></div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-green-100 rounded-lg border-2 border-green-400"></div>
                       <span>Đã trả lời</span>
                     </div>
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-gray-100 border border-gray-300 rounded mr-2"></div>
-                      <span>Có thể trả lời</span>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-gray-100 rounded-lg border-2 border-gray-300"></div>
+                      <span>Chưa trả lời</span>
                     </div>
-                    <div className="flex items-center">
-                      <div className="w-3 h-3 bg-gray-50 border border-gray-200 rounded mr-2"></div>
+                    <div className="flex items-center gap-2">
+                      <div className="w-4 h-4 bg-gray-50 rounded-lg border-2 border-gray-200 opacity-50"></div>
                       <span>Chưa mở khóa</span>
                     </div>
                   </div>
-
-                  {/* Dynamic Section Navigation Info */}
-                  <div className="pt-4 border-t border-gray-200">
-                    <h4 className="font-medium text-sm mb-2">Tiến độ bài thi ({examSections.length} phần)</h4>
-                    <div className="space-y-2 text-xs">
-                      {examSections.map((section, index) => {
-                        return (
-                          <div key={section.id} className="flex items-center gap-2">
-                            <div className={`w-3 h-3 rounded-full ${
-                              completedSections.has(section.id) ? 'bg-green-500' :
-                              currentSectionIndex === index ? 'bg-blue-500' : 'bg-gray-300'
-                            }`} />
-                            <FileText className="w-3 h-3 text-gray-500" />
-                            <span className={`flex-1 ${
-                              currentSectionIndex === index ? 'font-medium' : ''
-                            }`}>
-                              {index + 1}. {section.sectionName || (section as any).type || `Phần ${index + 1}`}
-                            </span>
-                            <span className="text-gray-500">
-                              {getTotalQuestionCount(section.questions)} câu
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </div>
