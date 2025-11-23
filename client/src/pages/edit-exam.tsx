@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Label } from "@/components/ui/label";
-import { Plus, Save, ArrowLeft, Search, Trash2, HelpCircle, Volume2, Eye, X } from "lucide-react";
+import { Plus, Save, ArrowLeft, Search, Trash2, HelpCircle, Volume2, Eye, X, ImageIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { MultipleImagePreviewBox } from "@/components/MultipleImagePreviewBox";
@@ -670,25 +670,54 @@ export default function EditExam() {
                       />
                     </div>
 
-                    {/* Section Description Images */}
+                    {/* Section Description Media - Compact UI */}
                     <div className="mb-6">
-                      <Label className="block text-sm font-medium mb-2">Hình ảnh mô tả (tùy chọn)</Label>
-                      <MultipleImagePreviewBox
-                        imageUrls={section.descriptionImageUrls || []}
-                        onRemove={(imageIndex) => {
-                          const currentUrls = section.descriptionImageUrls || [];
-                          const newUrls = currentUrls.filter((_, i) => i !== imageIndex);
-                          updateSectionDescriptionImages(section.id, newUrls);
-                        }}
-                        onChooseImage={() => {
-                          const inputRef = sectionImageInputRefs.current.get(section.id);
-                          inputRef?.click();
-                        }}
-                        title="Hình ảnh mô tả phần thi"
-                        maxImages={5}
-                      />
+                      <Label className="block text-sm font-medium mb-2">Media mô tả (tùy chọn)</Label>
                       
-                      {/* Hidden file input for section description image */}
+                      {/* Compact buttons row */}
+                      <div className="flex flex-wrap items-center gap-2 mb-3">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const inputRef = sectionImageInputRefs.current.get(section.id);
+                            inputRef?.click();
+                          }}
+                          className="flex items-center gap-1.5"
+                        >
+                          <ImageIcon className="w-3.5 h-3.5" />
+                          Thêm hình ảnh
+                        </Button>
+                        
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            const audioInput = document.getElementById(`section-audio-${section.id}`) as HTMLInputElement;
+                            audioInput?.click();
+                          }}
+                          className="flex items-center gap-1.5"
+                        >
+                          <Volume2 className="w-3.5 h-3.5" />
+                          Thêm audio
+                        </Button>
+
+                        {(section.descriptionImageUrls || []).length > 0 && (
+                          <span className="text-xs text-muted-foreground">
+                            ({(section.descriptionImageUrls || []).length} hình ảnh)
+                          </span>
+                        )}
+
+                        {section.descriptionAudioUrl && (
+                          <span className="text-xs text-muted-foreground">
+                            (có audio)
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Hidden file inputs */}
                       <input
                         ref={(el) => {
                           if (el) {
@@ -705,17 +734,101 @@ export default function EditExam() {
                           }
                         }}
                       />
-                    </div>
 
-                    {/* Section Description Audio */}
-                    <div className="mb-6">
-                      <Label className="block text-sm font-medium mb-2">Audio mô tả (tùy chọn)</Label>
-                      <AudioUploader
-                        currentAudioUrl={section.descriptionAudioUrl || ""}
-                        onAudioUpload={(audioUrl) => updateSectionDescriptionAudio(section.id, audioUrl)}
-                        onRemoveAudio={() => updateSectionDescriptionAudio(section.id, "")}
-                        context="exam"
+                      <input
+                        id={`section-audio-${section.id}`}
+                        type="file"
+                        accept="audio/*"
+                        style={{ display: 'none' }}
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0];
+                          if (!file) return;
+                          
+                          if (file.size > 50 * 1024 * 1024) {
+                            toast({
+                              variant: "destructive",
+                              title: "Lỗi",
+                              description: "File audio không được vượt quá 50MB"
+                            });
+                            return;
+                          }
+                          
+                          try {
+                            const formData = new FormData();
+                            formData.append('file', file);
+                            
+                            const response = await fetch('/api/description-audio/upload-direct?context=exam', {
+                              method: 'POST',
+                              body: formData
+                            });
+                            
+                            if (!response.ok) throw new Error('Upload failed');
+                            
+                            const result = await response.json();
+                            updateSectionDescriptionAudio(section.id, result.audioUrl);
+                            
+                            toast({
+                              title: "Thành công",
+                              description: "Audio mô tả đã được tải lên"
+                            });
+                          } catch (error) {
+                            toast({
+                              variant: "destructive",
+                              title: "Lỗi upload",
+                              description: "Không thể tải lên audio"
+                            });
+                          }
+                        }}
                       />
+
+                      {/* Media Preview (only when media exists) */}
+                      {(((section.descriptionImageUrls || []).length > 0) || section.descriptionAudioUrl) && (
+                        <div className="border rounded-lg p-3 space-y-3">
+                          {(section.descriptionImageUrls || []).length > 0 && (
+                            <div>
+                              <Label className="text-xs text-muted-foreground mb-2 block">Hình ảnh đã tải lên:</Label>
+                              <div className="flex flex-wrap gap-2">
+                                {(section.descriptionImageUrls || []).map((url, idx) => (
+                                  <div key={idx} className="relative group">
+                                    <img src={url} alt="" className="w-16 h-16 object-cover rounded border" />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const currentUrls = section.descriptionImageUrls || [];
+                                        const newUrls = currentUrls.filter((_, i) => i !== idx);
+                                        updateSectionDescriptionImages(section.id, newUrls);
+                                      }}
+                                      className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          
+                          {section.descriptionAudioUrl && (
+                            <div>
+                              <Label className="text-xs text-muted-foreground mb-2 block">Audio đã tải lên:</Label>
+                              <div className="flex items-center gap-2">
+                                <audio key={section.descriptionAudioUrl} controls className="h-8 flex-1">
+                                  <source src={section.descriptionAudioUrl} type="audio/mpeg" />
+                                </audio>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => updateSectionDescriptionAudio(section.id, "")}
+                                  className="text-red-600 hover:text-red-700"
+                                >
+                                  <X className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
