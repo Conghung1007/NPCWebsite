@@ -14,19 +14,16 @@ export function Header() {
   const { user, isAuthenticated } = useAuth();
   const queryClient = useQueryClient();
 
-  // Logout mutation
   const logoutMutation = useMutation({
     mutationFn: async () => {
       await apiRequest("POST", "/api/auth/logout");
     },
     onSuccess: () => {
-      // Clear all queries in cache
       queryClient.clear();
       setLocation("/");
     },
     onError: (error) => {
       console.error("Logout error:", error);
-      // Even if logout API fails, clear cache and redirect
       queryClient.clear();
       setLocation("/");
     }
@@ -60,25 +57,25 @@ export function Header() {
   ];
 
   const navigation = [
-    { name: "Trang chủ", href: "/" },
-    { name: "Dịch vụ xin\nthị thực", href: "/visa-services" },
-    { name: "Tư vấn\ndu học", href: "/study-abroad" },
-    { name: "Đào tạo\ntiếng Nhật", href: "/japanese-training" },
-    { name: "Thi\ntrực tuyến", href: "/online-exam" },
-    { name: "Tư vấn\nmiễn phí", href: "/contact" }
+    { name: "Trang chủ", href: "/", mobileName: "Trang chủ" },
+    { name: "Dịch vụ xin\nthị thực", href: "/visa-services", mobileName: "Dịch vụ xin thị thực" },
+    { name: "Tư vấn\ndu học", href: "/study-abroad", mobileName: "Tư vấn du học" },
+    { name: "Đào tạo\ntiếng Nhật", href: "/japanese-training", mobileName: "Đào tạo tiếng Nhật" },
+    { name: "Thi\ntrực tuyến", href: "/online-exam", mobileName: "Thi trực tuyến" },
+    { name: "Tư vấn\nmiễn phí", href: "/contact", mobileName: "Tư vấn miễn phí" }
   ];
 
   return (
-    <header className="bg-white/95 shadow-sm fixed top-0 left-0 right-0 z-[9999] w-full max-w-full overflow-x-hidden backdrop-blur-sm border-b border-gray-200">
+    <header className="bg-white/95 shadow-md fixed top-0 left-0 right-0 z-[9999] w-full max-w-full overflow-x-hidden backdrop-blur-sm border-b border-gray-200">
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative w-full">
-        <div className="flex justify-between items-center h-16 sm:h-20 w-4/5 max-w-4/5 mx-auto">
+        <div className="flex justify-between items-center h-16 sm:h-20 w-full lg:w-4/5 max-w-full lg:max-w-4/5 lg:mx-auto">
           <div className="flex items-center">
-            <Link href="/" className="flex items-center space-x-2 sm:space-x-3">
-              <div className="flex flex-col items-center justify-center">
-                <span className="text-xs sm:text-sm lg:text-base text-muted-foreground">Công ty</span>
-                <span className="text-xs sm:text-sm lg:text-base text-muted-foreground">TNHH</span>
+            <Link href="/" className="flex items-center gap-2 sm:gap-3" data-testid="header-logo">
+              <div className="flex flex-col items-center justify-center leading-tight">
+                <span className="text-[clamp(0.625rem,1.5vw,0.875rem)] text-muted-foreground whitespace-nowrap">Công ty</span>
+                <span className="text-[clamp(0.625rem,1.5vw,0.875rem)] text-muted-foreground whitespace-nowrap">TNHH</span>
               </div>
-              <span className="text-3xl sm:text-4xl lg:text-5xl font-bold text-primary">N&P</span>
+              <span className="text-[clamp(1.75rem,5vw,3rem)] font-bold text-primary leading-none">N&P</span>
             </Link>
           </div>
 
@@ -86,7 +83,7 @@ export function Header() {
           <div className="hidden lg:flex flex-1 justify-center">
             <div className="flex items-center space-x-3">
               {navigation.map((item) => (
-                <Link key={item.name} href={item.href}>
+                <Link key={item.name} href={item.href} data-testid={`nav-link-${item.href}`}>
                   <span className={`px-3 py-2 text-base font-semibold transition-all duration-200 rounded-lg text-center leading-tight flex flex-col items-center justify-center h-12 ${
                     item.name === "Tư vấn\nmiễn phí" 
                       ? "min-w-[140px] bg-primary text-white hover:bg-primary/90 shadow-md" 
@@ -110,14 +107,14 @@ export function Header() {
           </div>
 
           <div className="hidden lg:flex items-center space-x-3 lg:space-x-4">
-            <Button variant="outline" size="sm" className="text-sm lg:text-base px-2 lg:px-3">
+            <Button variant="outline" size="sm" className="text-sm lg:text-base px-2 lg:px-3" data-testid="language-button">
               VI
             </Button>
 
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="text-base">
+                  <Button variant="outline" className="text-base" data-testid="user-menu-button">
                     <User className="w-4 h-4 mr-2" />
                     {user.username}
                   </Button>
@@ -144,12 +141,12 @@ export function Header() {
             ) : (
               <div className="flex items-center space-x-2">
                 <Link href="/login">
-                  <Button variant="outline" className="text-base">
+                  <Button variant="outline" className="text-base" data-testid="login-button">
                     Đăng nhập
                   </Button>
                 </Link>
                 <Link href="/register">
-                  <Button variant="outline" className="text-base">
+                  <Button variant="outline" className="text-base" data-testid="register-button">
                     Đăng ký
                   </Button>
                 </Link>
@@ -159,13 +156,13 @@ export function Header() {
 
           {/* Tablet - Show Login/Register buttons */}
           <div className="hidden md:flex lg:hidden items-center space-x-2">
-            <Button variant="outline" size="sm" className="text-sm px-2">
+            <Button variant="outline" size="sm" className="text-sm px-2" data-testid="language-button-tablet">
               VI
             </Button>
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="text-sm">
+                  <Button variant="outline" size="sm" className="text-sm" data-testid="user-menu-button-tablet">
                     <User className="w-4 h-4 mr-1" />
                     {user.username}
                   </Button>
@@ -192,12 +189,12 @@ export function Header() {
             ) : (
               <>
                 <Link href="/login">
-                  <Button variant="outline" size="sm" className="text-sm px-3">
+                  <Button variant="outline" size="sm" className="text-sm px-3" data-testid="login-button-tablet">
                     Đăng nhập
                   </Button>
                 </Link>
                 <Link href="/register">
-                  <Button variant="outline" size="sm" className="text-sm px-3">
+                  <Button variant="outline" size="sm" className="text-sm px-3" data-testid="register-button-tablet">
                     Đăng ký
                   </Button>
                 </Link>
@@ -205,34 +202,27 @@ export function Header() {
             )}
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="sm" className="ml-2">
+                <Button variant="ghost" size="sm" className="ml-2" data-testid="mobile-menu-button-tablet">
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-72 sm:w-80">
-                <div className="flex flex-col space-y-3 mt-6">
+              <SheetContent side="left" className="w-72 sm:w-80">
+                <div className="flex flex-col space-y-2 mt-6">
                   {navigation.map((item) => (
-                    <Link key={item.name} href={item.href}>
-                      <span 
-                        className={`block px-3 py-2.5 text-lg font-semibold rounded-lg transition-all text-center ${
-                          item.name === "Tư vấn\nmiễn phí" 
-                            ? "bg-primary text-white hover:bg-primary/90 shadow-md" 
-                            : location === item.href 
-                              ? "text-white bg-primary" 
-                              : "text-foreground hover:text-primary hover:bg-primary/10"
-                        }`}
-                        onClick={() => setIsOpen(false)}
-                      >
-                        {item.name === "Tư vấn\nmiễn phí" ? (
-                          <span>Tư vấn miễn phí</span>
-                        ) : (
-                          item.name.split('\n').map((line, index) => (
-                            <span key={index} className="block">
-                              {line}
-                            </span>
-                          ))
-                        )}
-                      </span>
+                    <Link 
+                      key={item.name} 
+                      href={item.href}
+                      className={`block px-4 py-3 text-base font-semibold rounded-lg transition-all text-left ${
+                        item.mobileName === "Tư vấn miễn phí" 
+                          ? "bg-primary text-white hover:bg-primary/90 shadow-md" 
+                          : location === item.href 
+                            ? "text-white bg-primary" 
+                            : "text-foreground hover:text-primary hover:bg-primary/10"
+                      }`}
+                      onClick={() => setIsOpen(false)}
+                      data-testid={`mobile-nav-${item.href}`}
+                    >
+                      {item.mobileName}
                     </Link>
                   ))}
                 </div>
@@ -244,44 +234,37 @@ export function Header() {
           <div className="md:hidden">
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" data-testid="mobile-menu-button">
                   <Menu className="h-6 w-6" />
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-72 sm:w-80">
-                <div className="flex flex-col space-y-3 mt-6">
+              <SheetContent side="left" className="w-72 sm:w-80">
+                <div className="flex flex-col space-y-2 mt-6">
                   {navigation.map((item) => (
-                    <Link key={item.name} href={item.href}>
-                      <span 
-                        className={`block px-3 py-2.5 text-lg font-semibold rounded-lg transition-all text-center ${
-                          item.name === "Tư vấn\nmiễn phí" 
-                            ? "bg-primary text-white hover:bg-primary/90 shadow-md" 
-                            : location === item.href 
-                              ? "text-white bg-primary" 
-                              : "text-foreground hover:text-primary hover:bg-primary/10"
-                        }`}
-                        onClick={() => setIsOpen(false)}
-                      >
-                        {item.name === "Tư vấn\nmiễn phí" ? (
-                          <span>Tư vấn miễn phí</span>
-                        ) : (
-                          item.name.split('\n').map((line, index) => (
-                            <span key={index} className="block">
-                              {line}
-                            </span>
-                          ))
-                        )}
-                      </span>
+                    <Link 
+                      key={item.name} 
+                      href={item.href}
+                      className={`block px-4 py-3 text-base font-semibold rounded-lg transition-all text-left ${
+                        item.mobileName === "Tư vấn miễn phí" 
+                          ? "bg-primary text-white hover:bg-primary/90 shadow-md" 
+                          : location === item.href 
+                            ? "text-white bg-primary" 
+                            : "text-foreground hover:text-primary hover:bg-primary/10"
+                      }`}
+                      onClick={() => setIsOpen(false)}
+                      data-testid={`mobile-nav-${item.href}`}
+                    >
+                      {item.mobileName}
                     </Link>
                   ))}
-                  <div className="border-t pt-3 mt-4">
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="sm" className="text-sm" onClick={() => setIsOpen(false)}>
+                  <div className="border-t pt-4 mt-4">
+                    <div className="space-y-2">
+                      <Button variant="outline" size="sm" className="w-full text-sm justify-start" onClick={() => setIsOpen(false)} data-testid="language-button-mobile">
                         VI
                       </Button>
                       {user ? (
-                        <div className="flex-1 space-y-2">
-                          <div className="text-sm text-center">
+                        <div className="space-y-2">
+                          <div className="text-sm px-4 py-2 bg-gray-50 rounded-lg">
                             <span className="font-medium">{user.username}</span>
                             <br />
                             <span className="text-muted-foreground">({user.role})</span>
@@ -290,8 +273,9 @@ export function Header() {
                             <Link href="/cpanel" className="block">
                               <Button 
                                 variant="outline" 
-                                className="w-full text-base" 
+                                className="w-full text-base justify-start" 
                                 onClick={() => setIsOpen(false)}
+                                data-testid="cpanel-button-mobile"
                               >
                                 <Settings className="w-4 h-4 mr-2" />
                                 Control Panel
@@ -300,25 +284,26 @@ export function Header() {
                           )}
                           <Button 
                             variant="outline" 
-                            className="w-full text-base" 
+                            className="w-full text-base justify-start" 
                             onClick={() => {
                               handleLogout();
                               setIsOpen(false);
                             }}
+                            data-testid="logout-button-mobile"
                           >
                             <LogOut className="w-4 h-4 mr-2" />
                             Đăng xuất
                           </Button>
                         </div>
                       ) : (
-                        <div className="flex-1 space-y-2">
+                        <div className="space-y-2">
                           <Link href="/register" className="block">
-                            <Button variant="default" className="w-full text-base" onClick={() => setIsOpen(false)}>
+                            <Button variant="default" className="w-full text-base" onClick={() => setIsOpen(false)} data-testid="register-button-mobile">
                               Đăng ký
                             </Button>
                           </Link>
                           <Link href="/login" className="block">
-                            <Button variant="outline" className="w-full text-base" onClick={() => setIsOpen(false)}>
+                            <Button variant="outline" className="w-full text-base" onClick={() => setIsOpen(false)} data-testid="login-button-mobile">
                               Đăng nhập
                             </Button>
                           </Link>
