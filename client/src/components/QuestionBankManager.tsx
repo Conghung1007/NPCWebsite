@@ -460,7 +460,11 @@ export function QuestionBankManager() {
             : "Câu hỏi đã được cập nhật thành công.",
         });
         
+        // Invalidate all question-related caches including exam questions
         queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
+        queryClient.invalidateQueries({ predicate: ({ queryKey }) => {
+          return typeof queryKey[0] === 'string' && queryKey[0].includes('/api/exams/') && queryKey[0].includes('/questions');
+        }});
         setEditingQuestion(null);
         form.reset();
       } catch (error: any) {
@@ -519,7 +523,11 @@ export function QuestionBankManager() {
             : "Đã tạo thành công câu hỏi.",
         });
         
+        // Invalidate all question-related caches including exam questions
         queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
+        queryClient.invalidateQueries({ predicate: ({ queryKey }) => {
+          return typeof queryKey[0] === 'string' && queryKey[0].includes('/api/exams/') && queryKey[0].includes('/questions');
+        }});
         setIsAddingQuestion(false);
         form.reset();
       } catch (error: any) {

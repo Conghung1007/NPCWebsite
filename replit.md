@@ -6,6 +6,13 @@ The website serves as a comprehensive digital presence for N&P Company, featurin
 
 # Recent Changes
 
+**November 2025 - Exam Question Cache Invalidation Fix:**
+- Fixed bug where updated questions (with new images) not showing in exam-taking page
+- **Root Cause**: TanStack Query cache not invalidated for `/api/exams/:id/questions` after question updates
+- **Frontend Fix (QuestionBankManager.tsx)**: Added cache invalidation predicate to clear all exam question caches
+- Invalidates both `/api/questions` and all `/api/exams/*/questions` caches after CREATE/UPDATE
+- **Impact**: Exam pages now immediately show latest question data after edits (including new images)
+
 **November 2025 - Sub-Question Duplication Fix:**
 - Fixed critical bug where editing parent questions with sub-questions created duplicates
 - **Root Cause**: Backend DELETE-all-and-CREATE pattern + Frontend not sending sub-question IDs
