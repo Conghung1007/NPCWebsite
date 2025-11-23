@@ -1117,18 +1117,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                             ))}
                           </div>
                         )}
-                        
-                        {/* Parent Question Audio */}
-                        {(currentQuestion as any).audioUrl && (
-                          <div className="flex justify-center">
-                            <audio controls controlsList="nodownload" className="w-full max-w-md" key={`parent-${currentQuestion.id}`}>
-                              <source src={(currentQuestion as any).audioUrl.startsWith('/api/') 
-                                ? (currentQuestion as any).audioUrl 
-                                : `/api/${(currentQuestion as any).audioUrl}`} type="audio/mpeg" />
-                              Trình duyệt của bạn không hỗ trợ phát audio.
-                            </audio>
-                          </div>
-                        )}
 
                         {/* Answer Options for Parent Question */}
                         <RadioGroup
@@ -1205,18 +1193,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                                 className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
                               />
                             ))}
-                          </div>
-                        )}
-
-                        {/* Sub-Question Audio */}
-                        {subQuestion.audioUrl && (
-                          <div className="flex justify-center">
-                            <audio controls controlsList="nodownload" className="w-full max-w-md" key={subQuestion.id}>
-                              <source src={subQuestion.audioUrl.startsWith('/api/') 
-                                ? subQuestion.audioUrl 
-                                : `/api/${subQuestion.audioUrl}`} type="audio/mpeg" />
-                              Trình duyệt của bạn không hỗ trợ phát audio.
-                            </audio>
                           </div>
                         )}
 
@@ -1353,18 +1329,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                             )}
                           </div>
                         ) : null}
-
-                        {/* Question Audio */}
-                        {currentQuestion.audioUrl && (
-                          <div className="flex justify-center">
-                            <audio controls controlsList="nodownload" className="w-full max-w-md" key={currentQuestion.id}>
-                              <source src={currentQuestion.audioUrl.startsWith('/api/') 
-                                ? currentQuestion.audioUrl 
-                                : `/api/${currentQuestion.audioUrl}`} type="audio/mpeg" />
-                              Trình duyệt của bạn không hỗ trợ phát audio.
-                            </audio>
-                          </div>
-                        )}
 
                         {/* Answer Options */}
                       <RadioGroup
