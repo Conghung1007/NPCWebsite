@@ -435,8 +435,9 @@ export function QuestionBankManager() {
           correctAnswer: firstQuestion.correctAnswer,
           explanation: firstQuestion.explanation,
           points: firstQuestion.points, // Include points for parent question
-          // Sub-questions array
+          // Sub-questions array (include id if exists for UPDATE, omit for CREATE)
           subQuestions: remainingQuestions.map(q => ({
+            id: (q as any).id, // Include existing sub-question ID for UPDATE
             questionText: q.questionText,
             imageUrl: q.imageUrl,
             imageUrls: q.imageUrls,

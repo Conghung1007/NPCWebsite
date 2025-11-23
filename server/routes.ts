@@ -3563,13 +3563,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // If this is a parent question with sub-questions, handle them
       if (subQuestions && Array.isArray(subQuestions)) {
-        // 1. Delete all existing sub-questions
+        // Get existing sub-questions
         const existingSubQuestions = await storage.getSubQuestions(id);
-        for (const subQ of existingSubQuestions) {
-          await storage.deleteQuestion(subQ.id);
-        }
-
-        // 2. Update parent question
+        const existingSubIds = new Set(existingSubQuestions.map(sq => sq.id));
+        const payloadSubIds = new Set(subQuestions.filter(sq => sq.id).map(sq => sq.id));
+        
+        // 1. Update parent question
         const updatedQuestion = await storage.updateQuestion(id, {
           category: category || existingQuestion.category,
           questionTitle: questionTitle !== undefined ? questionTitle : (existingQuestion as any).questionTitle,
@@ -3590,8 +3589,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
           parentId: null, // Ensure parent questions have null parentId
         });
 
-        // 3. Create new sub-questions
-        const createdSubQuestions = [];
+        // 2. Delete sub-questions that are no longer in the payload
+        for (const existingSub of existingSubQuestions) {
+          if (!payloadSubIds.has(existingSub.id)) {
+            await storage.deleteQuestion(existingSub.id);
+          }
+        }
+
+        // 3. Update existing or create new sub-questions
+        const processedSubQuestions = [];
         for (let i = 0; i < subQuestions.length; i++) {
           const subQ = subQuestions[i];
           
@@ -3622,34 +3628,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
             subProcessedImageUrls = undefined;
           }
           
-          const subQuestion = await storage.createQuestion({
-            examId: existingQuestion.examId,
-            category: category || existingQuestion.category,
-            language: language || existingQuestion.language,
-            description: null,
-            descriptionImageUrl: null,
-            descriptionImageUrls: null,
-            descriptionAudioUrl: null,
-            questionText: subQ.questionText,
-            questionType: questionType || "multiple_choice",
-            imageUrl: subQ.imageUrl || null,
-            imageUrls: subProcessedImageUrls || null,
-            audioUrl: subQ.audioUrl || null,
-            options: subQ.options,
-            correctAnswer: subQ.correctAnswer,
-            explanation: subQ.explanation || null,
-            points: subQ.points !== undefined ? subQ.points : 1,
-            sortOrder: (sortOrder || existingQuestion.sortOrder) + i + 1,
-            parentId: id, // Link to parent
-          });
-          
-          createdSubQuestions.push(subQuestion);
+          if (subQ.id && existingSubIds.has(subQ.id)) {
+            // UPDATE existing sub-question
+            const updatedSubQuestion = await storage.updateQuestion(subQ.id, {
+              questionText: subQ.questionText,
+              imageUrl: subQ.imageUrl !== undefined ? subQ.imageUrl : null,
+              imageUrls: subProcessedImageUrls !== undefined ? subProcessedImageUrls : null,
+              audioUrl: subQ.audioUrl !== undefined ? subQ.audioUrl : null,
+              options: subQ.options,
+              correctAnswer: subQ.correctAnswer,
+              explanation: subQ.explanation !== undefined ? subQ.explanation : null,
+              points: subQ.points !== undefined ? subQ.points : 1,
+              sortOrder: (sortOrder || existingQuestion.sortOrder) + i + 1,
+            });
+            processedSubQuestions.push(updatedSubQuestion);
+          } else {
+            // CREATE new sub-question
+            const newSubQuestion = await storage.createQuestion({
+              examId: existingQuestion.examId,
+              category: category || existingQuestion.category,
+              language: language || existingQuestion.language,
+              description: null,
+              descriptionImageUrl: null,
+              descriptionImageUrls: null,
+              descriptionAudioUrl: null,
+              questionText: subQ.questionText,
+              questionType: questionType || "multiple_choice",
+              imageUrl: subQ.imageUrl || null,
+              imageUrls: subProcessedImageUrls || null,
+              audioUrl: subQ.audioUrl || null,
+              options: subQ.options,
+              correctAnswer: subQ.correctAnswer,
+              explanation: subQ.explanation || null,
+              points: subQ.points !== undefined ? subQ.points : 1,
+              sortOrder: (sortOrder || existingQuestion.sortOrder) + i + 1,
+              parentId: id, // Link to parent
+            });
+            processedSubQuestions.push(newSubQuestion);
+          }
         }
 
         res.json({
           question: updatedQuestion,
-          subQuestions: createdSubQuestions,
-          message: `Question updated successfully with ${createdSubQuestions.length} sub-questions`
+          subQuestions: processedSubQuestions,
+          message: `Question updated successfully with ${processedSubQuestions.length} sub-questions`
         });
       } else {
         // Update single standalone question
