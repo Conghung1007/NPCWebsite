@@ -6,6 +6,18 @@ The website serves as a comprehensive digital presence for N&P Company, featurin
 
 # Recent Changes
 
+**November 2025 - Sub-Question Duplication Fix:**
+- Fixed critical bug where editing parent questions with sub-questions created duplicates
+- **Root Cause**: Backend DELETE-all-and-CREATE pattern + Frontend not sending sub-question IDs
+- **Frontend Fix (QuestionBankManager.tsx)**: Now includes sub-question `id` field in UPDATE payload
+- **Backend Fix (server/routes.ts)**: Intelligent UPDATE/CREATE/DELETE logic in PUT /api/questions/:id
+  - UPDATE existing sub-questions when `id` matches
+  - CREATE new sub-questions when `id` is missing
+  - DELETE removed sub-questions not in payload
+  - No longer deletes all sub-questions and recreates them
+- **Database Cleanup**: Removed 5 duplicate sub-questions from question `9c36e98d-2213-44cd-b33e-0baaa507dea8`
+- **Impact**: Prevents duplicate sub-questions when editing questions with media uploads
+
 **November 2025 - Question Content Images (imageUrls) Backend Fix:**
 - Fixed critical backend bug in imageUrls array processing for question content images
 - POST /api/questions: Added proper temp-to-permanent migration for imageUrls arrays using existing helper function
