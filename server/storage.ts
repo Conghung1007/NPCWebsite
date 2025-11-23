@@ -55,6 +55,7 @@ export interface IStorage {
   // Exam system methods
   createExam(exam: InsertExam): Promise<Exam>;
   getExam(id: string): Promise<Exam | undefined>;
+  getExamMetadata(id: string): Promise<{ id: string; isDemo: boolean } | undefined>;
   getAllExams(): Promise<Exam[]>;
   getActiveExams(): Promise<Exam[]>;
   updateExam(id: string, updateData: Partial<InsertExam>): Promise<Exam | null>;
@@ -739,6 +740,12 @@ export class MemStorage implements IStorage {
     return this.exams.get(id);
   }
 
+  async getExamMetadata(id: string): Promise<{ id: string; isDemo: boolean } | undefined> {
+    const exam = this.exams.get(id);
+    if (!exam) return undefined;
+    return { id: exam.id, isDemo: exam.isDemo ?? false };
+  }
+
   async getAllExams(): Promise<Exam[]> {
     return Array.from(this.exams.values()).sort(
       (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
@@ -1293,6 +1300,16 @@ export class DatabaseStorage implements IStorage {
   async getExam(id: string): Promise<Exam | undefined> {
     const [exam] = await db.select().from(exams).where(eq(exams.id, id));
     return exam;
+  }
+
+  async getExamMetadata(id: string): Promise<{ id: string; isDemo: boolean } | undefined> {
+    const [result] = await db
+      .select({ id: exams.id, isDemo: exams.isDemo })
+      .from(exams)
+      .where(eq(exams.id, id));
+    
+    if (!result) return undefined;
+    return { id: result.id, isDemo: result.isDemo ?? false };
   }
 
   async getAllExams(): Promise<Exam[]> {

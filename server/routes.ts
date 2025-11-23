@@ -613,14 +613,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
       
-      // Get exam
-      const exam = await storage.getExam(examId);
-      if (!exam) {
+      // OPTIMIZED: Only fetch metadata instead of full exam data
+      const examMetadata = await storage.getExamMetadata(examId);
+      if (!examMetadata) {
         return res.status(404).json({ message: "Không tìm thấy đề thi" });
       }
 
       // For official exams, require authentication
-      if (!exam.isDemo && !sessionUser) {
+      if (!examMetadata.isDemo && !sessionUser) {
         return res.status(401).json({ message: "Cần đăng nhập để thi đề chính thức" });
       }
 
