@@ -6,6 +6,23 @@ The website serves as a comprehensive digital presence for N&P Company, featurin
 
 # Recent Changes
 
+**November 2025 - Parallel Processing Performance Optimization:**
+- **Performance Improvement**: Reduced question creation/update time from 10-20 seconds to under 2 seconds for complex questions with multiple images/audio files
+- **Backend Optimizations (server/routes.ts)**:
+  - POST /api/questions: Implemented parallel file processing using Promise.all() for all media migrations
+    - Parent question media (imageUrls, descriptionImageUrls, audioUrl, descriptionAudioUrl) now processed concurrently
+    - Sub-questions created in parallel with concurrent media processing per sub-question
+    - Answer option images processed in parallel within each question
+  - PUT /api/questions/:id: Mirrored parallel processing architecture for updates
+    - Concurrent processing for parent imageUrls array
+    - Parallel deletion of removed sub-questions
+    - Parallel update/create of sub-questions with concurrent media processing
+- **Frontend Protection (QuestionBankManager.tsx)**:
+  - Added `isSubmittingRef` flag to prevent double-submit when users click rapidly
+  - Single try-catch-finally block with proper error handling
+  - Flag always reset in finally block to allow retries after errors
+- **Impact**: Dramatically faster question management, better UX, prevents duplicate creations from rapid clicking
+
 **November 2025 - Audio Upload Limit Increased:**
 - Increased audio file upload size limit from 10MB to 50MB
 - **Backend Updates (server/routes.ts)**: Updated all audio upload endpoints

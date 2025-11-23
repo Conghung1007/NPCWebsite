@@ -410,10 +410,22 @@ export function QuestionBankManager() {
     },
   });
 
+  // Ref to prevent double submission
+  const isSubmittingRef = useRef(false);
+
   const handleSubmit = async (data: QuestionFormData) => {
-    if (editingQuestion) {
-      // For editing: Update parent question with sub-questions
-      try {
+    // CRITICAL: Prevent double-submit by checking ref flag
+    if (isSubmittingRef.current) {
+      console.warn("Submission already in progress, ignoring duplicate submit");
+      return;
+    }
+    
+    // Set flag to prevent concurrent submissions
+    isSubmittingRef.current = true;
+    
+    try {
+      if (editingQuestion) {
+        // For editing: Update parent question with sub-questions
         const firstQuestion = data.questions[0];
         const remainingQuestions = data.questions.slice(1);
         
@@ -426,18 +438,17 @@ export function QuestionBankManager() {
           questionText: firstQuestion.questionText,
           description: firstQuestion.description,
           descriptionImageUrls: firstQuestion.descriptionImageUrls,
-          descriptionAudioUrl: firstQuestion.descriptionAudioUrl, // Description audio (separate from question audio)
+          descriptionAudioUrl: firstQuestion.descriptionAudioUrl,
           questionType: "multiple_choice" as const,
           imageUrl: firstQuestion.imageUrl,
           imageUrls: firstQuestion.imageUrls,
-          audioUrl: firstQuestion.audioUrl, // Question audio (separate from description audio)
+          audioUrl: firstQuestion.audioUrl,
           options: firstQuestion.options,
           correctAnswer: firstQuestion.correctAnswer,
           explanation: firstQuestion.explanation,
-          points: firstQuestion.points, // Include points for parent question
-          // Sub-questions array (include id if exists for UPDATE, omit for CREATE)
+          points: firstQuestion.points,
           subQuestions: remainingQuestions.map(q => ({
-            id: (q as any).id, // Include existing sub-question ID for UPDATE
+            id: (q as any).id,
             questionText: q.questionText,
             imageUrl: q.imageUrl,
             imageUrls: q.imageUrls,
@@ -445,7 +456,7 @@ export function QuestionBankManager() {
             options: q.options,
             correctAnswer: q.correctAnswer,
             explanation: q.explanation,
-            points: q.points, // Include points for each sub-question
+            points: q.points,
           }))
         };
 
@@ -460,23 +471,14 @@ export function QuestionBankManager() {
             : "Câu hỏi đã được cập nhật thành công.",
         });
         
-        // Invalidate all question-related caches including exam questions
         queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
         queryClient.invalidateQueries({ predicate: ({ queryKey }) => {
           return typeof queryKey[0] === 'string' && queryKey[0].includes('/api/exams/') && queryKey[0].includes('/questions');
         }});
         setEditingQuestion(null);
         form.reset();
-      } catch (error: any) {
-        toast({
-          title: "Lỗi",
-          description: error.message || "Không thể cập nhật câu hỏi.",
-          variant: "destructive",
-        });
-      }
-    } else {
-      // For creating: Create parent question with sub-questions
-      try {
+      } else {
+        // For creating: Create parent question with sub-questions
         const firstQuestion = data.questions[0];
         const remainingQuestions = data.questions.slice(1);
         
@@ -485,20 +487,18 @@ export function QuestionBankManager() {
           language: data.language,
           questionTitle: data.questionTitle,
           sortOrder: data.sortOrder,
-          // Parent question data (from first question)
           questionText: firstQuestion.questionText,
           description: firstQuestion.description,
-          descriptionImageUrls: firstQuestion.descriptionImageUrls, // Description images (separate from question images)
-          descriptionAudioUrl: firstQuestion.descriptionAudioUrl, // Description audio (separate from question audio)
+          descriptionImageUrls: firstQuestion.descriptionImageUrls,
+          descriptionAudioUrl: firstQuestion.descriptionAudioUrl,
           questionType: "multiple_choice" as const,
           imageUrl: firstQuestion.imageUrl,
-          imageUrls: firstQuestion.imageUrls, // Question images (separate from description images)
-          audioUrl: firstQuestion.audioUrl, // Question audio (separate from description audio)
+          imageUrls: firstQuestion.imageUrls,
+          audioUrl: firstQuestion.audioUrl,
           options: firstQuestion.options,
           correctAnswer: firstQuestion.correctAnswer,
           explanation: firstQuestion.explanation,
-          points: firstQuestion.points, // Include points for parent question
-          // Sub-questions array
+          points: firstQuestion.points,
           subQuestions: remainingQuestions.map(q => ({
             questionText: q.questionText,
             imageUrl: q.imageUrl,
@@ -507,13 +507,12 @@ export function QuestionBankManager() {
             options: q.options,
             correctAnswer: q.correctAnswer,
             explanation: q.explanation,
-            points: q.points, // Include points for each sub-question
+            points: q.points,
           }))
         };
 
         await apiRequest("POST", "/api/questions", backendData);
         
-        const totalCount = data.questions.length;
         const subCount = remainingQuestions.length;
         
         toast({
@@ -523,20 +522,22 @@ export function QuestionBankManager() {
             : "Đã tạo thành công câu hỏi.",
         });
         
-        // Invalidate all question-related caches including exam questions
         queryClient.invalidateQueries({ queryKey: ["/api/questions"] });
         queryClient.invalidateQueries({ predicate: ({ queryKey }) => {
           return typeof queryKey[0] === 'string' && queryKey[0].includes('/api/exams/') && queryKey[0].includes('/questions');
         }});
         setIsAddingQuestion(false);
         form.reset();
-      } catch (error: any) {
-        toast({
-          title: "Lỗi",
-          description: error.message || "Không thể tạo câu hỏi.",
-          variant: "destructive",
-        });
       }
+    } catch (error: any) {
+      toast({
+        title: "Lỗi",
+        description: error.message || (editingQuestion ? "Không thể cập nhật câu hỏi." : "Không thể tạo câu hỏi."),
+        variant: "destructive",
+      });
+    } finally {
+      // Always reset the submission flag
+      isSubmittingRef.current = false;
     }
   };
 

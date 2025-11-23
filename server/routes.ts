@@ -745,7 +745,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Build questions with answers (including parent + sub structure)
       const questionsWithAnswers = parentQuestions.map(question => {
-        const subQuestions = subQuestionsMap.get(question.id) || [];
+        const subQuestions = subQuestionsMap.get(question!.id) || [];
         
         // Sort sub-questions by sortOrder
         subQuestions.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
@@ -761,7 +761,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             ...question,
             subQuestions: subQuestionsWithAnswers.length > 0 ? subQuestionsWithAnswers : undefined
           },
-          userAnswer: allAnswers[question.id] || null,
+          userAnswer: allAnswers[question!.id] || null,
         };
       });
 
@@ -3230,96 +3230,92 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Handle temporary audio file - move to permanent location
-      let finalAudioUrl = audioUrl;
-      if (audioUrl && audioUrl.includes('/api/temp-audio/')) {
-        console.log(`Moving temporary audio: ${audioUrl}`);
-        try {
-          finalAudioUrl = await moveTemporaryAudioToPermanent(audioUrl);
-          console.log(`Move result: ${finalAudioUrl}`);
-          if (!finalAudioUrl) {
-            console.warn("Failed to move temporary audio, setting to null");
-            finalAudioUrl = null;
-          }
-        } catch (error) {
-          console.error("Error moving temporary audio:", error);
-          finalAudioUrl = null;
-        }
-      }
-
-      // Handle temporary question image - move to permanent location
-      let finalImageUrl = imageUrl;
-      if (imageUrl && imageUrl.includes('/api/temp-question-images/')) {
-        console.log(`Moving temporary question image: ${imageUrl}`);
-        try {
-          finalImageUrl = await moveTemporaryQuestionImageToPermanent(imageUrl);
-          console.log(`Image move result: ${finalImageUrl}`);
-          if (!finalImageUrl) {
-            console.warn("Failed to move temporary question image, setting to null");
-            finalImageUrl = null;
-          }
-        } catch (error) {
-          console.error("Error moving temporary question image:", error);
-          finalImageUrl = null;
-        }
-      }
-
-      // Handle temporary question imageUrls array - move to permanent location
-      let finalImageUrls = imageUrls;
-      if (imageUrls && Array.isArray(imageUrls) && imageUrls.length > 0) {
-        const processedImageUrls = [];
-        for (const imgUrl of imageUrls) {
-          if (imgUrl && (imgUrl.includes('/api/temp-question-images/') || imgUrl.includes('/api/qbank-temp-images/') || imgUrl.includes('/api/exam-temp-images/'))) {
+      // OPTIMIZED: Process all parent-level media files in parallel
+      const [
+        finalAudioUrl,
+        finalImageUrl,
+        finalImageUrls,
+        finalDescriptionImageUrl,
+        finalDescriptionAudioUrl
+      ] = await Promise.all([
+        // Audio file
+        (async () => {
+          if (audioUrl && audioUrl.includes('/api/temp-audio/')) {
             try {
-              // Use existing helper to move from temporary to permanent storage
-              const movedUrl = await moveTemporaryQuestionImageToPermanent(imgUrl);
-              if (movedUrl) {
-                processedImageUrls.push(movedUrl);
-              }
+              const result = await moveTemporaryAudioToPermanent(audioUrl);
+              return result || null;
             } catch (error) {
-              console.error("Error moving question imageUrl:", error);
+              console.error("Error moving temporary audio:", error);
+              return null;
             }
-          } else if (imgUrl) {
-            // Already permanent URL, keep as-is
-            processedImageUrls.push(imgUrl);
           }
-        }
-        finalImageUrls = processedImageUrls.length > 0 ? processedImageUrls : null;
-      }
-
-      // Handle temporary description image - move to permanent location
-      let finalDescriptionImageUrl = descriptionImageUrl;
-      if (descriptionImageUrl && descriptionImageUrl.includes('/api/temp-description-images/')) {
-        console.log(`Moving temporary description image: ${descriptionImageUrl}`);
-        try {
-          finalDescriptionImageUrl = await moveTemporaryDescriptionImageToPermanent(descriptionImageUrl);
-          console.log(`Description image move result: ${finalDescriptionImageUrl}`);
-          if (!finalDescriptionImageUrl) {
-            console.warn("Failed to move temporary description image, setting to null");
-            finalDescriptionImageUrl = null;
+          return audioUrl;
+        })(),
+        
+        // Single image URL
+        (async () => {
+          if (imageUrl && imageUrl.includes('/api/temp-question-images/')) {
+            try {
+              const result = await moveTemporaryQuestionImageToPermanent(imageUrl);
+              return result || null;
+            } catch (error) {
+              console.error("Error moving temporary question image:", error);
+              return null;
+            }
           }
-        } catch (error) {
-          console.error("Error moving temporary description image:", error);
-          finalDescriptionImageUrl = null;
-        }
-      }
-
-      // Handle temporary description audio - move to permanent location
-      let finalDescriptionAudioUrl = descriptionAudioUrl;
-      if (descriptionAudioUrl && descriptionAudioUrl.includes('/api/temp-description-audio/')) {
-        console.log(`Moving temporary description audio: ${descriptionAudioUrl}`);
-        try {
-          finalDescriptionAudioUrl = await moveTemporaryDescriptionAudioToPermanent(descriptionAudioUrl);
-          console.log(`Description audio move result: ${finalDescriptionAudioUrl}`);
-          if (!finalDescriptionAudioUrl) {
-            console.warn("Failed to move temporary description audio, setting to null");
-            finalDescriptionAudioUrl = null;
+          return imageUrl;
+        })(),
+        
+        // Image URLs array (process in parallel)
+        (async () => {
+          if (imageUrls && Array.isArray(imageUrls) && imageUrls.length > 0) {
+            const results = await Promise.all(
+              imageUrls.map(async (imgUrl) => {
+                if (imgUrl && (imgUrl.includes('/api/temp-question-images/') || imgUrl.includes('/api/qbank-temp-images/') || imgUrl.includes('/api/exam-temp-images/'))) {
+                  try {
+                    return await moveTemporaryQuestionImageToPermanent(imgUrl);
+                  } catch (error) {
+                    console.error("Error moving question imageUrl:", error);
+                    return null;
+                  }
+                }
+                return imgUrl;
+              })
+            );
+            const filtered = results.filter(url => url !== null);
+            return filtered.length > 0 ? filtered : null;
           }
-        } catch (error) {
-          console.error("Error moving temporary description audio:", error);
-          finalDescriptionAudioUrl = null;
-        }
-      }
+          return imageUrls;
+        })(),
+        
+        // Description image
+        (async () => {
+          if (descriptionImageUrl && descriptionImageUrl.includes('/api/temp-description-images/')) {
+            try {
+              const result = await moveTemporaryDescriptionImageToPermanent(descriptionImageUrl);
+              return result || null;
+            } catch (error) {
+              console.error("Error moving temporary description image:", error);
+              return null;
+            }
+          }
+          return descriptionImageUrl;
+        })(),
+        
+        // Description audio
+        (async () => {
+          if (descriptionAudioUrl && descriptionAudioUrl.includes('/api/temp-description-audio/')) {
+            try {
+              const result = await moveTemporaryDescriptionAudioToPermanent(descriptionAudioUrl);
+              return result || null;
+            } catch (error) {
+              console.error("Error moving temporary description audio:", error);
+              return null;
+            }
+          }
+          return descriptionAudioUrl;
+        })()
+      ]);
 
       // Get max sortOrder to put new questions at the end
       let newSortOrder = sortOrder;
@@ -3354,102 +3350,109 @@ export async function registerRoutes(app: Express): Promise<Server> {
           parentId: null, // This is a parent question
         });
 
-        // Create all sub-questions
-        const createdSubQuestions = [];
-        for (let i = 0; i < subQuestions.length; i++) {
-          const subQ = subQuestions[i];
-          
-          // Process sub-question images and audio similar to parent
-          let subFinalImageUrl = subQ.imageUrl;
-          if (subQ.imageUrl && subQ.imageUrl.includes('/api/temp-question-images/')) {
-            try {
-              subFinalImageUrl = await moveTemporaryQuestionImageToPermanent(subQ.imageUrl);
-            } catch (error) {
-              console.error("Error moving sub-question image:", error);
-              subFinalImageUrl = null;
-            }
-          }
-
-          // Process sub-question imageUrls array
-          let subFinalImageUrls = subQ.imageUrls;
-          if (subQ.imageUrls && Array.isArray(subQ.imageUrls) && subQ.imageUrls.length > 0) {
-            const processedImageUrls = [];
-            for (const imgUrl of subQ.imageUrls) {
-              if (imgUrl && (imgUrl.includes('/api/temp-question-images/') || imgUrl.includes('/api/qbank-temp-images/') || imgUrl.includes('/api/exam-temp-images/'))) {
-                try {
-                  const movedUrl = await moveTemporaryQuestionImageToPermanent(imgUrl);
-                  if (movedUrl) {
-                    processedImageUrls.push(movedUrl);
+        // OPTIMIZED: Process and create all sub-questions in parallel
+        const createdSubQuestions = await Promise.all(
+          subQuestions.map(async (subQ, i) => {
+            // Process all media files for this sub-question in parallel
+            const [subFinalImageUrl, subFinalImageUrls, subFinalAudioUrl, processedOptions] = await Promise.all([
+              // Single image URL
+              (async () => {
+                if (subQ.imageUrl && subQ.imageUrl.includes('/api/temp-question-images/')) {
+                  try {
+                    return await moveTemporaryQuestionImageToPermanent(subQ.imageUrl);
+                  } catch (error) {
+                    console.error("Error moving sub-question image:", error);
+                    return null;
                   }
-                } catch (error) {
-                  console.error("Error moving sub-question imageUrl:", error);
                 }
-              } else if (imgUrl) {
-                processedImageUrls.push(imgUrl);
-              }
-            }
-            subFinalImageUrls = processedImageUrls.length > 0 ? processedImageUrls : null;
-          }
-
-          let subFinalAudioUrl = subQ.audioUrl;
-          if (subQ.audioUrl && subQ.audioUrl.includes('/api/temp-audio/')) {
-            try {
-              subFinalAudioUrl = await moveTemporaryAudioToPermanent(subQ.audioUrl);
-            } catch (error) {
-              console.error("Error moving sub-question audio:", error);
-              subFinalAudioUrl = null;
-            }
-          }
-
-          // Process sub-question answer images
-          let processedOptions = subQ.options;
-          if (Array.isArray(subQ.options)) {
-            processedOptions = await Promise.all(subQ.options.map(async (opt: any) => {
-              if (typeof opt === 'object') {
-                const processedImageUrls = [];
-                if (opt.imageUrls && Array.isArray(opt.imageUrls)) {
-                  for (const imgUrl of opt.imageUrls) {
-                    if (imgUrl && imgUrl.includes('/api/temp-answer-images/')) {
-                      try {
-                        const movedUrl = await moveTemporaryAnswerImageToPermanent(imgUrl);
-                        if (movedUrl) processedImageUrls.push(movedUrl);
-                      } catch (error) {
-                        console.error("Error moving answer image:", error);
+                return subQ.imageUrl;
+              })(),
+              
+              // Image URLs array
+              (async () => {
+                if (subQ.imageUrls && Array.isArray(subQ.imageUrls) && subQ.imageUrls.length > 0) {
+                  const results = await Promise.all(
+                    subQ.imageUrls.map(async (imgUrl: string) => {
+                      if (imgUrl && (imgUrl.includes('/api/temp-question-images/') || imgUrl.includes('/api/qbank-temp-images/') || imgUrl.includes('/api/exam-temp-images/'))) {
+                        try {
+                          return await moveTemporaryQuestionImageToPermanent(imgUrl);
+                        } catch (error) {
+                          console.error("Error moving sub-question imageUrl:", error);
+                          return null;
+                        }
                       }
-                    } else if (imgUrl) {
-                      processedImageUrls.push(imgUrl);
-                    }
+                      return imgUrl;
+                    })
+                  );
+                  const filtered = results.filter(url => url !== null);
+                  return filtered.length > 0 ? filtered : null;
+                }
+                return subQ.imageUrls;
+              })(),
+              
+              // Audio URL
+              (async () => {
+                if (subQ.audioUrl && subQ.audioUrl.includes('/api/temp-audio/')) {
+                  try {
+                    return await moveTemporaryAudioToPermanent(subQ.audioUrl);
+                  } catch (error) {
+                    console.error("Error moving sub-question audio:", error);
+                    return null;
                   }
                 }
-                return { ...opt, imageUrls: processedImageUrls };
-              }
-              return opt;
-            }));
-          }
-
-          const subQuestion = await storage.createQuestion({
-            examId: examId || null,
-            category: category || "ngữ pháp",
-            language: language || "japanese",
-            description: null, // Sub-questions don't have descriptions
-            descriptionImageUrl: null,
-            descriptionImageUrls: null,
-            descriptionAudioUrl: null,
-            questionText: subQ.questionText,
-            questionType: questionType || "multiple_choice",
-            imageUrl: subFinalImageUrl || null,
-            imageUrls: subFinalImageUrls || null,
-            audioUrl: subFinalAudioUrl || null,
-            options: processedOptions,
-            correctAnswer: subQ.correctAnswer,
-            explanation: subQ.explanation || null,
-            points: subQ.points !== undefined ? subQ.points : 1,
-            sortOrder: newSortOrder + i + 1,
-            parentId: parentQuestion.id, // Link to parent
-          });
-          
-          createdSubQuestions.push(subQuestion);
-        }
+                return subQ.audioUrl;
+              })(),
+              
+              // Answer options with images
+              (async () => {
+                if (Array.isArray(subQ.options)) {
+                  return await Promise.all(subQ.options.map(async (opt: any) => {
+                    if (typeof opt === 'object' && opt.imageUrls && Array.isArray(opt.imageUrls)) {
+                      const imageResults = await Promise.all(
+                        opt.imageUrls.map(async (imgUrl: string) => {
+                          if (imgUrl && imgUrl.includes('/api/temp-answer-images/')) {
+                            try {
+                              return await moveTemporaryAnswerImageToPermanent(imgUrl);
+                            } catch (error) {
+                              console.error("Error moving answer image:", error);
+                              return null;
+                            }
+                          }
+                          return imgUrl;
+                        })
+                      );
+                      return { ...opt, imageUrls: imageResults.filter(url => url !== null) };
+                    }
+                    return opt;
+                  }));
+                }
+                return subQ.options;
+              })()
+            ]);
+            
+            // Create the sub-question with processed media
+            return await storage.createQuestion({
+              examId: examId || null,
+              category: category || "ngữ pháp",
+              language: language || "japanese",
+              description: null,
+              descriptionImageUrl: null,
+              descriptionImageUrls: null,
+              descriptionAudioUrl: null,
+              questionText: subQ.questionText,
+              questionType: questionType || "multiple_choice",
+              imageUrl: subFinalImageUrl || null,
+              imageUrls: subFinalImageUrls || null,
+              audioUrl: subFinalAudioUrl || null,
+              options: processedOptions,
+              correctAnswer: subQ.correctAnswer,
+              explanation: subQ.explanation || null,
+              points: subQ.points !== undefined ? subQ.points : 1,
+              sortOrder: newSortOrder + i + 1,
+              parentId: parentQuestion.id,
+            });
+          })
+        );
 
         res.status(201).json({
           question: parentQuestion,
@@ -3532,32 +3535,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Question not found" });
       }
 
-      // Process imageUrls array if provided - move temporary files to permanent storage
+      // OPTIMIZED: Process imageUrls array in parallel if provided
       let processedImageUrls = imageUrls;
       if (imageUrls !== undefined) {
         if (Array.isArray(imageUrls) && imageUrls.length > 0) {
-          const finalImageUrls = [];
-          for (const imgUrl of imageUrls) {
-            if (imgUrl && (imgUrl.includes('/api/temp-question-images/') || imgUrl.includes('/api/qbank-temp-images/') || imgUrl.includes('/api/exam-temp-images/'))) {
-              try {
-                const movedUrl = await moveTemporaryQuestionImageToPermanent(imgUrl);
-                if (movedUrl) {
-                  finalImageUrls.push(movedUrl);
+          const results = await Promise.all(
+            imageUrls.map(async (imgUrl: string) => {
+              if (imgUrl && (imgUrl.includes('/api/temp-question-images/') || imgUrl.includes('/api/qbank-temp-images/') || imgUrl.includes('/api/exam-temp-images/'))) {
+                try {
+                  return await moveTemporaryQuestionImageToPermanent(imgUrl);
+                } catch (error) {
+                  console.error("Error moving question imageUrl in update:", error);
+                  return null;
                 }
-              } catch (error) {
-                console.error("Error moving question imageUrl in update:", error);
               }
-            } else if (imgUrl) {
-              finalImageUrls.push(imgUrl);
-            }
-          }
-          processedImageUrls = finalImageUrls.length > 0 ? finalImageUrls : null;
+              return imgUrl;
+            })
+          );
+          const filtered = results.filter(url => url !== null);
+          processedImageUrls = filtered.length > 0 ? filtered : null;
         } else {
-          // Empty array or null - clear imageUrls
           processedImageUrls = null;
         }
       } else {
-        // imageUrls not provided in request - don't modify existing value
         processedImageUrls = undefined;
       }
 
@@ -3589,84 +3589,82 @@ export async function registerRoutes(app: Express): Promise<Server> {
           parentId: null, // Ensure parent questions have null parentId
         });
 
-        // 2. Delete sub-questions that are no longer in the payload
-        for (const existingSub of existingSubQuestions) {
-          if (!payloadSubIds.has(existingSub.id)) {
-            await storage.deleteQuestion(existingSub.id);
-          }
-        }
-
-        // 3. Update existing or create new sub-questions
-        const processedSubQuestions = [];
-        for (let i = 0; i < subQuestions.length; i++) {
-          const subQ = subQuestions[i];
-          
-          // Process sub-question imageUrls - move temporary files to permanent storage
-          let subProcessedImageUrls = subQ.imageUrls;
-          if (subQ.imageUrls !== undefined) {
-            if (Array.isArray(subQ.imageUrls) && subQ.imageUrls.length > 0) {
-              const finalImageUrls = [];
-              for (const imgUrl of subQ.imageUrls) {
-                if (imgUrl && (imgUrl.includes('/api/temp-question-images/') || imgUrl.includes('/api/qbank-temp-images/') || imgUrl.includes('/api/exam-temp-images/'))) {
-                  try {
-                    const movedUrl = await moveTemporaryQuestionImageToPermanent(imgUrl);
-                    if (movedUrl) {
-                      finalImageUrls.push(movedUrl);
-                    }
-                  } catch (error) {
-                    console.error("Error moving sub-question imageUrl in update:", error);
-                  }
-                } else if (imgUrl) {
-                  finalImageUrls.push(imgUrl);
-                }
-              }
-              subProcessedImageUrls = finalImageUrls.length > 0 ? finalImageUrls : null;
-            } else {
-              subProcessedImageUrls = null;
+        // 2. OPTIMIZED: Delete sub-questions in parallel
+        await Promise.all(
+          existingSubQuestions.map(async (existingSub) => {
+            if (!payloadSubIds.has(existingSub.id)) {
+              await storage.deleteQuestion(existingSub.id);
             }
-          } else {
-            subProcessedImageUrls = undefined;
-          }
-          
-          if (subQ.id && existingSubIds.has(subQ.id)) {
-            // UPDATE existing sub-question
-            const updatedSubQuestion = await storage.updateQuestion(subQ.id, {
-              questionText: subQ.questionText,
-              imageUrl: subQ.imageUrl !== undefined ? subQ.imageUrl : null,
-              imageUrls: subProcessedImageUrls !== undefined ? subProcessedImageUrls : null,
-              audioUrl: subQ.audioUrl !== undefined ? subQ.audioUrl : null,
-              options: subQ.options,
-              correctAnswer: subQ.correctAnswer,
-              explanation: subQ.explanation !== undefined ? subQ.explanation : null,
-              points: subQ.points !== undefined ? subQ.points : 1,
-              sortOrder: (sortOrder || existingQuestion.sortOrder) + i + 1,
-            });
-            processedSubQuestions.push(updatedSubQuestion);
-          } else {
-            // CREATE new sub-question
-            const newSubQuestion = await storage.createQuestion({
-              examId: existingQuestion.examId,
-              category: category || existingQuestion.category,
-              language: language || existingQuestion.language,
-              description: null,
-              descriptionImageUrl: null,
-              descriptionImageUrls: null,
-              descriptionAudioUrl: null,
-              questionText: subQ.questionText,
-              questionType: questionType || "multiple_choice",
-              imageUrl: subQ.imageUrl || null,
-              imageUrls: subProcessedImageUrls || null,
-              audioUrl: subQ.audioUrl || null,
-              options: subQ.options,
-              correctAnswer: subQ.correctAnswer,
-              explanation: subQ.explanation || null,
-              points: subQ.points !== undefined ? subQ.points : 1,
-              sortOrder: (sortOrder || existingQuestion.sortOrder) + i + 1,
-              parentId: id, // Link to parent
-            });
-            processedSubQuestions.push(newSubQuestion);
-          }
-        }
+          })
+        );
+
+        // 3. OPTIMIZED: Update existing or create new sub-questions in parallel
+        const processedSubQuestions = await Promise.all(
+          subQuestions.map(async (subQ, i) => {
+            // Process sub-question imageUrls in parallel
+            let subProcessedImageUrls = subQ.imageUrls;
+            if (subQ.imageUrls !== undefined) {
+              if (Array.isArray(subQ.imageUrls) && subQ.imageUrls.length > 0) {
+                const results = await Promise.all(
+                  subQ.imageUrls.map(async (imgUrl) => {
+                    if (imgUrl && (imgUrl.includes('/api/temp-question-images/') || imgUrl.includes('/api/qbank-temp-images/') || imgUrl.includes('/api/exam-temp-images/'))) {
+                      try {
+                        return await moveTemporaryQuestionImageToPermanent(imgUrl);
+                      } catch (error) {
+                        console.error("Error moving sub-question imageUrl in update:", error);
+                        return null;
+                      }
+                    }
+                    return imgUrl;
+                  })
+                );
+                const filtered = results.filter(url => url !== null);
+                subProcessedImageUrls = filtered.length > 0 ? filtered : null;
+              } else {
+                subProcessedImageUrls = null;
+              }
+            } else {
+              subProcessedImageUrls = undefined;
+            }
+            
+            if (subQ.id && existingSubIds.has(subQ.id)) {
+              // UPDATE existing sub-question
+              return await storage.updateQuestion(subQ.id, {
+                questionText: subQ.questionText,
+                imageUrl: subQ.imageUrl !== undefined ? subQ.imageUrl : null,
+                imageUrls: subProcessedImageUrls !== undefined ? subProcessedImageUrls : null,
+                audioUrl: subQ.audioUrl !== undefined ? subQ.audioUrl : null,
+                options: subQ.options,
+                correctAnswer: subQ.correctAnswer,
+                explanation: subQ.explanation !== undefined ? subQ.explanation : null,
+                points: subQ.points !== undefined ? subQ.points : 1,
+                sortOrder: (sortOrder || existingQuestion.sortOrder) + i + 1,
+              });
+            } else {
+              // CREATE new sub-question
+              return await storage.createQuestion({
+                examId: existingQuestion.examId,
+                category: category || existingQuestion.category,
+                language: language || existingQuestion.language,
+                description: null,
+                descriptionImageUrl: null,
+                descriptionImageUrls: null,
+                descriptionAudioUrl: null,
+                questionText: subQ.questionText,
+                questionType: questionType || "multiple_choice",
+                imageUrl: subQ.imageUrl || null,
+                imageUrls: subProcessedImageUrls || null,
+                audioUrl: subQ.audioUrl || null,
+                options: subQ.options,
+                correctAnswer: subQ.correctAnswer,
+                explanation: subQ.explanation || null,
+                points: subQ.points !== undefined ? subQ.points : 1,
+                sortOrder: (sortOrder || existingQuestion.sortOrder) + i + 1,
+                parentId: id,
+              });
+            }
+          })
+        );
 
         res.json({
           question: updatedQuestion,
