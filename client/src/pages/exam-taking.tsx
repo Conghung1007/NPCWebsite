@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef, useLayoutEffect } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -68,6 +68,10 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   
   // Wait time tracking between sections
   const [waitStartTime, setWaitStartTime] = useState<number | null>(null);
+  
+  // Header height tracking for fixed positioning
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState<number>(0);
 
   // User data is now handled by useAuth hook
 
@@ -174,6 +178,24 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       
       return legacySections;
     }
+  }, []);
+
+  // Measure header height for fixed positioning
+  useLayoutEffect(() => {
+    const measureHeader = () => {
+      if (headerRef.current) {
+        const height = headerRef.current.getBoundingClientRect().height;
+        setHeaderHeight(height);
+      }
+    };
+
+    // Measure on mount and window resize
+    measureHeader();
+    window.addEventListener('resize', measureHeader);
+    
+    return () => {
+      window.removeEventListener('resize', measureHeader);
+    };
   }, []);
 
   // Load exam sections when exam data is available
@@ -869,7 +891,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
-      <div className="bg-white shadow-sm fixed top-0 inset-x-0 z-30">
+      <div ref={headerRef} className="bg-white shadow-sm fixed top-0 inset-x-0 z-30">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
           <div className="flex items-center justify-between">
             <div>
@@ -961,8 +983,11 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         </div>
       )}
 
+      {/* Header Spacer */}
+      <div style={{ height: headerHeight }} aria-hidden="true" />
+
       {/* Main Content */}
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 pt-48">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
           {/* Section Description */}
           {currentSection && (currentSection.content || (currentSection.descriptionImageUrls && currentSection.descriptionImageUrls.length > 0) || currentSection.descriptionAudioUrl) && (
