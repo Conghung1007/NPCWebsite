@@ -1052,8 +1052,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                 {/* Common Description (for questions with sub-questions only) */}
                 {(currentQuestion as any).subQuestions && (currentQuestion as any).subQuestions.length > 0 && 
                  ((currentQuestion as any).description || 
-                  ((currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0) || 
-                  (currentQuestion as any).descriptionAudioUrl) && (
+                  ((currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0)) && (
                   <Card>
                     <CardContent className="p-6 space-y-4">
                       {/* Description Text */}
@@ -1074,18 +1073,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                               className="max-w-full h-auto rounded-lg shadow-sm max-h-48"
                             />
                           ))}
-                        </div>
-                      )}
-                      
-                      {/* Description Audio */}
-                      {(currentQuestion as any).descriptionAudioUrl && (
-                        <div className="flex justify-center">
-                          <audio controls controlsList="nodownload" className="w-full max-w-md" key={`desc-audio-${currentQuestion.id}`}>
-                            <source src={(currentQuestion as any).descriptionAudioUrl.startsWith('/api/') 
-                              ? (currentQuestion as any).descriptionAudioUrl 
-                              : `/api/${(currentQuestion as any).descriptionAudioUrl}`} type="audio/mpeg" />
-                            Trình duyệt của bạn không hỗ trợ phát audio.
-                          </audio>
                         </div>
                       )}
                     </CardContent>
@@ -1283,8 +1270,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   <>
                     {/* Common Description (for regular questions) */}
                     {((currentQuestion as any).description || 
-                      ((currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0) || 
-                      (currentQuestion as any).descriptionAudioUrl) && (
+                      ((currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0)) && (
                       <Card>
                         <CardContent className="p-6 space-y-4">
                           {/* Description Text */}
@@ -1305,18 +1291,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                                   className="max-w-full h-auto rounded-lg shadow-sm max-h-48"
                                 />
                               ))}
-                            </div>
-                          )}
-                          
-                          {/* Description Audio */}
-                          {(currentQuestion as any).descriptionAudioUrl && (
-                            <div className="flex justify-center">
-                              <audio controls controlsList="nodownload" className="w-full max-w-md" key={`desc-audio-${currentQuestion.id}`}>
-                                <source src={(currentQuestion as any).descriptionAudioUrl.startsWith('/api/') 
-                                  ? (currentQuestion as any).descriptionAudioUrl 
-                                  : `/api/${(currentQuestion as any).descriptionAudioUrl}`} type="audio/mpeg" />
-                                Trình duyệt của bạn không hỗ trợ phát audio.
-                              </audio>
                             </div>
                           )}
                         </CardContent>
