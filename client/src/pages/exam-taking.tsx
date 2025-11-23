@@ -71,7 +71,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   
   // Header height tracking for fixed positioning
   const headerRef = useRef<HTMLDivElement>(null);
-  const [headerHeight, setHeaderHeight] = useState<number>(0);
+  const [headerHeight, setHeaderHeight] = useState<number>(150); // Default fallback height
 
   // User data is now handled by useAuth hook
 
