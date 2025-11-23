@@ -1399,9 +1399,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             )}
           </div>
 
-          {/* Control Panel */}
+          {/* Sticky Control Panel */}
           <div className="lg:col-span-4">
-            <div className="space-y-4">
+            <div className="sticky top-20 space-y-4">
               {/* Timer Card */}
               <Card className={`shadow-lg border-2 ${sectionTimeLeft < 300 ? 'border-red-400 bg-red-50' : 'border-blue-200 bg-gradient-to-br from-blue-50 to-white'}`}>
                 <CardContent className="p-6">
