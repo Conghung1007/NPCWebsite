@@ -180,21 +180,21 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     }
   }, []);
 
-  // Measure header height for fixed positioning
+  // Measure header height for fixed positioning using ResizeObserver
   useLayoutEffect(() => {
-    const measureHeader = () => {
-      if (headerRef.current) {
-        const height = headerRef.current.getBoundingClientRect().height;
-        setHeaderHeight(height);
-      }
-    };
+    if (!headerRef.current) return;
 
-    // Measure on mount and window resize
-    measureHeader();
-    window.addEventListener('resize', measureHeader);
+    const resizeObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const height = entry.contentRect.height;
+        setHeaderHeight(Math.max(height, 0));
+      }
+    });
+
+    resizeObserver.observe(headerRef.current);
     
     return () => {
-      window.removeEventListener('resize', measureHeader);
+      resizeObserver.disconnect();
     };
   }, []);
 
