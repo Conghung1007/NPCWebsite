@@ -6,6 +6,22 @@ The website serves as a comprehensive digital presence for N&P Company, featurin
 
 # Recent Changes
 
+**November 2025 - Audio Upload Limit Increased:**
+- Increased audio file upload size limit from 10MB to 50MB
+- **Backend Updates (server/routes.ts)**: Updated all audio upload endpoints
+  - Global multer limit: 50MB
+  - /api/description-audio/upload-direct: validation and maxSizeBytes updated
+  - /api/temp-description-audio/upload: validation and maxSizeBytes updated
+  - /api/audio/upload-direct: maxSizeBytes updated
+  - /api/audio/upload: validation and maxSizeBytes updated
+- **Impact**: Users can now upload larger audio files for question descriptions and exam content
+
+**November 2025 - Audio Player Cache Fix:**
+- Fixed bug where audio player showed old audio after uploading new file
+- **Root Cause**: Browser caching audio element without key prop
+- **Frontend Fix (QuestionBankManager.tsx)**: Added `key={audioUrl}` to audio element
+- **Impact**: Audio player now immediately reflects newly uploaded audio files
+
 **November 2025 - Exam Question Cache Invalidation Fix:**
 - Fixed bug where updated questions (with new images) not showing in exam-taking page
 - **Root Cause**: TanStack Query cache not invalidated for `/api/exams/:id/questions` after question updates

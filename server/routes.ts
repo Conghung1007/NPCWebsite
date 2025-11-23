@@ -11,7 +11,7 @@ import multer from "multer";
 // Configure multer for file uploads
 const upload = multer({ 
   storage: multer.memoryStorage(),
-  limits: { fileSize: 10 * 1024 * 1024 } // 10MB limit
+  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
 // Middleware to check if user is authenticated
@@ -1984,9 +1984,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Only audio files are allowed" });
       }
 
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        return res.status(400).json({ message: "Audio size cannot exceed 10MB" });
+      // Validate file size (max 50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        return res.status(400).json({ message: "Audio size cannot exceed 50MB" });
       }
 
       const timestamp = Date.now();
@@ -1999,7 +1999,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           provider: "primary",
           folder: folder,
           allowedTypes: ["audio/*"],
-          maxSizeBytes: 10 * 1024 * 1024
+          maxSizeBytes: 50 * 1024 * 1024
         };
         
         const uploadResult = await multiR2Storage.uploadFile(
@@ -2066,7 +2066,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             provider: "primary",
             folder: folder,
             allowedTypes: ["audio/*"],
-            maxSizeBytes: 10 * 1024 * 1024
+            maxSizeBytes: 50 * 1024 * 1024
           }
         );
         
@@ -2111,9 +2111,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Only audio files are allowed" });
       }
 
-      // Validate file size (max 10MB)
-      if (fileSize > 10 * 1024 * 1024) {
-        return res.status(400).json({ message: "File size cannot exceed 10MB" });
+      // Validate file size (max 50MB)
+      if (fileSize > 50 * 1024 * 1024) {
+        return res.status(400).json({ message: "File size cannot exceed 50MB" });
       }
 
       try {
@@ -2128,7 +2128,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           provider: "primary",
           folder: "temp-audio",
           allowedTypes: ["audio/*"],
-          maxSizeBytes: 10 * 1024 * 1024 // 10MB
+          maxSizeBytes: 50 * 1024 * 1024 // 50MB
         }, fileType);
         
         console.log("Upload result:", uploadResult);
@@ -3994,9 +3994,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Only audio files are allowed" });
       }
 
-      // Validate file size (max 10MB)
-      if (file.size > 10 * 1024 * 1024) {
-        return res.status(400).json({ message: "Audio size cannot exceed 10MB" });
+      // Validate file size (max 50MB)
+      if (file.size > 50 * 1024 * 1024) {
+        return res.status(400).json({ message: "Audio size cannot exceed 50MB" });
       }
 
       const timestamp = Date.now();
@@ -4008,7 +4008,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         provider: "primary",
         folder: folder,
         allowedTypes: ["audio/*"],
-        maxSizeBytes: 10 * 1024 * 1024
+        maxSizeBytes: 50 * 1024 * 1024
       };
       
       const uploadResult = await multiR2Storage.uploadFile(
