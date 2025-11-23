@@ -944,9 +944,11 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Section Description */}
-          {currentSection && (currentSection.content || (currentSection.descriptionImageUrls && currentSection.descriptionImageUrls.length > 0) || currentSection.descriptionAudioUrl) && (
-            <div className="lg:col-span-8 mb-6">
+          {/* Left Column: Section Description + Question Content */}
+          <div className="lg:col-span-8 space-y-6">
+            {/* Section Description */}
+            {currentSection && (currentSection.content || (currentSection.descriptionImageUrls && currentSection.descriptionImageUrls.length > 0) || currentSection.descriptionAudioUrl) && (
+              <div>
               <Card className="shadow-lg border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-white">
                 <CardHeader className="bg-gradient-to-r from-emerald-100/50 to-emerald-50/50 border-b border-emerald-200">
                   <CardTitle className="text-xl font-bold text-emerald-700 flex items-center gap-2">
@@ -1003,11 +1005,11 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   )}
                 </CardContent>
               </Card>
-            </div>
-          )}
-          
-          {/* Question Content */}
-          <div className="lg:col-span-8">
+              </div>
+            )}
+            
+            {/* Question Content */}
+            <div>
             {!currentQuestion ? (
               <Card>
                 <CardContent className="p-8 text-center">
@@ -1397,6 +1399,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                 </Button>
               </div>
             )}
+            </div>
           </div>
 
           {/* Sticky Control Panel */}
