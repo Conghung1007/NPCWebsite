@@ -219,6 +219,13 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     }
   }, [currentSectionIndex, examStarted, examSections]);
 
+  // Scroll to top when switching questions or sections
+  useEffect(() => {
+    if (examStarted) {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  }, [currentQuestionIndex, currentSectionIndex, examStarted]);
+
   // Section timer countdown
   useEffect(() => {
     if (sectionTimeLeft > 0 && examStarted) {
