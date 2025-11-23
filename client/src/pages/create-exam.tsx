@@ -731,7 +731,7 @@ export default function CreateExam() {
                         {section.questionSets.map((questionSet, qsIndex) => (
                           <div key={questionSet.id} className="border rounded-lg p-4 bg-gray-50">
                             <div className="flex items-center justify-between mb-3">
-                              <h5 className="text-sm font-medium">Bộ {qsIndex + 1}</h5>
+                              <h5 className="text-sm font-medium">Bộ câu hỏi {qsIndex + 1}</h5>
                               {section.questionSets.length > 1 && (
                                 <Button
                                   type="button"
@@ -745,35 +745,38 @@ export default function CreateExam() {
                               )}
                             </div>
 
-                            {/* Tên bộ câu hỏi */}
-                            <div className="mb-3">
-                              <Label className="block text-sm font-medium mb-1">Tên bộ câu hỏi (tùy chọn)</Label>
-                              <Input
-                                placeholder={`Bộ câu hỏi ${qsIndex + 1}`}
-                                value={questionSet.name}
-                                onChange={(e) => questionSetActions.updateQuestionSetName(section.id, questionSet.id, e.target.value)}
-                              />
+                            {/* Tên bộ câu hỏi và Nút chọn câu hỏi trên cùng hàng */}
+                            <div className="grid grid-cols-2 gap-3 mb-3">
+                              <div>
+                                <Label className="block text-sm font-medium mb-1">Tên bộ câu hỏi (tùy chọn)</Label>
+                                <Input
+                                  placeholder={`Bộ câu hỏi ${qsIndex + 1}`}
+                                  value={questionSet.name}
+                                  onChange={(e) => questionSetActions.updateQuestionSetName(section.id, questionSet.id, e.target.value)}
+                                />
+                              </div>
+                              
+                              <div className="flex items-end">
+                                <Button
+                                  type="button"
+                                  onClick={() => {
+                                    setDialogState({
+                                      isOpen: true,
+                                      sectionId: section.id,
+                                      questionSetId: questionSet.id
+                                    });
+                                    setQuestionSearchQuery("");
+                                    setSelectedLanguageFilter("all");
+                                    setSelectedCategoryFilter("all");
+                                  }}
+                                  variant="outline"
+                                  className="w-full"
+                                >
+                                  <Search className="w-4 h-4 mr-2" />
+                                  Chọn câu hỏi ({questionSet.questions.length})
+                                </Button>
+                              </div>
                             </div>
-
-                            {/* Nút chọn câu hỏi */}
-                            <Button
-                              type="button"
-                              onClick={() => {
-                                setDialogState({
-                                  isOpen: true,
-                                  sectionId: section.id,
-                                  questionSetId: questionSet.id
-                                });
-                                setQuestionSearchQuery("");
-                                setSelectedLanguageFilter("all");
-                                setSelectedCategoryFilter("all");
-                              }}
-                              variant="outline"
-                              className="w-full mb-3"
-                            >
-                              <Search className="w-4 h-4 mr-2" />
-                              Chọn câu hỏi ({questionSet.questions.length})
-                            </Button>
 
                             {/* Hiển thị câu hỏi đã chọn */}
                             {questionSet.questions.length > 0 && (
@@ -805,16 +808,18 @@ export default function CreateExam() {
                         ))}
 
                         {/* Nút thêm bộ câu hỏi */}
-                        <Button
-                          type="button"
-                          onClick={() => questionSetActions.addQuestionSetToSection(section.id)}
-                          variant="outline"
-                          className="w-full"
-                          data-testid={`button-add-question-set-${section.id}`}
-                        >
-                          <Plus className="w-4 h-4 mr-2" />
-                          Thêm bộ câu hỏi
-                        </Button>
+                        <div className="flex justify-end">
+                          <Button
+                            type="button"
+                            onClick={() => questionSetActions.addQuestionSetToSection(section.id)}
+                            variant="outline"
+                            className="w-1/2"
+                            data-testid={`button-add-question-set-${section.id}`}
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Thêm bộ câu hỏi
+                          </Button>
+                        </div>
                       </div>
                     </div>
                   </div>
