@@ -239,7 +239,7 @@ export function Header() {
                 </Button>
               </SheetTrigger>
               <SheetContent side="left" className="w-72 sm:w-80">
-                <div className="flex flex-col space-y-2 mt-6">
+                <div className="flex flex-col space-y-2 mt-[50px] mb-[50px]">
                   {navigation.map((item) => (
                     <Link 
                       key={item.name} 
