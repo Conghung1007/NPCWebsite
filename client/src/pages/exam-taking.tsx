@@ -1390,7 +1390,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   onClick={handlePrevious}
                   disabled={currentQuestionIndex === 0 || sectionCompleted}
                   size="lg"
-                  className="flex-1 border-2 hover:bg-blue-50 hover:border-blue-400 transition-all"
+                  className="flex-1 border-2 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 transition-all"
                 >
                   <ChevronLeft className="w-5 h-5 mr-2" />
                   Câu trước

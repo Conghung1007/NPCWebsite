@@ -45,7 +45,7 @@ Scroll to Top: Smooth scroll-to-top button with responsive design and performanc
 - **Scoring Logic**: Sums points from correct answers. Section and total exam scores are point-based. Legacy questions default to 1 point.
 - **Pass/Fail Validation**: Based on earned points against section and exam passing score thresholds.
 - **Question Sets**: Allows multiple named question groups per section, with questions shuffled within their sets. Backward compatible with legacy exams.
-- **UI/UX**: Automatic smooth scroll to top when navigating questions in exam, improved audio player caching, immediate cache invalidation for updated questions in exams.
+- **UI/UX**: Automatic smooth scroll to top when navigating questions in exam (triggers on question/section changes for better navigation experience), improved audio player caching, immediate cache invalidation for updated questions in exams, accessible navigation buttons with WCAG-compliant contrast ratios (hover:text-blue-700 on hover:bg-blue-50 background).
 
 # External Dependencies
 
