@@ -942,7 +942,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
           </div>
         </div>
       </div>
-
       {/* Section Completion Overlay */}
       {sectionCompleted && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -982,10 +981,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
           </Card>
         </div>
       )}
-
       {/* Header Spacer */}
       <div style={{ height: headerHeight }} aria-hidden="true" />
-
       {/* Main Content */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
@@ -1120,7 +1117,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                 {/* Regular Question or Sub-Questions */}
                 {(currentQuestion as any).subQuestions && (currentQuestion as any).subQuestions.length > 0 ? (
                   /* Render Parent + Sub-Questions */
-                  <>
+                  (<>
                     {/* Parent Question (Câu 1) */}
                     <Card>
                       <CardHeader>
@@ -1197,7 +1194,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                         </RadioGroup>
                       </CardContent>
                     </Card>
-
                     {/* Sub-Questions (Câu 2, 3, ...) */}
                     {(currentQuestion as any).subQuestions.map((subQuestion: any, subIndex: number) => (
                       <Card key={subQuestion.id}>
@@ -1278,10 +1274,10 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                       </CardContent>
                     </Card>
                   ))}
-                  </>
+                  </>)
                 ) : (
                   /* Render Regular Question (No Sub-Questions) */
-                  <>
+                  (<>
                     {/* Common Description (for regular questions) */}
                     {((currentQuestion as any).description || 
                       ((currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0) || 
@@ -1323,7 +1319,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                         </CardContent>
                       </Card>
                     )}
-                    
                     {/* Regular Question */}
                     <Card>
                       <CardHeader>
@@ -1411,7 +1406,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                       </RadioGroup>
                     </CardContent>
                   </Card>
-                  </>
+                  </>)
                 )}
               </div>
             )}
@@ -1541,7 +1536,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
           </div>
         </div>
       </div>
-
       {/* Section Complete Confirmation Dialog */}
       <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
         <DialogContent className="w-[90vw] max-w-md">
@@ -1605,7 +1599,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {/* Custom Exit Confirmation Dialog */}
       <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
         <DialogContent className="w-[90vw] max-w-md">
