@@ -1084,7 +1084,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     {/* Parent Question (Câu 1) */}
                     <Card className="shadow-md border-blue-200 bg-gradient-to-br from-white to-blue-50/30">
                       <CardHeader className="bg-gradient-to-r from-blue-100/50 to-blue-50/50 border-b border-blue-200">
-                        <CardTitle className="text-lg font-bold text-blue-900">
+                        <CardTitle className="text-lg font-bold text-blue-900 whitespace-pre-wrap">
                           Câu {currentQuestionIndex + 1}.1: {currentQuestion.questionText}
                         </CardTitle>
                       </CardHeader>
@@ -1162,7 +1162,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     {(currentQuestion as any).subQuestions.map((subQuestion: any, subIndex: number) => (
                       <Card key={subQuestion.id} className="shadow-md border-purple-200 bg-gradient-to-br from-white to-purple-50/30">
                         <CardHeader className="bg-gradient-to-r from-purple-100/50 to-purple-50/50 border-b border-purple-200">
-                          <CardTitle className="text-lg font-bold text-purple-900">
+                          <CardTitle className="text-lg font-bold text-purple-900 whitespace-pre-wrap">
                             Câu {currentQuestionIndex + 1}.{subIndex + 2}: {subQuestion.questionText}
                           </CardTitle>
                         </CardHeader>
@@ -1289,7 +1289,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                     {/* Regular Question */}
                     <Card className="shadow-md border-indigo-200 bg-gradient-to-br from-white to-indigo-50/30">
                       <CardHeader className="bg-gradient-to-r from-indigo-100/50 to-indigo-50/50 border-b border-indigo-200">
-                        <CardTitle className="text-lg font-bold text-indigo-900">
+                        <CardTitle className="text-lg font-bold text-indigo-900 whitespace-pre-wrap">
                           Câu {currentQuestionIndex + 1}: {currentQuestion.questionText}
                         </CardTitle>
                       </CardHeader>
