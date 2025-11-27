@@ -145,7 +145,6 @@ export function ExamAudioPlayer({
   };
 
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const remainingPlays = maxPlays - playCountDisplay;
 
   return (
     <div className={`bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 shadow-sm border ${className}`}>
@@ -217,21 +216,6 @@ export function ExamAudioPlayer({
           </div>
         </div>
       </div>
-
-      {maxPlays > 0 && (
-        <div className="mt-3 flex justify-center">
-          <span className={`text-xs px-3 py-1 rounded-full ${
-            isDisabled 
-              ? 'bg-red-100 text-red-600' 
-              : 'bg-blue-100 text-blue-600'
-          }`}>
-            {isDisabled 
-              ? 'Đã hết lượt nghe' 
-              : `Còn ${remainingPlays} lượt nghe`
-            }
-          </span>
-        </div>
-      )}
     </div>
   );
 }
