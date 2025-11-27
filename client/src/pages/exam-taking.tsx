@@ -982,7 +982,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                           key={index}
                           src={imageUrl}
                           alt={`Section description ${index + 1}`}
-                          className="max-w-full h-auto rounded-lg shadow-sm max-h-48"
+                          className="max-w-full h-auto rounded-lg shadow-sm max-h-[700px]"
                           data-testid={`section-image-${index}`}
                         />
                       ))}
@@ -1054,7 +1054,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                               key={index}
                               src={imageUrl}
                               alt={`Question description illustration ${index + 1}`}
-                              className="max-w-full h-auto rounded-lg shadow-sm max-h-48"
+                              className="max-w-full h-auto rounded-lg shadow-sm max-h-[700px]"
                             />
                           ))}
                         </div>
@@ -1097,7 +1097,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                                 key={index}
                                 src={imageUrl}
                                 alt={`Question illustration ${index + 1}`}
-                                className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
+                                className="max-w-full h-auto rounded-lg shadow-sm max-h-[700px]"
                               />
                             ))}
                           </div>
@@ -1136,7 +1136,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                                             key={imgIndex}
                                             src={imageUrl}
                                             alt={`Option ${String.fromCharCode(65 + index)} illustration ${imgIndex + 1}`}
-                                            className="max-w-full h-auto rounded-md shadow-sm max-h-48"
+                                            className="max-w-full h-auto rounded-md shadow-sm max-h-[700px]"
                                           />
                                         ))}
                                       </div>
@@ -1146,7 +1146,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                                       <img
                                         src={optionImageUrl}
                                         alt={`Option ${String.fromCharCode(65 + index)} illustration`}
-                                        className="max-w-full h-auto rounded-md shadow-sm max-h-48"
+                                        className="max-w-full h-auto rounded-md shadow-sm max-h-[700px]"
                                       />
                                     )}
                                   </Label>
@@ -1175,7 +1175,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                                 key={index}
                                 src={imageUrl}
                                 alt={`Question illustration ${index + 1}`}
-                                className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
+                                className="max-w-full h-auto rounded-lg shadow-sm max-h-[700px]"
                               />
                             ))}
                           </div>
@@ -1215,7 +1215,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                                             key={imgIndex}
                                             src={imageUrl}
                                             alt={`Option ${String.fromCharCode(65 + index)} illustration ${imgIndex + 1}`}
-                                            className="max-w-full h-auto rounded-md shadow-sm max-h-48"
+                                            className="max-w-full h-auto rounded-md shadow-sm max-h-[700px]"
                                           />
                                         ))}
                                       </div>
@@ -1226,7 +1226,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                                       <img
                                         src={optionImageUrl}
                                         alt={`Option ${String.fromCharCode(65 + index)} illustration`}
-                                        className="max-w-full h-auto rounded-md shadow-sm max-h-48"
+                                        className="max-w-full h-auto rounded-md shadow-sm max-h-[700px]"
                                       />
                                     )}
                                   </Label>
@@ -1263,7 +1263,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                                   key={index}
                                   src={imageUrl}
                                   alt={`Question description illustration ${index + 1}`}
-                                  className="max-w-full h-auto rounded-lg shadow-sm max-h-48"
+                                  className="max-w-full h-auto rounded-lg shadow-sm max-h-[700px]"
                                 />
                               ))}
                             </div>
@@ -1303,7 +1303,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                                 key={index}
                                 src={imageUrl}
                                 alt={`Question illustration ${index + 1}`}
-                                className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
+                                className="max-w-full h-auto rounded-lg shadow-sm max-h-[700px]"
                               />
                             ))}
                             {/* Show single imageUrl if no imageUrls (legacy support) */}
@@ -1311,7 +1311,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                               <img
                                 src={(currentQuestion as any).imageUrl}
                                 alt="Question illustration"
-                                className="max-w-full h-auto rounded-lg shadow-sm max-h-64"
+                                className="max-w-full h-auto rounded-lg shadow-sm max-h-[700px]"
                               />
                             )}
                           </div>
@@ -1351,7 +1351,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                                           key={imgIndex}
                                           src={imageUrl}
                                           alt={`Option ${String.fromCharCode(65 + index)} illustration ${imgIndex + 1}`}
-                                          className="max-w-full h-auto rounded-md shadow-sm max-h-48"
+                                          className="max-w-full h-auto rounded-md shadow-sm max-h-[700px]"
                                         />
                                       ))}
                                     </div>
@@ -1362,7 +1362,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                                     <img
                                       src={optionImageUrl}
                                       alt={`Option ${String.fromCharCode(65 + index)} illustration`}
-                                      className="max-w-full h-auto rounded-md shadow-sm max-h-48"
+                                      className="max-w-full h-auto rounded-md shadow-sm max-h-[700px]"
                                     />
                                   )}
                                 </Label>
