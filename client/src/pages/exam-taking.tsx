@@ -12,6 +12,7 @@ import { Clock, ChevronLeft, ChevronRight, FileText, CheckCircle, ArrowRight, Vo
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { type Exam, type Question, type User } from "@shared/schema";
+import { ExamAudioPlayer } from "@/components/ExamAudioPlayer";
 
 // Fisher-Yates shuffle algorithm to randomize question order
 function shuffleArray<T>(array: T[]): T[] {
@@ -991,23 +992,14 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   {/* Section Description Audio */}
                   {currentSection.descriptionAudioUrl && (
                     <div className="flex justify-center">
-                      <audio 
-                        controls 
-                        controlsList="nodownload"
-                        className="w-full max-w-md" 
-                        data-testid="section-audio"
+                      <ExamAudioPlayer
+                        src={currentSection.descriptionAudioUrl.startsWith('/api/') 
+                          ? currentSection.descriptionAudioUrl 
+                          : `/api/temp-description-audio/${currentSection.descriptionAudioUrl}`}
+                        maxPlays={1}
+                        className="w-full max-w-md"
                         key={`section-audio-${currentSectionIndex}`}
-                      >
-                        <source src={currentSection.descriptionAudioUrl.startsWith('/api/') 
-                          ? currentSection.descriptionAudioUrl 
-                          : `/api/temp-description-audio/${currentSection.descriptionAudioUrl}`} 
-                          type="audio/mpeg" />
-                        <source src={currentSection.descriptionAudioUrl.startsWith('/api/') 
-                          ? currentSection.descriptionAudioUrl 
-                          : `/api/temp-description-audio/${currentSection.descriptionAudioUrl}`} 
-                          type="audio/wav" />
-                        Trình duyệt của bạn không hỗ trợ phát audio.
-                      </audio>
+                      />
                     </div>
                   )}
                 </CardContent>
@@ -1071,12 +1063,14 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                       {/* Description Audio */}
                       {(currentQuestion as any).descriptionAudioUrl && (
                         <div className="flex justify-center">
-                          <audio controls controlsList="nodownload" className="w-full max-w-md" key={`desc-audio-${currentQuestion.id}`}>
-                            <source src={(currentQuestion as any).descriptionAudioUrl.startsWith('/api/') 
+                          <ExamAudioPlayer
+                            src={(currentQuestion as any).descriptionAudioUrl.startsWith('/api/') 
                               ? (currentQuestion as any).descriptionAudioUrl 
-                              : `/api/${(currentQuestion as any).descriptionAudioUrl}`} type="audio/mpeg" />
-                            Trình duyệt của bạn không hỗ trợ phát audio.
-                          </audio>
+                              : `/api/${(currentQuestion as any).descriptionAudioUrl}`}
+                            maxPlays={1}
+                            className="w-full max-w-md"
+                            key={`desc-audio-${currentQuestion.id}`}
+                          />
                         </div>
                       )}
                     </CardContent>
@@ -1278,12 +1272,14 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                           {/* Description Audio */}
                           {(currentQuestion as any).descriptionAudioUrl && (
                             <div className="flex justify-center">
-                              <audio controls controlsList="nodownload" className="w-full max-w-md" key={`desc-audio-${currentQuestion.id}`}>
-                                <source src={(currentQuestion as any).descriptionAudioUrl.startsWith('/api/') 
+                              <ExamAudioPlayer
+                                src={(currentQuestion as any).descriptionAudioUrl.startsWith('/api/') 
                                   ? (currentQuestion as any).descriptionAudioUrl 
-                                  : `/api/${(currentQuestion as any).descriptionAudioUrl}`} type="audio/mpeg" />
-                                Trình duyệt của bạn không hỗ trợ phát audio.
-                              </audio>
+                                  : `/api/${(currentQuestion as any).descriptionAudioUrl}`}
+                                maxPlays={1}
+                                className="w-full max-w-md"
+                                key={`desc-audio-${currentQuestion.id}`}
+                              />
                             </div>
                           )}
                         </CardContent>
