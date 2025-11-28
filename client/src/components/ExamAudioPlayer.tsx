@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Play, Pause, Volume2, VolumeX } from "lucide-react";
+import { Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 
@@ -21,9 +21,9 @@ export function ExamAudioPlayer({
   const playCountRef = useRef<number>(0);
   const isPlayingRef = useRef<boolean>(false);
   const isExhaustedRef = useRef<boolean>(false);
+  const hasAutoPlayedRef = useRef<boolean>(false);
   
   const [isPlaying, setIsPlaying] = useState(false);
-  const [playCountDisplay, setPlayCountDisplay] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -50,6 +50,13 @@ export function ExamAudioPlayer({
       setDuration(audio.duration);
     };
 
+    const handleCanPlayThrough = () => {
+      if (!hasAutoPlayedRef.current && playCountRef.current < maxPlays) {
+        hasAutoPlayedRef.current = true;
+        audio.play().catch(console.error);
+      }
+    };
+
     const handleTimeUpdate = () => {
       if (isPlayingRef.current) {
         lastValidTimeRef.current = audio.currentTime;
@@ -62,7 +69,6 @@ export function ExamAudioPlayer({
       setIsPlaying(false);
       
       playCountRef.current += 1;
-      setPlayCountDisplay(playCountRef.current);
       
       if (playCountRef.current >= maxPlays) {
         isExhaustedRef.current = true;
@@ -91,6 +97,7 @@ export function ExamAudioPlayer({
     };
 
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('canplaythrough', handleCanPlayThrough);
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('play', handlePlay);
@@ -99,6 +106,7 @@ export function ExamAudioPlayer({
 
     return () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('canplaythrough', handleCanPlayThrough);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('play', handlePlay);
@@ -112,20 +120,6 @@ export function ExamAudioPlayer({
       audioRef.current.volume = isMuted ? 0 : volume;
     }
   }, [volume, isMuted]);
-
-  const handlePlayPause = () => {
-    const audio = audioRef.current;
-    if (!audio || isDisabled || isExhaustedRef.current) return;
-
-    if (isPlaying) {
-      audio.pause();
-    } else {
-      if (playCountRef.current >= maxPlays) {
-        return;
-      }
-      audio.play().catch(console.error);
-    }
-  };
 
   const handleVolumeChange = (value: number[]) => {
     const newVolume = value[0];
@@ -148,42 +142,28 @@ export function ExamAudioPlayer({
 
   return (
     <div className={`bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 shadow-sm border ${className}`}>
-      <audio ref={audioRef} src={src} preload="metadata" />
+      <audio ref={audioRef} src={src} preload="auto" />
       
       <div className="flex items-center gap-4">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon"
-          onClick={handlePlayPause}
-          disabled={isDisabled}
-          className={`h-12 w-12 rounded-full transition-all ${
-            isDisabled 
-              ? 'bg-gray-200 text-gray-400 cursor-not-allowed' 
-              : isPlaying 
-                ? 'bg-red-100 hover:bg-red-200 text-red-600 border-red-300' 
-                : 'bg-green-100 hover:bg-green-200 text-green-600 border-green-300'
-          }`}
-          data-testid="exam-audio-play-btn"
-        >
-          {isPlaying ? (
-            <Pause className="h-5 w-5" />
-          ) : (
-            <Play className="h-5 w-5 ml-0.5" />
-          )}
-        </Button>
-
         <div className="flex-1 space-y-2">
           <div className="relative h-2 bg-gray-200 rounded-full overflow-hidden">
             <div 
-              className="absolute top-0 left-0 h-full bg-gradient-to-r from-green-500 to-green-600 rounded-full transition-all duration-100"
+              className={`absolute top-0 left-0 h-full rounded-full transition-all duration-100 ${
+                isDisabled 
+                  ? 'bg-gray-400' 
+                  : isPlaying 
+                    ? 'bg-gradient-to-r from-green-500 to-green-600' 
+                    : 'bg-gradient-to-r from-blue-500 to-blue-600'
+              }`}
               style={{ width: `${progressPercent}%` }}
             />
           </div>
           
           <div className="flex justify-between text-xs text-gray-500">
             <span>{formatTime(currentTime)}</span>
-            <span>{formatTime(duration)}</span>
+            <span className={isPlaying ? 'text-green-600 font-medium' : ''}>
+              {isDisabled ? 'Đã phát xong' : isPlaying ? 'Đang phát...' : formatTime(duration)}
+            </span>
           </div>
         </div>
 
