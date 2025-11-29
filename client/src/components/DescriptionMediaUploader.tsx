@@ -174,26 +174,7 @@ export function DescriptionMediaUploader({
     setAudioFileName(file.name);
 
     try {
-      console.log('Getting presigned URL for description audio:', file.name, file.type, file.size);
-      const presignedResponse = await fetch('/api/audio/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size,
-          target: 'descriptionAudio',
-          context: context
-        })
-      });
-
-      if (!presignedResponse.ok) {
-        const errorData = await presignedResponse.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to get upload URL (${presignedResponse.status})`);
-      }
-
-      const { uploadUrl, audioUrl: newAudioUrl } = await presignedResponse.json();
-      console.log('Got presigned URL, uploading directly to R2...');
+      console.log('Starting streaming upload for description audio:', file.name, file.type, file.size);
 
       const xhr = new XMLHttpRequest();
       audioXhrRef.current = xhr;
@@ -210,25 +191,44 @@ export function DescriptionMediaUploader({
 
       xhr.addEventListener('load', async () => {
         if (xhr.status >= 200 && xhr.status < 300) {
-          onAudioChange(newAudioUrl);
-          
-          const isPrevTempAudio = previousAudioUrl && (
-            previousAudioUrl.includes('/api/temp-description-audio/') || 
-            previousAudioUrl.match(/\/api\/(qbank|exam)-temp-description-audio\//)
-          );
-          if (isPrevTempAudio) {
-            await cleanupPreviousFile(previousAudioUrl, "/api/temp-description-audio/cleanup");
+          try {
+            const result = JSON.parse(xhr.responseText);
+            const newAudioUrl = result.audioUrl;
+            
+            onAudioChange(newAudioUrl);
+            
+            const isPrevTempAudio = previousAudioUrl && (
+              previousAudioUrl.includes('/api/temp-description-audio/') || 
+              previousAudioUrl.match(/\/api\/(qbank|exam)-temp-description-audio\//)
+            );
+            if (isPrevTempAudio) {
+              await cleanupPreviousFile(previousAudioUrl, "/api/temp-description-audio/cleanup");
+            }
+            
+            toast({
+              title: "Thành công",
+              description: `Tải lên audio mô tả thành công! (${formatFileSize(file.size)})`
+            });
+          } catch (parseError) {
+            console.error('Failed to parse upload response:', parseError);
+            toast({
+              variant: "destructive",
+              title: "Lỗi",
+              description: "Phản hồi từ server không hợp lệ"
+            });
           }
-          
-          toast({
-            title: "Thành công",
-            description: `Tải lên audio mô tả thành công! (${formatFileSize(file.size)})`
-          });
         } else {
+          let errorMsg = `Upload thất bại (mã lỗi: ${xhr.status})`;
+          try {
+            const errorResult = JSON.parse(xhr.responseText);
+            if (errorResult.message || errorResult.error) {
+              errorMsg = errorResult.message || errorResult.error;
+            }
+          } catch {}
           toast({
             variant: "destructive",
             title: "Lỗi upload",
-            description: `Upload thất bại (mã lỗi: ${xhr.status})`
+            description: errorMsg
           });
         }
         setIsAudioUploading(false);
@@ -276,6 +276,7 @@ export function DescriptionMediaUploader({
         }
       });
 
+      const uploadUrl = `/api/audio/stream-upload?target=descriptionAudio&context=${context}`;
       xhr.open('PUT', uploadUrl);
       xhr.setRequestHeader('Content-Type', file.type);
       xhr.send(file);

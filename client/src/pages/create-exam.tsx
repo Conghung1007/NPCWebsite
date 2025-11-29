@@ -692,26 +692,7 @@ export default function CreateExam() {
                           }));
                           
                           try {
-                            console.log('Getting presigned URL for section audio:', file.name, file.type, file.size);
-                            const presignedResponse = await fetch('/api/audio/upload', {
-                              method: 'POST',
-                              headers: { 'Content-Type': 'application/json' },
-                              body: JSON.stringify({
-                                fileName: file.name,
-                                fileType: file.type,
-                                fileSize: file.size,
-                                target: 'sectionAudio',
-                                context: 'exam'
-                              })
-                            });
-
-                            if (!presignedResponse.ok) {
-                              const errorData = await presignedResponse.json().catch(() => ({}));
-                              throw new Error(errorData.message || `Failed to get upload URL (${presignedResponse.status})`);
-                            }
-
-                            const { uploadUrl, audioUrl } = await presignedResponse.json();
-                            console.log('Got presigned URL, uploading directly to R2...');
+                            console.log('Starting streaming upload for section audio:', file.name, file.type, file.size);
                             
                             const xhr = new XMLHttpRequest();
                             audioXhrRefs.current.set(section.id, xhr);
@@ -734,16 +715,33 @@ export default function CreateExam() {
                             
                             xhr.addEventListener('load', () => {
                               if (xhr.status >= 200 && xhr.status < 300) {
-                                updateSectionDescriptionAudio(section.id, audioUrl);
-                                toast({
-                                  title: "Thành công",
-                                  description: `Audio mô tả đã được tải lên (${formatFileSize(file.size)})`
-                                });
+                                try {
+                                  const result = JSON.parse(xhr.responseText);
+                                  updateSectionDescriptionAudio(section.id, result.audioUrl);
+                                  toast({
+                                    title: "Thành công",
+                                    description: `Audio mô tả đã được tải lên (${formatFileSize(file.size)})`
+                                  });
+                                } catch (parseError) {
+                                  console.error('Failed to parse upload response:', parseError);
+                                  toast({
+                                    variant: "destructive",
+                                    title: "Lỗi",
+                                    description: "Phản hồi từ server không hợp lệ"
+                                  });
+                                }
                               } else {
+                                let errorMsg = `Upload thất bại (mã lỗi: ${xhr.status})`;
+                                try {
+                                  const errorResult = JSON.parse(xhr.responseText);
+                                  if (errorResult.message || errorResult.error) {
+                                    errorMsg = errorResult.message || errorResult.error;
+                                  }
+                                } catch {}
                                 toast({
                                   variant: "destructive",
                                   title: "Lỗi upload",
-                                  description: `Upload thất bại (mã lỗi: ${xhr.status})`
+                                  description: errorMsg
                                 });
                               }
                               setAudioUploadState(prev => {
@@ -799,6 +797,7 @@ export default function CreateExam() {
                               e.target.value = '';
                             });
                             
+                            const uploadUrl = `/api/audio/stream-upload?target=sectionAudio&context=exam`;
                             xhr.open('PUT', uploadUrl);
                             xhr.setRequestHeader('Content-Type', file.type);
                             xhr.send(file);

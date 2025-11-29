@@ -93,29 +93,9 @@ export function AudioUploader({
         }
       }
 
-      // Step 1: Get presigned URL from server
-      console.log('Getting presigned URL for file:', file.name, file.type, file.size);
-      const presignedResponse = await fetch('/api/audio/upload', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          fileName: file.name,
-          fileType: file.type,
-          fileSize: file.size,
-          target: 'questionAudio',
-          context: context
-        })
-      });
-
-      if (!presignedResponse.ok) {
-        const errorData = await presignedResponse.json().catch(() => ({}));
-        throw new Error(errorData.message || `Failed to get upload URL (${presignedResponse.status})`);
-      }
-
-      const { uploadUrl, audioUrl } = await presignedResponse.json();
-      console.log('Got presigned URL, uploading directly to R2...');
-
-      // Step 2: Upload directly to R2 using presigned URL
+      // Upload via streaming endpoint (bypasses body size limits and CORS issues)
+      console.log('Starting streaming upload:', file.name, file.type, file.size);
+      
       const xhr = new XMLHttpRequest();
       xhrRef.current = xhr;
       xhr.timeout = 600000; // 10 minutes
@@ -130,24 +110,43 @@ export function AudioUploader({
       });
 
       xhr.addEventListener('load', () => {
-        console.log('Direct R2 upload completed with status:', xhr.status);
+        console.log('Streaming upload completed with status:', xhr.status);
         
         if (xhr.status >= 200 && xhr.status < 300) {
-          if (audioRef.current) {
-            audioRef.current.src = audioUrl;
-            audioRef.current.load();
+          try {
+            const result = JSON.parse(xhr.responseText);
+            const audioUrl = result.audioUrl;
+            
+            if (audioRef.current) {
+              audioRef.current.src = audioUrl;
+              audioRef.current.load();
+            }
+            
+            onAudioUpload(audioUrl);
+            toast({
+              title: "Thành công", 
+              description: `Upload file audio thành công (${formatFileSize(file.size)})`,
+            });
+          } catch (parseError) {
+            console.error('Failed to parse upload response:', parseError);
+            toast({
+              title: "Lỗi",
+              description: "Phản hồi từ server không hợp lệ",
+              variant: "destructive",
+            });
           }
-          
-          onAudioUpload(audioUrl);
-          toast({
-            title: "Thành công", 
-            description: `Upload file audio thành công (${formatFileSize(file.size)})`,
-          });
         } else {
-          console.error('Direct R2 upload failed with status:', xhr.status);
+          console.error('Streaming upload failed with status:', xhr.status);
+          let errorMsg = `Upload thất bại (mã lỗi: ${xhr.status})`;
+          try {
+            const errorResult = JSON.parse(xhr.responseText);
+            if (errorResult.message || errorResult.error) {
+              errorMsg = errorResult.message || errorResult.error;
+            }
+          } catch {}
           toast({
             title: "Lỗi",
-            description: `Upload thất bại (mã lỗi: ${xhr.status})`,
+            description: errorMsg,
             variant: "destructive",
           });
         }
@@ -207,6 +206,7 @@ export function AudioUploader({
         }
       });
 
+      const uploadUrl = `/api/audio/stream-upload?target=questionAudio&context=${context}`;
       xhr.open('PUT', uploadUrl);
       xhr.setRequestHeader('Content-Type', file.type);
       xhr.send(file);

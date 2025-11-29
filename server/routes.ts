@@ -2175,6 +2175,98 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Streaming audio upload endpoint - bypasses body size limits by streaming directly to R2
+  // Uses raw binary body instead of multipart form data
+  app.put("/api/audio/stream-upload", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const target = req.query.target as string || 'questionAudio';
+      const context = req.query.context as string || 'qbank';
+      const contentType = req.headers['content-type'] || 'audio/mpeg';
+      const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+
+      // Validate content type
+      if (!contentType.startsWith('audio/')) {
+        return res.status(400).json({ message: "Only audio files are allowed" });
+      }
+
+      // Validate file size (max 50MB)
+      if (contentLength > 50 * 1024 * 1024) {
+        return res.status(400).json({ message: "File size cannot exceed 50MB" });
+      }
+
+      console.log(`Stream upload: target=${target}, context=${context}, contentType=${contentType}, size=${contentLength}`);
+
+      // Determine folder based on target and context
+      const folderMap: Record<string, string> = {
+        'questionAudio': 'temp-audio',
+        'descriptionAudio': 'temp-description-audio',
+        'sectionAudio': 'temp-description-audio'
+      };
+      
+      const baseFolder = folderMap[target] || 'temp-audio';
+      const folder = getContextFolder(baseFolder, context);
+      const fileId = require('crypto').randomUUID();
+      const filePath = `${folder}/${fileId}`;
+
+      try {
+        // Collect chunks from stream (needed for S3 SDK)
+        const chunks: Buffer[] = [];
+        
+        req.on('data', (chunk: Buffer) => {
+          chunks.push(chunk);
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          req.on('end', resolve);
+          req.on('error', reject);
+        });
+
+        const fileBuffer = Buffer.concat(chunks);
+        console.log(`Received ${fileBuffer.length} bytes for streaming upload`);
+
+        // Upload to R2
+        const uploadResult = await multiR2Storage.uploadFile(
+          fileBuffer,
+          fileId,
+          contentType,
+          {
+            provider: "primary",
+            folder: folder,
+            allowedTypes: ["audio/*"],
+            maxSizeBytes: 50 * 1024 * 1024
+          }
+        );
+
+        if (!uploadResult.success) {
+          console.error("Stream upload to R2 failed:", uploadResult.error);
+          return res.status(500).json({ error: uploadResult.error || "Upload failed" });
+        }
+
+        const audioUrl = `/api/${folder}/${uploadResult.path?.split('/').pop() || fileId}`;
+        console.log(`Stream upload success: ${audioUrl}`);
+
+        res.json({
+          success: true,
+          audioUrl,
+          folder,
+          context,
+          target
+        });
+      } catch (uploadError) {
+        console.error("Stream upload error:", uploadError);
+        res.status(500).json({ error: "Failed to upload audio file" });
+      }
+    } catch (error) {
+      console.error("Stream upload endpoint error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // ============ DOWNLOAD ENDPOINTS FOR CONTEXT-SPECIFIC FOLDERS ============
   
   // Question Bank download endpoints
