@@ -43,7 +43,6 @@ export function AudioUploader({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('audio/')) {
       toast({
         title: "Lỗi",
@@ -53,7 +52,6 @@ export function AudioUploader({
       return;
     }
 
-    // Validate file size (max 50MB)
     const maxSize = 50 * 1024 * 1024;
     if (file.size > maxSize) {
       toast({
@@ -71,7 +69,6 @@ export function AudioUploader({
       setTotalBytes(file.size);
       setOriginalFileName(file.name);
 
-      // Cleanup previous temporary file if exists (supports both legacy and context-based URLs)
       const isTempFile = currentAudioUrl && (
         currentAudioUrl.includes('/api/temp-audio/') || 
         currentAudioUrl.match(/\/api\/(qbank|exam)-temp-audio\//)
@@ -81,7 +78,6 @@ export function AudioUploader({
         try {
           const oldFilename = currentAudioUrl.split('/').pop();
           if (oldFilename) {
-            // Extract context from URL if present
             const contextMatch = currentAudioUrl.match(/\/api\/(qbank|exam)-temp-/);
             const fileContext = contextMatch ? contextMatch[1] : undefined;
             const cleanupUrl = fileContext ? `/api/temp-audio/cleanup?context=${fileContext}` : '/api/temp-audio/cleanup';
@@ -97,15 +93,32 @@ export function AudioUploader({
         }
       }
 
-      // Use direct upload via server
-      const formData = new FormData();
-      formData.append('audio', file);
+      // Step 1: Get presigned URL from server
+      console.log('Getting presigned URL for file:', file.name, file.type, file.size);
+      const presignedResponse = await fetch('/api/audio/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          target: 'questionAudio',
+          context: context
+        })
+      });
 
+      if (!presignedResponse.ok) {
+        const errorData = await presignedResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to get upload URL (${presignedResponse.status})`);
+      }
+
+      const { uploadUrl, audioUrl } = await presignedResponse.json();
+      console.log('Got presigned URL, uploading directly to R2...');
+
+      // Step 2: Upload directly to R2 using presigned URL
       const xhr = new XMLHttpRequest();
       xhrRef.current = xhr;
-      
-      // Set timeout to 10 minutes for large files
-      xhr.timeout = 600000;
+      xhr.timeout = 600000; // 10 minutes
       
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
@@ -117,53 +130,24 @@ export function AudioUploader({
       });
 
       xhr.addEventListener('load', () => {
-        console.log('Upload completed with status:', xhr.status);
-        console.log('Upload response text:', xhr.responseText);
+        console.log('Direct R2 upload completed with status:', xhr.status);
         
-        if (xhr.status === 200) {
-          try {
-            const response = JSON.parse(xhr.responseText);
-            const audioUrl = response.audioUrl;
-            const fileName = response.originalFileName;
-            
-            // Update current audio URL and load the audio
-            if (audioRef.current) {
-              audioRef.current.src = audioUrl;
-              audioRef.current.load(); // Force reload of audio element
-            }
-            
-            // Update original file name for display
-            if (fileName) {
-              setOriginalFileName(fileName);
-            }
-            
-            onAudioUpload(audioUrl);
-            toast({
-              title: "Thành công", 
-              description: `Upload file audio thành công (${formatFileSize(file.size)})`,
-            });
-          } catch (parseError) {
-            console.error('Failed to parse response:', parseError);
-            toast({
-              title: "Lỗi",
-              description: "Phản hồi từ server không hợp lệ",
-              variant: "destructive",
-            });
+        if (xhr.status >= 200 && xhr.status < 300) {
+          if (audioRef.current) {
+            audioRef.current.src = audioUrl;
+            audioRef.current.load();
           }
+          
+          onAudioUpload(audioUrl);
+          toast({
+            title: "Thành công", 
+            description: `Upload file audio thành công (${formatFileSize(file.size)})`,
+          });
         } else {
-          let errorMessage = `Upload thất bại (mã lỗi: ${xhr.status})`;
-          try {
-            const errorResponse = JSON.parse(xhr.responseText);
-            if (errorResponse.message) {
-              errorMessage = errorResponse.message;
-            }
-          } catch {
-            // Use default error message
-          }
-          console.error('Upload failed with status:', xhr.status);
+          console.error('Direct R2 upload failed with status:', xhr.status);
           toast({
             title: "Lỗi",
-            description: errorMessage,
+            description: `Upload thất bại (mã lỗi: ${xhr.status})`,
             variant: "destructive",
           });
         }
@@ -178,8 +162,6 @@ export function AudioUploader({
 
       xhr.addEventListener('error', (e) => {
         console.error('XMLHttpRequest error event:', e);
-        console.error('Upload error - status:', xhr.status);
-        console.error('Upload error - response:', xhr.responseText);
         toast({
           title: "Lỗi kết nối",
           description: "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng và thử lại.",
@@ -225,9 +207,9 @@ export function AudioUploader({
         }
       });
 
-      const endpointWithContext = `/api/audio/upload-direct?context=${context}`;
-      xhr.open('POST', endpointWithContext);
-      xhr.send(formData);
+      xhr.open('PUT', uploadUrl);
+      xhr.setRequestHeader('Content-Type', file.type);
+      xhr.send(file);
 
     } catch (error) {
       console.error('Audio upload error:', error);
@@ -260,7 +242,6 @@ export function AudioUploader({
       audioRef.current.pause();
       setIsPlaying(false);
     } else {
-      // Ensure the audio src is set before playing
       if (!audioRef.current.src || audioRef.current.src !== currentAudioUrl) {
         audioRef.current.src = currentAudioUrl;
         audioRef.current.load();
@@ -282,7 +263,6 @@ export function AudioUploader({
   };
 
   const handleRemoveAudio = async () => {
-    // If it's a temporary file, clean it up from R2 storage (supports both legacy and context-based URLs)
     const isTempFile = currentAudioUrl && (
       currentAudioUrl.includes('/api/temp-audio/') || 
       currentAudioUrl.match(/\/api\/(qbank|exam)-temp-audio\//)
@@ -292,7 +272,6 @@ export function AudioUploader({
       try {
         const filename = currentAudioUrl.split('/').pop();
         if (filename) {
-          // Extract context from URL if present
           const contextMatch = currentAudioUrl.match(/\/api\/(qbank|exam)-temp-/);
           const fileContext = contextMatch ? contextMatch[1] : undefined;
           const cleanupUrl = fileContext ? `/api/temp-audio/cleanup?context=${fileContext}` : '/api/temp-audio/cleanup';
@@ -308,7 +287,6 @@ export function AudioUploader({
       }
     }
     
-    // Call the parent component's remove handler
     if (onRemoveAudio) {
       onRemoveAudio();
     }

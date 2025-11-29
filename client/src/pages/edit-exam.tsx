@@ -799,7 +799,7 @@ export default function EditExam() {
                         type="file"
                         accept="audio/*"
                         style={{ display: 'none' }}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
                           
@@ -814,7 +814,6 @@ export default function EditExam() {
                             return;
                           }
                           
-                          // Initialize upload state for this section
                           setAudioUploadState(prev => ({
                             ...prev,
                             [section.id]: {
@@ -826,70 +825,123 @@ export default function EditExam() {
                             }
                           }));
                           
-                          const formData = new FormData();
-                          formData.append('file', file);
-                          
-                          const xhr = new XMLHttpRequest();
-                          audioXhrRefs.current.set(section.id, xhr);
-                          xhr.timeout = 600000; // 10 minutes
-                          
-                          xhr.upload.addEventListener('progress', (event) => {
-                            if (event.lengthComputable) {
-                              const progress = Math.round((event.loaded / event.total) * 100);
-                              setAudioUploadState(prev => ({
-                                ...prev,
-                                [section.id]: {
-                                  ...prev[section.id],
-                                  progress,
-                                  uploadedBytes: event.loaded,
-                                  totalBytes: event.total
-                                }
-                              }));
+                          try {
+                            console.log('Getting presigned URL for section audio:', file.name, file.type, file.size);
+                            const presignedResponse = await fetch('/api/audio/upload', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({
+                                fileName: file.name,
+                                fileType: file.type,
+                                fileSize: file.size,
+                                target: 'sectionAudio',
+                                context: 'exam'
+                              })
+                            });
+
+                            if (!presignedResponse.ok) {
+                              const errorData = await presignedResponse.json().catch(() => ({}));
+                              throw new Error(errorData.message || `Failed to get upload URL (${presignedResponse.status})`);
                             }
-                          });
-                          
-                          xhr.addEventListener('load', () => {
-                            if (xhr.status === 200) {
-                              try {
-                                const result = JSON.parse(xhr.responseText);
-                                updateSectionDescriptionAudio(section.id, result.audioUrl);
+
+                            const { uploadUrl, audioUrl } = await presignedResponse.json();
+                            console.log('Got presigned URL, uploading directly to R2...');
+                            
+                            const xhr = new XMLHttpRequest();
+                            audioXhrRefs.current.set(section.id, xhr);
+                            xhr.timeout = 600000;
+                            
+                            xhr.upload.addEventListener('progress', (event) => {
+                              if (event.lengthComputable) {
+                                const progress = Math.round((event.loaded / event.total) * 100);
+                                setAudioUploadState(prev => ({
+                                  ...prev,
+                                  [section.id]: {
+                                    ...prev[section.id],
+                                    progress,
+                                    uploadedBytes: event.loaded,
+                                    totalBytes: event.total
+                                  }
+                                }));
+                              }
+                            });
+                            
+                            xhr.addEventListener('load', () => {
+                              if (xhr.status >= 200 && xhr.status < 300) {
+                                updateSectionDescriptionAudio(section.id, audioUrl);
                                 toast({
                                   title: "Thành công",
                                   description: `Audio mô tả đã được tải lên (${formatFileSize(file.size)})`
                                 });
-                              } catch {
+                              } else {
                                 toast({
                                   variant: "destructive",
-                                  title: "Lỗi",
-                                  description: "Phản hồi từ server không hợp lệ"
+                                  title: "Lỗi upload",
+                                  description: `Upload thất bại (mã lỗi: ${xhr.status})`
                                 });
                               }
-                            } else {
-                              let errorMsg = "Không thể tải lên audio";
-                              try {
-                                const errorResult = JSON.parse(xhr.responseText);
-                                if (errorResult.message) errorMsg = errorResult.message;
-                              } catch {}
+                              setAudioUploadState(prev => {
+                                const newState = { ...prev };
+                                delete newState[section.id];
+                                return newState;
+                              });
+                              audioXhrRefs.current.delete(section.id);
+                              e.target.value = '';
+                            });
+                            
+                            xhr.addEventListener('error', () => {
                               toast({
                                 variant: "destructive",
-                                title: "Lỗi upload",
-                                description: errorMsg
+                                title: "Lỗi kết nối",
+                                description: "Không thể kết nối đến server. Vui lòng thử lại."
                               });
-                            }
-                            setAudioUploadState(prev => {
-                              const newState = { ...prev };
-                              delete newState[section.id];
-                              return newState;
+                              setAudioUploadState(prev => {
+                                const newState = { ...prev };
+                                delete newState[section.id];
+                                return newState;
+                              });
+                              audioXhrRefs.current.delete(section.id);
+                              e.target.value = '';
                             });
-                            audioXhrRefs.current.delete(section.id);
-                            e.target.value = '';
-                          });
-                          
-                          xhr.addEventListener('error', () => {
+                            
+                            xhr.addEventListener('timeout', () => {
+                              toast({
+                                variant: "destructive",
+                                title: "Hết thời gian",
+                                description: "Upload file quá lâu. Vui lòng thử lại."
+                              });
+                              setAudioUploadState(prev => {
+                                const newState = { ...prev };
+                                delete newState[section.id];
+                                return newState;
+                              });
+                              audioXhrRefs.current.delete(section.id);
+                              e.target.value = '';
+                            });
+                            
+                            xhr.addEventListener('abort', () => {
+                              toast({
+                                title: "Đã hủy",
+                                description: "Upload đã bị hủy"
+                              });
+                              setAudioUploadState(prev => {
+                                const newState = { ...prev };
+                                delete newState[section.id];
+                                return newState;
+                              });
+                              audioXhrRefs.current.delete(section.id);
+                              e.target.value = '';
+                            });
+                            
+                            xhr.open('PUT', uploadUrl);
+                            xhr.setRequestHeader('Content-Type', file.type);
+                            xhr.send(file);
+                          } catch (error) {
+                            console.error('Audio upload error:', error);
                             toast({
                               variant: "destructive",
-                              title: "Lỗi kết nối",
-                              description: "Không thể kết nối đến server. Vui lòng thử lại."
+                              title: "Lỗi",
+                              description: error instanceof Error ? error.message : "Không thể tải lên audio"
                             });
                             setAudioUploadState(prev => {
                               const newState = { ...prev };
@@ -898,39 +950,7 @@ export default function EditExam() {
                             });
                             audioXhrRefs.current.delete(section.id);
                             e.target.value = '';
-                          });
-                          
-                          xhr.addEventListener('timeout', () => {
-                            toast({
-                              variant: "destructive",
-                              title: "Hết thời gian",
-                              description: "Upload file quá lâu. Vui lòng thử lại."
-                            });
-                            setAudioUploadState(prev => {
-                              const newState = { ...prev };
-                              delete newState[section.id];
-                              return newState;
-                            });
-                            audioXhrRefs.current.delete(section.id);
-                            e.target.value = '';
-                          });
-                          
-                          xhr.addEventListener('abort', () => {
-                            toast({
-                              title: "Đã hủy",
-                              description: "Upload đã bị hủy"
-                            });
-                            setAudioUploadState(prev => {
-                              const newState = { ...prev };
-                              delete newState[section.id];
-                              return newState;
-                            });
-                            audioXhrRefs.current.delete(section.id);
-                            e.target.value = '';
-                          });
-                          
-                          xhr.open('POST', '/api/description-audio/upload-direct?context=exam');
-                          xhr.send(formData);
+                          }
                         }}
                       />
 

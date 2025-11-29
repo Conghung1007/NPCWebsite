@@ -142,7 +142,7 @@ export function DescriptionMediaUploader({
     }
   }, [imageUrl, onImageChange, toast, cleanupPreviousFile, context]);
 
-  const handleAudioUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAudioUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
@@ -173,111 +173,125 @@ export function DescriptionMediaUploader({
     setAudioTotalBytes(file.size);
     setAudioFileName(file.name);
 
-    const formData = new FormData();
-    formData.append('file', file);
+    try {
+      console.log('Getting presigned URL for description audio:', file.name, file.type, file.size);
+      const presignedResponse = await fetch('/api/audio/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          fileName: file.name,
+          fileType: file.type,
+          fileSize: file.size,
+          target: 'descriptionAudio',
+          context: context
+        })
+      });
 
-    const xhr = new XMLHttpRequest();
-    audioXhrRef.current = xhr;
-    xhr.timeout = 600000; // 10 minutes timeout
-
-    xhr.upload.addEventListener('progress', (e) => {
-      if (e.lengthComputable) {
-        const progress = Math.round((e.loaded / e.total) * 100);
-        setAudioUploadProgress(progress);
-        setAudioUploadedBytes(e.loaded);
-        setAudioTotalBytes(e.total);
+      if (!presignedResponse.ok) {
+        const errorData = await presignedResponse.json().catch(() => ({}));
+        throw new Error(errorData.message || `Failed to get upload URL (${presignedResponse.status})`);
       }
-    });
 
-    xhr.addEventListener('load', async () => {
-      if (xhr.status === 200) {
-        try {
-          const result = JSON.parse(xhr.responseText);
-          if (result.success) {
-            onAudioChange(result.url);
-            
-            const isPrevTempAudio = previousAudioUrl && (
-              previousAudioUrl.includes('/api/temp-description-audio/') || 
-              previousAudioUrl.match(/\/api\/(qbank|exam)-temp-description-audio\//)
-            );
-            if (isPrevTempAudio) {
-              await cleanupPreviousFile(previousAudioUrl, "/api/temp-description-audio/cleanup");
-            }
-            
-            toast({
-              title: "Thành công",
-              description: `Tải lên audio mô tả thành công! (${formatFileSize(file.size)})`
-            });
-          } else {
-            throw new Error(result.message || "Tải lên thất bại");
+      const { uploadUrl, audioUrl: newAudioUrl } = await presignedResponse.json();
+      console.log('Got presigned URL, uploading directly to R2...');
+
+      const xhr = new XMLHttpRequest();
+      audioXhrRef.current = xhr;
+      xhr.timeout = 600000;
+
+      xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+          const progress = Math.round((e.loaded / e.total) * 100);
+          setAudioUploadProgress(progress);
+          setAudioUploadedBytes(e.loaded);
+          setAudioTotalBytes(e.total);
+        }
+      });
+
+      xhr.addEventListener('load', async () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onAudioChange(newAudioUrl);
+          
+          const isPrevTempAudio = previousAudioUrl && (
+            previousAudioUrl.includes('/api/temp-description-audio/') || 
+            previousAudioUrl.match(/\/api\/(qbank|exam)-temp-description-audio\//)
+          );
+          if (isPrevTempAudio) {
+            await cleanupPreviousFile(previousAudioUrl, "/api/temp-description-audio/cleanup");
           }
-        } catch (error) {
+          
+          toast({
+            title: "Thành công",
+            description: `Tải lên audio mô tả thành công! (${formatFileSize(file.size)})`
+          });
+        } else {
           toast({
             variant: "destructive",
-            title: "Lỗi",
-            description: error instanceof Error ? error.message : "Phản hồi từ server không hợp lệ"
+            title: "Lỗi upload",
+            description: `Upload thất bại (mã lỗi: ${xhr.status})`
           });
         }
-      } else {
-        let errorMsg = "Không thể tải lên audio";
-        try {
-          const errorResult = JSON.parse(xhr.responseText);
-          if (errorResult.message) errorMsg = errorResult.message;
-        } catch {}
+        setIsAudioUploading(false);
+        setAudioUploadProgress(0);
+        if (audioInputRef.current) {
+          audioInputRef.current.value = '';
+        }
+      });
+
+      xhr.addEventListener('error', () => {
         toast({
           variant: "destructive",
-          title: "Lỗi upload",
-          description: errorMsg
+          title: "Lỗi kết nối",
+          description: "Không thể kết nối đến server. Vui lòng thử lại."
         });
-      }
-      setIsAudioUploading(false);
-      setAudioUploadProgress(0);
-      if (audioInputRef.current) {
-        audioInputRef.current.value = '';
-      }
-    });
+        setIsAudioUploading(false);
+        setAudioUploadProgress(0);
+        if (audioInputRef.current) {
+          audioInputRef.current.value = '';
+        }
+      });
 
-    xhr.addEventListener('error', () => {
+      xhr.addEventListener('timeout', () => {
+        toast({
+          variant: "destructive",
+          title: "Hết thời gian",
+          description: "Upload file quá lâu. Vui lòng thử lại."
+        });
+        setIsAudioUploading(false);
+        setAudioUploadProgress(0);
+        if (audioInputRef.current) {
+          audioInputRef.current.value = '';
+        }
+      });
+
+      xhr.addEventListener('abort', () => {
+        toast({
+          title: "Đã hủy",
+          description: "Upload đã bị hủy"
+        });
+        setIsAudioUploading(false);
+        setAudioUploadProgress(0);
+        if (audioInputRef.current) {
+          audioInputRef.current.value = '';
+        }
+      });
+
+      xhr.open('PUT', uploadUrl);
+      xhr.setRequestHeader('Content-Type', file.type);
+      xhr.send(file);
+    } catch (error) {
+      console.error('Audio upload error:', error);
       toast({
         variant: "destructive",
-        title: "Lỗi kết nối",
-        description: "Không thể kết nối đến server. Vui lòng thử lại."
+        title: "Lỗi",
+        description: error instanceof Error ? error.message : "Không thể tải lên audio"
       });
       setIsAudioUploading(false);
       setAudioUploadProgress(0);
       if (audioInputRef.current) {
         audioInputRef.current.value = '';
       }
-    });
-
-    xhr.addEventListener('timeout', () => {
-      toast({
-        variant: "destructive",
-        title: "Hết thời gian",
-        description: "Upload file quá lâu. Vui lòng thử lại."
-      });
-      setIsAudioUploading(false);
-      setAudioUploadProgress(0);
-      if (audioInputRef.current) {
-        audioInputRef.current.value = '';
-      }
-    });
-
-    xhr.addEventListener('abort', () => {
-      toast({
-        title: "Đã hủy",
-        description: "Upload đã bị hủy"
-      });
-      setIsAudioUploading(false);
-      setAudioUploadProgress(0);
-      if (audioInputRef.current) {
-        audioInputRef.current.value = '';
-      }
-    });
-
-    const uploadUrl = `/api/temp-description-audio/upload?context=${context}`;
-    xhr.open('POST', uploadUrl);
-    xhr.send(formData);
+    }
   }, [audioUrl, onAudioChange, toast, cleanupPreviousFile, context]);
 
   const cancelAudioUpload = useCallback(() => {

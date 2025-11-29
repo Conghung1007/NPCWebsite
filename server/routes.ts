@@ -2092,7 +2092,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Audio upload endpoint (presigned URL)
+  // Audio upload endpoint (presigned URL) - supports all audio upload types
+  // target: questionAudio, descriptionAudio, sectionAudio (determines folder)
+  // context: qbank, exam (determines prefix)
   app.post("/api/audio/upload", async (req, res) => {
     try {
       const sessionUser = (req.session as any)?.user;
@@ -2100,7 +2102,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const { fileName, fileType, fileSize } = req.body;
+      const { fileName, fileType, fileSize, target, context } = req.body;
       
       if (!fileName || !fileType || !fileSize) {
         return res.status(400).json({ message: "File name, type, and size are required" });
@@ -2117,16 +2119,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       try {
-        // Generate upload URL using R2 storage
-        const timestamp = Date.now();
-        const fileExtension = fileName.split('.').pop() || 'mp3';
-        const objectKey = `audio/${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+        // Determine folder based on target and context
+        const uploadContext = context || 'qbank';
+        const uploadTarget = target || 'questionAudio';
         
-        console.log(`Audio upload request: fileName=${fileName}, fileType=${fileType}, objectKey=${objectKey}`);
+        // Map target to folder
+        const folderMap: Record<string, string> = {
+          'questionAudio': 'temp-audio',
+          'descriptionAudio': 'temp-description-audio',
+          'sectionAudio': 'temp-description-audio'
+        };
+        
+        const baseFolder = folderMap[uploadTarget] || 'temp-audio';
+        const folder = getContextFolder(baseFolder, uploadContext);
+        
+        console.log(`Audio presigned upload: target=${uploadTarget}, context=${uploadContext}, folder=${folder}`);
         
         const uploadResult = await multiR2Storage.getUploadUrl({
           provider: "primary",
-          folder: "temp-audio",
+          folder: folder,
           allowedTypes: ["audio/*"],
           maxSizeBytes: 50 * 1024 * 1024 // 50MB
         }, fileType);
@@ -2141,14 +2152,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         const uploadUrl = uploadResult.url;
-        const audioUrl = uploadResult.path;
+        // Build the download URL based on folder
+        const audioUrl = `/api/${folder}/${uploadResult.path?.split('/').pop() || ''}`;
 
         console.log(`Generated upload URL: ${uploadUrl}`);
         console.log(`Audio URL will be: ${audioUrl}`);
 
         res.json({
           uploadUrl,
-          audioUrl
+          audioUrl,
+          folder,
+          context: uploadContext,
+          target: uploadTarget
         });
       } catch (error) {
         console.error("Error generating audio upload URL:", error);
