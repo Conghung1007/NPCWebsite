@@ -2268,6 +2268,218 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // ============ CHUNKED UPLOAD FOR LARGE FILES ============
+  // Store chunks in memory during upload (will be cleared after completion)
+  const chunkedUploads: Map<string, { 
+    chunks: Map<number, Buffer>, 
+    totalChunks: number, 
+    contentType: string,
+    target: string,
+    context: string,
+    createdAt: number 
+  }> = new Map();
+
+  // Clean up stale uploads every 10 minutes
+  setInterval(() => {
+    const now = Date.now();
+    const maxAge = 30 * 60 * 1000; // 30 minutes
+    for (const [uploadId, upload] of chunkedUploads.entries()) {
+      if (now - upload.createdAt > maxAge) {
+        console.log(`Cleaning up stale chunked upload: ${uploadId}`);
+        chunkedUploads.delete(uploadId);
+      }
+    }
+  }, 10 * 60 * 1000);
+
+  // Initialize chunked upload
+  app.post("/api/audio/chunked-upload/init", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { totalChunks, contentType, target, context, totalSize } = req.body;
+
+      if (!totalChunks || totalChunks < 1) {
+        return res.status(400).json({ message: "Invalid totalChunks" });
+      }
+
+      if (totalSize > 50 * 1024 * 1024) {
+        return res.status(400).json({ message: "File size cannot exceed 50MB" });
+      }
+
+      const uploadId = randomUUID();
+      chunkedUploads.set(uploadId, {
+        chunks: new Map(),
+        totalChunks,
+        contentType: contentType || 'audio/mpeg',
+        target: target || 'questionAudio',
+        context: context || 'qbank',
+        createdAt: Date.now()
+      });
+
+      console.log(`Chunked upload initialized: ${uploadId}, totalChunks=${totalChunks}, size=${totalSize}`);
+      res.json({ uploadId, totalChunks });
+    } catch (error) {
+      console.error("Chunked upload init error:", error);
+      res.status(500).json({ error: "Failed to initialize upload" });
+    }
+  });
+
+  // Upload a single chunk (small body, bypasses 413)
+  app.post("/api/audio/chunked-upload/chunk", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const uploadId = req.query.uploadId as string;
+      const chunkIndex = parseInt(req.query.chunkIndex as string, 10);
+
+      if (!uploadId || !chunkedUploads.has(uploadId)) {
+        return res.status(400).json({ message: "Invalid upload ID" });
+      }
+
+      if (isNaN(chunkIndex) || chunkIndex < 0) {
+        return res.status(400).json({ message: "Invalid chunk index" });
+      }
+
+      const upload = chunkedUploads.get(uploadId)!;
+
+      // Collect the raw body
+      const chunks: Buffer[] = [];
+      req.on('data', (chunk: Buffer) => chunks.push(chunk));
+      
+      await new Promise<void>((resolve, reject) => {
+        req.on('end', resolve);
+        req.on('error', reject);
+      });
+
+      const chunkBuffer = Buffer.concat(chunks);
+      upload.chunks.set(chunkIndex, chunkBuffer);
+
+      console.log(`Chunk ${chunkIndex + 1}/${upload.totalChunks} received for upload ${uploadId}, size=${chunkBuffer.length}`);
+
+      res.json({ 
+        success: true, 
+        chunkIndex, 
+        receivedChunks: upload.chunks.size,
+        totalChunks: upload.totalChunks 
+      });
+    } catch (error) {
+      console.error("Chunk upload error:", error);
+      res.status(500).json({ error: "Failed to upload chunk" });
+    }
+  });
+
+  // Complete chunked upload - assemble and upload to R2
+  app.post("/api/audio/chunked-upload/complete", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { uploadId } = req.body;
+
+      if (!uploadId || !chunkedUploads.has(uploadId)) {
+        return res.status(400).json({ message: "Invalid upload ID" });
+      }
+
+      const upload = chunkedUploads.get(uploadId)!;
+
+      // Verify all chunks received
+      if (upload.chunks.size !== upload.totalChunks) {
+        return res.status(400).json({ 
+          message: `Missing chunks: received ${upload.chunks.size}/${upload.totalChunks}` 
+        });
+      }
+
+      // Assemble chunks in order
+      const sortedChunks: Buffer[] = [];
+      for (let i = 0; i < upload.totalChunks; i++) {
+        const chunk = upload.chunks.get(i);
+        if (!chunk) {
+          return res.status(400).json({ message: `Missing chunk ${i}` });
+        }
+        sortedChunks.push(chunk);
+      }
+
+      const fileBuffer = Buffer.concat(sortedChunks);
+      console.log(`Assembled ${fileBuffer.length} bytes from ${upload.totalChunks} chunks for upload ${uploadId}`);
+
+      // Determine folder
+      const folderMap: Record<string, string> = {
+        'questionAudio': 'temp-audio',
+        'descriptionAudio': 'temp-description-audio',
+        'sectionAudio': 'temp-description-audio'
+      };
+      
+      const baseFolder = folderMap[upload.target] || 'temp-audio';
+      const folder = getContextFolder(baseFolder, upload.context);
+      const fileId = randomUUID();
+
+      // Upload to R2
+      const uploadResult = await multiR2Storage.uploadFile(
+        fileBuffer,
+        fileId,
+        upload.contentType,
+        {
+          provider: "primary",
+          folder: folder,
+          allowedTypes: ["audio/*"],
+          maxSizeBytes: 50 * 1024 * 1024
+        }
+      );
+
+      // Clean up
+      chunkedUploads.delete(uploadId);
+
+      if (!uploadResult.success) {
+        console.error("Chunked upload to R2 failed:", uploadResult.error);
+        return res.status(500).json({ error: uploadResult.error || "Upload failed" });
+      }
+
+      const audioUrl = `/api/${folder}/${uploadResult.path?.split('/').pop() || fileId}`;
+      console.log(`Chunked upload complete: ${audioUrl}`);
+
+      res.json({
+        success: true,
+        audioUrl,
+        folder,
+        context: upload.context,
+        target: upload.target
+      });
+    } catch (error) {
+      console.error("Chunked upload complete error:", error);
+      res.status(500).json({ error: "Failed to complete upload" });
+    }
+  });
+
+  // Cancel/abort chunked upload
+  app.post("/api/audio/chunked-upload/abort", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { uploadId } = req.body;
+
+      if (uploadId && chunkedUploads.has(uploadId)) {
+        chunkedUploads.delete(uploadId);
+        console.log(`Chunked upload aborted: ${uploadId}`);
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Chunked upload abort error:", error);
+      res.status(500).json({ error: "Failed to abort upload" });
+    }
+  });
+
   // ============ DOWNLOAD ENDPOINTS FOR CONTEXT-SPECIFIC FOLDERS ============
   
   // Question Bank download endpoints

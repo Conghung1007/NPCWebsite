@@ -93,63 +93,127 @@ export function AudioUploader({
         }
       }
 
-      // Upload via streaming endpoint (bypasses body size limits and CORS issues)
-      console.log('Starting streaming upload:', file.name, file.type, file.size);
+      // Use chunked upload to bypass proxy body size limits (413 error)
+      console.log('Starting chunked upload:', file.name, file.type, file.size);
       
-      const xhr = new XMLHttpRequest();
-      xhrRef.current = xhr;
-      xhr.timeout = 600000; // 10 minutes
-      
-      xhr.upload.addEventListener('progress', (e) => {
-        if (e.lengthComputable) {
-          const progress = Math.round((e.loaded / e.total) * 100);
-          setUploadProgress(progress);
-          setUploadedBytes(e.loaded);
-          setTotalBytes(e.total);
-        }
-      });
+      const CHUNK_SIZE = 512 * 1024; // 512KB per chunk - small enough to pass through any proxy
+      const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+      let uploadId: string | null = null;
+      let aborted = false;
 
-      xhr.addEventListener('load', () => {
-        console.log('Streaming upload completed with status:', xhr.status);
-        
-        if (xhr.status >= 200 && xhr.status < 300) {
-          try {
-            const result = JSON.parse(xhr.responseText);
-            const audioUrl = result.audioUrl;
-            
-            if (audioRef.current) {
-              audioRef.current.src = audioUrl;
-              audioRef.current.load();
-            }
-            
-            onAudioUpload(audioUrl);
-            toast({
-              title: "Thành công", 
-              description: `Upload file audio thành công (${formatFileSize(file.size)})`,
-            });
-          } catch (parseError) {
-            console.error('Failed to parse upload response:', parseError);
-            toast({
-              title: "Lỗi",
-              description: "Phản hồi từ server không hợp lệ",
-              variant: "destructive",
-            });
+      // Create abort controller for cancellation
+      const abortController = new AbortController();
+      xhrRef.current = { abort: () => { aborted = true; abortController.abort(); } } as any;
+
+      try {
+        // Step 1: Initialize chunked upload
+        const initResponse = await fetch('/api/audio/chunked-upload/init', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            totalChunks,
+            contentType: file.type,
+            target: 'questionAudio',
+            context,
+            totalSize: file.size
+          }),
+          signal: abortController.signal
+        });
+
+        if (!initResponse.ok) {
+          const error = await initResponse.json();
+          throw new Error(error.message || 'Failed to initialize upload');
+        }
+
+        const initData = await initResponse.json();
+        uploadId = initData.uploadId;
+        console.log(`Chunked upload initialized: ${uploadId}, ${totalChunks} chunks`);
+
+        // Step 2: Upload chunks sequentially
+        for (let i = 0; i < totalChunks; i++) {
+          if (aborted) {
+            throw new Error('Upload cancelled');
           }
-        } else {
-          console.error('Streaming upload failed with status:', xhr.status);
-          let errorMsg = `Upload thất bại (mã lỗi: ${xhr.status})`;
-          try {
-            const errorResult = JSON.parse(xhr.responseText);
-            if (errorResult.message || errorResult.error) {
-              errorMsg = errorResult.message || errorResult.error;
+
+          const start = i * CHUNK_SIZE;
+          const end = Math.min(start + CHUNK_SIZE, file.size);
+          const chunk = file.slice(start, end);
+
+          const chunkResponse = await fetch(
+            `/api/audio/chunked-upload/chunk?uploadId=${uploadId}&chunkIndex=${i}`,
+            {
+              method: 'POST',
+              body: chunk,
+              signal: abortController.signal
             }
+          );
+
+          if (!chunkResponse.ok) {
+            const error = await chunkResponse.json();
+            throw new Error(error.message || `Failed to upload chunk ${i}`);
+          }
+
+          // Update progress
+          const progress = Math.round(((i + 1) / totalChunks) * 100);
+          setUploadProgress(progress);
+          setUploadedBytes(end);
+          setTotalBytes(file.size);
+        }
+
+        // Step 3: Complete upload
+        const completeResponse = await fetch('/api/audio/chunked-upload/complete', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ uploadId }),
+          signal: abortController.signal
+        });
+
+        if (!completeResponse.ok) {
+          const error = await completeResponse.json();
+          throw new Error(error.message || 'Failed to complete upload');
+        }
+
+        const result = await completeResponse.json();
+        const audioUrl = result.audioUrl;
+        console.log('Chunked upload completed:', audioUrl);
+
+        if (audioRef.current) {
+          audioRef.current.src = audioUrl;
+          audioRef.current.load();
+        }
+
+        onAudioUpload(audioUrl);
+        toast({
+          title: "Thành công",
+          description: `Upload file audio thành công (${formatFileSize(file.size)})`,
+        });
+      } catch (uploadError: any) {
+        console.error('Chunked upload error:', uploadError);
+
+        // Abort the upload on server if we have an uploadId
+        if (uploadId && !aborted) {
+          try {
+            await fetch('/api/audio/chunked-upload/abort', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ uploadId })
+            });
           } catch {}
+        }
+
+        if (uploadError.name === 'AbortError' || aborted) {
+          toast({
+            title: "Đã hủy",
+            description: "Upload file đã bị hủy",
+          });
+        } else {
           toast({
             title: "Lỗi",
-            description: errorMsg,
+            description: uploadError.message || "Không thể upload file audio",
             variant: "destructive",
           });
         }
+      } finally {
         setIsUploading(false);
         setUploadProgress(0);
         setUploadedBytes(0);
@@ -157,59 +221,7 @@ export function AudioUploader({
         if (fileInputRef.current) {
           fileInputRef.current.value = '';
         }
-      });
-
-      xhr.addEventListener('error', (e) => {
-        console.error('XMLHttpRequest error event:', e);
-        toast({
-          title: "Lỗi kết nối",
-          description: "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng và thử lại.",
-          variant: "destructive",
-        });
-        setIsUploading(false);
-        setUploadProgress(0);
-        setUploadedBytes(0);
-        setTotalBytes(0);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      });
-
-      xhr.addEventListener('timeout', () => {
-        console.error('Upload timeout');
-        toast({
-          title: "Hết thời gian",
-          description: "Upload file quá lâu. Vui lòng thử lại với file nhỏ hơn hoặc kiểm tra kết nối mạng.",
-          variant: "destructive",
-        });
-        setIsUploading(false);
-        setUploadProgress(0);
-        setUploadedBytes(0);
-        setTotalBytes(0);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      });
-
-      xhr.addEventListener('abort', () => {
-        console.log('Upload aborted');
-        toast({
-          title: "Đã hủy",
-          description: "Upload file đã bị hủy",
-        });
-        setIsUploading(false);
-        setUploadProgress(0);
-        setUploadedBytes(0);
-        setTotalBytes(0);
-        if (fileInputRef.current) {
-          fileInputRef.current.value = '';
-        }
-      });
-
-      const uploadUrl = `/api/audio/stream-upload?target=questionAudio&context=${context}`;
-      xhr.open('PUT', uploadUrl);
-      xhr.setRequestHeader('Content-Type', file.type);
-      xhr.send(file);
+      }
 
     } catch (error) {
       console.error('Audio upload error:', error);
