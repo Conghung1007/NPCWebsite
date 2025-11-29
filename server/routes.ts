@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { randomUUID } from "crypto";
 import { storage } from "./storage";
 import { insertContactRequestSchema, insertArticleSchema, registrationFormSchema, ContactInfo, InsertContactInfo, insertExamAttemptSchema } from "@shared/schema";
 import { z } from "zod";
@@ -2210,7 +2211,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const baseFolder = folderMap[target] || 'temp-audio';
       const folder = getContextFolder(baseFolder, context);
-      const fileId = require('crypto').randomUUID();
+      const fileId = randomUUID();
       const filePath = `${folder}/${fileId}`;
 
       try {
