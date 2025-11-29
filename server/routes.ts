@@ -3074,21 +3074,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      // Sanitize sections to ensure only questionIds are stored, not full question objects
+      const sanitizedSections = sections.map((section: any) => ({
+        id: section.id,
+        sectionName: section.sectionName || section.type || "",
+        timeLimit: section.timeLimit || 10,
+        passingScore: section.passingScore,
+        content: section.content || "",
+        descriptionImageUrls: section.descriptionImageUrls || [],
+        descriptionAudioUrl: section.descriptionAudioUrl || "",
+        questionSets: (section.questionSets || []).map((qs: any) => ({
+          id: qs.id,
+          name: qs.name || "",
+          // Ensure we only store questionIds, not full question objects
+          questionIds: qs.questionIds || 
+            (qs.questions ? qs.questions.map((q: any) => typeof q === 'string' ? q : q.id) : [])
+        }))
+      }));
+      console.log("Sanitized sections for exam creation:", JSON.stringify(sanitizedSections, null, 2));
+
       // Calculate legacy fields for backward compatibility
       // Match by sectionName (new) or type (legacy)
-      const vocabularySection = sections.find((s: any) => 
+      const vocabularySection = sanitizedSections.find((s: any) => 
         (s.sectionName && s.sectionName.toLowerCase().includes("từ vựng")) || 
         (s.type && s.type.toLowerCase() === "từ vựng")
       );
-      const grammarSection = sections.find((s: any) => 
+      const grammarSection = sanitizedSections.find((s: any) => 
         (s.sectionName && s.sectionName.toLowerCase().includes("ngữ pháp")) || 
         (s.type && s.type.toLowerCase() === "ngữ pháp")
       );
-      const listeningSection = sections.find((s: any) => 
+      const listeningSection = sanitizedSections.find((s: any) => 
         (s.sectionName && s.sectionName.toLowerCase().includes("nghe")) || 
         (s.type && s.type.toLowerCase() === "nghe hiểu")
       );
-      const readingSection = sections.find((s: any) => 
+      const readingSection = sanitizedSections.find((s: any) => 
         (s.sectionName && s.sectionName.toLowerCase().includes("đọc")) || 
         (s.type && s.type.toLowerCase() === "đọc hiểu")
       );
@@ -3098,7 +3117,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title,
         description: description || null,
         isDemo: isDemo || false,
-        sections: sections,
+        sections: sanitizedSections,
         isActive: true,
         passingScore: passingScore !== undefined ? passingScore : null,
         createdBy: sessionUser.id,
@@ -3140,11 +3159,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Sanitize sections to ensure only questionIds are stored, not full question objects
+      let sanitizedSections = undefined;
+      if (sections && Array.isArray(sections)) {
+        sanitizedSections = sections.map((section: any) => ({
+          id: section.id,
+          sectionName: section.sectionName || "",
+          timeLimit: section.timeLimit || 10,
+          passingScore: section.passingScore,
+          content: section.content || "",
+          descriptionImageUrls: section.descriptionImageUrls || [],
+          descriptionAudioUrl: section.descriptionAudioUrl || "",
+          questionSets: (section.questionSets || []).map((qs: any) => ({
+            id: qs.id,
+            name: qs.name || "",
+            // Ensure we only store questionIds, not full question objects
+            // Handle both: questionIds array or questions array with id property
+            questionIds: qs.questionIds || 
+              (qs.questions ? qs.questions.map((q: any) => typeof q === 'string' ? q : q.id) : [])
+          }))
+        }));
+        console.log("Sanitized sections for exam update:", JSON.stringify(sanitizedSections, null, 2));
+      }
+
       const updatedExam = await storage.updateExam(id, {
         title,
         description: description || null,
         isDemo: isDemo || false,
-        sections: sections || undefined,
+        sections: sanitizedSections,
         isActive: isActive !== undefined ? isActive : true,
         passingScore: passingScore !== undefined ? passingScore : undefined,
       });
