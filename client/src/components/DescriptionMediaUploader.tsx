@@ -13,6 +13,14 @@ interface DescriptionMediaUploaderProps {
   context?: "qbank" | "exam";
 }
 
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
 export function DescriptionMediaUploader({
   imageUrl = "",
   audioUrl = "",
@@ -25,14 +33,19 @@ export function DescriptionMediaUploader({
   const [isAudioUploading, setIsAudioUploading] = useState(false);
   const [isAudioPlaying, setIsAudioPlaying] = useState(false);
   
+  const [audioUploadProgress, setAudioUploadProgress] = useState(0);
+  const [audioUploadedBytes, setAudioUploadedBytes] = useState(0);
+  const [audioTotalBytes, setAudioTotalBytes] = useState(0);
+  const [audioFileName, setAudioFileName] = useState("");
+  
   const imageInputRef = useRef<HTMLInputElement>(null);
   const audioInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const audioXhrRef = useRef<XMLHttpRequest | null>(null);
   
   const { toast } = useToast();
 
   const cleanupPreviousFile = useCallback(async (currentUrl: string, cleanupEndpoint: string) => {
-    // Check for both legacy (/api/temp-*) and context-based (/api/{context}-temp-*) URLs
     const isTempFile = currentUrl && (
       currentUrl.includes('/api/temp-') || 
       currentUrl.match(/\/api\/(qbank|exam)-temp-/)
@@ -42,7 +55,6 @@ export function DescriptionMediaUploader({
       try {
         const filename = currentUrl.split('/').pop();
         if (filename) {
-          // Extract context from URL if present (e.g., /api/qbank-temp-images/ or /api/exam-temp-audio/)
           const contextMatch = currentUrl.match(/\/api\/(qbank|exam)-temp-/);
           const fileContext = contextMatch ? contextMatch[1] : undefined;
           const cleanupUrl = fileContext ? `${cleanupEndpoint}?context=${fileContext}` : cleanupEndpoint;
@@ -63,7 +75,6 @@ export function DescriptionMediaUploader({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
       toast({
         variant: "destructive",
@@ -73,7 +84,6 @@ export function DescriptionMediaUploader({
       return;
     }
 
-    // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       toast({
         variant: "destructive", 
@@ -86,7 +96,7 @@ export function DescriptionMediaUploader({
     setIsImageUploading(true);
 
     try {
-      const previousImageUrl = imageUrl; // Store previous URL for potential cleanup
+      const previousImageUrl = imageUrl;
       
       const formData = new FormData();
       formData.append('file', file);
@@ -102,7 +112,6 @@ export function DescriptionMediaUploader({
       if (result.success) {
         onImageChange(result.url);
         
-        // Only cleanup previous temporary image after successful upload (supports both legacy and context-based URLs)
         const isPrevTempImage = previousImageUrl && (
           previousImageUrl.includes('/api/temp-description-images/') || 
           previousImageUrl.match(/\/api\/(qbank|exam)-temp-description-images\//)
@@ -127,18 +136,16 @@ export function DescriptionMediaUploader({
       });
     } finally {
       setIsImageUploading(false);
-      // Reset input value to allow re-uploading same file
       if (imageInputRef.current) {
         imageInputRef.current.value = '';
       }
     }
-  }, [imageUrl, onImageChange, toast, cleanupPreviousFile]);
+  }, [imageUrl, onImageChange, toast, cleanupPreviousFile, context]);
 
-  const handleAudioUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAudioUpload = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
 
-    // Validate file type
     if (!file.type.startsWith('audio/')) {
       toast({
         variant: "destructive",
@@ -148,66 +155,137 @@ export function DescriptionMediaUploader({
       return;
     }
 
-    // Validate file size (50MB max)
-    if (file.size > 50 * 1024 * 1024) {
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
       toast({
         variant: "destructive",
-        title: "Lỗi tải lên", 
-        description: "Kích thước file audio phải nhỏ hơn 50MB."
+        title: "File quá lớn", 
+        description: `Kích thước file audio phải nhỏ hơn 50MB. File của bạn: ${formatFileSize(file.size)}`
       });
       return;
     }
 
+    const previousAudioUrl = audioUrl;
+    
     setIsAudioUploading(true);
+    setAudioUploadProgress(0);
+    setAudioUploadedBytes(0);
+    setAudioTotalBytes(file.size);
+    setAudioFileName(file.name);
 
-    try {
-      const previousAudioUrl = audioUrl; // Store previous URL for potential cleanup
-      
-      const formData = new FormData();
-      formData.append('file', file);
+    const formData = new FormData();
+    formData.append('file', file);
 
-      const uploadUrl = `/api/temp-description-audio/upload?context=${context}`;
-      const response = await fetch(uploadUrl, {
-        method: 'POST',
-        body: formData
-      });
+    const xhr = new XMLHttpRequest();
+    audioXhrRef.current = xhr;
+    xhr.timeout = 600000; // 10 minutes timeout
 
-      const result = await response.json();
-
-      if (result.success) {
-        onAudioChange(result.url);
-        
-        // Only cleanup previous temporary audio after successful upload (supports both legacy and context-based URLs)
-        const isPrevTempAudio = previousAudioUrl && (
-          previousAudioUrl.includes('/api/temp-description-audio/') || 
-          previousAudioUrl.match(/\/api\/(qbank|exam)-temp-description-audio\//)
-        );
-        if (isPrevTempAudio) {
-          await cleanupPreviousFile(previousAudioUrl, "/api/temp-description-audio/cleanup");
-        }
-        
-        toast({
-          title: "Thành công",
-          description: result.message || "Tải lên audio mô tả thành công!"
-        });
-      } else {
-        throw new Error(result.message || "Tải lên thất bại");
+    xhr.upload.addEventListener('progress', (e) => {
+      if (e.lengthComputable) {
+        const progress = Math.round((e.loaded / e.total) * 100);
+        setAudioUploadProgress(progress);
+        setAudioUploadedBytes(e.loaded);
+        setAudioTotalBytes(e.total);
       }
-    } catch (error) {
-      console.error("Upload error:", error);
-      toast({
-        variant: "destructive",
-        title: "Lỗi tải lên",
-        description: error instanceof Error ? error.message : "Có lỗi xảy ra khi tải lên audio mô tả."
-      });
-    } finally {
+    });
+
+    xhr.addEventListener('load', async () => {
+      if (xhr.status === 200) {
+        try {
+          const result = JSON.parse(xhr.responseText);
+          if (result.success) {
+            onAudioChange(result.url);
+            
+            const isPrevTempAudio = previousAudioUrl && (
+              previousAudioUrl.includes('/api/temp-description-audio/') || 
+              previousAudioUrl.match(/\/api\/(qbank|exam)-temp-description-audio\//)
+            );
+            if (isPrevTempAudio) {
+              await cleanupPreviousFile(previousAudioUrl, "/api/temp-description-audio/cleanup");
+            }
+            
+            toast({
+              title: "Thành công",
+              description: `Tải lên audio mô tả thành công! (${formatFileSize(file.size)})`
+            });
+          } else {
+            throw new Error(result.message || "Tải lên thất bại");
+          }
+        } catch (error) {
+          toast({
+            variant: "destructive",
+            title: "Lỗi",
+            description: error instanceof Error ? error.message : "Phản hồi từ server không hợp lệ"
+          });
+        }
+      } else {
+        let errorMsg = "Không thể tải lên audio";
+        try {
+          const errorResult = JSON.parse(xhr.responseText);
+          if (errorResult.message) errorMsg = errorResult.message;
+        } catch {}
+        toast({
+          variant: "destructive",
+          title: "Lỗi upload",
+          description: errorMsg
+        });
+      }
       setIsAudioUploading(false);
-      // Reset input value to allow re-uploading same file
+      setAudioUploadProgress(0);
       if (audioInputRef.current) {
         audioInputRef.current.value = '';
       }
+    });
+
+    xhr.addEventListener('error', () => {
+      toast({
+        variant: "destructive",
+        title: "Lỗi kết nối",
+        description: "Không thể kết nối đến server. Vui lòng thử lại."
+      });
+      setIsAudioUploading(false);
+      setAudioUploadProgress(0);
+      if (audioInputRef.current) {
+        audioInputRef.current.value = '';
+      }
+    });
+
+    xhr.addEventListener('timeout', () => {
+      toast({
+        variant: "destructive",
+        title: "Hết thời gian",
+        description: "Upload file quá lâu. Vui lòng thử lại."
+      });
+      setIsAudioUploading(false);
+      setAudioUploadProgress(0);
+      if (audioInputRef.current) {
+        audioInputRef.current.value = '';
+      }
+    });
+
+    xhr.addEventListener('abort', () => {
+      toast({
+        title: "Đã hủy",
+        description: "Upload đã bị hủy"
+      });
+      setIsAudioUploading(false);
+      setAudioUploadProgress(0);
+      if (audioInputRef.current) {
+        audioInputRef.current.value = '';
+      }
+    });
+
+    const uploadUrl = `/api/temp-description-audio/upload?context=${context}`;
+    xhr.open('POST', uploadUrl);
+    xhr.send(formData);
+  }, [audioUrl, onAudioChange, toast, cleanupPreviousFile, context]);
+
+  const cancelAudioUpload = useCallback(() => {
+    if (audioXhrRef.current) {
+      audioXhrRef.current.abort();
+      audioXhrRef.current = null;
     }
-  }, [audioUrl, onAudioChange, toast, cleanupPreviousFile]);
+  }, []);
 
   const removeImage = useCallback(async () => {
     if (imageUrl) {
@@ -308,7 +386,7 @@ export function DescriptionMediaUploader({
       {/* Audio Upload Section */}
       <div className="space-y-2">
         <label className="text-sm text-gray-600 dark:text-gray-400">
-          Audio mô tả (Tùy chọn)
+          Audio mô tả (Tùy chọn - tối đa 50MB)
         </label>
         
         {audioUrl ? (
@@ -387,6 +465,40 @@ export function DescriptionMediaUploader({
                 </>
               )}
             </Button>
+            
+            {/* Audio Upload Progress */}
+            {isAudioUploading && (
+              <div className="space-y-2 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                <div className="flex justify-between text-sm">
+                  <span className="font-medium text-blue-800 dark:text-blue-300 truncate max-w-[200px]">
+                    {audioFileName}
+                  </span>
+                  <span className="text-blue-600 dark:text-blue-400 font-medium">
+                    {formatFileSize(audioUploadedBytes)} / {formatFileSize(audioTotalBytes)}
+                  </span>
+                </div>
+                <div className="w-full bg-blue-200 dark:bg-blue-800 rounded-full h-3">
+                  <div 
+                    className="bg-blue-600 h-3 rounded-full transition-all duration-300 flex items-center justify-center"
+                    style={{ width: `${audioUploadProgress}%` }}
+                  >
+                    {audioUploadProgress > 15 && (
+                      <span className="text-xs text-white font-medium">{audioUploadProgress}%</span>
+                    )}
+                  </div>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={cancelAudioUpload}
+                  className="w-full text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20"
+                >
+                  <X className="w-3.5 h-3.5 mr-1" />
+                  Hủy upload
+                </Button>
+              </div>
+            )}
           </div>
         )}
       </div>

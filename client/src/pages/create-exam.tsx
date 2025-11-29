@@ -84,6 +84,25 @@ export default function CreateExam() {
   // File input refs for section uploads
   const sectionImageInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
   const sectionAudioInputRefs = useRef<Map<string, HTMLInputElement>>(new Map());
+  const audioXhrRefs = useRef<Map<string, XMLHttpRequest>>(new Map());
+
+  // Audio upload state per section
+  const [audioUploadState, setAudioUploadState] = useState<{[key: string]: {
+    isUploading: boolean;
+    progress: number;
+    uploadedBytes: number;
+    totalBytes: number;
+    fileName: string;
+  }}>({});
+
+  // Helper function to format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
 
   const form = useForm<ExamFormData>({
     resolver: zodResolver(examSchema),
@@ -564,23 +583,64 @@ export default function CreateExam() {
                             audioInput?.click();
                           }}
                           className="flex items-center gap-1.5"
+                          disabled={audioUploadState[section.id]?.isUploading}
                         >
                           <Volume2 className="w-3.5 h-3.5" />
-                          Thêm audio
+                          {audioUploadState[section.id]?.isUploading ? "Đang tải..." : "Thêm audio (tối đa 50MB)"}
                         </Button>
 
-                        {(section.descriptionImageUrls || []).length > 0 && (
+                        {!audioUploadState[section.id]?.isUploading && (section.descriptionImageUrls || []).length > 0 && (
                           <span className="text-xs text-muted-foreground">
                             ({(section.descriptionImageUrls || []).length} hình ảnh)
                           </span>
                         )}
 
-                        {section.descriptionAudioUrl && (
+                        {!audioUploadState[section.id]?.isUploading && section.descriptionAudioUrl && (
                           <span className="text-xs text-muted-foreground">
                             (có audio)
                           </span>
                         )}
                       </div>
+                      
+                      {/* Audio Upload Progress */}
+                      {audioUploadState[section.id]?.isUploading && (
+                        <div className="space-y-2 p-3 bg-blue-50 rounded-lg border border-blue-200 mb-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="font-medium text-blue-800 truncate max-w-[200px]">
+                              {audioUploadState[section.id]?.fileName}
+                            </span>
+                            <span className="text-blue-600 font-medium">
+                              {formatFileSize(audioUploadState[section.id]?.uploadedBytes || 0)} / {formatFileSize(audioUploadState[section.id]?.totalBytes || 0)}
+                            </span>
+                          </div>
+                          <div className="w-full bg-blue-200 rounded-full h-3">
+                            <div 
+                              className="bg-blue-600 h-3 rounded-full transition-all duration-300 flex items-center justify-center"
+                              style={{ width: `${audioUploadState[section.id]?.progress || 0}%` }}
+                            >
+                              {(audioUploadState[section.id]?.progress || 0) > 15 && (
+                                <span className="text-xs text-white font-medium">{audioUploadState[section.id]?.progress}%</span>
+                              )}
+                            </div>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              const xhr = audioXhrRefs.current.get(section.id);
+                              if (xhr) {
+                                xhr.abort();
+                                audioXhrRefs.current.delete(section.id);
+                              }
+                            }}
+                            className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                          >
+                            <X className="w-3.5 h-3.5 mr-1" />
+                            Hủy upload
+                          </Button>
+                        </div>
+                      )}
 
                       {/* Hidden file inputs */}
                       <input
@@ -605,44 +665,138 @@ export default function CreateExam() {
                         type="file"
                         accept="audio/*"
                         style={{ display: 'none' }}
-                        onChange={async (e) => {
+                        onChange={(e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
                           
-                          if (file.size > 50 * 1024 * 1024) {
+                          const maxSize = 50 * 1024 * 1024;
+                          if (file.size > maxSize) {
                             toast({
                               variant: "destructive",
-                              title: "Lỗi",
-                              description: "File audio không được vượt quá 50MB"
+                              title: "File quá lớn",
+                              description: `File audio không được vượt quá 50MB. File của bạn: ${formatFileSize(file.size)}`
                             });
+                            e.target.value = '';
                             return;
                           }
                           
-                          try {
-                            const formData = new FormData();
-                            formData.append('file', file);
-                            
-                            const response = await fetch('/api/description-audio/upload-direct?context=exam', {
-                              method: 'POST',
-                              body: formData
+                          // Initialize upload state for this section
+                          setAudioUploadState(prev => ({
+                            ...prev,
+                            [section.id]: {
+                              isUploading: true,
+                              progress: 0,
+                              uploadedBytes: 0,
+                              totalBytes: file.size,
+                              fileName: file.name
+                            }
+                          }));
+                          
+                          const formData = new FormData();
+                          formData.append('file', file);
+                          
+                          const xhr = new XMLHttpRequest();
+                          audioXhrRefs.current.set(section.id, xhr);
+                          xhr.timeout = 600000; // 10 minutes
+                          
+                          xhr.upload.addEventListener('progress', (event) => {
+                            if (event.lengthComputable) {
+                              const progress = Math.round((event.loaded / event.total) * 100);
+                              setAudioUploadState(prev => ({
+                                ...prev,
+                                [section.id]: {
+                                  ...prev[section.id],
+                                  progress,
+                                  uploadedBytes: event.loaded,
+                                  totalBytes: event.total
+                                }
+                              }));
+                            }
+                          });
+                          
+                          xhr.addEventListener('load', () => {
+                            if (xhr.status === 200) {
+                              try {
+                                const result = JSON.parse(xhr.responseText);
+                                updateSectionDescriptionAudio(section.id, result.audioUrl);
+                                toast({
+                                  title: "Thành công",
+                                  description: `Audio mô tả đã được tải lên (${formatFileSize(file.size)})`
+                                });
+                              } catch {
+                                toast({
+                                  variant: "destructive",
+                                  title: "Lỗi",
+                                  description: "Phản hồi từ server không hợp lệ"
+                                });
+                              }
+                            } else {
+                              let errorMsg = "Không thể tải lên audio";
+                              try {
+                                const errorResult = JSON.parse(xhr.responseText);
+                                if (errorResult.message) errorMsg = errorResult.message;
+                              } catch {}
+                              toast({
+                                variant: "destructive",
+                                title: "Lỗi upload",
+                                description: errorMsg
+                              });
+                            }
+                            setAudioUploadState(prev => {
+                              const newState = { ...prev };
+                              delete newState[section.id];
+                              return newState;
                             });
-                            
-                            if (!response.ok) throw new Error('Upload failed');
-                            
-                            const result = await response.json();
-                            updateSectionDescriptionAudio(section.id, result.audioUrl);
-                            
-                            toast({
-                              title: "Thành công",
-                              description: "Audio mô tả đã được tải lên"
-                            });
-                          } catch (error) {
+                            audioXhrRefs.current.delete(section.id);
+                            e.target.value = '';
+                          });
+                          
+                          xhr.addEventListener('error', () => {
                             toast({
                               variant: "destructive",
-                              title: "Lỗi upload",
-                              description: "Không thể tải lên audio"
+                              title: "Lỗi kết nối",
+                              description: "Không thể kết nối đến server. Vui lòng thử lại."
                             });
-                          }
+                            setAudioUploadState(prev => {
+                              const newState = { ...prev };
+                              delete newState[section.id];
+                              return newState;
+                            });
+                            audioXhrRefs.current.delete(section.id);
+                            e.target.value = '';
+                          });
+                          
+                          xhr.addEventListener('timeout', () => {
+                            toast({
+                              variant: "destructive",
+                              title: "Hết thời gian",
+                              description: "Upload file quá lâu. Vui lòng thử lại."
+                            });
+                            setAudioUploadState(prev => {
+                              const newState = { ...prev };
+                              delete newState[section.id];
+                              return newState;
+                            });
+                            audioXhrRefs.current.delete(section.id);
+                            e.target.value = '';
+                          });
+                          
+                          xhr.addEventListener('abort', () => {
+                            toast({
+                              title: "Đã hủy",
+                              description: "Upload đã bị hủy"
+                            });
+                            setAudioUploadState(prev => {
+                              const newState = { ...prev };
+                              delete newState[section.id];
+                              return newState;
+                            });
+                            audioXhrRefs.current.delete(section.id);
+                            e.target.value = '';
+                          });
+                          
+                          xhr.open('POST', '/api/description-audio/upload-direct?context=exam');
+                          xhr.send(formData);
                         }}
                       />
 
