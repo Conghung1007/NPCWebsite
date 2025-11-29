@@ -12,6 +12,14 @@ interface AudioUploaderProps {
   context?: "qbank" | "exam";
 }
 
+const formatFileSize = (bytes: number): string => {
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+};
+
 export function AudioUploader({ 
   onAudioUpload, 
   currentAudioUrl, 
@@ -23,13 +31,13 @@ export function AudioUploader({
   const [isUploading, setIsUploading] = useState(false);
   const [isPlaying, setIsPlaying] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadedBytes, setUploadedBytes] = useState(0);
+  const [totalBytes, setTotalBytes] = useState(0);
   const [originalFileName, setOriginalFileName] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const xhrRef = useRef<XMLHttpRequest | null>(null);
   const { toast } = useToast();
-
-  // Debug log for currentAudioUrl
-  console.log('AudioUploader currentAudioUrl:', currentAudioUrl);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -46,10 +54,11 @@ export function AudioUploader({
     }
 
     // Validate file size (max 50MB)
-    if (file.size > 50 * 1024 * 1024) {
+    const maxSize = 50 * 1024 * 1024;
+    if (file.size > maxSize) {
       toast({
         title: "Lỗi", 
-        description: "File audio không được vượt quá 50MB",
+        description: `File audio không được vượt quá 50MB. File của bạn: ${formatFileSize(file.size)}`,
         variant: "destructive",
       });
       return;
@@ -58,6 +67,8 @@ export function AudioUploader({
     try {
       setIsUploading(true);
       setUploadProgress(0);
+      setUploadedBytes(0);
+      setTotalBytes(file.size);
       setOriginalFileName(file.name);
 
       // Cleanup previous temporary file if exists (supports both legacy and context-based URLs)
@@ -91,11 +102,17 @@ export function AudioUploader({
       formData.append('audio', file);
 
       const xhr = new XMLHttpRequest();
+      xhrRef.current = xhr;
+      
+      // Set timeout to 10 minutes for large files
+      xhr.timeout = 600000;
       
       xhr.upload.addEventListener('progress', (e) => {
         if (e.lengthComputable) {
           const progress = Math.round((e.loaded / e.total) * 100);
           setUploadProgress(progress);
+          setUploadedBytes(e.loaded);
+          setTotalBytes(e.total);
         }
       });
 
@@ -123,15 +140,39 @@ export function AudioUploader({
             onAudioUpload(audioUrl);
             toast({
               title: "Thành công", 
-              description: "Upload file audio thành công",
+              description: `Upload file audio thành công (${formatFileSize(file.size)})`,
             });
           } catch (parseError) {
             console.error('Failed to parse response:', parseError);
-            throw new Error('Invalid server response');
+            toast({
+              title: "Lỗi",
+              description: "Phản hồi từ server không hợp lệ",
+              variant: "destructive",
+            });
           }
         } else {
+          let errorMessage = `Upload thất bại (mã lỗi: ${xhr.status})`;
+          try {
+            const errorResponse = JSON.parse(xhr.responseText);
+            if (errorResponse.message) {
+              errorMessage = errorResponse.message;
+            }
+          } catch {
+            // Use default error message
+          }
           console.error('Upload failed with status:', xhr.status);
-          throw new Error(`Upload failed with status: ${xhr.status}`);
+          toast({
+            title: "Lỗi",
+            description: errorMessage,
+            variant: "destructive",
+          });
+        }
+        setIsUploading(false);
+        setUploadProgress(0);
+        setUploadedBytes(0);
+        setTotalBytes(0);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
         }
       });
 
@@ -139,7 +180,49 @@ export function AudioUploader({
         console.error('XMLHttpRequest error event:', e);
         console.error('Upload error - status:', xhr.status);
         console.error('Upload error - response:', xhr.responseText);
-        throw new Error(`Upload failed - Network error`);
+        toast({
+          title: "Lỗi kết nối",
+          description: "Không thể kết nối đến server. Vui lòng kiểm tra kết nối mạng và thử lại.",
+          variant: "destructive",
+        });
+        setIsUploading(false);
+        setUploadProgress(0);
+        setUploadedBytes(0);
+        setTotalBytes(0);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      });
+
+      xhr.addEventListener('timeout', () => {
+        console.error('Upload timeout');
+        toast({
+          title: "Hết thời gian",
+          description: "Upload file quá lâu. Vui lòng thử lại với file nhỏ hơn hoặc kiểm tra kết nối mạng.",
+          variant: "destructive",
+        });
+        setIsUploading(false);
+        setUploadProgress(0);
+        setUploadedBytes(0);
+        setTotalBytes(0);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      });
+
+      xhr.addEventListener('abort', () => {
+        console.log('Upload aborted');
+        toast({
+          title: "Đã hủy",
+          description: "Upload file đã bị hủy",
+        });
+        setIsUploading(false);
+        setUploadProgress(0);
+        setUploadedBytes(0);
+        setTotalBytes(0);
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
       });
 
       const endpointWithContext = `/api/audio/upload-direct?context=${context}`;
@@ -153,12 +236,20 @@ export function AudioUploader({
         description: error instanceof Error ? error.message : "Không thể upload file audio",
         variant: "destructive",
       });
-    } finally {
       setIsUploading(false);
       setUploadProgress(0);
+      setUploadedBytes(0);
+      setTotalBytes(0);
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+    }
+  };
+
+  const handleCancelUpload = () => {
+    if (xhrRef.current) {
+      xhrRef.current.abort();
+      xhrRef.current = null;
     }
   };
 
@@ -235,16 +326,48 @@ export function AudioUploader({
       />
 
       {!currentAudioUrl ? (
-        <Button
-          type="button"
-          variant="outline"
-          onClick={() => fileInputRef.current?.click()}
-          disabled={disabled || isUploading}
-          className="w-full"
-        >
-          <Upload className="w-4 h-4 mr-2" />
-          {isUploading ? `Đang upload... ${uploadProgress}%` : "Upload Audio"}
-        </Button>
+        <div className="space-y-2">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            disabled={disabled || isUploading}
+            className="w-full"
+          >
+            <Upload className="w-4 h-4 mr-2" />
+            {isUploading 
+              ? `Đang upload... ${uploadProgress}%` 
+              : "Upload Audio (tối đa 50MB)"}
+          </Button>
+          
+          {isUploading && (
+            <div className="space-y-2">
+              <div className="flex justify-between text-sm text-gray-600">
+                <span>{originalFileName}</span>
+                <span>{formatFileSize(uploadedBytes)} / {formatFileSize(totalBytes)}</span>
+              </div>
+              <div className="w-full bg-gray-200 rounded-full h-3">
+                <div 
+                  className="bg-green-600 h-3 rounded-full transition-all duration-300 flex items-center justify-center"
+                  style={{ width: `${uploadProgress}%` }}
+                >
+                  {uploadProgress > 10 && (
+                    <span className="text-xs text-white font-medium">{uploadProgress}%</span>
+                  )}
+                </div>
+              </div>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleCancelUpload}
+                className="w-full text-red-600 hover:text-red-700"
+              >
+                Hủy upload
+              </Button>
+            </div>
+          )}
+        </div>
       ) : (
         <div className="space-y-2">
           <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
@@ -287,15 +410,6 @@ export function AudioUploader({
             src={currentAudioUrl}
             onEnded={handleAudioEnded}
             preload="metadata"
-          />
-        </div>
-      )}
-
-      {isUploading && (
-        <div className="w-full bg-gray-200 rounded-full h-2">
-          <div 
-            className="bg-green-600 h-2 rounded-full transition-all duration-300"
-            style={{ width: `${uploadProgress}%` }}
           />
         </div>
       )}
