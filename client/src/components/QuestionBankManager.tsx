@@ -96,7 +96,7 @@ const questionSchema = z.object({
   category: z.string().min(1, "Danh mục là bắt buộc"),
   questionTitle: z.string().optional(), // Optional short title for easy identification
   sortOrder: z.number().default(0),
-  questions: z.array(singleQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi").max(10, "Tối đa 10 câu hỏi"),
+  questions: z.array(singleQuestionSchema).min(1, "Phải có ít nhất 1 câu hỏi").max(15, "Tối đa 15 câu hỏi"),
 });
 
 type QuestionFormData = z.infer<typeof questionSchema>;
@@ -1744,7 +1744,7 @@ export function QuestionBankManager() {
                 </div>
                 
                 {/* Add Question Button at Bottom */}
-                {form.watch("questions").length < 10 && (
+                {form.watch("questions").length < 15 && (
                   <div className="flex justify-center pt-2">
                     <Button
                       type="button"
