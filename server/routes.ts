@@ -1742,11 +1742,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const handleFileDownload = async (folder: string, filename: string, res: any, contentType: string = 'application/octet-stream', cacheMaxAge: number = 3600) => {
     try {
       const objectKey = `${folder}/${filename}`;
+      console.log(`[handleFileDownload] Attempting to download: ${objectKey}`);
+      
       const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
       
       if (downloadUrl) {
+        console.log(`[handleFileDownload] Generated presigned URL for ${objectKey}`);
         try {
           const response = await fetch(downloadUrl);
+          console.log(`[handleFileDownload] Fetch response status: ${response.status} for ${objectKey}`);
+          
           if (response.ok) {
             const actualContentType = response.headers.get('content-type') || contentType;
             res.set({
@@ -1756,17 +1761,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
             });
             
             const buffer = await response.arrayBuffer();
+            console.log(`[handleFileDownload] Successfully served ${buffer.byteLength} bytes for ${objectKey}`);
             return res.send(Buffer.from(buffer));
+          } else {
+            console.error(`[handleFileDownload] Failed to fetch from R2: ${response.status} ${response.statusText} for ${objectKey}`);
           }
         } catch (proxyError) {
-          console.error(`Error proxying file from ${folder}:`, proxyError);
+          console.error(`[handleFileDownload] Error proxying file from ${folder}:`, proxyError);
         }
+      } else {
+        console.error(`[handleFileDownload] Failed to generate presigned URL for ${objectKey}`);
       }
       
-      res.status(404).json({ error: "File not found" });
+      res.status(404).json({ error: "File not found", folder, filename });
     } catch (error) {
-      console.error(`Error serving file from ${folder}:`, error);
-      res.status(500).json({ error: "Failed to serve file" });
+      console.error(`[handleFileDownload] Error serving file from ${folder}:`, error);
+      res.status(500).json({ error: "Failed to serve file", folder, filename, details: error instanceof Error ? error.message : 'Unknown error' });
     }
   };
 
