@@ -141,6 +141,23 @@ export function QuestionBankManager() {
     question: null
   });
 
+  // Audio upload state
+  const [isUploadingAudio, setIsUploadingAudio] = useState(false);
+  const [audioUploadProgress, setAudioUploadProgress] = useState(0);
+  const [audioUploadedBytes, setAudioUploadedBytes] = useState(0);
+  const [audioTotalBytes, setAudioTotalBytes] = useState(0);
+  const [audioFileName, setAudioFileName] = useState("");
+  const audioXhrRef = useRef<XMLHttpRequest | null>(null);
+
+  // Helper function to format file size
+  const formatFileSize = (bytes: number): string => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  };
+
   // File input refs for image uploads
   const questionImageInputRefs = useRef<Map<number, HTMLInputElement>>(new Map());
   const optionImageInputRefs = useRef<Map<string, HTMLInputElement>>(new Map()); // questionIndex-optionIndex as key
@@ -1223,20 +1240,58 @@ export function QuestionBankManager() {
                     audioInput?.click();
                   }}
                   className="flex items-center gap-1.5"
+                  disabled={isUploadingAudio}
                 >
                   <Volume2 className="w-3.5 h-3.5" />
-                  Thêm audio
+                  {isUploadingAudio ? "Đang tải..." : "Thêm audio (tối đa 50MB)"}
                 </Button>
 
+                {/* Audio Upload Progress */}
+                {isUploadingAudio && (
+                  <div className="w-full mt-2 space-y-2 p-3 bg-blue-50 rounded-lg border border-blue-200">
+                    <div className="flex justify-between text-sm">
+                      <span className="font-medium text-blue-800 truncate max-w-[200px]">{audioFileName}</span>
+                      <span className="text-blue-600 font-medium">
+                        {formatFileSize(audioUploadedBytes)} / {formatFileSize(audioTotalBytes)}
+                      </span>
+                    </div>
+                    <div className="w-full bg-blue-200 rounded-full h-3">
+                      <div 
+                        className="bg-blue-600 h-3 rounded-full transition-all duration-300 flex items-center justify-center"
+                        style={{ width: `${audioUploadProgress}%` }}
+                      >
+                        {audioUploadProgress > 15 && (
+                          <span className="text-xs text-white font-medium">{audioUploadProgress}%</span>
+                        )}
+                      </div>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        if (audioXhrRef.current) {
+                          audioXhrRef.current.abort();
+                          audioXhrRef.current = null;
+                        }
+                      }}
+                      className="w-full text-red-600 hover:text-red-700 hover:bg-red-50"
+                    >
+                      <X className="w-3.5 h-3.5 mr-1" />
+                      Hủy upload
+                    </Button>
+                  </div>
+                )}
+
                 {/* Image Preview (only when images exist) */}
-                {(form.watch(`questions.0.descriptionImageUrls`) || []).length > 0 && (
+                {!isUploadingAudio && (form.watch(`questions.0.descriptionImageUrls`) || []).length > 0 && (
                   <span className="text-xs text-muted-foreground">
                     ({(form.watch(`questions.0.descriptionImageUrls`) || []).length} hình ảnh)
                   </span>
                 )}
 
                 {/* Audio Preview (only when audio exists) */}
-                {form.watch(`questions.0.descriptionAudioUrl`) && (
+                {!isUploadingAudio && form.watch(`questions.0.descriptionAudioUrl`) && (
                   <span className="text-xs text-muted-foreground">
                     (có audio)
                   </span>
@@ -1261,35 +1316,111 @@ export function QuestionBankManager() {
                   type="file"
                   accept="audio/*"
                   style={{ display: 'none' }}
-                  onChange={async (e) => {
+                  onChange={(e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
                     
-                    try {
-                      const formData = new FormData();
-                      formData.append('file', file);
-                      
-                      const response = await fetch('/api/description-audio/upload-direct', {
-                        method: 'POST',
-                        body: formData
-                      });
-                      
-                      if (!response.ok) throw new Error('Upload failed');
-                      
-                      const result = await response.json();
-                      form.setValue(`questions.0.descriptionAudioUrl`, result.audioUrl);
-                      
-                      toast({
-                        title: "Thành công",
-                        description: "Audio mô tả đã được tải lên"
-                      });
-                    } catch (error) {
+                    // Validate file size (max 50MB)
+                    const maxSize = 50 * 1024 * 1024;
+                    if (file.size > maxSize) {
                       toast({
                         variant: "destructive",
-                        title: "Lỗi upload",
-                        description: "Không thể tải lên audio"
+                        title: "File quá lớn",
+                        description: `File audio không được vượt quá 50MB. File của bạn: ${formatFileSize(file.size)}`
                       });
+                      e.target.value = '';
+                      return;
                     }
+                    
+                    setIsUploadingAudio(true);
+                    setAudioUploadProgress(0);
+                    setAudioUploadedBytes(0);
+                    setAudioTotalBytes(file.size);
+                    setAudioFileName(file.name);
+                    
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    
+                    const xhr = new XMLHttpRequest();
+                    audioXhrRef.current = xhr;
+                    xhr.timeout = 600000; // 10 minutes timeout
+                    
+                    xhr.upload.addEventListener('progress', (event) => {
+                      if (event.lengthComputable) {
+                        const progress = Math.round((event.loaded / event.total) * 100);
+                        setAudioUploadProgress(progress);
+                        setAudioUploadedBytes(event.loaded);
+                        setAudioTotalBytes(event.total);
+                      }
+                    });
+                    
+                    xhr.addEventListener('load', () => {
+                      if (xhr.status === 200) {
+                        try {
+                          const result = JSON.parse(xhr.responseText);
+                          form.setValue(`questions.0.descriptionAudioUrl`, result.audioUrl);
+                          toast({
+                            title: "Thành công",
+                            description: `Audio mô tả đã được tải lên (${formatFileSize(file.size)})`
+                          });
+                        } catch {
+                          toast({
+                            variant: "destructive",
+                            title: "Lỗi",
+                            description: "Phản hồi từ server không hợp lệ"
+                          });
+                        }
+                      } else {
+                        let errorMsg = "Không thể tải lên audio";
+                        try {
+                          const errorResult = JSON.parse(xhr.responseText);
+                          if (errorResult.message) errorMsg = errorResult.message;
+                        } catch {}
+                        toast({
+                          variant: "destructive",
+                          title: "Lỗi upload",
+                          description: errorMsg
+                        });
+                      }
+                      setIsUploadingAudio(false);
+                      setAudioUploadProgress(0);
+                      e.target.value = '';
+                    });
+                    
+                    xhr.addEventListener('error', () => {
+                      toast({
+                        variant: "destructive",
+                        title: "Lỗi kết nối",
+                        description: "Không thể kết nối đến server. Vui lòng thử lại."
+                      });
+                      setIsUploadingAudio(false);
+                      setAudioUploadProgress(0);
+                      e.target.value = '';
+                    });
+                    
+                    xhr.addEventListener('timeout', () => {
+                      toast({
+                        variant: "destructive",
+                        title: "Hết thời gian",
+                        description: "Upload file quá lâu. Vui lòng thử lại."
+                      });
+                      setIsUploadingAudio(false);
+                      setAudioUploadProgress(0);
+                      e.target.value = '';
+                    });
+                    
+                    xhr.addEventListener('abort', () => {
+                      toast({
+                        title: "Đã hủy",
+                        description: "Upload đã bị hủy"
+                      });
+                      setIsUploadingAudio(false);
+                      setAudioUploadProgress(0);
+                      e.target.value = '';
+                    });
+                    
+                    xhr.open('POST', '/api/description-audio/upload-direct');
+                    xhr.send(formData);
                   }}
                 />
               </div>
