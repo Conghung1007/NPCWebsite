@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Volume2, VolumeX, Download, Loader2 } from "lucide-react";
+import { Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 
@@ -208,42 +208,13 @@ export function ExamAudioPlayer({
             />
           </div>
           
-          {/* Status indicators */}
+          {/* Time indicators */}
           <div className="flex justify-between items-center text-xs">
-            <div className="flex items-center gap-2">
-              <span className="text-gray-600">{formatTime(currentTime)}</span>
-              {/* Loading/buffering indicator */}
-              {isLoading && (
-                <span className="flex items-center gap-1 text-blue-600" data-testid="audio-loading-status">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>Đang tải...</span>
-                </span>
-              )}
-              {!isLoading && bufferedPercent < 100 && bufferedPercent > 0 && (
-                <span className="flex items-center gap-1 text-blue-600" data-testid="audio-download-status">
-                  <Download className="h-3 w-3" />
-                  <span>Đã tải {bufferedPercent}%</span>
-                </span>
-              )}
-            </div>
+            <span className="text-gray-600">{formatTime(currentTime)}</span>
             <span className={`${isPlaying ? 'text-green-600 font-medium' : 'text-gray-500'}`}>
-              {isDisabled ? 'Đã phát xong' : isPlaying ? 'Đang phát...' : formatTime(duration)}
+              {isDisabled ? 'Đã phát xong' : formatTime(duration)}
             </span>
           </div>
-
-          {/* Legend for dual progress bars */}
-          {bufferedPercent > 0 && bufferedPercent < 100 && (
-            <div className="flex items-center gap-4 text-xs text-gray-500">
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                <span>Đã tải: {bufferedPercent}%</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <div className="w-2 h-2 rounded-full bg-green-500"></div>
-                <span>Đang phát</span>
-              </div>
-            </div>
-          )}
         </div>
 
         <div className="flex items-center gap-2">
