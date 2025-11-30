@@ -665,7 +665,7 @@ export default function CreateExam() {
                         type="file"
                         accept="audio/*"
                         style={{ display: 'none' }}
-                        onChange={(e) => {
+                        onChange={async (e) => {
                           const file = e.target.files?.[0];
                           if (!file) return;
                           
@@ -680,7 +680,6 @@ export default function CreateExam() {
                             return;
                           }
                           
-                          // Initialize upload state for this section
                           setAudioUploadState(prev => ({
                             ...prev,
                             [section.id]: {
@@ -692,111 +691,116 @@ export default function CreateExam() {
                             }
                           }));
                           
-                          const formData = new FormData();
-                          formData.append('file', file);
-                          
-                          const xhr = new XMLHttpRequest();
-                          audioXhrRefs.current.set(section.id, xhr);
-                          xhr.timeout = 600000; // 10 minutes
-                          
-                          xhr.upload.addEventListener('progress', (event) => {
-                            if (event.lengthComputable) {
-                              const progress = Math.round((event.loaded / event.total) * 100);
-                              setAudioUploadState(prev => ({
-                                ...prev,
-                                [section.id]: {
-                                  ...prev[section.id],
-                                  progress,
-                                  uploadedBytes: event.loaded,
-                                  totalBytes: event.total
+                          // Use chunked upload to bypass proxy body size limits (413 error)
+                          (async () => {
+                            console.log('Starting chunked upload for section audio:', file.name, file.type, file.size);
+                            
+                            const CHUNK_SIZE = 512 * 1024; // 512KB per chunk
+                            const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+                            let uploadId: string | null = null;
+                            let aborted = false;
+
+                            const abortController = new AbortController();
+                            audioXhrRefs.current.set(section.id, { abort: () => { aborted = true; abortController.abort(); } } as any);
+
+                            try {
+                              // Step 1: Initialize chunked upload
+                              const initResponse = await fetch('/api/audio/chunked-upload/init', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  totalChunks,
+                                  contentType: file.type,
+                                  target: 'sectionAudio',
+                                  context: 'exam',
+                                  totalSize: file.size
+                                }),
+                                signal: abortController.signal
+                              });
+
+                              if (!initResponse.ok) {
+                                const error = await initResponse.json();
+                                throw new Error(error.message || 'Failed to initialize upload');
+                              }
+
+                              const initData = await initResponse.json();
+                              uploadId = initData.uploadId;
+                              console.log(`Chunked upload initialized: ${uploadId}, ${totalChunks} chunks`);
+
+                              // Step 2: Upload chunks sequentially
+                              for (let i = 0; i < totalChunks; i++) {
+                                if (aborted) throw new Error('Upload cancelled');
+
+                                const start = i * CHUNK_SIZE;
+                                const end = Math.min(start + CHUNK_SIZE, file.size);
+                                const chunk = file.slice(start, end);
+
+                                const chunkResponse = await fetch(
+                                  `/api/audio/chunked-upload/chunk?uploadId=${uploadId}&chunkIndex=${i}`,
+                                  { method: 'POST', body: chunk, signal: abortController.signal }
+                                );
+
+                                if (!chunkResponse.ok) {
+                                  const error = await chunkResponse.json();
+                                  throw new Error(error.message || `Failed to upload chunk ${i}`);
                                 }
-                              }));
-                            }
-                          });
-                          
-                          xhr.addEventListener('load', () => {
-                            if (xhr.status === 200) {
-                              try {
-                                const result = JSON.parse(xhr.responseText);
-                                updateSectionDescriptionAudio(section.id, result.audioUrl);
-                                toast({
-                                  title: "Thành công",
-                                  description: `Audio mô tả đã được tải lên (${formatFileSize(file.size)})`
-                                });
-                              } catch {
+
+                                const progress = Math.round(((i + 1) / totalChunks) * 100);
+                                setAudioUploadState(prev => ({
+                                  ...prev,
+                                  [section.id]: { ...prev[section.id], progress, uploadedBytes: end, totalBytes: file.size }
+                                }));
+                              }
+
+                              // Step 3: Complete upload
+                              const completeResponse = await fetch('/api/audio/chunked-upload/complete', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ uploadId }),
+                                signal: abortController.signal
+                              });
+
+                              if (!completeResponse.ok) {
+                                const error = await completeResponse.json();
+                                throw new Error(error.message || 'Failed to complete upload');
+                              }
+
+                              const result = await completeResponse.json();
+                              updateSectionDescriptionAudio(section.id, result.audioUrl);
+                              toast({
+                                title: "Thành công",
+                                description: `Audio mô tả đã được tải lên (${formatFileSize(file.size)})`
+                              });
+                            } catch (uploadError: any) {
+                              console.error('Chunked upload error:', uploadError);
+                              if (uploadId && !aborted) {
+                                try {
+                                  await fetch('/api/audio/chunked-upload/abort', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ uploadId })
+                                  });
+                                } catch {}
+                              }
+                              if (uploadError.name === 'AbortError' || aborted) {
+                                toast({ title: "Đã hủy", description: "Upload đã bị hủy" });
+                              } else {
                                 toast({
                                   variant: "destructive",
                                   title: "Lỗi",
-                                  description: "Phản hồi từ server không hợp lệ"
+                                  description: uploadError.message || "Không thể tải lên audio"
                                 });
                               }
-                            } else {
-                              let errorMsg = "Không thể tải lên audio";
-                              try {
-                                const errorResult = JSON.parse(xhr.responseText);
-                                if (errorResult.message) errorMsg = errorResult.message;
-                              } catch {}
-                              toast({
-                                variant: "destructive",
-                                title: "Lỗi upload",
-                                description: errorMsg
+                            } finally {
+                              setAudioUploadState(prev => {
+                                const newState = { ...prev };
+                                delete newState[section.id];
+                                return newState;
                               });
+                              audioXhrRefs.current.delete(section.id);
+                              e.target.value = '';
                             }
-                            setAudioUploadState(prev => {
-                              const newState = { ...prev };
-                              delete newState[section.id];
-                              return newState;
-                            });
-                            audioXhrRefs.current.delete(section.id);
-                            e.target.value = '';
-                          });
-                          
-                          xhr.addEventListener('error', () => {
-                            toast({
-                              variant: "destructive",
-                              title: "Lỗi kết nối",
-                              description: "Không thể kết nối đến server. Vui lòng thử lại."
-                            });
-                            setAudioUploadState(prev => {
-                              const newState = { ...prev };
-                              delete newState[section.id];
-                              return newState;
-                            });
-                            audioXhrRefs.current.delete(section.id);
-                            e.target.value = '';
-                          });
-                          
-                          xhr.addEventListener('timeout', () => {
-                            toast({
-                              variant: "destructive",
-                              title: "Hết thời gian",
-                              description: "Upload file quá lâu. Vui lòng thử lại."
-                            });
-                            setAudioUploadState(prev => {
-                              const newState = { ...prev };
-                              delete newState[section.id];
-                              return newState;
-                            });
-                            audioXhrRefs.current.delete(section.id);
-                            e.target.value = '';
-                          });
-                          
-                          xhr.addEventListener('abort', () => {
-                            toast({
-                              title: "Đã hủy",
-                              description: "Upload đã bị hủy"
-                            });
-                            setAudioUploadState(prev => {
-                              const newState = { ...prev };
-                              delete newState[section.id];
-                              return newState;
-                            });
-                            audioXhrRefs.current.delete(section.id);
-                            e.target.value = '';
-                          });
-                          
-                          xhr.open('POST', '/api/description-audio/upload-direct?context=exam');
-                          xhr.send(formData);
+                          })();
                         }}
                       />
 

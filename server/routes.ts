@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { randomUUID } from "crypto";
 import { storage } from "./storage";
 import { insertContactRequestSchema, insertArticleSchema, registrationFormSchema, ContactInfo, InsertContactInfo, insertExamAttemptSchema } from "@shared/schema";
 import { z } from "zod";
@@ -12,12 +13,6 @@ import multer from "multer";
 const upload = multer({ 
   storage: multer.memoryStorage(),
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
-});
-
-// Separate multer instance for chunked uploads with smaller limit (1MB to stay under production limits)
-const uploadChunk = multer({ 
-  storage: multer.memoryStorage(),
-  limits: { fileSize: 1 * 1024 * 1024 } // 1MB limit for chunk uploads
 });
 
 // Middleware to check if user is authenticated
@@ -1743,50 +1738,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return `qbank-${baseFolder}`;
   };
 
-  // Generic download handler for R2 files with Range support for audio streaming
-  const handleFileDownload = async (folder: string, filename: string, res: any, contentType: string = 'application/octet-stream', cacheMaxAge: number = 3600, req?: any) => {
+  // Generic download handler for R2 files
+  const handleFileDownload = async (folder: string, filename: string, res: any, contentType: string = 'application/octet-stream', cacheMaxAge: number = 3600) => {
     try {
       const objectKey = `${folder}/${filename}`;
-      const isAudio = contentType.startsWith('audio/') || folder.includes('audio');
-      
-      // For audio files, try to get metadata first for Range support
-      if (isAudio && req?.headers?.range) {
-        const metadata = await r2Manager.getObjectMetadata("primary", objectKey);
-        if (metadata) {
-          const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
-          if (downloadUrl) {
-            const range = req.headers.range;
-            const parts = range.replace(/bytes=/, "").split("-");
-            const start = parseInt(parts[0], 10);
-            const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + 512 * 1024 - 1, metadata.size - 1); // 512KB chunks for production
-            const chunkSize = (end - start) + 1;
-
-            try {
-              const rangeResponse = await fetch(downloadUrl, {
-                headers: { 'Range': `bytes=${start}-${end}` }
-              });
-
-              if (rangeResponse.ok || rangeResponse.status === 206) {
-                res.status(206);
-                res.set({
-                  'Content-Range': `bytes ${start}-${end}/${metadata.size}`,
-                  'Accept-Ranges': 'bytes',
-                  'Content-Length': chunkSize,
-                  'Content-Type': metadata.contentType || contentType,
-                  'Cache-Control': `public, max-age=${cacheMaxAge}`,
-                  'Access-Control-Allow-Origin': '*'
-                });
-                const buffer = await rangeResponse.arrayBuffer();
-                return res.send(Buffer.from(buffer));
-              }
-            } catch (rangeError) {
-              console.error(`Error fetching range from ${folder}:`, rangeError);
-            }
-          }
-        }
-      }
-
-      // Standard download (no Range or fallback)
       const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
       
       if (downloadUrl) {
@@ -1794,18 +1749,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const response = await fetch(downloadUrl);
           if (response.ok) {
             const actualContentType = response.headers.get('content-type') || contentType;
-            const contentLength = response.headers.get('content-length');
-            
             res.set({
               'Content-Type': actualContentType,
               'Cache-Control': `public, max-age=${cacheMaxAge}`,
-              'Access-Control-Allow-Origin': '*',
-              'Accept-Ranges': 'bytes'
+              'Access-Control-Allow-Origin': '*'
             });
-            
-            if (contentLength) {
-              res.set('Content-Length', contentLength);
-            }
             
             const buffer = await response.arrayBuffer();
             return res.send(Buffer.from(buffer));
@@ -2145,7 +2093,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Audio upload endpoint (presigned URL)
+  // Audio upload endpoint (presigned URL) - supports all audio upload types
+  // target: questionAudio, descriptionAudio, sectionAudio (determines folder)
+  // context: qbank, exam (determines prefix)
   app.post("/api/audio/upload", async (req, res) => {
     try {
       const sessionUser = (req.session as any)?.user;
@@ -2153,7 +2103,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const { fileName, fileType, fileSize } = req.body;
+      const { fileName, fileType, fileSize, target, context } = req.body;
       
       if (!fileName || !fileType || !fileSize) {
         return res.status(400).json({ message: "File name, type, and size are required" });
@@ -2170,16 +2120,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       try {
-        // Generate upload URL using R2 storage
-        const timestamp = Date.now();
-        const fileExtension = fileName.split('.').pop() || 'mp3';
-        const objectKey = `audio/${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+        // Determine folder based on target and context
+        const uploadContext = context || 'qbank';
+        const uploadTarget = target || 'questionAudio';
         
-        console.log(`Audio upload request: fileName=${fileName}, fileType=${fileType}, objectKey=${objectKey}`);
+        // Map target to folder
+        const folderMap: Record<string, string> = {
+          'questionAudio': 'temp-audio',
+          'descriptionAudio': 'temp-description-audio',
+          'sectionAudio': 'temp-description-audio'
+        };
+        
+        const baseFolder = folderMap[uploadTarget] || 'temp-audio';
+        const folder = getContextFolder(baseFolder, uploadContext);
+        
+        console.log(`Audio presigned upload: target=${uploadTarget}, context=${uploadContext}, folder=${folder}`);
         
         const uploadResult = await multiR2Storage.getUploadUrl({
           provider: "primary",
-          folder: "temp-audio",
+          folder: folder,
           allowedTypes: ["audio/*"],
           maxSizeBytes: 50 * 1024 * 1024 // 50MB
         }, fileType);
@@ -2194,14 +2153,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         const uploadUrl = uploadResult.url;
-        const audioUrl = uploadResult.path;
+        // Build the download URL based on folder
+        const audioUrl = `/api/${folder}/${uploadResult.path?.split('/').pop() || ''}`;
 
         console.log(`Generated upload URL: ${uploadUrl}`);
         console.log(`Audio URL will be: ${audioUrl}`);
 
         res.json({
           uploadUrl,
-          audioUrl
+          audioUrl,
+          folder,
+          context: uploadContext,
+          target: uploadTarget
         });
       } catch (error) {
         console.error("Error generating audio upload URL:", error);
@@ -2210,6 +2173,310 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error handling audio upload:", error);
       res.status(500).json({ message: "Failed to process audio upload request" });
+    }
+  });
+
+  // Streaming audio upload endpoint - bypasses body size limits by streaming directly to R2
+  // Uses raw binary body instead of multipart form data
+  app.put("/api/audio/stream-upload", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const target = req.query.target as string || 'questionAudio';
+      const context = req.query.context as string || 'qbank';
+      const contentType = req.headers['content-type'] || 'audio/mpeg';
+      const contentLength = parseInt(req.headers['content-length'] || '0', 10);
+
+      // Validate content type
+      if (!contentType.startsWith('audio/')) {
+        return res.status(400).json({ message: "Only audio files are allowed" });
+      }
+
+      // Validate file size (max 50MB)
+      if (contentLength > 50 * 1024 * 1024) {
+        return res.status(400).json({ message: "File size cannot exceed 50MB" });
+      }
+
+      console.log(`Stream upload: target=${target}, context=${context}, contentType=${contentType}, size=${contentLength}`);
+
+      // Determine folder based on target and context
+      const folderMap: Record<string, string> = {
+        'questionAudio': 'temp-audio',
+        'descriptionAudio': 'temp-description-audio',
+        'sectionAudio': 'temp-description-audio'
+      };
+      
+      const baseFolder = folderMap[target] || 'temp-audio';
+      const folder = getContextFolder(baseFolder, context);
+      const fileId = randomUUID();
+      const filePath = `${folder}/${fileId}`;
+
+      try {
+        // Collect chunks from stream (needed for S3 SDK)
+        const chunks: Buffer[] = [];
+        
+        req.on('data', (chunk: Buffer) => {
+          chunks.push(chunk);
+        });
+
+        await new Promise<void>((resolve, reject) => {
+          req.on('end', resolve);
+          req.on('error', reject);
+        });
+
+        const fileBuffer = Buffer.concat(chunks);
+        console.log(`Received ${fileBuffer.length} bytes for streaming upload`);
+
+        // Upload to R2
+        const uploadResult = await multiR2Storage.uploadFile(
+          fileBuffer,
+          fileId,
+          contentType,
+          {
+            provider: "primary",
+            folder: folder,
+            allowedTypes: ["audio/*"],
+            maxSizeBytes: 50 * 1024 * 1024
+          }
+        );
+
+        if (!uploadResult.success) {
+          console.error("Stream upload to R2 failed:", uploadResult.error);
+          return res.status(500).json({ error: uploadResult.error || "Upload failed" });
+        }
+
+        const audioUrl = `/api/${folder}/${uploadResult.path?.split('/').pop() || fileId}`;
+        console.log(`Stream upload success: ${audioUrl}`);
+
+        res.json({
+          success: true,
+          audioUrl,
+          folder,
+          context,
+          target
+        });
+      } catch (uploadError) {
+        console.error("Stream upload error:", uploadError);
+        res.status(500).json({ error: "Failed to upload audio file" });
+      }
+    } catch (error) {
+      console.error("Stream upload endpoint error:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // ============ CHUNKED UPLOAD FOR LARGE FILES ============
+  // Store chunks in memory during upload (will be cleared after completion)
+  const chunkedUploads: Map<string, { 
+    chunks: Map<number, Buffer>, 
+    totalChunks: number, 
+    contentType: string,
+    target: string,
+    context: string,
+    createdAt: number 
+  }> = new Map();
+
+  // Clean up stale uploads every 10 minutes
+  setInterval(() => {
+    const now = Date.now();
+    const maxAge = 30 * 60 * 1000; // 30 minutes
+    for (const [uploadId, upload] of chunkedUploads.entries()) {
+      if (now - upload.createdAt > maxAge) {
+        console.log(`Cleaning up stale chunked upload: ${uploadId}`);
+        chunkedUploads.delete(uploadId);
+      }
+    }
+  }, 10 * 60 * 1000);
+
+  // Initialize chunked upload
+  app.post("/api/audio/chunked-upload/init", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { totalChunks, contentType, target, context, totalSize } = req.body;
+
+      if (!totalChunks || totalChunks < 1) {
+        return res.status(400).json({ message: "Invalid totalChunks" });
+      }
+
+      if (totalSize > 50 * 1024 * 1024) {
+        return res.status(400).json({ message: "File size cannot exceed 50MB" });
+      }
+
+      const uploadId = randomUUID();
+      chunkedUploads.set(uploadId, {
+        chunks: new Map(),
+        totalChunks,
+        contentType: contentType || 'audio/mpeg',
+        target: target || 'questionAudio',
+        context: context || 'qbank',
+        createdAt: Date.now()
+      });
+
+      console.log(`Chunked upload initialized: ${uploadId}, totalChunks=${totalChunks}, size=${totalSize}`);
+      res.json({ uploadId, totalChunks });
+    } catch (error) {
+      console.error("Chunked upload init error:", error);
+      res.status(500).json({ error: "Failed to initialize upload" });
+    }
+  });
+
+  // Upload a single chunk (small body, bypasses 413)
+  app.post("/api/audio/chunked-upload/chunk", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const uploadId = req.query.uploadId as string;
+      const chunkIndex = parseInt(req.query.chunkIndex as string, 10);
+
+      if (!uploadId || !chunkedUploads.has(uploadId)) {
+        return res.status(400).json({ message: "Invalid upload ID" });
+      }
+
+      if (isNaN(chunkIndex) || chunkIndex < 0) {
+        return res.status(400).json({ message: "Invalid chunk index" });
+      }
+
+      const upload = chunkedUploads.get(uploadId)!;
+
+      // Collect the raw body
+      const chunks: Buffer[] = [];
+      req.on('data', (chunk: Buffer) => chunks.push(chunk));
+      
+      await new Promise<void>((resolve, reject) => {
+        req.on('end', resolve);
+        req.on('error', reject);
+      });
+
+      const chunkBuffer = Buffer.concat(chunks);
+      upload.chunks.set(chunkIndex, chunkBuffer);
+
+      console.log(`Chunk ${chunkIndex + 1}/${upload.totalChunks} received for upload ${uploadId}, size=${chunkBuffer.length}`);
+
+      res.json({ 
+        success: true, 
+        chunkIndex, 
+        receivedChunks: upload.chunks.size,
+        totalChunks: upload.totalChunks 
+      });
+    } catch (error) {
+      console.error("Chunk upload error:", error);
+      res.status(500).json({ error: "Failed to upload chunk" });
+    }
+  });
+
+  // Complete chunked upload - assemble and upload to R2
+  app.post("/api/audio/chunked-upload/complete", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { uploadId } = req.body;
+
+      if (!uploadId || !chunkedUploads.has(uploadId)) {
+        return res.status(400).json({ message: "Invalid upload ID" });
+      }
+
+      const upload = chunkedUploads.get(uploadId)!;
+
+      // Verify all chunks received
+      if (upload.chunks.size !== upload.totalChunks) {
+        return res.status(400).json({ 
+          message: `Missing chunks: received ${upload.chunks.size}/${upload.totalChunks}` 
+        });
+      }
+
+      // Assemble chunks in order
+      const sortedChunks: Buffer[] = [];
+      for (let i = 0; i < upload.totalChunks; i++) {
+        const chunk = upload.chunks.get(i);
+        if (!chunk) {
+          return res.status(400).json({ message: `Missing chunk ${i}` });
+        }
+        sortedChunks.push(chunk);
+      }
+
+      const fileBuffer = Buffer.concat(sortedChunks);
+      console.log(`Assembled ${fileBuffer.length} bytes from ${upload.totalChunks} chunks for upload ${uploadId}`);
+
+      // Determine folder
+      const folderMap: Record<string, string> = {
+        'questionAudio': 'temp-audio',
+        'descriptionAudio': 'temp-description-audio',
+        'sectionAudio': 'temp-description-audio'
+      };
+      
+      const baseFolder = folderMap[upload.target] || 'temp-audio';
+      const folder = getContextFolder(baseFolder, upload.context);
+      const fileId = randomUUID();
+
+      // Upload to R2
+      const uploadResult = await multiR2Storage.uploadFile(
+        fileBuffer,
+        fileId,
+        upload.contentType,
+        {
+          provider: "primary",
+          folder: folder,
+          allowedTypes: ["audio/*"],
+          maxSizeBytes: 50 * 1024 * 1024
+        }
+      );
+
+      // Clean up
+      chunkedUploads.delete(uploadId);
+
+      if (!uploadResult.success) {
+        console.error("Chunked upload to R2 failed:", uploadResult.error);
+        return res.status(500).json({ error: uploadResult.error || "Upload failed" });
+      }
+
+      const audioUrl = `/api/${folder}/${uploadResult.path?.split('/').pop() || fileId}`;
+      console.log(`Chunked upload complete: ${audioUrl}`);
+
+      res.json({
+        success: true,
+        audioUrl,
+        folder,
+        context: upload.context,
+        target: upload.target
+      });
+    } catch (error) {
+      console.error("Chunked upload complete error:", error);
+      res.status(500).json({ error: "Failed to complete upload" });
+    }
+  });
+
+  // Cancel/abort chunked upload
+  app.post("/api/audio/chunked-upload/abort", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { uploadId } = req.body;
+
+      if (uploadId && chunkedUploads.has(uploadId)) {
+        chunkedUploads.delete(uploadId);
+        console.log(`Chunked upload aborted: ${uploadId}`);
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Chunked upload abort error:", error);
+      res.status(500).json({ error: "Failed to abort upload" });
     }
   });
 
@@ -2225,7 +2492,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/qbank-temp-audio/:filename", async (req, res) => {
-    await handleFileDownload('qbank-temp-audio', req.params.filename, res, 'audio/mpeg', 300, req);
+    await handleFileDownload('qbank-temp-audio', req.params.filename, res, 'audio/mpeg', 300);
   });
   
   app.get("/api/qbank-temp-description-images/:filename", async (req, res) => {
@@ -2233,7 +2500,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/qbank-temp-description-audio/:filename", async (req, res) => {
-    await handleFileDownload('qbank-temp-description-audio', req.params.filename, res, 'audio/mpeg', 300, req);
+    await handleFileDownload('qbank-temp-description-audio', req.params.filename, res, 'audio/mpeg', 300);
   });
   
   app.get("/api/qbank-images/:filename", async (req, res) => {
@@ -2245,7 +2512,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/qbank-audio/:filename", async (req, res) => {
-    await handleFileDownload('qbank-audio', req.params.filename, res, 'audio/mpeg', 31536000, req);
+    await handleFileDownload('qbank-audio', req.params.filename, res, 'audio/mpeg', 31536000);
   });
   
   app.get("/api/qbank-description-images/:filename", async (req, res) => {
@@ -2253,7 +2520,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/qbank-description-audio/:filename", async (req, res) => {
-    await handleFileDownload('qbank-description-audio', req.params.filename, res, 'audio/mpeg', 31536000, req);
+    await handleFileDownload('qbank-description-audio', req.params.filename, res, 'audio/mpeg', 31536000);
   });
   
   // Exam download endpoints
@@ -2266,7 +2533,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/exam-temp-audio/:filename", async (req, res) => {
-    await handleFileDownload('exam-temp-audio', req.params.filename, res, 'audio/mpeg', 300, req);
+    await handleFileDownload('exam-temp-audio', req.params.filename, res, 'audio/mpeg', 300);
   });
   
   app.get("/api/exam-temp-description-images/:filename", async (req, res) => {
@@ -2274,7 +2541,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/exam-temp-description-audio/:filename", async (req, res) => {
-    await handleFileDownload('exam-temp-description-audio', req.params.filename, res, 'audio/mpeg', 300, req);
+    await handleFileDownload('exam-temp-description-audio', req.params.filename, res, 'audio/mpeg', 300);
   });
   
   app.get("/api/exam-images/:filename", async (req, res) => {
@@ -2286,7 +2553,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/exam-audio/:filename", async (req, res) => {
-    await handleFileDownload('exam-audio', req.params.filename, res, 'audio/mpeg', 31536000, req);
+    await handleFileDownload('exam-audio', req.params.filename, res, 'audio/mpeg', 31536000);
   });
   
   app.get("/api/exam-description-images/:filename", async (req, res) => {
@@ -2294,7 +2561,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/exam-description-audio/:filename", async (req, res) => {
-    await handleFileDownload('exam-description-audio', req.params.filename, res, 'audio/mpeg', 31536000, req);
+    await handleFileDownload('exam-description-audio', req.params.filename, res, 'audio/mpeg', 31536000);
   });
 
   // ============ LEGACY DOWNLOAD ENDPOINTS (kept for backward compatibility) ============
@@ -3128,28 +3395,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Sanitize sections to ensure only questionIds are stored, not full question objects
-      const sanitizedSections = sections.map((section: any) => {
-        const sanitized: any = {
-          id: section.id,
-          sectionName: section.sectionName || section.type || "",
-          timeLimit: section.timeLimit || 10,
-          passingScore: section.passingScore,
-          content: section.content || "",
-          descriptionImageUrls: section.descriptionImageUrls || [],
-          questionSets: (section.questionSets || []).map((qs: any) => ({
-            id: qs.id,
-            name: qs.name || "",
-            // Ensure we only store questionIds, not full question objects
-            questionIds: qs.questionIds || 
-              (qs.questions ? qs.questions.map((q: any) => typeof q === 'string' ? q : q.id) : [])
-          }))
-        };
-        // Only include descriptionAudioUrl if it has a value
-        if (section.descriptionAudioUrl) {
-          sanitized.descriptionAudioUrl = section.descriptionAudioUrl;
-        }
-        return sanitized;
-      });
+      const sanitizedSections = sections.map((section: any) => ({
+        id: section.id,
+        sectionName: section.sectionName || section.type || "",
+        timeLimit: section.timeLimit || 10,
+        passingScore: section.passingScore,
+        content: section.content || "",
+        descriptionImageUrls: section.descriptionImageUrls || [],
+        descriptionAudioUrl: section.descriptionAudioUrl || "",
+        questionSets: (section.questionSets || []).map((qs: any) => ({
+          id: qs.id,
+          name: qs.name || "",
+          // Ensure we only store questionIds, not full question objects
+          questionIds: qs.questionIds || 
+            (qs.questions ? qs.questions.map((q: any) => typeof q === 'string' ? q : q.id) : [])
+        }))
+      }));
       console.log("Sanitized sections for exam creation:", JSON.stringify(sanitizedSections, null, 2));
 
       // Calculate legacy fields for backward compatibility
@@ -3221,29 +3482,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Sanitize sections to ensure only questionIds are stored, not full question objects
       let sanitizedSections = undefined;
       if (sections && Array.isArray(sections)) {
-        sanitizedSections = sections.map((section: any) => {
-          const sanitized: any = {
-            id: section.id,
-            sectionName: section.sectionName || "",
-            timeLimit: section.timeLimit || 10,
-            passingScore: section.passingScore,
-            content: section.content || "",
-            descriptionImageUrls: section.descriptionImageUrls || [],
-            questionSets: (section.questionSets || []).map((qs: any) => ({
-              id: qs.id,
-              name: qs.name || "",
-              // Ensure we only store questionIds, not full question objects
-              // Handle both: questionIds array or questions array with id property
-              questionIds: qs.questionIds || 
-                (qs.questions ? qs.questions.map((q: any) => typeof q === 'string' ? q : q.id) : [])
-            }))
-          };
-          // Only include descriptionAudioUrl if it has a value (preserve existing audio)
-          if (section.descriptionAudioUrl) {
-            sanitized.descriptionAudioUrl = section.descriptionAudioUrl;
-          }
-          return sanitized;
-        });
+        sanitizedSections = sections.map((section: any) => ({
+          id: section.id,
+          sectionName: section.sectionName || "",
+          timeLimit: section.timeLimit || 10,
+          passingScore: section.passingScore,
+          content: section.content || "",
+          descriptionImageUrls: section.descriptionImageUrls || [],
+          descriptionAudioUrl: section.descriptionAudioUrl || "",
+          questionSets: (section.questionSets || []).map((qs: any) => ({
+            id: qs.id,
+            name: qs.name || "",
+            // Ensure we only store questionIds, not full question objects
+            // Handle both: questionIds array or questions array with id property
+            questionIds: qs.questionIds || 
+              (qs.questions ? qs.questions.map((q: any) => typeof q === 'string' ? q : q.id) : [])
+          }))
+        }));
         console.log("Sanitized sections for exam update:", JSON.stringify(sanitizedSections, null, 2));
       }
 
@@ -4291,351 +4546,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error cleaning up temporary description audio:", error);
       res.status(500).json({ message: "Failed to cleanup temporary files" });
-    }
-  });
-
-  // =====================================================
-  // CHUNKED UPLOAD ENDPOINTS FOR LARGE AUDIO FILES
-  // =====================================================
-
-  const activeMultipartUploads = new Map<string, {
-    uploadId: string;
-    key: string;
-    parts: Array<{ PartNumber: number; ETag: string }>;
-    createdAt: number;
-    totalParts: number;
-    context: string;
-  }>();
-
-  setInterval(() => {
-    const now = Date.now();
-    const maxAge = 30 * 60 * 1000;
-    for (const [sessionId, uploadData] of activeMultipartUploads.entries()) {
-      if (now - uploadData.createdAt > maxAge) {
-        r2Manager.abortMultipartUpload("primary", uploadData.key, uploadData.uploadId);
-        activeMultipartUploads.delete(sessionId);
-        console.log(`Cleaned up stale multipart upload: ${sessionId}`);
-      }
-    }
-  }, 30 * 60 * 1000);
-
-  app.post("/api/chunked-upload/init", async (req, res) => {
-    try {
-      const sessionUser = (req.session as any)?.user;
-      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const { fileName, contentType, totalSize, totalChunks, context = 'qbank' } = req.body;
-
-      if (!fileName || !contentType || !totalSize || !totalChunks) {
-        return res.status(400).json({ message: "Missing required fields" });
-      }
-
-      const timestamp = Date.now();
-      const fileExtension = fileName.split('.').pop() || 'mp3';
-      const uniqueFileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
-      const folder = getContextFolder('temp-description-audio', context);
-      const key = `${folder}/${uniqueFileName}`;
-
-      const initResult = await r2Manager.initMultipartUpload("primary", key, contentType);
-      
-      if (!initResult) {
-        return res.status(500).json({ message: "Failed to initialize multipart upload" });
-      }
-
-      const sessionId = `${timestamp}-${Math.random().toString(36).substring(7)}`;
-      
-      activeMultipartUploads.set(sessionId, {
-        uploadId: initResult.uploadId,
-        key,
-        parts: [],
-        createdAt: Date.now(),
-        totalParts: totalChunks,
-        context
-      });
-
-      console.log(`✓ Initialized chunked upload: ${sessionId}, ${totalChunks} chunks, ${(totalSize / 1024 / 1024).toFixed(2)}MB`);
-
-      res.json({
-        success: true,
-        sessionId,
-        uploadId: initResult.uploadId,
-        key,
-        fileName: uniqueFileName,
-        totalChunks
-      });
-    } catch (error) {
-      console.error("Error initializing chunked upload:", error);
-      res.status(500).json({ message: "Failed to initialize upload" });
-    }
-  });
-
-  // Handle raw binary chunk upload - no multer needed (smaller request size)
-  app.post("/api/chunked-upload/chunk", async (req, res) => {
-    try {
-      const sessionUser = (req.session as any)?.user;
-      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      // Get metadata from query params (smaller overhead than multipart form-data)
-      const sessionId = req.query.sessionId as string;
-      const chunkIndex = req.query.chunkIndex as string;
-
-      if (!sessionId || chunkIndex === undefined) {
-        return res.status(400).json({ message: "Missing sessionId or chunkIndex" });
-      }
-
-      const uploadSession = activeMultipartUploads.get(sessionId);
-      if (!uploadSession) {
-        return res.status(404).json({ message: "Upload session not found or expired" });
-      }
-
-      // Collect raw binary data from request body
-      const chunks: Buffer[] = [];
-      for await (const chunk of req) {
-        chunks.push(Buffer.from(chunk));
-      }
-      const chunkData = Buffer.concat(chunks);
-
-      if (!chunkData || chunkData.length === 0) {
-        return res.status(400).json({ message: "No chunk data received" });
-      }
-
-      const partNumber = parseInt(chunkIndex) + 1;
-
-      const partUploadUrl = await r2Manager.generatePartUploadUrl(
-        "primary",
-        uploadSession.key,
-        uploadSession.uploadId,
-        partNumber,
-        3600
-      );
-
-      if (!partUploadUrl) {
-        return res.status(500).json({ message: "Failed to generate part upload URL" });
-      }
-
-      const uploadResponse = await fetch(partUploadUrl, {
-        method: 'PUT',
-        body: chunkData,
-        headers: {
-          'Content-Length': chunkData.length.toString()
-        }
-      });
-
-      if (!uploadResponse.ok) {
-        throw new Error(`Failed to upload chunk: ${uploadResponse.status}`);
-      }
-
-      const etag = uploadResponse.headers.get('etag') || `"part-${partNumber}"`;
-      
-      uploadSession.parts.push({
-        PartNumber: partNumber,
-        ETag: etag.replace(/"/g, '')
-      });
-
-      console.log(`✓ Uploaded chunk ${partNumber}/${uploadSession.totalParts} for session ${sessionId} (${(chunkData.length / 1024).toFixed(1)}KB)`);
-
-      res.json({
-        success: true,
-        chunkIndex: parseInt(chunkIndex),
-        partNumber,
-        uploaded: uploadSession.parts.length,
-        total: uploadSession.totalParts
-      });
-    } catch (error) {
-      console.error("Error uploading chunk:", error);
-      res.status(500).json({ message: "Failed to upload chunk" });
-    }
-  });
-
-  app.post("/api/chunked-upload/complete", async (req, res) => {
-    try {
-      const sessionUser = (req.session as any)?.user;
-      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const { sessionId } = req.body;
-
-      if (!sessionId) {
-        return res.status(400).json({ message: "Missing sessionId" });
-      }
-
-      const uploadSession = activeMultipartUploads.get(sessionId);
-      if (!uploadSession) {
-        return res.status(404).json({ message: "Upload session not found or expired" });
-      }
-
-      const success = await r2Manager.completeMultipartUpload(
-        "primary",
-        uploadSession.key,
-        uploadSession.uploadId,
-        uploadSession.parts
-      );
-
-      if (!success) {
-        return res.status(500).json({ message: "Failed to complete multipart upload" });
-      }
-
-      activeMultipartUploads.delete(sessionId);
-
-      const fileName = uploadSession.key.split('/').pop();
-      const folder = getContextFolder('temp-description-audio', uploadSession.context);
-      const url = `/api/${folder}/${fileName}`;
-
-      console.log(`✓ Completed chunked upload: ${sessionId} -> ${url}`);
-
-      res.json({
-        success: true,
-        url,
-        fileName,
-        message: "Tải lên audio thành công"
-      });
-    } catch (error) {
-      console.error("Error completing chunked upload:", error);
-      res.status(500).json({ message: "Failed to complete upload" });
-    }
-  });
-
-  app.post("/api/chunked-upload/abort", async (req, res) => {
-    try {
-      const sessionUser = (req.session as any)?.user;
-      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const { sessionId } = req.body;
-
-      if (!sessionId) {
-        return res.status(400).json({ message: "Missing sessionId" });
-      }
-
-      const uploadSession = activeMultipartUploads.get(sessionId);
-      if (uploadSession) {
-        await r2Manager.abortMultipartUpload(
-          "primary",
-          uploadSession.key,
-          uploadSession.uploadId
-        );
-        activeMultipartUploads.delete(sessionId);
-        console.log(`✓ Aborted chunked upload: ${sessionId}`);
-      }
-
-      res.json({ success: true });
-    } catch (error) {
-      console.error("Error aborting chunked upload:", error);
-      res.status(500).json({ message: "Failed to abort upload" });
-    }
-  });
-
-  // =====================================================
-  // STREAMING DOWNLOAD WITH RANGE SUPPORT
-  // =====================================================
-
-  const handleStreamingAudioDownload = async (folder: string, filename: string, req: any, res: any) => {
-    try {
-      const objectKey = `${folder}/${filename}`;
-      
-      const metadata = await r2Manager.getObjectMetadata("primary", objectKey);
-      if (!metadata) {
-        return res.status(404).json({ error: "File not found" });
-      }
-
-      const fileSize = metadata.size;
-      const contentType = metadata.contentType || 'audio/mpeg';
-      const range = req.headers.range;
-
-      const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey, 3600);
-      if (!downloadUrl) {
-        return res.status(500).json({ error: "Failed to generate download URL" });
-      }
-
-      if (range) {
-        const parts = range.replace(/bytes=/, "").split("-");
-        const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + 512 * 1024 - 1, fileSize - 1); // 512KB chunks for production
-        const chunkSize = (end - start) + 1;
-
-        const rangeResponse = await fetch(downloadUrl, {
-          headers: { 'Range': `bytes=${start}-${end}` }
-        });
-
-        if (!rangeResponse.ok && rangeResponse.status !== 206) {
-          throw new Error(`Failed to fetch range: ${rangeResponse.status}`);
-        }
-
-        res.status(206);
-        res.set({
-          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-          'Accept-Ranges': 'bytes',
-          'Content-Length': chunkSize,
-          'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=300',
-          'Access-Control-Allow-Origin': '*'
-        });
-
-        const buffer = await rangeResponse.arrayBuffer();
-        return res.send(Buffer.from(buffer));
-      } else {
-        res.set({
-          'Content-Type': contentType,
-          'Accept-Ranges': 'bytes',
-          'Content-Length': fileSize,
-          'Cache-Control': 'public, max-age=300',
-          'Access-Control-Allow-Origin': '*'
-        });
-        
-        const response = await fetch(downloadUrl);
-        if (!response.ok) {
-          throw new Error(`Failed to fetch file: ${response.status}`);
-        }
-        
-        const buffer = await response.arrayBuffer();
-        return res.send(Buffer.from(buffer));
-      }
-    } catch (error) {
-      console.error(`Error streaming audio from ${folder}:`, error);
-      res.status(500).json({ error: "Failed to stream audio" });
-    }
-  };
-
-  app.get("/api/stream/qbank-temp-description-audio/:filename", async (req, res) => {
-    await handleStreamingAudioDownload('qbank-temp-description-audio', req.params.filename, req, res);
-  });
-
-  app.get("/api/stream/exam-temp-description-audio/:filename", async (req, res) => {
-    await handleStreamingAudioDownload('exam-temp-description-audio', req.params.filename, req, res);
-  });
-
-  app.get("/api/stream/qbank-description-audio/:filename", async (req, res) => {
-    await handleStreamingAudioDownload('qbank-description-audio', req.params.filename, req, res);
-  });
-
-  app.get("/api/stream/exam-description-audio/:filename", async (req, res) => {
-    await handleStreamingAudioDownload('exam-description-audio', req.params.filename, req, res);
-  });
-
-  app.get("/api/audio-metadata/:folder/:filename", async (req, res) => {
-    try {
-      const { folder, filename } = req.params;
-      const objectKey = `${folder}/${filename}`;
-      
-      const metadata = await r2Manager.getObjectMetadata("primary", objectKey);
-      if (!metadata) {
-        return res.status(404).json({ error: "File not found" });
-      }
-
-      res.json({
-        size: metadata.size,
-        contentType: metadata.contentType,
-        supportsRange: true
-      });
-    } catch (error) {
-      console.error("Error getting audio metadata:", error);
-      res.status(500).json({ error: "Failed to get metadata" });
     }
   });
 

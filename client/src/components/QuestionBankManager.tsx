@@ -1316,11 +1316,10 @@ export function QuestionBankManager() {
                   type="file"
                   accept="audio/*"
                   style={{ display: 'none' }}
-                  onChange={(e) => {
+                  onChange={async (e) => {
                     const file = e.target.files?.[0];
                     if (!file) return;
                     
-                    // Validate file size (max 50MB)
                     const maxSize = 50 * 1024 * 1024;
                     if (file.size > maxSize) {
                       toast({
@@ -1338,89 +1337,105 @@ export function QuestionBankManager() {
                     setAudioTotalBytes(file.size);
                     setAudioFileName(file.name);
                     
-                    const formData = new FormData();
-                    formData.append('file', file);
-                    
-                    const xhr = new XMLHttpRequest();
-                    audioXhrRef.current = xhr;
-                    xhr.timeout = 600000; // 10 minutes timeout
-                    
-                    xhr.upload.addEventListener('progress', (event) => {
-                      if (event.lengthComputable) {
-                        const progress = Math.round((event.loaded / event.total) * 100);
-                        setAudioUploadProgress(progress);
-                        setAudioUploadedBytes(event.loaded);
-                        setAudioTotalBytes(event.total);
-                      }
-                    });
-                    
-                    xhr.addEventListener('load', () => {
-                      if (xhr.status === 200) {
-                        try {
-                          const result = JSON.parse(xhr.responseText);
-                          form.setValue(`questions.0.descriptionAudioUrl`, result.audioUrl);
-                          toast({
-                            title: "Thành công",
-                            description: `Audio mô tả đã được tải lên (${formatFileSize(file.size)})`
-                          });
-                        } catch {
+                    try {
+                      console.log('Starting streaming upload for description audio:', file.name, file.type, file.size);
+                      
+                      const xhr = new XMLHttpRequest();
+                      audioXhrRef.current = xhr;
+                      xhr.timeout = 600000;
+                      
+                      xhr.upload.addEventListener('progress', (event) => {
+                        if (event.lengthComputable) {
+                          const progress = Math.round((event.loaded / event.total) * 100);
+                          setAudioUploadProgress(progress);
+                          setAudioUploadedBytes(event.loaded);
+                          setAudioTotalBytes(event.total);
+                        }
+                      });
+                      
+                      xhr.addEventListener('load', () => {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                          try {
+                            const result = JSON.parse(xhr.responseText);
+                            form.setValue(`questions.0.descriptionAudioUrl`, result.audioUrl);
+                            toast({
+                              title: "Thành công",
+                              description: `Audio mô tả đã được tải lên (${formatFileSize(file.size)})`
+                            });
+                          } catch (parseError) {
+                            console.error('Failed to parse upload response:', parseError);
+                            toast({
+                              variant: "destructive",
+                              title: "Lỗi",
+                              description: "Phản hồi từ server không hợp lệ"
+                            });
+                          }
+                        } else {
+                          let errorMsg = `Upload thất bại (mã lỗi: ${xhr.status})`;
+                          try {
+                            const errorResult = JSON.parse(xhr.responseText);
+                            if (errorResult.message || errorResult.error) {
+                              errorMsg = errorResult.message || errorResult.error;
+                            }
+                          } catch {}
                           toast({
                             variant: "destructive",
-                            title: "Lỗi",
-                            description: "Phản hồi từ server không hợp lệ"
+                            title: "Lỗi upload",
+                            description: errorMsg
                           });
                         }
-                      } else {
-                        let errorMsg = "Không thể tải lên audio";
-                        try {
-                          const errorResult = JSON.parse(xhr.responseText);
-                          if (errorResult.message) errorMsg = errorResult.message;
-                        } catch {}
+                        setIsUploadingAudio(false);
+                        setAudioUploadProgress(0);
+                        e.target.value = '';
+                      });
+                      
+                      xhr.addEventListener('error', () => {
                         toast({
                           variant: "destructive",
-                          title: "Lỗi upload",
-                          description: errorMsg
+                          title: "Lỗi kết nối",
+                          description: "Không thể kết nối đến server. Vui lòng thử lại."
                         });
-                      }
-                      setIsUploadingAudio(false);
-                      setAudioUploadProgress(0);
-                      e.target.value = '';
-                    });
-                    
-                    xhr.addEventListener('error', () => {
+                        setIsUploadingAudio(false);
+                        setAudioUploadProgress(0);
+                        e.target.value = '';
+                      });
+                      
+                      xhr.addEventListener('timeout', () => {
+                        toast({
+                          variant: "destructive",
+                          title: "Hết thời gian",
+                          description: "Upload file quá lâu. Vui lòng thử lại."
+                        });
+                        setIsUploadingAudio(false);
+                        setAudioUploadProgress(0);
+                        e.target.value = '';
+                      });
+                      
+                      xhr.addEventListener('abort', () => {
+                        toast({
+                          title: "Đã hủy",
+                          description: "Upload đã bị hủy"
+                        });
+                        setIsUploadingAudio(false);
+                        setAudioUploadProgress(0);
+                        e.target.value = '';
+                      });
+                      
+                      const uploadUrl = `/api/audio/stream-upload?target=descriptionAudio&context=qbank`;
+                      xhr.open('PUT', uploadUrl);
+                      xhr.setRequestHeader('Content-Type', file.type);
+                      xhr.send(file);
+                    } catch (error) {
+                      console.error('Audio upload error:', error);
                       toast({
                         variant: "destructive",
-                        title: "Lỗi kết nối",
-                        description: "Không thể kết nối đến server. Vui lòng thử lại."
+                        title: "Lỗi",
+                        description: error instanceof Error ? error.message : "Không thể tải lên audio"
                       });
                       setIsUploadingAudio(false);
                       setAudioUploadProgress(0);
                       e.target.value = '';
-                    });
-                    
-                    xhr.addEventListener('timeout', () => {
-                      toast({
-                        variant: "destructive",
-                        title: "Hết thời gian",
-                        description: "Upload file quá lâu. Vui lòng thử lại."
-                      });
-                      setIsUploadingAudio(false);
-                      setAudioUploadProgress(0);
-                      e.target.value = '';
-                    });
-                    
-                    xhr.addEventListener('abort', () => {
-                      toast({
-                        title: "Đã hủy",
-                        description: "Upload đã bị hủy"
-                      });
-                      setIsUploadingAudio(false);
-                      setAudioUploadProgress(0);
-                      e.target.value = '';
-                    });
-                    
-                    xhr.open('POST', '/api/description-audio/upload-direct');
-                    xhr.send(formData);
+                    }
                   }}
                 />
               </div>
