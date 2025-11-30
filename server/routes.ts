@@ -2619,38 +2619,49 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const objectKey = `${r2Folder}/${filename}`;
+      console.log(`Getting stream info for: ${objectKey}`);
+      
       const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
       
       if (!downloadUrl) {
+        console.log(`No download URL generated for: ${objectKey}`);
         return res.status(404).json({ error: "Audio file not found" });
       }
 
-      // Get file metadata (content-length) via HEAD request
+      console.log(`Generated presigned URL for streaming: ${objectKey}`);
+
+      // Try to get file metadata (content-length) via HEAD request
+      // But don't fail if HEAD doesn't work - just return the URL
+      let contentLength: number | null = null;
+      let contentType = 'audio/mpeg';
+      let supportsRange = true; // R2 supports range requests by default
+
       try {
-        const headResponse = await fetch(downloadUrl, { method: 'HEAD' });
-        if (!headResponse.ok) {
-          return res.status(404).json({ error: "Audio file not found" });
+        const headResponse = await fetch(downloadUrl, { 
+          method: 'HEAD',
+          signal: AbortSignal.timeout(5000) // 5 second timeout
+        });
+        
+        if (headResponse.ok) {
+          const lengthHeader = headResponse.headers.get('content-length');
+          contentLength = lengthHeader ? parseInt(lengthHeader, 10) : null;
+          contentType = headResponse.headers.get('content-type') || 'audio/mpeg';
+          supportsRange = headResponse.headers.get('accept-ranges') === 'bytes';
+          console.log(`HEAD request successful - size: ${contentLength}, type: ${contentType}`);
+        } else {
+          console.log(`HEAD request returned ${headResponse.status}, using defaults`);
         }
-
-        const contentLength = headResponse.headers.get('content-length');
-        const contentType = headResponse.headers.get('content-type') || 'audio/mpeg';
-
-        return res.json({
-          url: downloadUrl,
-          contentLength: contentLength ? parseInt(contentLength, 10) : null,
-          contentType,
-          supportsRange: headResponse.headers.get('accept-ranges') === 'bytes'
-        });
       } catch (headError) {
-        console.error("Error getting audio metadata:", headError);
-        // Fall back to just returning the URL
-        return res.json({
-          url: downloadUrl,
-          contentLength: null,
-          contentType: 'audio/mpeg',
-          supportsRange: true // R2 supports range requests
-        });
+        console.log("HEAD request failed, using defaults:", headError);
+        // Continue with defaults - don't fail the request
       }
+
+      return res.json({
+        url: downloadUrl,
+        contentLength,
+        contentType,
+        supportsRange
+      });
     } catch (error) {
       console.error("Error generating stream info:", error);
       res.status(500).json({ error: "Failed to generate stream info" });
