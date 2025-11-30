@@ -866,6 +866,19 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const currentSection = getCurrentSection();
   const currentQuestion = currentSection?.questions[currentQuestionIndex];
   const totalQuestionsInSection = currentSection ? getTotalQuestionCount(currentSection.questions) : 0;
+  
+  // Debug: Log section description audio
+  useEffect(() => {
+    if (currentSection) {
+      console.log("Current section data:", {
+        id: currentSection.id,
+        sectionName: currentSection.sectionName,
+        content: currentSection.content?.substring(0, 50) || "(empty)",
+        descriptionAudioUrl: currentSection.descriptionAudioUrl || "(empty)",
+        descriptionImageUrls: currentSection.descriptionImageUrls || []
+      });
+    }
+  }, [currentSection]);
   // Calculate progress based on parent questions (since navigation is parent-based)
   const progress = (currentSection?.questions.length || 0) > 0 ? ((currentQuestionIndex + 1) / (currentSection?.questions.length || 1)) * 100 : 0;
   // Count all answered questions (including sub-questions)
