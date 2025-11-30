@@ -1737,10 +1737,50 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return `qbank-${baseFolder}`;
   };
 
-  // Generic download handler for R2 files
-  const handleFileDownload = async (folder: string, filename: string, res: any, contentType: string = 'application/octet-stream', cacheMaxAge: number = 3600) => {
+  // Generic download handler for R2 files with Range support for audio streaming
+  const handleFileDownload = async (folder: string, filename: string, res: any, contentType: string = 'application/octet-stream', cacheMaxAge: number = 3600, req?: any) => {
     try {
       const objectKey = `${folder}/${filename}`;
+      const isAudio = contentType.startsWith('audio/') || folder.includes('audio');
+      
+      // For audio files, try to get metadata first for Range support
+      if (isAudio && req?.headers?.range) {
+        const metadata = await r2Manager.getObjectMetadata("primary", objectKey);
+        if (metadata) {
+          const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
+          if (downloadUrl) {
+            const range = req.headers.range;
+            const parts = range.replace(/bytes=/, "").split("-");
+            const start = parseInt(parts[0], 10);
+            const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + 5 * 1024 * 1024 - 1, metadata.size - 1);
+            const chunkSize = (end - start) + 1;
+
+            try {
+              const rangeResponse = await fetch(downloadUrl, {
+                headers: { 'Range': `bytes=${start}-${end}` }
+              });
+
+              if (rangeResponse.ok || rangeResponse.status === 206) {
+                res.status(206);
+                res.set({
+                  'Content-Range': `bytes ${start}-${end}/${metadata.size}`,
+                  'Accept-Ranges': 'bytes',
+                  'Content-Length': chunkSize,
+                  'Content-Type': metadata.contentType || contentType,
+                  'Cache-Control': `public, max-age=${cacheMaxAge}`,
+                  'Access-Control-Allow-Origin': '*'
+                });
+                const buffer = await rangeResponse.arrayBuffer();
+                return res.send(Buffer.from(buffer));
+              }
+            } catch (rangeError) {
+              console.error(`Error fetching range from ${folder}:`, rangeError);
+            }
+          }
+        }
+      }
+
+      // Standard download (no Range or fallback)
       const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
       
       if (downloadUrl) {
@@ -1748,11 +1788,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const response = await fetch(downloadUrl);
           if (response.ok) {
             const actualContentType = response.headers.get('content-type') || contentType;
+            const contentLength = response.headers.get('content-length');
+            
             res.set({
               'Content-Type': actualContentType,
               'Cache-Control': `public, max-age=${cacheMaxAge}`,
-              'Access-Control-Allow-Origin': '*'
+              'Access-Control-Allow-Origin': '*',
+              'Accept-Ranges': 'bytes'
             });
+            
+            if (contentLength) {
+              res.set('Content-Length', contentLength);
+            }
             
             const buffer = await response.arrayBuffer();
             return res.send(Buffer.from(buffer));
@@ -2172,7 +2219,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/qbank-temp-audio/:filename", async (req, res) => {
-    await handleFileDownload('qbank-temp-audio', req.params.filename, res, 'audio/mpeg', 300);
+    await handleFileDownload('qbank-temp-audio', req.params.filename, res, 'audio/mpeg', 300, req);
   });
   
   app.get("/api/qbank-temp-description-images/:filename", async (req, res) => {
@@ -2180,7 +2227,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/qbank-temp-description-audio/:filename", async (req, res) => {
-    await handleFileDownload('qbank-temp-description-audio', req.params.filename, res, 'audio/mpeg', 300);
+    await handleFileDownload('qbank-temp-description-audio', req.params.filename, res, 'audio/mpeg', 300, req);
   });
   
   app.get("/api/qbank-images/:filename", async (req, res) => {
@@ -2192,7 +2239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/qbank-audio/:filename", async (req, res) => {
-    await handleFileDownload('qbank-audio', req.params.filename, res, 'audio/mpeg', 31536000);
+    await handleFileDownload('qbank-audio', req.params.filename, res, 'audio/mpeg', 31536000, req);
   });
   
   app.get("/api/qbank-description-images/:filename", async (req, res) => {
@@ -2200,7 +2247,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/qbank-description-audio/:filename", async (req, res) => {
-    await handleFileDownload('qbank-description-audio', req.params.filename, res, 'audio/mpeg', 31536000);
+    await handleFileDownload('qbank-description-audio', req.params.filename, res, 'audio/mpeg', 31536000, req);
   });
   
   // Exam download endpoints
@@ -2213,7 +2260,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/exam-temp-audio/:filename", async (req, res) => {
-    await handleFileDownload('exam-temp-audio', req.params.filename, res, 'audio/mpeg', 300);
+    await handleFileDownload('exam-temp-audio', req.params.filename, res, 'audio/mpeg', 300, req);
   });
   
   app.get("/api/exam-temp-description-images/:filename", async (req, res) => {
@@ -2221,7 +2268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/exam-temp-description-audio/:filename", async (req, res) => {
-    await handleFileDownload('exam-temp-description-audio', req.params.filename, res, 'audio/mpeg', 300);
+    await handleFileDownload('exam-temp-description-audio', req.params.filename, res, 'audio/mpeg', 300, req);
   });
   
   app.get("/api/exam-images/:filename", async (req, res) => {
@@ -2233,7 +2280,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/exam-audio/:filename", async (req, res) => {
-    await handleFileDownload('exam-audio', req.params.filename, res, 'audio/mpeg', 31536000);
+    await handleFileDownload('exam-audio', req.params.filename, res, 'audio/mpeg', 31536000, req);
   });
   
   app.get("/api/exam-description-images/:filename", async (req, res) => {
@@ -2241,7 +2288,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
   
   app.get("/api/exam-description-audio/:filename", async (req, res) => {
-    await handleFileDownload('exam-description-audio', req.params.filename, res, 'audio/mpeg', 31536000);
+    await handleFileDownload('exam-description-audio', req.params.filename, res, 'audio/mpeg', 31536000, req);
   });
 
   // ============ LEGACY DOWNLOAD ENDPOINTS (kept for backward compatibility) ============
@@ -4238,6 +4285,338 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error cleaning up temporary description audio:", error);
       res.status(500).json({ message: "Failed to cleanup temporary files" });
+    }
+  });
+
+  // =====================================================
+  // CHUNKED UPLOAD ENDPOINTS FOR LARGE AUDIO FILES
+  // =====================================================
+
+  const activeMultipartUploads = new Map<string, {
+    uploadId: string;
+    key: string;
+    parts: Array<{ PartNumber: number; ETag: string }>;
+    createdAt: number;
+    totalParts: number;
+    context: string;
+  }>();
+
+  setInterval(() => {
+    const now = Date.now();
+    const maxAge = 30 * 60 * 1000;
+    for (const [sessionId, uploadData] of activeMultipartUploads.entries()) {
+      if (now - uploadData.createdAt > maxAge) {
+        r2Manager.abortMultipartUpload("primary", uploadData.key, uploadData.uploadId);
+        activeMultipartUploads.delete(sessionId);
+        console.log(`Cleaned up stale multipart upload: ${sessionId}`);
+      }
+    }
+  }, 30 * 60 * 1000);
+
+  app.post("/api/chunked-upload/init", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { fileName, contentType, totalSize, totalChunks, context = 'qbank' } = req.body;
+
+      if (!fileName || !contentType || !totalSize || !totalChunks) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const timestamp = Date.now();
+      const fileExtension = fileName.split('.').pop() || 'mp3';
+      const uniqueFileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      const folder = getContextFolder('temp-description-audio', context);
+      const key = `${folder}/${uniqueFileName}`;
+
+      const initResult = await r2Manager.initMultipartUpload("primary", key, contentType);
+      
+      if (!initResult) {
+        return res.status(500).json({ message: "Failed to initialize multipart upload" });
+      }
+
+      const sessionId = `${timestamp}-${Math.random().toString(36).substring(7)}`;
+      
+      activeMultipartUploads.set(sessionId, {
+        uploadId: initResult.uploadId,
+        key,
+        parts: [],
+        createdAt: Date.now(),
+        totalParts: totalChunks,
+        context
+      });
+
+      console.log(`✓ Initialized chunked upload: ${sessionId}, ${totalChunks} chunks, ${(totalSize / 1024 / 1024).toFixed(2)}MB`);
+
+      res.json({
+        success: true,
+        sessionId,
+        uploadId: initResult.uploadId,
+        key,
+        fileName: uniqueFileName,
+        totalChunks
+      });
+    } catch (error) {
+      console.error("Error initializing chunked upload:", error);
+      res.status(500).json({ message: "Failed to initialize upload" });
+    }
+  });
+
+  app.post("/api/chunked-upload/chunk", upload.single('chunk'), async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { sessionId, chunkIndex } = req.body;
+      const chunkData = req.file?.buffer;
+
+      if (!sessionId || chunkIndex === undefined || !chunkData) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const uploadSession = activeMultipartUploads.get(sessionId);
+      if (!uploadSession) {
+        return res.status(404).json({ message: "Upload session not found or expired" });
+      }
+
+      const partNumber = parseInt(chunkIndex) + 1;
+
+      const partUploadUrl = await r2Manager.generatePartUploadUrl(
+        "primary",
+        uploadSession.key,
+        uploadSession.uploadId,
+        partNumber,
+        3600
+      );
+
+      if (!partUploadUrl) {
+        return res.status(500).json({ message: "Failed to generate part upload URL" });
+      }
+
+      const uploadResponse = await fetch(partUploadUrl, {
+        method: 'PUT',
+        body: chunkData,
+        headers: {
+          'Content-Length': chunkData.length.toString()
+        }
+      });
+
+      if (!uploadResponse.ok) {
+        throw new Error(`Failed to upload chunk: ${uploadResponse.status}`);
+      }
+
+      const etag = uploadResponse.headers.get('etag') || `"part-${partNumber}"`;
+      
+      uploadSession.parts.push({
+        PartNumber: partNumber,
+        ETag: etag.replace(/"/g, '')
+      });
+
+      console.log(`✓ Uploaded chunk ${partNumber}/${uploadSession.totalParts} for session ${sessionId}`);
+
+      res.json({
+        success: true,
+        chunkIndex: parseInt(chunkIndex),
+        partNumber,
+        uploaded: uploadSession.parts.length,
+        total: uploadSession.totalParts
+      });
+    } catch (error) {
+      console.error("Error uploading chunk:", error);
+      res.status(500).json({ message: "Failed to upload chunk" });
+    }
+  });
+
+  app.post("/api/chunked-upload/complete", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        return res.status(400).json({ message: "Missing sessionId" });
+      }
+
+      const uploadSession = activeMultipartUploads.get(sessionId);
+      if (!uploadSession) {
+        return res.status(404).json({ message: "Upload session not found or expired" });
+      }
+
+      const success = await r2Manager.completeMultipartUpload(
+        "primary",
+        uploadSession.key,
+        uploadSession.uploadId,
+        uploadSession.parts
+      );
+
+      if (!success) {
+        return res.status(500).json({ message: "Failed to complete multipart upload" });
+      }
+
+      activeMultipartUploads.delete(sessionId);
+
+      const fileName = uploadSession.key.split('/').pop();
+      const folder = getContextFolder('temp-description-audio', uploadSession.context);
+      const url = `/api/${folder}/${fileName}`;
+
+      console.log(`✓ Completed chunked upload: ${sessionId} -> ${url}`);
+
+      res.json({
+        success: true,
+        url,
+        fileName,
+        message: "Tải lên audio thành công"
+      });
+    } catch (error) {
+      console.error("Error completing chunked upload:", error);
+      res.status(500).json({ message: "Failed to complete upload" });
+    }
+  });
+
+  app.post("/api/chunked-upload/abort", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { sessionId } = req.body;
+
+      if (!sessionId) {
+        return res.status(400).json({ message: "Missing sessionId" });
+      }
+
+      const uploadSession = activeMultipartUploads.get(sessionId);
+      if (uploadSession) {
+        await r2Manager.abortMultipartUpload(
+          "primary",
+          uploadSession.key,
+          uploadSession.uploadId
+        );
+        activeMultipartUploads.delete(sessionId);
+        console.log(`✓ Aborted chunked upload: ${sessionId}`);
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error aborting chunked upload:", error);
+      res.status(500).json({ message: "Failed to abort upload" });
+    }
+  });
+
+  // =====================================================
+  // STREAMING DOWNLOAD WITH RANGE SUPPORT
+  // =====================================================
+
+  const handleStreamingAudioDownload = async (folder: string, filename: string, req: any, res: any) => {
+    try {
+      const objectKey = `${folder}/${filename}`;
+      
+      const metadata = await r2Manager.getObjectMetadata("primary", objectKey);
+      if (!metadata) {
+        return res.status(404).json({ error: "File not found" });
+      }
+
+      const fileSize = metadata.size;
+      const contentType = metadata.contentType || 'audio/mpeg';
+      const range = req.headers.range;
+
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey, 3600);
+      if (!downloadUrl) {
+        return res.status(500).json({ error: "Failed to generate download URL" });
+      }
+
+      if (range) {
+        const parts = range.replace(/bytes=/, "").split("-");
+        const start = parseInt(parts[0], 10);
+        const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + 5 * 1024 * 1024 - 1, fileSize - 1);
+        const chunkSize = (end - start) + 1;
+
+        const rangeResponse = await fetch(downloadUrl, {
+          headers: { 'Range': `bytes=${start}-${end}` }
+        });
+
+        if (!rangeResponse.ok && rangeResponse.status !== 206) {
+          throw new Error(`Failed to fetch range: ${rangeResponse.status}`);
+        }
+
+        res.status(206);
+        res.set({
+          'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': chunkSize,
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=300',
+          'Access-Control-Allow-Origin': '*'
+        });
+
+        const buffer = await rangeResponse.arrayBuffer();
+        return res.send(Buffer.from(buffer));
+      } else {
+        res.set({
+          'Content-Type': contentType,
+          'Accept-Ranges': 'bytes',
+          'Content-Length': fileSize,
+          'Cache-Control': 'public, max-age=300',
+          'Access-Control-Allow-Origin': '*'
+        });
+        
+        const response = await fetch(downloadUrl);
+        if (!response.ok) {
+          throw new Error(`Failed to fetch file: ${response.status}`);
+        }
+        
+        const buffer = await response.arrayBuffer();
+        return res.send(Buffer.from(buffer));
+      }
+    } catch (error) {
+      console.error(`Error streaming audio from ${folder}:`, error);
+      res.status(500).json({ error: "Failed to stream audio" });
+    }
+  };
+
+  app.get("/api/stream/qbank-temp-description-audio/:filename", async (req, res) => {
+    await handleStreamingAudioDownload('qbank-temp-description-audio', req.params.filename, req, res);
+  });
+
+  app.get("/api/stream/exam-temp-description-audio/:filename", async (req, res) => {
+    await handleStreamingAudioDownload('exam-temp-description-audio', req.params.filename, req, res);
+  });
+
+  app.get("/api/stream/qbank-description-audio/:filename", async (req, res) => {
+    await handleStreamingAudioDownload('qbank-description-audio', req.params.filename, req, res);
+  });
+
+  app.get("/api/stream/exam-description-audio/:filename", async (req, res) => {
+    await handleStreamingAudioDownload('exam-description-audio', req.params.filename, req, res);
+  });
+
+  app.get("/api/audio-metadata/:folder/:filename", async (req, res) => {
+    try {
+      const { folder, filename } = req.params;
+      const objectKey = `${folder}/${filename}`;
+      
+      const metadata = await r2Manager.getObjectMetadata("primary", objectKey);
+      if (!metadata) {
+        return res.status(404).json({ error: "File not found" });
+      }
+
+      res.json({
+        size: metadata.size,
+        contentType: metadata.contentType,
+        supportsRange: true
+      });
+    } catch (error) {
+      console.error("Error getting audio metadata:", error);
+      res.status(500).json({ error: "Failed to get metadata" });
     }
   });
 
