@@ -1739,38 +1739,48 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Generic download handler for R2 files
+  // For audio files (large), redirect to presigned URL to avoid memory issues
+  // For images (small), proxy through server for caching
   const handleFileDownload = async (folder: string, filename: string, res: any, contentType: string = 'application/octet-stream', cacheMaxAge: number = 3600) => {
     try {
       const objectKey = `${folder}/${filename}`;
-      console.log(`[handleFileDownload] Attempting to download: ${objectKey}`);
+      const isAudio = contentType.startsWith('audio/') || folder.includes('audio');
+      console.log(`[handleFileDownload] ${isAudio ? 'Redirecting' : 'Proxying'}: ${objectKey}`);
       
       const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
       
-      if (downloadUrl) {
-        console.log(`[handleFileDownload] Generated presigned URL for ${objectKey}`);
-        try {
-          const response = await fetch(downloadUrl);
-          console.log(`[handleFileDownload] Fetch response status: ${response.status} for ${objectKey}`);
-          
-          if (response.ok) {
-            const actualContentType = response.headers.get('content-type') || contentType;
-            res.set({
-              'Content-Type': actualContentType,
-              'Cache-Control': `public, max-age=${cacheMaxAge}`,
-              'Access-Control-Allow-Origin': '*'
-            });
-            
-            const buffer = await response.arrayBuffer();
-            console.log(`[handleFileDownload] Successfully served ${buffer.byteLength} bytes for ${objectKey}`);
-            return res.send(Buffer.from(buffer));
-          } else {
-            console.error(`[handleFileDownload] Failed to fetch from R2: ${response.status} ${response.statusText} for ${objectKey}`);
-          }
-        } catch (proxyError) {
-          console.error(`[handleFileDownload] Error proxying file from ${folder}:`, proxyError);
-        }
-      } else {
+      if (!downloadUrl) {
         console.error(`[handleFileDownload] Failed to generate presigned URL for ${objectKey}`);
+        return res.status(404).json({ error: "File not found", folder, filename });
+      }
+
+      // For audio files, redirect directly to R2 to avoid memory/timeout issues
+      if (isAudio) {
+        console.log(`[handleFileDownload] Redirecting audio to presigned URL: ${objectKey}`);
+        return res.redirect(downloadUrl);
+      }
+
+      // For images and small files, proxy through server
+      try {
+        const response = await fetch(downloadUrl);
+        console.log(`[handleFileDownload] Fetch response status: ${response.status} for ${objectKey}`);
+        
+        if (response.ok) {
+          const actualContentType = response.headers.get('content-type') || contentType;
+          res.set({
+            'Content-Type': actualContentType,
+            'Cache-Control': `public, max-age=${cacheMaxAge}`,
+            'Access-Control-Allow-Origin': '*'
+          });
+          
+          const buffer = await response.arrayBuffer();
+          console.log(`[handleFileDownload] Successfully served ${buffer.byteLength} bytes for ${objectKey}`);
+          return res.send(Buffer.from(buffer));
+        } else {
+          console.error(`[handleFileDownload] Failed to fetch from R2: ${response.status} ${response.statusText} for ${objectKey}`);
+        }
+      } catch (proxyError) {
+        console.error(`[handleFileDownload] Error proxying file from ${folder}:`, proxyError);
       }
       
       res.status(404).json({ error: "File not found", folder, filename });
