@@ -4371,23 +4371,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/chunked-upload/chunk", uploadChunk.single('chunk'), async (req, res) => {
+  // Handle raw binary chunk upload - no multer needed (smaller request size)
+  app.post("/api/chunked-upload/chunk", async (req, res) => {
     try {
       const sessionUser = (req.session as any)?.user;
       if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const { sessionId, chunkIndex } = req.body;
-      const chunkData = req.file?.buffer;
+      // Get metadata from query params (smaller overhead than multipart form-data)
+      const sessionId = req.query.sessionId as string;
+      const chunkIndex = req.query.chunkIndex as string;
 
-      if (!sessionId || chunkIndex === undefined || !chunkData) {
-        return res.status(400).json({ message: "Missing required fields" });
+      if (!sessionId || chunkIndex === undefined) {
+        return res.status(400).json({ message: "Missing sessionId or chunkIndex" });
       }
 
       const uploadSession = activeMultipartUploads.get(sessionId);
       if (!uploadSession) {
         return res.status(404).json({ message: "Upload session not found or expired" });
+      }
+
+      // Collect raw binary data from request body
+      const chunks: Buffer[] = [];
+      for await (const chunk of req) {
+        chunks.push(Buffer.from(chunk));
+      }
+      const chunkData = Buffer.concat(chunks);
+
+      if (!chunkData || chunkData.length === 0) {
+        return res.status(400).json({ message: "No chunk data received" });
       }
 
       const partNumber = parseInt(chunkIndex) + 1;
@@ -4423,7 +4436,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ETag: etag.replace(/"/g, '')
       });
 
-      console.log(`✓ Uploaded chunk ${partNumber}/${uploadSession.totalParts} for session ${sessionId}`);
+      console.log(`✓ Uploaded chunk ${partNumber}/${uploadSession.totalParts} for session ${sessionId} (${(chunkData.length / 1024).toFixed(1)}KB)`);
 
       res.json({
         success: true,

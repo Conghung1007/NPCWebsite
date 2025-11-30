@@ -189,15 +189,16 @@ export function DescriptionMediaUploader({
         const start = i * CHUNK_SIZE;
         const end = Math.min(start + CHUNK_SIZE, file.size);
         const chunk = file.slice(start, end);
+        const chunkBuffer = await chunk.arrayBuffer();
 
-        const formData = new FormData();
-        formData.append('chunk', chunk);
-        formData.append('sessionId', sessionId);
-        formData.append('chunkIndex', i.toString());
-
-        const chunkResponse = await fetch('/api/chunked-upload/chunk', {
+        // Send as raw binary with metadata in headers (smaller than multipart form-data)
+        const chunkResponse = await fetch(`/api/chunked-upload/chunk?sessionId=${encodeURIComponent(sessionId)}&chunkIndex=${i}`, {
           method: 'POST',
-          body: formData,
+          headers: {
+            'Content-Type': 'application/octet-stream',
+            'Content-Length': chunkBuffer.byteLength.toString()
+          },
+          body: chunkBuffer,
           signal: abortController.signal
         });
 
