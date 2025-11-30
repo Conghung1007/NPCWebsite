@@ -185,39 +185,45 @@ export default function EditExam() {
       // Handle both new sections format and legacy format
       if (examData.sections && Array.isArray(examData.sections) && examData.sections.length > 0) {
         // New sections-based format with questionSets
-        const sectionsWithQuestions = examData.sections.map((section: any) => {
-          const questionSets = section.questionSets || [];
-          
-          // Map each question set and populate with actual question objects
-          const populatedQuestionSets = questionSets.map((qs: any) => {
-            const questionIds = qs.questionIds || [];
-            const questions = questionIds
-              .map((qId: string) => availableQuestions.find(q => q.id === qId))
-              .filter((q: Question | undefined): q is Question => q !== undefined);
+        // Use functional update to preserve existing state values (like descriptionAudioUrl)
+        setExamSections(prevSections => {
+          return (examData.sections as any[]).map((section: any) => {
+            // Find existing section in state to preserve user edits (especially audio URLs)
+            const existingSection = prevSections.find(s => s.id === section.id);
+            
+            const questionSets = section.questionSets || [];
+            
+            // Map each question set and populate with actual question objects
+            const populatedQuestionSets = questionSets.map((qs: any) => {
+              const questionIds = qs.questionIds || [];
+              const questions = questionIds
+                .map((qId: string) => availableQuestions.find(q => q.id === qId))
+                .filter((q: Question | undefined): q is Question => q !== undefined);
+              
+              return {
+                id: qs.id,
+                name: qs.name || "",
+                questions: questions
+              };
+            });
             
             return {
-              id: qs.id,
-              name: qs.name || "",
-              questions: questions
+              id: section.id,
+              sectionName: section.sectionName || section.type || "",
+              timeLimit: section.timeLimit,
+              passingScore: section.passingScore,
+              content: section.content || "",
+              descriptionImageUrls: section.descriptionImageUrls || [],
+              // Preserve descriptionAudioUrl from existing state if it has a value, otherwise use from examData
+              descriptionAudioUrl: existingSection?.descriptionAudioUrl || section.descriptionAudioUrl || "",
+              questionSets: populatedQuestionSets.length > 0 ? populatedQuestionSets : [{
+                id: `qs-${Date.now()}`,
+                name: "",
+                questions: []
+              }]
             };
           });
-          
-          return {
-            id: section.id,
-            sectionName: section.sectionName || section.type || "",
-            timeLimit: section.timeLimit,
-            passingScore: section.passingScore,
-            content: section.content || "",
-            descriptionImageUrls: section.descriptionImageUrls || [],
-            descriptionAudioUrl: section.descriptionAudioUrl || "",
-            questionSets: populatedQuestionSets.length > 0 ? populatedQuestionSets : [{
-              id: `qs-${Date.now()}`,
-              name: "",
-              questions: []
-            }]
-          };
         });
-        setExamSections(sectionsWithQuestions);
       } else {
         // Legacy format with separate question arrays
         const legacySections: ExamSection[] = [];

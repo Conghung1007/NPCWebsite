@@ -181,11 +181,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   useEffect(() => {
     if (exam && allQuestions.length > 0) {
       const derivedSections = deriveExamSections(exam, allQuestions);
-      console.log("Derived sections with description audio:", derivedSections.map(s => ({
-        id: s.id,
-        sectionName: s.sectionName,
-        descriptionAudioUrl: s.descriptionAudioUrl || "(empty)"
-      })));
       setExamSections(derivedSections);
     }
   }, [exam, allQuestions, deriveExamSections]);

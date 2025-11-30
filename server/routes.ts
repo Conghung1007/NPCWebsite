@@ -3075,22 +3075,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Sanitize sections to ensure only questionIds are stored, not full question objects
-      const sanitizedSections = sections.map((section: any) => ({
-        id: section.id,
-        sectionName: section.sectionName || section.type || "",
-        timeLimit: section.timeLimit || 10,
-        passingScore: section.passingScore,
-        content: section.content || "",
-        descriptionImageUrls: section.descriptionImageUrls || [],
-        descriptionAudioUrl: section.descriptionAudioUrl || "",
-        questionSets: (section.questionSets || []).map((qs: any) => ({
-          id: qs.id,
-          name: qs.name || "",
-          // Ensure we only store questionIds, not full question objects
-          questionIds: qs.questionIds || 
-            (qs.questions ? qs.questions.map((q: any) => typeof q === 'string' ? q : q.id) : [])
-        }))
-      }));
+      const sanitizedSections = sections.map((section: any) => {
+        const sanitized: any = {
+          id: section.id,
+          sectionName: section.sectionName || section.type || "",
+          timeLimit: section.timeLimit || 10,
+          passingScore: section.passingScore,
+          content: section.content || "",
+          descriptionImageUrls: section.descriptionImageUrls || [],
+          questionSets: (section.questionSets || []).map((qs: any) => ({
+            id: qs.id,
+            name: qs.name || "",
+            // Ensure we only store questionIds, not full question objects
+            questionIds: qs.questionIds || 
+              (qs.questions ? qs.questions.map((q: any) => typeof q === 'string' ? q : q.id) : [])
+          }))
+        };
+        // Only include descriptionAudioUrl if it has a value
+        if (section.descriptionAudioUrl) {
+          sanitized.descriptionAudioUrl = section.descriptionAudioUrl;
+        }
+        return sanitized;
+      });
       console.log("Sanitized sections for exam creation:", JSON.stringify(sanitizedSections, null, 2));
 
       // Calculate legacy fields for backward compatibility
@@ -3162,23 +3168,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Sanitize sections to ensure only questionIds are stored, not full question objects
       let sanitizedSections = undefined;
       if (sections && Array.isArray(sections)) {
-        sanitizedSections = sections.map((section: any) => ({
-          id: section.id,
-          sectionName: section.sectionName || "",
-          timeLimit: section.timeLimit || 10,
-          passingScore: section.passingScore,
-          content: section.content || "",
-          descriptionImageUrls: section.descriptionImageUrls || [],
-          descriptionAudioUrl: section.descriptionAudioUrl || "",
-          questionSets: (section.questionSets || []).map((qs: any) => ({
-            id: qs.id,
-            name: qs.name || "",
-            // Ensure we only store questionIds, not full question objects
-            // Handle both: questionIds array or questions array with id property
-            questionIds: qs.questionIds || 
-              (qs.questions ? qs.questions.map((q: any) => typeof q === 'string' ? q : q.id) : [])
-          }))
-        }));
+        sanitizedSections = sections.map((section: any) => {
+          const sanitized: any = {
+            id: section.id,
+            sectionName: section.sectionName || "",
+            timeLimit: section.timeLimit || 10,
+            passingScore: section.passingScore,
+            content: section.content || "",
+            descriptionImageUrls: section.descriptionImageUrls || [],
+            questionSets: (section.questionSets || []).map((qs: any) => ({
+              id: qs.id,
+              name: qs.name || "",
+              // Ensure we only store questionIds, not full question objects
+              // Handle both: questionIds array or questions array with id property
+              questionIds: qs.questionIds || 
+                (qs.questions ? qs.questions.map((q: any) => typeof q === 'string' ? q : q.id) : [])
+            }))
+          };
+          // Only include descriptionAudioUrl if it has a value (preserve existing audio)
+          if (section.descriptionAudioUrl) {
+            sanitized.descriptionAudioUrl = section.descriptionAudioUrl;
+          }
+          return sanitized;
+        });
         console.log("Sanitized sections for exam update:", JSON.stringify(sanitizedSections, null, 2));
       }
 
