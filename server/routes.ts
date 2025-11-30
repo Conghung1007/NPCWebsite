@@ -1739,12 +1739,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   };
 
   // Generic download handler for R2 files
+  // Uses redirect to presigned URL for large files to bypass proxy body size limits
   const handleFileDownload = async (folder: string, filename: string, res: any, contentType: string = 'application/octet-stream', cacheMaxAge: number = 3600) => {
     try {
       const objectKey = `${folder}/${filename}`;
       const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
       
       if (downloadUrl) {
+        // Check if this is an audio file (potentially large) - redirect to presigned URL
+        const isAudioFile = contentType.startsWith('audio/') || folder.includes('audio');
+        
+        if (isAudioFile) {
+          // For audio files, redirect directly to R2 presigned URL to avoid proxy body size limits
+          console.log(`Redirecting to R2 presigned URL for: ${objectKey}`);
+          return res.redirect(downloadUrl);
+        }
+        
+        // For small files (images), proxy through server for caching benefits
         try {
           const response = await fetch(downloadUrl);
           if (response.ok) {
@@ -1760,6 +1771,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
         } catch (proxyError) {
           console.error(`Error proxying file from ${folder}:`, proxyError);
+          // Fallback to redirect on proxy error
+          return res.redirect(downloadUrl);
         }
       }
       
@@ -2578,24 +2591,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Audio file not found" });
       }
 
-      // Proxy the audio file
-      const audioResponse = await fetch(downloadUrl);
-      if (!audioResponse.ok) {
-        return res.status(404).json({ message: "Audio file not found" });
-      }
-
-      const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
-      const contentLength = audioResponse.headers.get('content-length');
-      
-      res.set({
-        'Content-Type': contentType,
-        'Content-Length': contentLength || '',
-        'Cache-Control': 'public, max-age=31536000', // 1 year cache
-      });
-
-      // Stream the audio data
-      const audioBuffer = await audioResponse.arrayBuffer();
-      return res.send(Buffer.from(audioBuffer));
+      // Redirect to R2 presigned URL to avoid proxy body size limits
+      console.log(`Redirecting to R2 presigned URL for: ${objectKey}`);
+      return res.redirect(downloadUrl);
     } catch (error) {
       console.error("Error serving audio file:", error);
       res.status(500).json({ message: "Failed to serve audio file" });
@@ -2789,24 +2787,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Description audio file not found" });
       }
 
-      // Proxy the audio file
-      const audioResponse = await fetch(downloadUrl);
-      if (!audioResponse.ok) {
-        return res.status(404).json({ message: "Description audio file not found" });
-      }
-
-      const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
-      const contentLength = audioResponse.headers.get('content-length');
-      
-      res.set({
-        'Content-Type': contentType,
-        'Content-Length': contentLength || '',
-        'Cache-Control': 'public, max-age=86400', // 24 hour cache for permanent files
-      });
-
-      // Stream the audio data
-      const audioBuffer = await audioResponse.arrayBuffer();
-      return res.send(Buffer.from(audioBuffer));
+      // Redirect to R2 presigned URL to avoid proxy body size limits
+      console.log(`Redirecting to R2 presigned URL for: ${objectKey}`);
+      return res.redirect(downloadUrl);
     } catch (error) {
       console.error("Error serving description audio file:", error);
       res.status(500).json({ message: "Failed to serve description audio file" });
@@ -2825,24 +2808,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Temporary audio file not found" });
       }
 
-      // Proxy the audio file
-      const audioResponse = await fetch(downloadUrl);
-      if (!audioResponse.ok) {
-        return res.status(404).json({ message: "Temporary audio file not found" });
-      }
-
-      const contentType = audioResponse.headers.get('content-type') || 'audio/mpeg';
-      const contentLength = audioResponse.headers.get('content-length');
-      
-      res.set({
-        'Content-Type': contentType,
-        'Content-Length': contentLength || '',
-        'Cache-Control': 'public, max-age=300', // 5 minute cache for temp files
-      });
-
-      // Stream the audio data
-      const audioBuffer = await audioResponse.arrayBuffer();
-      return res.send(Buffer.from(audioBuffer));
+      // Redirect to R2 presigned URL to avoid proxy body size limits
+      console.log(`Redirecting to R2 presigned URL for: ${objectKey}`);
+      return res.redirect(downloadUrl);
     } catch (error) {
       console.error("Error serving temporary audio file:", error);
       res.status(500).json({ message: "Failed to serve temporary audio file" });
@@ -4446,27 +4414,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
       
-      if (downloadUrl) {
-        // Proxy the audio
-        try {
-          const response = await fetch(downloadUrl);
-          if (response.ok) {
-            const contentType = response.headers.get('content-type') || 'audio/mpeg';
-            res.set({
-              'Content-Type': contentType,
-              'Cache-Control': 'public, max-age=300', // 5 minute cache for temp files
-              'Access-Control-Allow-Origin': '*'
-            });
-            
-            const buffer = await response.arrayBuffer();
-            return res.send(Buffer.from(buffer));
-          }
-        } catch (proxyError) {
-          console.error("Error proxying temporary description audio:", proxyError);
-        }
+      if (!downloadUrl) {
+        return res.status(404).json({ error: "Temporary description audio not found" });
       }
-      
-      res.status(404).json({ error: "Temporary description audio not found" });
+
+      // Redirect to R2 presigned URL to avoid proxy body size limits
+      console.log(`Redirecting to R2 presigned URL for: ${objectKey}`);
+      return res.redirect(downloadUrl);
     } catch (error) {
       console.error("Error serving temporary description audio:", error);
       res.status(500).json({ error: "Failed to serve temporary description audio" });
