@@ -3538,27 +3538,75 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
+      // Get old exam to compare audio files
+      const oldExam = await storage.getExam(id);
+      if (!oldExam) {
+        return res.status(404).json({ message: "Exam not found" });
+      }
+
+      // Collect old audio URLs from sections
+      const oldAudioUrls = new Set<string>();
+      if (oldExam.sections && Array.isArray(oldExam.sections)) {
+        for (const section of oldExam.sections as any[]) {
+          if (section.descriptionAudioUrl) {
+            oldAudioUrls.add(section.descriptionAudioUrl);
+          }
+        }
+      }
+
       // Sanitize sections to ensure only questionIds are stored, not full question objects
       let sanitizedSections = undefined;
+      const newAudioUrls = new Set<string>();
       if (sections && Array.isArray(sections)) {
-        sanitizedSections = sections.map((section: any) => ({
-          id: section.id,
-          sectionName: section.sectionName || "",
-          timeLimit: section.timeLimit || 10,
-          passingScore: section.passingScore,
-          content: section.content || "",
-          descriptionImageUrls: section.descriptionImageUrls || [],
-          descriptionAudioUrl: section.descriptionAudioUrl || "",
-          questionSets: (section.questionSets || []).map((qs: any) => ({
-            id: qs.id,
-            name: qs.name || "",
-            // Ensure we only store questionIds, not full question objects
-            // Handle both: questionIds array or questions array with id property
-            questionIds: qs.questionIds || 
-              (qs.questions ? qs.questions.map((q: any) => typeof q === 'string' ? q : q.id) : [])
-          }))
-        }));
+        sanitizedSections = sections.map((section: any) => {
+          if (section.descriptionAudioUrl) {
+            newAudioUrls.add(section.descriptionAudioUrl);
+          }
+          return {
+            id: section.id,
+            sectionName: section.sectionName || "",
+            timeLimit: section.timeLimit || 10,
+            passingScore: section.passingScore,
+            content: section.content || "",
+            descriptionImageUrls: section.descriptionImageUrls || [],
+            descriptionAudioUrl: section.descriptionAudioUrl || "",
+            questionSets: (section.questionSets || []).map((qs: any) => ({
+              id: qs.id,
+              name: qs.name || "",
+              // Ensure we only store questionIds, not full question objects
+              // Handle both: questionIds array or questions array with id property
+              questionIds: qs.questionIds || 
+                (qs.questions ? qs.questions.map((q: any) => typeof q === 'string' ? q : q.id) : [])
+            }))
+          };
+        });
         console.log("Sanitized sections for exam update:", JSON.stringify(sanitizedSections, null, 2));
+      }
+
+      // Find audio files that were removed or changed (in old but not in new)
+      const audioUrlsToDelete = [...oldAudioUrls].filter(url => !newAudioUrls.has(url));
+      
+      // Delete old audio files from R2
+      for (const audioUrl of audioUrlsToDelete) {
+        try {
+          // Extract folder and filename from URL like "/api/exam-description-audio/filename.mp3"
+          const urlParts = audioUrl.split('/');
+          const filename = urlParts.pop();
+          const folderType = urlParts.pop(); // e.g., "exam-description-audio", "description-audio"
+          
+          if (filename && folderType) {
+            const objectKey = `${folderType}/${filename}`;
+            console.log(`Deleting old section audio: ${objectKey}`);
+            const deleteResult = await multiR2Storage.deleteFile("primary", objectKey);
+            if (deleteResult.success) {
+              console.log(`✓ Successfully deleted old section audio: ${objectKey}`);
+            } else {
+              console.warn(`✗ Failed to delete old section audio ${objectKey}:`, deleteResult.error);
+            }
+          }
+        } catch (err) {
+          console.error(`Error deleting audio file ${audioUrl}:`, err);
+        }
       }
 
       const updatedExam = await storage.updateExam(id, {
@@ -3593,6 +3641,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { id } = req.params;
+      
+      // Get exam to delete section audio files
+      const exam = await storage.getExam(id);
+      if (exam && exam.sections && Array.isArray(exam.sections)) {
+        for (const section of exam.sections as any[]) {
+          if (section.descriptionAudioUrl) {
+            try {
+              const urlParts = section.descriptionAudioUrl.split('/');
+              const filename = urlParts.pop();
+              const folderType = urlParts.pop();
+              
+              if (filename && folderType) {
+                const objectKey = `${folderType}/${filename}`;
+                console.log(`Deleting section audio: ${objectKey}`);
+                const deleteResult = await multiR2Storage.deleteFile("primary", objectKey);
+                if (deleteResult.success) {
+                  console.log(`✓ Successfully deleted section audio: ${objectKey}`);
+                } else {
+                  console.warn(`✗ Failed to delete section audio ${objectKey}:`, deleteResult.error);
+                }
+              }
+            } catch (err) {
+              console.error(`Error deleting section audio:`, err);
+            }
+          }
+        }
+      }
       
       // Get all questions for this exam to delete audio files
       const questions = await storage.getQuestionsByExamId(id);
