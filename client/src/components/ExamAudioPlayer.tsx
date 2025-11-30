@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { Volume2, VolumeX, Download, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { useStreamingAudio } from "@/hooks/useStreamingAudio";
 
 interface ExamAudioPlayerProps {
   src: string;
@@ -30,24 +29,10 @@ export function ExamAudioPlayer({
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [isDisabled, setIsDisabled] = useState(false);
-
-  const {
-    isLoading,
-    isDownloading,
-    isReady,
-    downloadProgress,
-    error,
-    setAudioElement,
-  } = useStreamingAudio(src, {
-    autoPlay: false,
-    onReady: () => {
-      // Trigger auto-play when streaming is ready
-      if (audioRef.current && !hasAutoPlayedRef.current && playCountRef.current < maxPlays) {
-        hasAutoPlayedRef.current = true;
-        audioRef.current.play().catch(console.error);
-      }
-    },
-  });
+  
+  // Loading/buffering state
+  const [isLoading, setIsLoading] = useState(true);
+  const [bufferedPercent, setBufferedPercent] = useState(0);
 
   const handleSeeking = useCallback(() => {
     const audio = audioRef.current;
@@ -65,20 +50,38 @@ export function ExamAudioPlayer({
     const audio = audioRef.current;
     if (!audio) return;
 
-    // Connect audio element to streaming hook
-    setAudioElement(audio);
-
     const handleLoadedMetadata = () => {
       setDuration(audio.duration);
+      setIsLoading(false);
     };
 
     const handleCanPlayThrough = () => {
-      // Auto-play is now handled by streaming hook's onReady callback
-      // This is kept for non-streaming fallback
-      if (!isReady && !hasAutoPlayedRef.current && playCountRef.current < maxPlays) {
+      setIsLoading(false);
+      if (!hasAutoPlayedRef.current && playCountRef.current < maxPlays) {
         hasAutoPlayedRef.current = true;
         audio.play().catch(console.error);
       }
+    };
+
+    const handleProgress = () => {
+      if (audio.buffered.length > 0 && audio.duration > 0) {
+        const bufferedEnd = audio.buffered.end(audio.buffered.length - 1);
+        const percent = Math.round((bufferedEnd / audio.duration) * 100);
+        setBufferedPercent(percent);
+      }
+    };
+
+    const handleWaiting = () => {
+      // Audio is buffering
+    };
+
+    const handlePlaying = () => {
+      setIsLoading(false);
+    };
+
+    const handleLoadStart = () => {
+      setIsLoading(true);
+      setBufferedPercent(0);
     };
 
     const handleTimeUpdate = () => {
@@ -120,24 +123,39 @@ export function ExamAudioPlayer({
       setIsPlaying(false);
     };
 
+    const handleError = (e: Event) => {
+      console.error('Audio error:', e);
+      setIsLoading(false);
+    };
+
     audio.addEventListener('loadedmetadata', handleLoadedMetadata);
     audio.addEventListener('canplaythrough', handleCanPlayThrough);
+    audio.addEventListener('progress', handleProgress);
+    audio.addEventListener('waiting', handleWaiting);
+    audio.addEventListener('playing', handlePlaying);
+    audio.addEventListener('loadstart', handleLoadStart);
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('ended', handleEnded);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('seeking', handleSeeking);
+    audio.addEventListener('error', handleError);
 
     return () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('canplaythrough', handleCanPlayThrough);
+      audio.removeEventListener('progress', handleProgress);
+      audio.removeEventListener('waiting', handleWaiting);
+      audio.removeEventListener('playing', handlePlaying);
+      audio.removeEventListener('loadstart', handleLoadStart);
       audio.removeEventListener('timeupdate', handleTimeUpdate);
       audio.removeEventListener('ended', handleEnded);
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('seeking', handleSeeking);
+      audio.removeEventListener('error', handleError);
     };
-  }, [maxPlays, onPlayComplete, handleSeeking, setAudioElement, isReady]);
+  }, [maxPlays, onPlayComplete, handleSeeking]);
 
   useEffect(() => {
     if (audioRef.current) {
@@ -162,26 +180,20 @@ export function ExamAudioPlayer({
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
-  const formatSize = (bytes: number) => {
-    if (bytes < 1024) return `${bytes} B`;
-    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
-    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
-  };
-
   const playbackPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
     <div className={`bg-gradient-to-r from-gray-50 to-gray-100 rounded-xl p-4 shadow-sm border ${className}`}>
-      <audio ref={audioRef} preload="auto" />
+      <audio ref={audioRef} src={src} preload="auto" />
       
       <div className="flex items-center gap-4">
         <div className="flex-1 space-y-2">
           {/* Dual progress bars container */}
           <div className="relative h-3 bg-gray-200 rounded-full overflow-hidden">
-            {/* Download progress bar (blue) - background layer */}
+            {/* Buffered/Download progress bar (blue) - background layer */}
             <div 
               className="absolute top-0 left-0 h-full rounded-full transition-all duration-300 bg-gradient-to-r from-blue-400 to-blue-500"
-              style={{ width: `${downloadProgress}%` }}
+              style={{ width: `${bufferedPercent}%` }}
               data-testid="audio-download-progress"
             />
             {/* Playback progress bar (green) - foreground layer */}
@@ -200,19 +212,18 @@ export function ExamAudioPlayer({
           <div className="flex justify-between items-center text-xs">
             <div className="flex items-center gap-2">
               <span className="text-gray-600">{formatTime(currentTime)}</span>
-              {/* Download indicator */}
-              {(isLoading || isDownloading) && (
-                <span className="flex items-center gap-1 text-blue-600" data-testid="audio-download-status">
-                  {isLoading ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <Download className="h-3 w-3" />
-                  )}
-                  <span>{isLoading ? 'Đang kết nối...' : `Đang tải ${downloadProgress}%`}</span>
+              {/* Loading/buffering indicator */}
+              {isLoading && (
+                <span className="flex items-center gap-1 text-blue-600" data-testid="audio-loading-status">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Đang tải...</span>
                 </span>
               )}
-              {error && (
-                <span className="text-red-500 text-xs">{error}</span>
+              {!isLoading && bufferedPercent < 100 && bufferedPercent > 0 && (
+                <span className="flex items-center gap-1 text-blue-600" data-testid="audio-download-status">
+                  <Download className="h-3 w-3" />
+                  <span>Đã tải {bufferedPercent}%</span>
+                </span>
               )}
             </div>
             <span className={`${isPlaying ? 'text-green-600 font-medium' : 'text-gray-500'}`}>
@@ -221,11 +232,11 @@ export function ExamAudioPlayer({
           </div>
 
           {/* Legend for dual progress bars */}
-          {(isDownloading || downloadProgress < 100) && downloadProgress > 0 && (
+          {bufferedPercent > 0 && bufferedPercent < 100 && (
             <div className="flex items-center gap-4 text-xs text-gray-500">
               <div className="flex items-center gap-1">
                 <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                <span>Đã tải: {downloadProgress}%</span>
+                <span>Đã tải: {bufferedPercent}%</span>
               </div>
               <div className="flex items-center gap-1">
                 <div className="w-2 h-2 rounded-full bg-green-500"></div>
