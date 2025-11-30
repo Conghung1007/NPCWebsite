@@ -4031,6 +4031,47 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Question not found" });
       }
 
+      // Helper function to delete audio file from R2
+      const deleteAudioFile = async (audioUrl: string | null | undefined) => {
+        if (!audioUrl) return;
+        try {
+          const urlParts = audioUrl.split('/');
+          const filename = urlParts.pop();
+          const folderType = urlParts.pop();
+          
+          if (filename && folderType) {
+            const objectKey = `${folderType}/${filename}`;
+            console.log(`Deleting old audio file: ${objectKey}`);
+            const deleteResult = await multiR2Storage.deleteFile("primary", objectKey);
+            if (deleteResult.success) {
+              console.log(`✓ Successfully deleted old audio: ${objectKey}`);
+            } else {
+              console.warn(`✗ Failed to delete old audio ${objectKey}:`, deleteResult.error);
+            }
+          }
+        } catch (err) {
+          console.error(`Error deleting audio file ${audioUrl}:`, err);
+        }
+      };
+
+      // Delete old audio files if they are being changed
+      const audioFilesToDelete: string[] = [];
+      
+      // Check audioUrl change
+      if (audioUrl !== undefined && existingQuestion.audioUrl && audioUrl !== existingQuestion.audioUrl) {
+        audioFilesToDelete.push(existingQuestion.audioUrl);
+      }
+      
+      // Check descriptionAudioUrl change
+      if (descriptionAudioUrl !== undefined && existingQuestion.descriptionAudioUrl && descriptionAudioUrl !== existingQuestion.descriptionAudioUrl) {
+        audioFilesToDelete.push(existingQuestion.descriptionAudioUrl);
+      }
+      
+      // Delete old audio files in parallel
+      if (audioFilesToDelete.length > 0) {
+        await Promise.all(audioFilesToDelete.map(deleteAudioFile));
+      }
+
       // OPTIMIZED: Process imageUrls array in parallel if provided
       let processedImageUrls = imageUrls;
       if (imageUrls !== undefined) {
@@ -4219,19 +4260,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Question not found" });
       }
       
-      // Delete audio file from R2 storage if exists
-      if (question.audioUrl) {
-        const filename = question.audioUrl.split('/').pop();
-        if (filename) {
-          console.log(`Deleting audio file for question: ${filename}`);
-          const deleteResult = await multiR2Storage.deleteAudio(filename);
-          if (!deleteResult.success) {
-            console.warn(`Failed to delete audio file ${filename}:`, deleteResult.error);
-          } else {
-            console.log(`Successfully deleted audio file: ${filename}`);
+      // Helper function to delete audio file from R2
+      const deleteAudioFile = async (audioUrl: string | null | undefined) => {
+        if (!audioUrl) return;
+        try {
+          const urlParts = audioUrl.split('/');
+          const filename = urlParts.pop();
+          const folderType = urlParts.pop();
+          
+          if (filename && folderType) {
+            const objectKey = `${folderType}/${filename}`;
+            console.log(`Deleting audio file: ${objectKey}`);
+            const deleteResult = await multiR2Storage.deleteFile("primary", objectKey);
+            if (deleteResult.success) {
+              console.log(`✓ Successfully deleted audio: ${objectKey}`);
+            } else {
+              console.warn(`✗ Failed to delete audio ${objectKey}:`, deleteResult.error);
+            }
           }
+        } catch (err) {
+          console.error(`Error deleting audio file ${audioUrl}:`, err);
         }
-      }
+      };
+
+      // Delete audio files from R2 storage if exist
+      await Promise.all([
+        deleteAudioFile(question.audioUrl),
+        deleteAudioFile(question.descriptionAudioUrl)
+      ]);
 
       // Delete image file from R2 storage if exists  
       if (question.imageUrl) {
