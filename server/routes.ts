@@ -14,6 +14,12 @@ const upload = multer({
   limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit
 });
 
+// Separate multer instance for chunked uploads with smaller limit (1MB to stay under production limits)
+const uploadChunk = multer({ 
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 1 * 1024 * 1024 } // 1MB limit for chunk uploads
+});
+
 // Middleware to check if user is authenticated
 const requireAuth = (req: any, res: any, next: any) => {
   const sessionUser = req.session?.user;
@@ -4365,7 +4371,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  app.post("/api/chunked-upload/chunk", upload.single('chunk'), async (req, res) => {
+  app.post("/api/chunked-upload/chunk", uploadChunk.single('chunk'), async (req, res) => {
     try {
       const sessionUser = (req.session as any)?.user;
       if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {

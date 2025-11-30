@@ -22,7 +22,7 @@ const formatFileSize = (bytes: number): string => {
 };
 
 const CHUNK_SIZE = 512 * 1024; // 512KB per chunk - small enough for production limits
-const LARGE_FILE_THRESHOLD = 100 * 1024; // 100KB - use chunked upload for most audio files
+const LARGE_FILE_THRESHOLD = 0; // Always use chunked upload for all audio files in production
 
 export function DescriptionMediaUploader({
   imageUrl = "",
