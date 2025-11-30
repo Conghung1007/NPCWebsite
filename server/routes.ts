@@ -2432,12 +2432,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const baseFolder = folderMap[upload.target] || 'temp-audio';
       const folder = getContextFolder(baseFolder, upload.context);
-      const fileId = randomUUID();
+      
+      // Generate filename with timestamp and extension (same format as direct upload)
+      const timestamp = Date.now();
+      const randomStr = Math.random().toString(36).substring(7);
+      // Determine extension from content type
+      const extensionMap: Record<string, string> = {
+        'audio/mpeg': 'mp3',
+        'audio/mp3': 'mp3',
+        'audio/wav': 'wav',
+        'audio/ogg': 'ogg',
+        'audio/webm': 'webm',
+        'audio/aac': 'aac',
+        'audio/m4a': 'm4a',
+        'audio/x-m4a': 'm4a'
+      };
+      const fileExtension = extensionMap[upload.contentType] || 'mp3';
+      const fileName = `${timestamp}-${randomStr}.${fileExtension}`;
 
       // Upload to R2
       const uploadResult = await multiR2Storage.uploadFile(
         fileBuffer,
-        fileId,
+        fileName,
         upload.contentType,
         {
           provider: "primary",
@@ -2455,7 +2471,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(500).json({ error: uploadResult.error || "Upload failed" });
       }
 
-      const audioUrl = `/api/${folder}/${uploadResult.path?.split('/').pop() || fileId}`;
+      const audioUrl = `/api/${folder}/${fileName}`;
       console.log(`Chunked upload complete: ${audioUrl}`);
 
       res.json({
