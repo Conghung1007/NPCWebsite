@@ -2577,6 +2577,86 @@ export async function registerRoutes(app: Express): Promise<Server> {
     await handleFileDownload('exam-description-audio', req.params.filename, res, 'audio/mpeg', 31536000);
   });
 
+  // ============ STREAMING AUDIO ENDPOINT ============
+  
+  // Audio stream info endpoint - returns presigned URL and metadata for streaming
+  app.get("/api/audio/stream-info", async (req, res) => {
+    try {
+      const { url } = req.query;
+      
+      if (!url || typeof url !== 'string') {
+        return res.status(400).json({ error: "URL parameter is required" });
+      }
+
+      // Extract folder and filename from the URL
+      // Supports formats: /api/xxx-audio/filename, /api/xxx-description-audio/filename
+      const urlMatch = url.match(/\/api\/([^/]+)\/([^/]+)$/);
+      if (!urlMatch) {
+        return res.status(400).json({ error: "Invalid audio URL format" });
+      }
+
+      const [, folder, filename] = urlMatch;
+      
+      // Map API path to R2 folder
+      const folderMapping: { [key: string]: string } = {
+        'audio': 'audio',
+        'temp-audio': 'temp-audio',
+        'description-audio': 'description-audio',
+        'temp-description-audio': 'temp-description-audio',
+        'qbank-audio': 'qbank-audio',
+        'qbank-temp-audio': 'qbank-temp-audio',
+        'qbank-description-audio': 'qbank-description-audio',
+        'qbank-temp-description-audio': 'qbank-temp-description-audio',
+        'exam-audio': 'exam-audio',
+        'exam-temp-audio': 'exam-temp-audio',
+        'exam-description-audio': 'exam-description-audio',
+        'exam-temp-description-audio': 'exam-temp-description-audio',
+      };
+
+      const r2Folder = folderMapping[folder];
+      if (!r2Folder) {
+        return res.status(400).json({ error: "Unknown audio folder" });
+      }
+
+      const objectKey = `${r2Folder}/${filename}`;
+      const downloadUrl = await r2Manager.generateDownloadUrl("primary", objectKey);
+      
+      if (!downloadUrl) {
+        return res.status(404).json({ error: "Audio file not found" });
+      }
+
+      // Get file metadata (content-length) via HEAD request
+      try {
+        const headResponse = await fetch(downloadUrl, { method: 'HEAD' });
+        if (!headResponse.ok) {
+          return res.status(404).json({ error: "Audio file not found" });
+        }
+
+        const contentLength = headResponse.headers.get('content-length');
+        const contentType = headResponse.headers.get('content-type') || 'audio/mpeg';
+
+        return res.json({
+          url: downloadUrl,
+          contentLength: contentLength ? parseInt(contentLength, 10) : null,
+          contentType,
+          supportsRange: headResponse.headers.get('accept-ranges') === 'bytes'
+        });
+      } catch (headError) {
+        console.error("Error getting audio metadata:", headError);
+        // Fall back to just returning the URL
+        return res.json({
+          url: downloadUrl,
+          contentLength: null,
+          contentType: 'audio/mpeg',
+          supportsRange: true // R2 supports range requests
+        });
+      }
+    } catch (error) {
+      console.error("Error generating stream info:", error);
+      res.status(500).json({ error: "Failed to generate stream info" });
+    }
+  });
+
   // ============ LEGACY DOWNLOAD ENDPOINTS (kept for backward compatibility) ============
   
   // Audio download endpoint
