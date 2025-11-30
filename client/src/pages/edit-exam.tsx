@@ -498,6 +498,9 @@ export default function EditExam() {
       });
       queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
       queryClient.invalidateQueries({ queryKey: ["/api/exams", examId] });
+      // Also invalidate exam-taking page queries (uses different queryKey format)
+      queryClient.invalidateQueries({ queryKey: [`/api/exams/${examId}`] });
+      queryClient.invalidateQueries({ queryKey: [`/api/exams/${examId}/questions`] });
       setLocation("/cpanel?tab=exams");
     },
     onError: (error: any) => {
