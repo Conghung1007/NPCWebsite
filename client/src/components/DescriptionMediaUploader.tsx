@@ -21,8 +21,8 @@ const formatFileSize = (bytes: number): string => {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 };
 
-const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB per chunk
-const LARGE_FILE_THRESHOLD = 10 * 1024 * 1024; // 10MB - use chunked upload for files larger than this
+const CHUNK_SIZE = 512 * 1024; // 512KB per chunk - small enough for production limits
+const LARGE_FILE_THRESHOLD = 100 * 1024; // 100KB - use chunked upload for most audio files
 
 export function DescriptionMediaUploader({
   imageUrl = "",
@@ -655,7 +655,7 @@ export function DescriptionMediaUploader({
                 </div>
                 {uploadMode === "chunked" && (
                   <p className="text-xs text-blue-600 dark:text-blue-400">
-                    Đang tải lên file lớn theo từng phần (5MB/phần)...
+                    Đang tải lên file theo từng phần (512KB/phần)...
                   </p>
                 )}
                 <Button

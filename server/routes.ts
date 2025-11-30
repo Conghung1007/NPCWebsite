@@ -1752,7 +1752,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             const range = req.headers.range;
             const parts = range.replace(/bytes=/, "").split("-");
             const start = parseInt(parts[0], 10);
-            const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + 5 * 1024 * 1024 - 1, metadata.size - 1);
+            const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + 512 * 1024 - 1, metadata.size - 1); // 512KB chunks for production
             const chunkSize = (end - start) + 1;
 
             try {
@@ -4537,7 +4537,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (range) {
         const parts = range.replace(/bytes=/, "").split("-");
         const start = parseInt(parts[0], 10);
-        const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + 5 * 1024 * 1024 - 1, fileSize - 1);
+        const end = parts[1] ? parseInt(parts[1], 10) : Math.min(start + 512 * 1024 - 1, fileSize - 1); // 512KB chunks for production
         const chunkSize = (end - start) + 1;
 
         const rangeResponse = await fetch(downloadUrl, {
