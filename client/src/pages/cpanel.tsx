@@ -763,6 +763,7 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Tên đăng nhập</TableHead>
+                            <TableHead>Họ tên</TableHead>
                             <TableHead>Email</TableHead>
                             <TableHead>Số điện thoại</TableHead>
                             <TableHead>Trạng thái</TableHead>
@@ -778,6 +779,7 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                               <TableCell className="font-medium">
                                 {request.username}
                               </TableCell>
+                              <TableCell>{request.fullName || "-"}</TableCell>
                               <TableCell>{request.email}</TableCell>
                               <TableCell>{request.phone}</TableCell>
                               <TableCell>
@@ -849,6 +851,7 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Tên đăng nhập</TableHead>
+                            <TableHead>Họ tên</TableHead>
                             <TableHead>Email</TableHead>
                             <TableHead>Số điện thoại</TableHead>
                             <TableHead>Vai trò</TableHead>
@@ -861,6 +864,9 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                               <TableCell className="font-medium flex items-center gap-2">
                                 <User className="w-4 h-4" />
                                 {userItem.username}
+                              </TableCell>
+                              <TableCell>
+                                {userItem.fullName || "-"}
                               </TableCell>
                               <TableCell>
                                 <span className="text-sm text-gray-600">
