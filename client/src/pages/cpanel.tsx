@@ -552,6 +552,7 @@ export function CpanelPage() {
                         <TableHeader>
                           <TableRow>
                             <TableHead>Tên đăng nhập</TableHead>
+                            <TableHead>Họ tên</TableHead>
                             <TableHead>Email</TableHead>
                             <TableHead>Số điện thoại</TableHead>
                             <TableHead>Vai trò</TableHead>
@@ -566,6 +567,11 @@ export function CpanelPage() {
                               <TableCell className="font-medium flex items-center gap-2">
                                 <User className="w-4 h-4" />
                                 {userItem.username}
+                              </TableCell>
+                              <TableCell>
+                                <span className="text-sm text-gray-600">
+                                  {userItem.fullName || "Chưa có"}
+                                </span>
                               </TableCell>
                               <TableCell>
                                 <span className="text-sm text-gray-600">
