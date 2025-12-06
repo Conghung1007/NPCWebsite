@@ -6,6 +6,7 @@ import { z } from "zod";
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull().unique(),
+  fullName: text("full_name"), // Optional full name for certificate display
   email: text("email").unique(),
   phone: text("phone").unique(),
   password: text("password").notNull(),
@@ -47,6 +48,7 @@ export const uiImages = pgTable("ui_images", {
 export const registrationRequests = pgTable("registration_requests", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   username: text("username").notNull(),
+  fullName: text("full_name"), // Optional full name for certificate display
   email: text("email").notNull(),
   phone: text("phone").notNull(),
   password: text("password").notNull(), // Will be hashed
@@ -180,6 +182,7 @@ export const registrationFormSchema = z.object({
     .min(8, "Tên đăng nhập phải có ít nhất 8 ký tự")
     .max(15, "Tên đăng nhập không được quá 15 ký tự")
     .regex(/^[a-zA-Z0-9_]+$/, "Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới"),
+  fullName: z.string().optional(), // Optional full name for certificate display
   email: z.string()
     .email("Email không đúng định dạng")
     .min(1, "Email là bắt buộc"),
