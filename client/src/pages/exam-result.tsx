@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
-import { Trophy, Clock, Target, CheckCircle, XCircle, RotateCcw, Home, Share2, BookOpen, MessageSquare, Headphones, FileInput } from "lucide-react";
+import { Trophy, Clock, Target, CheckCircle, XCircle, RotateCcw, Home, Share2, BookOpen, MessageSquare, Headphones, FileInput, ArrowLeft } from "lucide-react";
 import { type ExamAttempt, type Exam, type Question } from "@shared/schema";
 
 interface ExamResultPageProps {
@@ -750,6 +750,16 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
 
         {/* Action Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <Button
+            variant="outline"
+            onClick={() => window.history.back()}
+            className="w-full sm:w-auto"
+            data-testid="button-back"
+          >
+            <ArrowLeft className="w-4 h-4 mr-2" />
+            Quay lại
+          </Button>
+          
           <Link href="/online-exam">
             <Button variant="outline" className="w-full sm:w-auto">
               <Home className="w-4 h-4 mr-2" />
