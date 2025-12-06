@@ -429,15 +429,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const exams = await storage.getActiveExams();
       // Migrate legacy sections to question sets structure and calculate computed fields
-      const migratedExams = exams.map(exam => {
+      const migratedExams = await Promise.all(exams.map(async (exam) => {
         const migratedSections = exam.sections ? migrateLegacySections(exam.sections as any[]) : exam.sections;
         const examWithMigratedSections = { ...exam, sections: migratedSections };
+        
+        // Get all questions including sub-questions for accurate count
+        const allQuestions = await storage.getQuestionsByExamId(exam.id);
+        
         return {
           ...examWithMigratedSections,
           timeLimit: calculateTotalTimeLimit(examWithMigratedSections),
-          questionCount: calculateQuestionCount(examWithMigratedSections),
+          questionCount: allQuestions.length, // Count all questions including sub-questions
         };
-      });
+      }));
       res.json(migratedExams);
     } catch (error) {
       console.error("Error fetching exams:", error);
