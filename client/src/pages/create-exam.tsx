@@ -117,7 +117,7 @@ export default function CreateExam() {
   // Authentication check
   useEffect(() => {
     if (!authLoading && (!user || !hasImageEditPermission)) {
-      setLocation("/cpanel?tab=login");
+      setLocation("/cpanel/exams");
     }
   }, [authLoading, user, hasImageEditPermission, setLocation]);
 
@@ -378,7 +378,7 @@ export default function CreateExam() {
         description: "Tạo bài thi thành công",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/exams"] });
-      setLocation("/cpanel?tab=exams");
+      window.history.back();
     },
     onError: (error: any) => {
       toast({
@@ -416,7 +416,7 @@ export default function CreateExam() {
         <div className="flex items-center mb-8">
           <Button
             variant="ghost"
-            onClick={() => setLocation("/cpanel?tab=exams")}
+            onClick={() => window.history.back()}
             className="mr-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -1035,7 +1035,7 @@ export default function CreateExam() {
                 type="button"
                 variant="outline"
                 size="lg"
-                onClick={() => setLocation("/cpanel?tab=exams")}
+                onClick={() => window.history.back()}
                 data-testid="button-cancel"
               >
                 Hủy bỏ
