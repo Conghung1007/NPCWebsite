@@ -46,6 +46,7 @@ function Router() {
         <Route path="/edit-exam/:examId" component={EditExam} />
         <Route path="/manage/questions" component={ManageQuestions} />
         <Route path="/cpanel" component={CpanelPage} />
+        <Route path="/cpanel/:tab" component={({ params }) => <CpanelPage tab={params.tab} />} />
         {/* Fallback to 404 */}
         <Route component={NotFound} />
       </Switch>

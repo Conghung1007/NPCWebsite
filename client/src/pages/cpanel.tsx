@@ -18,8 +18,12 @@ import { Pagination } from "@/components/ui/pagination";
 import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText, Image, Check, X, MapPin, HelpCircle } from "lucide-react";
 import { type User as UserType, type ContactRequest, type RegistrationRequest } from "@shared/schema";
 
-export function CpanelPage() {
-  const [, setLocation] = useLocation();
+interface CpanelPageProps {
+  tab?: string;
+}
+
+export function CpanelPage({ tab }: CpanelPageProps) {
+  const [location, setLocation] = useLocation();
   const { user, isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("");
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
@@ -73,25 +77,18 @@ export function CpanelPage() {
       return;
     }
     
-    // Check URL parameters for tab
-    const urlParams = new URLSearchParams(window.location.search);
-    const tabParam = urlParams.get('tab');
+    // Valid tabs list
+    const validTabs = ['registrations', 'exams', 'questions', 'articles', 'contact-info', 'messages', 'users'];
     
-    if (tabParam === 'articles') {
-      setActiveTab("articles");
-    } else if (tabParam === 'exams') {
-      setActiveTab("exams");
-    } else if (tabParam === 'questions') {
-      setActiveTab("questions");
-    } else {
-      // Set default active tab based on user role
-      if (user.role === "manager" || user.role === "admin") {
-        setActiveTab("registrations");
-      } else {
-        setActiveTab("exams");
-      }
+    // Check URL path for tab (from route param)
+    if (tab && validTabs.includes(tab)) {
+      setActiveTab(tab);
+    } else if (!tab) {
+      // No tab in URL, redirect to default tab
+      const defaultTab = (user.role === "manager" || user.role === "admin") ? "registrations" : "exams";
+      setLocation(`/cpanel/${defaultTab}`, { replace: true });
     }
-  }, [isLoading, isAuthenticated, user, setLocation, toast]);
+  }, [isLoading, isAuthenticated, user, setLocation, toast, tab]);
 
   // Define permissions based on user role
   const isManager = user?.role === "manager";
@@ -371,7 +368,7 @@ export function CpanelPage() {
                 <Button 
                   variant={activeTab === "registrations" ? "default" : "ghost"}
                   className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                  onClick={() => setActiveTab("registrations")}
+                  onClick={() => setLocation("/cpanel/registrations")}
                 >
                   <Shield className="w-5 h-5" />
                   Duyệt đăng ký
@@ -380,7 +377,7 @@ export function CpanelPage() {
               <Button 
                 variant={activeTab === "exams" ? "default" : "ghost"}
                 className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setActiveTab("exams")}
+                onClick={() => setLocation("/cpanel/exams")}
               >
                 <FileText className="w-5 h-5" />
                 Quản lý bài thi
@@ -388,7 +385,7 @@ export function CpanelPage() {
               <Button 
                 variant={activeTab === "questions" ? "default" : "ghost"}
                 className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setActiveTab("questions")}
+                onClick={() => setLocation("/cpanel/questions")}
               >
                 <HelpCircle className="w-5 h-5" />
                 Bộ câu hỏi
@@ -396,7 +393,7 @@ export function CpanelPage() {
               <Button 
                 variant={activeTab === "articles" ? "default" : "ghost"}
                 className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setActiveTab("articles")}
+                onClick={() => setLocation("/cpanel/articles")}
               >
                 <FileText className="w-5 h-5" />
                 Quản lý bài viết
@@ -404,7 +401,7 @@ export function CpanelPage() {
               <Button 
                 variant={activeTab === "contact-info" ? "default" : "ghost"}
                 className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setActiveTab("contact-info")}
+                onClick={() => setLocation("/cpanel/contact-info")}
               >
                 <MapPin className="w-5 h-5" />
                 Thông tin liên hệ
@@ -412,7 +409,7 @@ export function CpanelPage() {
               <Button 
                 variant={activeTab === "messages" ? "default" : "ghost"}
                 className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setActiveTab("messages")}
+                onClick={() => setLocation("/cpanel/messages")}
               >
                 <MessageSquare className="w-5 h-5" />
                 Tin nhắn liên hệ
@@ -421,7 +418,7 @@ export function CpanelPage() {
                 <Button 
                   variant={activeTab === "users" ? "default" : "ghost"}
                   className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                  onClick={() => setActiveTab("users")}
+                  onClick={() => setLocation("/cpanel/users")}
                 >
                   <Users className="w-5 h-5" />
                   Quản lý người dùng
