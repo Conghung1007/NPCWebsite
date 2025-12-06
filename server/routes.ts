@@ -453,7 +453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const exams = await storage.getExams();
+      const exams = await storage.getAllExams();
       const counts: Record<string, number> = {};
       
       await Promise.all(
