@@ -775,6 +775,69 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get all attempts for a specific exam (for admin/manager)
+  app.get("/api/exams/:examId/attempts", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const { examId } = req.params;
+      const attempts = await storage.getExamAttemptsByExamId(examId);
+      
+      // Get user info for each attempt
+      const attemptsWithUserInfo = await Promise.all(
+        attempts.map(async (attempt) => {
+          let userInfo = null;
+          if (attempt.userId) {
+            const user = await storage.getUser(attempt.userId);
+            if (user) {
+              userInfo = {
+                username: user.username,
+                fullName: user.fullName || null,
+              };
+            }
+          }
+          return {
+            ...attempt,
+            userInfo,
+          };
+        })
+      );
+
+      res.json(attemptsWithUserInfo);
+    } catch (error) {
+      console.error("Error fetching exam attempts:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi lấy danh sách lượt thi" });
+    }
+  });
+
+  // Get attempt count for all exams (for admin/manager)
+  app.get("/api/exams/attempt-counts", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const exams = await storage.getExams();
+      const counts: Record<string, number> = {};
+      
+      await Promise.all(
+        exams.map(async (exam) => {
+          const attempts = await storage.getExamAttemptsByExamId(exam.id);
+          counts[exam.id] = attempts.length;
+        })
+      );
+
+      res.json(counts);
+    } catch (error) {
+      console.error("Error fetching attempt counts:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi lấy số lượng lượt thi" });
+    }
+  });
+
   // Authentication routes
   app.post("/api/auth/login", async (req, res) => {
     try {
