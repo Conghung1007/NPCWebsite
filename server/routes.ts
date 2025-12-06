@@ -445,6 +445,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get attempt count for all exams (for admin/manager) - MUST be before /api/exams/:id
+  app.get("/api/exams/attempt-counts", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+
+      const exams = await storage.getExams();
+      const counts: Record<string, number> = {};
+      
+      await Promise.all(
+        exams.map(async (exam) => {
+          const attempts = await storage.getExamAttemptsByExamId(exam.id);
+          counts[exam.id] = attempts.length;
+        })
+      );
+
+      res.json(counts);
+    } catch (error) {
+      console.error("Error fetching attempt counts:", error);
+      res.status(500).json({ message: "Có lỗi xảy ra khi lấy số lượng lượt thi" });
+    }
+  });
+
   app.get("/api/exams/:id", async (req, res) => {
     try {
       const { id } = req.params;
@@ -846,31 +871,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error fetching exam attempts:", error);
       res.status(500).json({ message: "Có lỗi xảy ra khi lấy danh sách lượt thi" });
-    }
-  });
-
-  // Get attempt count for all exams (for admin/manager)
-  app.get("/api/exams/attempt-counts", async (req, res) => {
-    try {
-      const sessionUser = (req.session as any)?.user;
-      if (!sessionUser || (sessionUser.role !== 'admin' && sessionUser.role !== 'manager')) {
-        return res.status(401).json({ message: "Unauthorized" });
-      }
-
-      const exams = await storage.getExams();
-      const counts: Record<string, number> = {};
-      
-      await Promise.all(
-        exams.map(async (exam) => {
-          const attempts = await storage.getExamAttemptsByExamId(exam.id);
-          counts[exam.id] = attempts.length;
-        })
-      );
-
-      res.json(counts);
-    } catch (error) {
-      console.error("Error fetching attempt counts:", error);
-      res.status(500).json({ message: "Có lỗi xảy ra khi lấy số lượng lượt thi" });
     }
   });
 
