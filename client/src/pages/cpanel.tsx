@@ -79,13 +79,13 @@ export function CpanelPage({ tab }: CpanelPageProps) {
     
     // Valid tabs list
     const validTabs = ['registrations', 'exams', 'questions', 'articles', 'contact-info', 'messages', 'users'];
+    const defaultTab = (user.role === "manager" || user.role === "admin") ? "registrations" : "exams";
     
     // Check URL path for tab (from route param)
     if (tab && validTabs.includes(tab)) {
       setActiveTab(tab);
-    } else if (!tab) {
-      // No tab in URL, redirect to default tab
-      const defaultTab = (user.role === "manager" || user.role === "admin") ? "registrations" : "exams";
+    } else {
+      // No tab or invalid tab in URL, redirect to default tab
       setLocation(`/cpanel/${defaultTab}`, { replace: true });
     }
   }, [isLoading, isAuthenticated, user, setLocation, toast, tab]);
