@@ -81,6 +81,37 @@ const extractQuestionIds = (section: any): string[] => {
   return [];
 };
 
+// Helper function to calculate total time limit from sections
+const calculateTotalTimeLimit = (exam: any): number => {
+  if (exam.sections && Array.isArray(exam.sections)) {
+    return exam.sections.reduce((total: number, section: any) => {
+      return total + (section.timeLimit || 0);
+    }, 0);
+  }
+  // Legacy format
+  return (exam.vocabularyTimeLimit || 0) + 
+         (exam.grammarTimeLimit || 0) + 
+         (exam.listeningTimeLimit || 0) + 
+         (exam.readingTimeLimit || 0);
+};
+
+// Helper function to calculate total question count from sections
+const calculateQuestionCount = (exam: any): number => {
+  if (exam.sections && Array.isArray(exam.sections)) {
+    return exam.sections.reduce((total: number, section: any) => {
+      return total + extractQuestionIds(section).length;
+    }, 0);
+  }
+  // Legacy format
+  const legacyCount = [
+    ...(Array.isArray(exam.vocabularyQuestions) ? exam.vocabularyQuestions : []),
+    ...(Array.isArray(exam.grammarQuestions) ? exam.grammarQuestions : []),
+    ...(Array.isArray(exam.listeningQuestions) ? exam.listeningQuestions : []),
+    ...(Array.isArray(exam.readingQuestions) ? exam.readingQuestions : [])
+  ].length;
+  return legacyCount;
+};
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Auth endpoint - returns current user information
   app.get("/api/auth/user", async (req, res) => {
@@ -397,11 +428,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/exams", async (req, res) => {
     try {
       const exams = await storage.getActiveExams();
-      // Migrate legacy sections to question sets structure
-      const migratedExams = exams.map(exam => ({
-        ...exam,
-        sections: exam.sections ? migrateLegacySections(exam.sections as any[]) : exam.sections
-      }));
+      // Migrate legacy sections to question sets structure and calculate computed fields
+      const migratedExams = exams.map(exam => {
+        const migratedSections = exam.sections ? migrateLegacySections(exam.sections as any[]) : exam.sections;
+        const examWithMigratedSections = { ...exam, sections: migratedSections };
+        return {
+          ...examWithMigratedSections,
+          timeLimit: calculateTotalTimeLimit(examWithMigratedSections),
+          questionCount: calculateQuestionCount(examWithMigratedSections),
+        };
+      });
       res.json(migratedExams);
     } catch (error) {
       console.error("Error fetching exams:", error);
