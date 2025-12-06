@@ -160,6 +160,7 @@ export const examAttempts = pgTable("exam_attempts", {
 
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
+  fullName: true,
   email: true,
   phone: true,
   password: true,

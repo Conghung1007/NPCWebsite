@@ -126,6 +126,7 @@ export class MemStorage implements IStorage {
     const user: User = { 
       ...insertUser, 
       id,
+      fullName: insertUser.fullName ?? null,
       email: insertUser.email ?? null,
       phone: insertUser.phone ?? null,
       role: insertUser.role || "user",
@@ -648,6 +649,7 @@ export class MemStorage implements IStorage {
     const registrationRequest: RegistrationRequest = {
       ...request,
       id,
+      fullName: request.fullName ?? null,
       status: "pending",
       createdAt: new Date(),
       reviewedAt: null,
@@ -1009,6 +1011,7 @@ export class DatabaseStorage implements IStorage {
       .insert(users)
       .values({
         ...insertUser,
+        fullName: insertUser.fullName ?? null, // Ensure fullName is properly set
         role: insertUser.role || "user" // Ensure role defaults to "user" if not provided
       })
       .returning();
