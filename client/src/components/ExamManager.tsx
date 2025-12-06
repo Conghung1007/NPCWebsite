@@ -13,7 +13,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
-import { Plus, Edit, Trash2, FileText, Clock, Users } from "lucide-react";
+import { Plus, Edit, Trash2, FileText, Clock, Users, Eye } from "lucide-react";
 import type { Exam } from "@shared/schema";
 
 export function ExamManager() {
@@ -31,6 +31,11 @@ export function ExamManager() {
   // Fetch exams
   const { data: exams = [], isLoading: examsLoading, refetch: refetchExams } = useQuery<Exam[]>({
     queryKey: ["/api/exams"],
+  });
+
+  // Fetch attempt counts for all exams
+  const { data: attemptCounts = {} } = useQuery<Record<string, number>>({
+    queryKey: ["/api/exams/attempt-counts"],
   });
 
 
@@ -145,6 +150,7 @@ export function ExamManager() {
                   <TableHead>Loại</TableHead>
                   <TableHead>Thời gian</TableHead>
                   <TableHead>Số câu hỏi</TableHead>
+                  <TableHead>Lượt thi</TableHead>
                   <TableHead>Ngày tạo</TableHead>
                   <TableHead>Thao tác</TableHead>
                 </TableRow>
@@ -179,10 +185,25 @@ export function ExamManager() {
                       </div>
                     </TableCell>
                     <TableCell>
+                      <div className="flex items-center gap-1">
+                        <FileText className="w-4 h-4 text-gray-400" />
+                        {attemptCounts[exam.id] || 0}
+                      </div>
+                    </TableCell>
+                    <TableCell>
                       {new Date(exam.createdAt).toLocaleDateString("vi-VN")}
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setLocation(`/exam-attempts/${exam.id}`)}
+                          title="Xem danh sách lượt thi"
+                          data-testid={`button-view-attempts-${exam.id}`}
+                        >
+                          <Eye className="w-4 h-4" />
+                        </Button>
                         <Button
                           size="sm"
                           variant="outline"
