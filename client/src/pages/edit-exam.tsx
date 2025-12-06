@@ -125,7 +125,7 @@ export default function EditExam() {
   // Authentication check
   useEffect(() => {
     if (!authLoading && (!user || !hasImageEditPermission)) {
-      setLocation("/cpanel?tab=login");
+      setLocation("/cpanel/exams");
     }
   }, [authLoading, user, hasImageEditPermission, setLocation]);
 
@@ -501,7 +501,7 @@ export default function EditExam() {
       // Also invalidate exam-taking page queries (uses different queryKey format)
       queryClient.invalidateQueries({ queryKey: [`/api/exams/${examId}`] });
       queryClient.invalidateQueries({ queryKey: [`/api/exams/${examId}/questions`] });
-      setLocation("/cpanel?tab=exams");
+      window.history.back();
     },
     onError: (error: any) => {
       toast({
@@ -538,7 +538,7 @@ export default function EditExam() {
       <div className="container mx-auto px-4 py-8 max-w-4xl">
         <div className="text-center py-8">
           <h2 className="text-2xl font-bold text-gray-900 mb-4">Không tìm thấy bài thi</h2>
-          <Button onClick={() => setLocation("/cpanel?tab=exams")}>
+          <Button onClick={() => window.history.back()}>
             Quay lại danh sách bài thi
           </Button>
         </div>
@@ -553,7 +553,7 @@ export default function EditExam() {
         <div className="flex items-center mb-8">
           <Button
             variant="ghost"
-            onClick={() => setLocation("/cpanel?tab=exams")}
+            onClick={() => window.history.back()}
             className="mr-4"
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
@@ -1171,7 +1171,7 @@ export default function EditExam() {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => setLocation("/cpanel?tab=exams")}
+                onClick={() => window.history.back()}
               >
                 Hủy
               </Button>
