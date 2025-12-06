@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
-import { Eye, EyeOff, Lock, User, Mail, Phone, CheckCircle, XCircle } from "lucide-react";
+import { Eye, EyeOff, Lock, User, Mail, Phone, CheckCircle, XCircle, UserCircle } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { registrationFormSchema, type RegistrationFormData } from "@shared/schema";
 
@@ -34,6 +34,7 @@ export default function Register() {
     resolver: zodResolver(registrationFormSchema),
     defaultValues: {
       username: "",
+      fullName: "",
       email: "",
       phone: "",
       password: "",
@@ -176,6 +177,25 @@ export default function Register() {
                 <p className={`text-sm ${availabilityChecks.username.available ? 'text-green-600' : 'text-red-500'}`}>
                   {availabilityChecks.username.message}
                 </p>
+              )}
+            </div>
+
+            {/* Full Name (Optional) */}
+            <div className="space-y-2">
+              <Label htmlFor="fullName">Họ và Tên</Label>
+              <div className="relative">
+                <UserCircle className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Vui lòng điền đúng họ tên để hiển thị trong chứng nhận"
+                  className="pl-10"
+                  disabled={isLoading}
+                  {...form.register("fullName")}
+                />
+              </div>
+              {form.formState.errors.fullName && (
+                <p className="text-sm text-red-500">{form.formState.errors.fullName.message}</p>
               )}
             </div>
 

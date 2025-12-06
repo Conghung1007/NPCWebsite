@@ -138,6 +138,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create registration request
       const registrationRequest = await storage.createRegistrationRequest({
         username: formData.username.toLowerCase(),
+        fullName: formData.fullName || null, // Optional full name for certificate
         email: formData.email.toLowerCase(),
         phone: formData.phone,
         password: formData.password, // In real app, hash this password
@@ -345,6 +346,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Create user account
       const newUser = await storage.createUser({
         username: registrationRequest.username, // Already lowercase from registration
+        fullName: registrationRequest.fullName || null, // Optional full name for certificate
         email: registrationRequest.email, // Already lowercase from registration
         phone: registrationRequest.phone,
         password: registrationRequest.password, // In real app, this should be hashed
