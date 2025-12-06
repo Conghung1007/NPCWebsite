@@ -87,7 +87,7 @@ export default function EditArticle() {
         title: "Thành công",
         description: "Bài viết đã được cập nhật thành công!",
       });
-      setLocation("/cpanel?tab=articles");
+      window.history.back();
     },
     onError: (error: any) => {
       toast({
@@ -114,7 +114,7 @@ export default function EditArticle() {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <p className="text-red-500">Không tìm thấy ID bài viết</p>
-          <Button onClick={() => setLocation("/cpanel?tab=articles")} className="mt-4">
+          <Button onClick={() => window.history.back()} className="mt-4">
             Quay lại quản lý bài viết
           </Button>
         </div>
@@ -137,7 +137,7 @@ export default function EditArticle() {
       <div className="container mx-auto px-4 py-8">
         <div className="text-center">
           <p className="text-red-500">Không tìm thấy bài viết</p>
-          <Button onClick={() => setLocation("/cpanel?tab=articles")} className="mt-4">
+          <Button onClick={() => window.history.back()} className="mt-4">
             Quay lại quản lý bài viết
           </Button>
         </div>
@@ -152,7 +152,7 @@ export default function EditArticle() {
         <div className="flex items-center gap-4 mb-8">
           <Button 
             variant="outline" 
-            onClick={() => setLocation("/cpanel?tab=articles")}
+            onClick={() => window.history.back()}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Quay lại
@@ -249,7 +249,7 @@ export default function EditArticle() {
                   <Button 
                     type="button" 
                     variant="outline"
-                    onClick={() => setLocation("/cpanel?tab=articles")}
+                    onClick={() => window.history.back()}
                   >
                     Hủy
                   </Button>

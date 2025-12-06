@@ -91,7 +91,7 @@ export default function CreateArticle() {
         <div className="flex items-center gap-4 mb-8">
           <Button 
             variant="outline" 
-            onClick={() => setLocation("/cpanel?tab=articles")}
+            onClick={() => window.history.back()}
           >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Quay lại
