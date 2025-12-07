@@ -26,9 +26,9 @@ export function CpanelPage({ tab }: CpanelPageProps) {
   const [location, setLocation] = useLocation();
   const { user, isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("");
-  const [editingUser, setEditingUser] = useState<UserType | null>(null);
+  const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [isAddingUser, setIsAddingUser] = useState(false);
-  const [formData, setFormData] = useState({ username: "", fullName: "", email: "", phone: "", password: "" });
+  const [formData, setFormData] = useState({ username: "", fullName: "", email: "", phone: "", password: "", role: "user" as "user" | "manager" | "admin" });
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [showFormPassword, setShowFormPassword] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; user: UserType | null }>({
@@ -117,14 +117,22 @@ export function CpanelPage({ tab }: CpanelPageProps) {
   });
 
   const handleEditUser = (userToEdit: UserType) => {
-    setEditingUser(userToEdit);
+    setEditingUserId(userToEdit.id);
     setFormData({
       username: userToEdit.username,
       fullName: userToEdit.fullName || "",
       email: userToEdit.email || "",
       phone: userToEdit.phone || "",
-      password: "", // Don't show existing password
+      password: "",
+      role: userToEdit.role as "user" | "manager" | "admin",
     });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUserId(null);
+    setIsAddingUser(false);
+    setFormData({ username: "", fullName: "", email: "", phone: "", password: "", role: "user" });
+    setShowFormPassword(false);
   };
 
   const handleSaveUser = async () => {
@@ -137,7 +145,7 @@ export function CpanelPage({ tab }: CpanelPageProps) {
       return;
     }
     
-    if (!editingUser && !formData.password) {
+    if (!editingUserId && !formData.password) {
       toast({
         title: "Lỗi",
         description: "Vui lòng nhập mật khẩu cho người dùng mới",
@@ -147,34 +155,36 @@ export function CpanelPage({ tab }: CpanelPageProps) {
     }
 
     try {
-      const url = editingUser ? `/api/users/${editingUser.id}` : "/api/users";
-      const method = editingUser ? "PUT" : "POST";
+      const url = editingUserId ? `/api/users/${editingUserId}` : "/api/users";
+      const method = editingUserId ? "PUT" : "POST";
+      
+      const payload: any = {
+        username: formData.username,
+        fullName: formData.fullName || null,
+        email: formData.email || null,
+        phone: formData.phone || null,
+        role: formData.role,
+      };
+      
+      if (formData.password) {
+        payload.password = formData.password;
+      }
       
       const response = await fetch(url, {
         method,
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          username: formData.username,
-          fullName: formData.fullName || null,
-          email: formData.email || null,
-          phone: formData.phone || null,
-          password: formData.password,
-          role: "admin", // Default role is admin
-        }),
+        body: JSON.stringify(payload),
       });
 
       if (response.ok) {
         toast({
           title: "Thành công",
-          description: editingUser ? "Đã cập nhật người dùng" : "Đã thêm người dùng mới",
+          description: editingUserId ? "Đã cập nhật người dùng" : "Đã thêm người dùng mới",
         });
         refetchUsers();
-        setEditingUser(null);
-        setIsAddingUser(false);
-        setFormData({ username: "", fullName: "", email: "", phone: "", password: "" });
-        setShowFormPassword(false);
+        handleCancelEdit();
       } else {
         const errorData = await response.json();
         throw new Error(errorData.message || "Có lỗi xảy ra");
@@ -477,9 +487,12 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                           Quản lý tất cả người dùng trong hệ thống ({filteredUsers.length} người dùng)
                         </CardDescription>
                       </div>
-                      {!isAddingUser && !editingUser && (
+                      {!isAddingUser && !editingUserId && (
                         <Button 
-                          onClick={() => setIsAddingUser(true)}
+                          onClick={() => {
+                            setIsAddingUser(true);
+                            setFormData({ username: "", fullName: "", email: "", phone: "", password: "", role: "user" });
+                          }}
                           className="flex items-center gap-2"
                         >
                           <Plus className="w-4 h-4" />
@@ -501,95 +514,6 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                     </div>
                   </CardHeader>
                   <CardContent>
-                    {(isAddingUser || editingUser) && (
-                      <div className="mb-6 p-4 border rounded-lg bg-gray-50">
-                        <h3 className="font-medium mb-4">
-                          {editingUser ? "Chỉnh sửa người dùng" : "Thêm người dùng mới"}
-                        </h3>
-                        <div className="grid grid-cols-2 gap-4 mb-4">
-                          <div>
-                            <label className="block text-sm font-medium mb-2">Tên đăng nhập</label>
-                            <input
-                              type="text"
-                              className="w-full px-3 py-2 border rounded-md"
-                              value={formData.username}
-                              onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
-                              placeholder="Nhập tên đăng nhập"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-2">Họ tên</label>
-                            <input
-                              type="text"
-                              className="w-full px-3 py-2 border rounded-md"
-                              value={formData.fullName}
-                              onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
-                              placeholder="Nhập họ tên (không bắt buộc)"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-2">Email</label>
-                            <input
-                              type="email"
-                              className="w-full px-3 py-2 border rounded-md"
-                              value={formData.email}
-                              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-                              placeholder="Nhập email (không bắt buộc)"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-2">Số điện thoại</label>
-                            <input
-                              type="tel"
-                              className="w-full px-3 py-2 border rounded-md"
-                              value={formData.phone}
-                              onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                              placeholder="Nhập số điện thoại (không bắt buộc)"
-                            />
-                          </div>
-                          <div>
-                            <label className="block text-sm font-medium mb-2">Mật khẩu</label>
-                            <div className="relative">
-                              <input
-                                type={showFormPassword ? "text" : "password"}
-                                className="w-full px-3 py-2 border rounded-md pr-10"
-                                value={formData.password}
-                                onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                                placeholder="Nhập mật khẩu"
-                              />
-                              <button
-                                type="button"
-                                className="absolute right-3 top-1/2 transform -translate-y-1/2"
-                                onClick={() => setShowFormPassword(!showFormPassword)}
-                              >
-                                {showFormPassword ? (
-                                  <EyeOff className="w-4 h-4 text-gray-500" />
-                                ) : (
-                                  <Eye className="w-4 h-4 text-gray-500" />
-                                )}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex gap-2 justify-end">
-                          <Button 
-                            variant="outline" 
-                            onClick={() => {
-                              setEditingUser(null);
-                              setIsAddingUser(false);
-                              setFormData({ username: "", fullName: "", email: "", phone: "", password: "" });
-                              setShowFormPassword(false);
-                            }}
-                          >
-                            Hủy
-                          </Button>
-                          <Button onClick={handleSaveUser}>
-                            {editingUser ? "Cập nhật" : "Thêm"}
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-
                     {usersLoading ? (
                       <div className="flex justify-center py-8">
                         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -609,75 +533,231 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {paginatedUsers.map((userItem) => (
-                            <TableRow key={userItem.id}>
-                              <TableCell className="font-medium flex items-center gap-2">
-                                <User className="w-4 h-4" />
-                                {userItem.username}
+                          {isAddingUser && (
+                            <TableRow className="bg-green-50">
+                              <TableCell>
+                                <input
+                                  type="text"
+                                  className="w-full px-2 py-1 border rounded text-sm"
+                                  value={formData.username}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                                  placeholder="Tên đăng nhập"
+                                />
                               </TableCell>
                               <TableCell>
-                                <span className="text-sm text-gray-600">
-                                  {userItem.fullName || "Chưa có"}
-                                </span>
+                                <input
+                                  type="text"
+                                  className="w-full px-2 py-1 border rounded text-sm"
+                                  value={formData.fullName}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
+                                  placeholder="Họ tên"
+                                />
                               </TableCell>
                               <TableCell>
-                                <span className="text-sm text-gray-600">
-                                  {userItem.email || "Chưa có"}
-                                </span>
+                                <input
+                                  type="email"
+                                  className="w-full px-2 py-1 border rounded text-sm"
+                                  value={formData.email}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                                  placeholder="Email"
+                                />
                               </TableCell>
                               <TableCell>
-                                <span className="text-sm text-gray-600">
-                                  {userItem.phone || "Chưa có"}
-                                </span>
+                                <input
+                                  type="tel"
+                                  className="w-full px-2 py-1 border rounded text-sm"
+                                  value={formData.phone}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                                  placeholder="Số điện thoại"
+                                />
                               </TableCell>
                               <TableCell>
-                                <Badge variant={userItem.role === "manager" ? "default" : "secondary"}>
-                                  {userItem.role}
-                                </Badge>
+                                <select
+                                  className="w-full px-2 py-1 border rounded text-sm"
+                                  value={formData.role}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as "user" | "manager" | "admin" }))}
+                                >
+                                  <option value="user">user</option>
+                                  <option value="manager">manager</option>
+                                  <option value="admin">admin</option>
+                                </select>
                               </TableCell>
                               <TableCell>
-                                <div className="flex items-center gap-2">
-                                  <span className="font-mono text-sm">
-                                    {showPasswords[userItem.id] ? userItem.password : "••••••"}
-                                  </span>
+                                <div className="relative">
+                                  <input
+                                    type={showFormPassword ? "text" : "password"}
+                                    className="w-full px-2 py-1 border rounded text-sm pr-8"
+                                    value={formData.password}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                                    placeholder="Mật khẩu"
+                                  />
                                   <button
-                                    onClick={() => setShowPasswords(prev => ({
-                                      ...prev,
-                                      [userItem.id]: !prev[userItem.id]
-                                    }))}
-                                    className="p-1 hover:bg-gray-100 rounded"
+                                    type="button"
+                                    className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                                    onClick={() => setShowFormPassword(!showFormPassword)}
                                   >
-                                    {showPasswords[userItem.id] ? (
-                                      <EyeOff className="w-4 h-4 text-gray-500" />
-                                    ) : (
-                                      <Eye className="w-4 h-4 text-gray-500" />
-                                    )}
+                                    {showFormPassword ? <EyeOff className="w-3 h-3 text-gray-500" /> : <Eye className="w-3 h-3 text-gray-500" />}
                                   </button>
                                 </div>
+                              </TableCell>
+                              <TableCell>-</TableCell>
+                              <TableCell>
+                                <div className="flex gap-1">
+                                  <Button size="sm" variant="default" onClick={handleSaveUser} className="h-7 px-2">
+                                    <Check className="w-3 h-3" />
+                                  </Button>
+                                  <Button size="sm" variant="outline" onClick={handleCancelEdit} className="h-7 px-2">
+                                    <X className="w-3 h-3" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            </TableRow>
+                          )}
+                          {paginatedUsers.map((userItem) => (
+                            <TableRow key={userItem.id} className={editingUserId === userItem.id ? "bg-blue-50" : ""}>
+                              <TableCell className="font-medium">
+                                {editingUserId === userItem.id ? (
+                                  <input
+                                    type="text"
+                                    className="w-full px-2 py-1 border rounded text-sm"
+                                    value={formData.username}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, username: e.target.value }))}
+                                  />
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <User className="w-4 h-4" />
+                                    {userItem.username}
+                                  </div>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {editingUserId === userItem.id ? (
+                                  <input
+                                    type="text"
+                                    className="w-full px-2 py-1 border rounded text-sm"
+                                    value={formData.fullName}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
+                                  />
+                                ) : (
+                                  <span className="text-sm text-gray-600">{userItem.fullName || "Chưa có"}</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {editingUserId === userItem.id ? (
+                                  <input
+                                    type="email"
+                                    className="w-full px-2 py-1 border rounded text-sm"
+                                    value={formData.email}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                                  />
+                                ) : (
+                                  <span className="text-sm text-gray-600">{userItem.email || "Chưa có"}</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {editingUserId === userItem.id ? (
+                                  <input
+                                    type="tel"
+                                    className="w-full px-2 py-1 border rounded text-sm"
+                                    value={formData.phone}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                                  />
+                                ) : (
+                                  <span className="text-sm text-gray-600">{userItem.phone || "Chưa có"}</span>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {editingUserId === userItem.id ? (
+                                  <select
+                                    className="w-full px-2 py-1 border rounded text-sm"
+                                    value={formData.role}
+                                    onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value as "user" | "manager" | "admin" }))}
+                                  >
+                                    <option value="user">user</option>
+                                    <option value="manager">manager</option>
+                                    <option value="admin">admin</option>
+                                  </select>
+                                ) : (
+                                  <Badge variant={userItem.role === "manager" ? "default" : "secondary"}>
+                                    {userItem.role}
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {editingUserId === userItem.id ? (
+                                  <div className="relative">
+                                    <input
+                                      type={showFormPassword ? "text" : "password"}
+                                      className="w-full px-2 py-1 border rounded text-sm pr-8"
+                                      value={formData.password}
+                                      onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                                      placeholder="Để trống nếu không đổi"
+                                    />
+                                    <button
+                                      type="button"
+                                      className="absolute right-2 top-1/2 transform -translate-y-1/2"
+                                      onClick={() => setShowFormPassword(!showFormPassword)}
+                                    >
+                                      {showFormPassword ? <EyeOff className="w-3 h-3 text-gray-500" /> : <Eye className="w-3 h-3 text-gray-500" />}
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-2">
+                                    <span className="font-mono text-sm">
+                                      {showPasswords[userItem.id] ? userItem.password : "••••••"}
+                                    </span>
+                                    <button
+                                      onClick={() => setShowPasswords(prev => ({
+                                        ...prev,
+                                        [userItem.id]: !prev[userItem.id]
+                                      }))}
+                                      className="p-1 hover:bg-gray-100 rounded"
+                                    >
+                                      {showPasswords[userItem.id] ? (
+                                        <EyeOff className="w-4 h-4 text-gray-500" />
+                                      ) : (
+                                        <Eye className="w-4 h-4 text-gray-500" />
+                                      )}
+                                    </button>
+                                  </div>
+                                )}
                               </TableCell>
                               <TableCell>
                                 {new Date(userItem.createdAt).toLocaleDateString("vi-VN")}
                               </TableCell>
                               <TableCell>
-                                <div className="flex gap-2">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    onClick={() => handleEditUser(userItem)}
-                                  >
-                                    <Edit className="w-4 h-4" />
-                                  </Button>
-                                  {user?.role === "manager" && (userItem.role === "admin" || userItem.role === "user") && (
+                                {editingUserId === userItem.id ? (
+                                  <div className="flex gap-1">
+                                    <Button size="sm" variant="default" onClick={handleSaveUser} className="h-7 px-2">
+                                      <Check className="w-3 h-3" />
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={handleCancelEdit} className="h-7 px-2">
+                                      <X className="w-3 h-3" />
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <div className="flex gap-2">
                                     <Button
                                       size="sm"
                                       variant="outline"
-                                      onClick={() => handleDeleteUser(userItem)}
-                                      className="text-red-600 hover:text-red-700"
+                                      onClick={() => handleEditUser(userItem)}
+                                      disabled={!!editingUserId || isAddingUser}
                                     >
-                                      <Trash2 className="w-4 h-4" />
+                                      <Edit className="w-4 h-4" />
                                     </Button>
-                                  )}
-                                </div>
+                                    {user?.role === "manager" && (userItem.role === "admin" || userItem.role === "user") && (
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        onClick={() => handleDeleteUser(userItem)}
+                                        className="text-red-600 hover:text-red-700"
+                                        disabled={!!editingUserId || isAddingUser}
+                                      >
+                                        <Trash2 className="w-4 h-4" />
+                                      </Button>
+                                    )}
+                                  </div>
+                                )}
                               </TableCell>
                             </TableRow>
                           ))}
