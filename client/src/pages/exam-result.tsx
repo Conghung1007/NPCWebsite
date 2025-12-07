@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
 import { useQuery } from "@tanstack/react-query";
-import { Trophy, Clock, Target, CheckCircle, XCircle, RotateCcw, Home, Share2, BookOpen, MessageSquare, Headphones, FileInput, ArrowLeft } from "lucide-react";
+import { Trophy, Clock, Target, CheckCircle, XCircle, RotateCcw, Home, Share2, BookOpen, MessageSquare, Headphones, FileInput, ArrowLeft, Award } from "lucide-react";
 import { type ExamAttempt, type Exam, type Question } from "@shared/schema";
 
 interface ExamResultPageProps {
@@ -749,7 +749,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
         ))}
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center flex-wrap">
           <Button
             variant="outline"
             onClick={() => window.history.back()}
@@ -759,6 +759,15 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Quay lại
           </Button>
+          
+          {examPassed && (
+            <Link href={`/certificate/${attemptId}`}>
+              <Button className="w-full sm:w-auto bg-green-600 hover:bg-green-700" data-testid="button-certificate">
+                <Award className="w-4 h-4 mr-2" />
+                Chứng nhận
+              </Button>
+            </Link>
+          )}
           
           <Link href="/online-exam">
             <Button variant="outline" className="w-full sm:w-auto">
@@ -785,7 +794,6 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
                 });
               } else {
                 navigator.clipboard.writeText(window.location.href);
-                // You could add a toast notification here
               }
             }}
             className="w-full sm:w-auto"

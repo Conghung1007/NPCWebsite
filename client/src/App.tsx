@@ -23,6 +23,7 @@ import CreateExam from "@/pages/create-exam";
 import EditExam from "@/pages/edit-exam";
 import ManageQuestions from "@/pages/manage-questions";
 import ExamAttemptsPage from "@/pages/exam-attempts";
+import CertificatePage from "@/pages/certificate";
 import { CpanelPage } from "@/pages/cpanel";
 
 function Router() {
@@ -36,6 +37,7 @@ function Router() {
         <Route path="/online-exam" component={OnlineExam} />
         <Route path="/exam/:examId" component={({ params }) => <ExamTaking examId={params.examId} />} />
         <Route path="/exam-result/:attemptId" component={({ params }) => <ExamResult attemptId={params.attemptId} />} />
+        <Route path="/certificate/:attemptId" component={({ params }) => <CertificatePage attemptId={params.attemptId} />} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
         <Route path="/register-success" component={RegisterSuccess} />
