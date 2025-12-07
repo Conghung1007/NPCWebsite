@@ -686,36 +686,12 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                     )}
                     
                     {totalUserPages > 1 && (
-                      <div className="flex items-center justify-center gap-2 mt-6">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setUserCurrentPage(p => Math.max(1, p - 1))}
-                          disabled={userCurrentPage === 1}
-                        >
-                          Trước
-                        </Button>
-                        <div className="flex items-center gap-1">
-                          {Array.from({ length: totalUserPages }, (_, i) => i + 1).map((page) => (
-                            <Button
-                              key={page}
-                              variant={userCurrentPage === page ? "default" : "outline"}
-                              size="sm"
-                              onClick={() => setUserCurrentPage(page)}
-                              className="w-8 h-8 p-0"
-                            >
-                              {page}
-                            </Button>
-                          ))}
-                        </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setUserCurrentPage(p => Math.min(totalUserPages, p + 1))}
-                          disabled={userCurrentPage === totalUserPages}
-                        >
-                          Sau
-                        </Button>
+                      <div className="mt-6">
+                        <Pagination
+                          currentPage={userCurrentPage}
+                          totalPages={totalUserPages}
+                          onPageChange={setUserCurrentPage}
+                        />
                       </div>
                     )}
                   </CardContent>
