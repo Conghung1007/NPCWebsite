@@ -295,7 +295,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new user
   app.post("/api/users", async (req, res) => {
     try {
-      const { username, email, phone, password, role } = req.body;
+      const { username, fullName, email, phone, password, role } = req.body;
       
       if (!username || !password || !role) {
         return res.status(400).json({ message: "Missing required fields" });
@@ -309,6 +309,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const newUser = await storage.createUser({ 
         username: username.toLowerCase(), 
+        fullName: fullName || null,
         email: email || null,
         phone: phone || null,
         password, 
@@ -326,7 +327,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/users/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const { username, email, phone, password, role } = req.body;
+      const { username, fullName, email, phone, password, role } = req.body;
       
       if (!username || !password || !role) {
         return res.status(400).json({ message: "Missing required fields" });
@@ -334,6 +335,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const updatedUser = await storage.updateUser(id, { 
         username: username.toLowerCase(), 
+        fullName: fullName || null,
         email: email || null,
         phone: phone || null,
         password, 

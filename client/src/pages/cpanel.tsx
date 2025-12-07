@@ -28,7 +28,7 @@ export function CpanelPage({ tab }: CpanelPageProps) {
   const [activeTab, setActiveTab] = useState<string>("");
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [isAddingUser, setIsAddingUser] = useState(false);
-  const [formData, setFormData] = useState({ username: "", email: "", phone: "", password: "" });
+  const [formData, setFormData] = useState({ username: "", fullName: "", email: "", phone: "", password: "" });
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [showFormPassword, setShowFormPassword] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; user: UserType | null }>({
@@ -117,6 +117,7 @@ export function CpanelPage({ tab }: CpanelPageProps) {
     setEditingUser(userToEdit);
     setFormData({
       username: userToEdit.username,
+      fullName: userToEdit.fullName || "",
       email: userToEdit.email || "",
       phone: userToEdit.phone || "",
       password: "", // Don't show existing password
@@ -144,6 +145,7 @@ export function CpanelPage({ tab }: CpanelPageProps) {
         },
         body: JSON.stringify({
           username: formData.username,
+          fullName: formData.fullName || null,
           email: formData.email || null,
           phone: formData.phone || null,
           password: formData.password,
@@ -159,7 +161,7 @@ export function CpanelPage({ tab }: CpanelPageProps) {
         refetchUsers();
         setEditingUser(null);
         setIsAddingUser(false);
-        setFormData({ username: "", email: "", phone: "", password: "" });
+        setFormData({ username: "", fullName: "", email: "", phone: "", password: "" });
         setShowFormPassword(false);
       } else {
         const errorData = await response.json();
@@ -478,6 +480,16 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                             />
                           </div>
                           <div>
+                            <label className="block text-sm font-medium mb-2">Họ tên</label>
+                            <input
+                              type="text"
+                              className="w-full px-3 py-2 border rounded-md"
+                              value={formData.fullName}
+                              onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
+                              placeholder="Nhập họ tên (không bắt buộc)"
+                            />
+                          </div>
+                          <div>
                             <label className="block text-sm font-medium mb-2">Email</label>
                             <input
                               type="email"
@@ -527,7 +539,7 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                             onClick={() => {
                               setEditingUser(null);
                               setIsAddingUser(false);
-                              setFormData({ username: "", email: "", phone: "", password: "" });
+                              setFormData({ username: "", fullName: "", email: "", phone: "", password: "" });
                               setShowFormPassword(false);
                             }}
                           >
