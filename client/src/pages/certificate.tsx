@@ -1,8 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Printer, XCircle } from "lucide-react";
+import { ArrowLeft, Printer, Download, XCircle } from "lucide-react";
 import { type ExamAttempt, type Exam, type User } from "@shared/schema";
+import { useRef, useState } from "react";
+import html2canvas from "html2canvas";
+import jsPDF from "jspdf";
 
 interface CertificatePageProps {
   attemptId: string;
@@ -10,6 +13,8 @@ interface CertificatePageProps {
 
 export function CertificatePage({ attemptId }: CertificatePageProps) {
   const [, setLocation] = useLocation();
+  const certificateRef = useRef<HTMLDivElement>(null);
+  const [isDownloading, setIsDownloading] = useState(false);
 
   const { data: attempt, isLoading: attemptLoading } = useQuery<ExamAttempt>({
     queryKey: [`/api/exam-attempts/${attemptId}`],
@@ -174,6 +179,45 @@ export function CertificatePage({ attemptId }: CertificatePageProps) {
     window.print();
   };
 
+  const handleDownloadPDF = async () => {
+    if (!certificateRef.current) return;
+    
+    setIsDownloading(true);
+    try {
+      const element = certificateRef.current;
+      const canvas = await html2canvas(element, {
+        scale: 2,
+        useCORS: true,
+        logging: false,
+        backgroundColor: '#ffffff'
+      });
+      
+      const imgData = canvas.toDataURL('image/png');
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+      
+      const pdfWidth = pdf.internal.pageSize.getWidth();
+      const pdfHeight = pdf.internal.pageSize.getHeight();
+      const imgWidth = canvas.width;
+      const imgHeight = canvas.height;
+      const ratio = Math.min(pdfWidth / imgWidth, pdfHeight / imgHeight);
+      const imgX = (pdfWidth - imgWidth * ratio) / 2;
+      const imgY = 0;
+      
+      pdf.addImage(imgData, 'PNG', imgX, imgY, imgWidth * ratio, imgHeight * ratio);
+      
+      const fileName = `certificate_${user.fullName || user.username}_${exam.title.replace(/\s+/g, '_')}.pdf`;
+      pdf.save(fileName);
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-100">
       <div className="print:hidden py-4 px-6 bg-white shadow-sm flex items-center justify-between">
@@ -186,6 +230,15 @@ export function CertificatePage({ attemptId }: CertificatePageProps) {
           Quay lại
         </Button>
         <div className="flex gap-2">
+          <Button 
+            onClick={handleDownloadPDF} 
+            disabled={isDownloading}
+            variant="outline"
+            data-testid="button-download-certificate-pdf"
+          >
+            <Download className="w-4 h-4 mr-2" />
+            {isDownloading ? "Đang tải..." : "Tải PDF"}
+          </Button>
           <Button onClick={handlePrint} data-testid="button-print-certificate">
             <Printer className="w-4 h-4 mr-2" />
             In chứng nhận
@@ -194,7 +247,11 @@ export function CertificatePage({ attemptId }: CertificatePageProps) {
       </div>
 
       <div className="flex justify-center py-8 print:py-0">
-        <div className="bg-white shadow-lg print:shadow-none w-[210mm] min-h-[297mm] p-12 print:p-8" style={{ fontFamily: "'Times New Roman', serif" }}>
+        <div 
+          ref={certificateRef}
+          className="bg-white shadow-lg print:shadow-none w-[210mm] min-h-[297mm] p-12 print:p-8" 
+          style={{ fontFamily: "'Times New Roman', serif" }}
+        >
           <div className="border-4 border-green-700 p-8 h-full">
             <div className="text-center space-y-6">
               <div className="mb-8">
