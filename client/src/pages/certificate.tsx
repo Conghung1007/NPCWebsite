@@ -6,7 +6,7 @@ import { type ExamAttempt, type Exam, type User } from "@shared/schema";
 import { useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import logoBackground from "@assets/image_1765066723975.png";
+import logoBackground from "@assets/image_1765067549814.png";
 
 interface CertificatePageProps {
   attemptId: string;
@@ -251,28 +251,21 @@ export function CertificatePage({ attemptId }: CertificatePageProps) {
         <div 
           ref={certificateRef}
           className="bg-white shadow-lg print:shadow-none w-[210mm] min-h-[297mm] p-10 print:p-8 relative" 
-          style={{ 
-            fontFamily: "'Times New Roman', serif",
-            backgroundImage: `url(${logoBackground})`,
-            backgroundRepeat: 'no-repeat',
-            backgroundPosition: 'center center',
-            backgroundSize: '350px 350px'
-          }}
+          style={{ fontFamily: "'Times New Roman', serif" }}
         >
           <div 
-            className="absolute inset-10 pointer-events-none"
-            style={{ 
-              zIndex: 0,
-              backgroundImage: `url(${logoBackground})`,
-              backgroundRepeat: 'no-repeat',
-              backgroundPosition: 'center center',
-              backgroundSize: '350px 350px',
-              opacity: 0.15
-            }}
-          />
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            style={{ zIndex: 1 }}
+          >
+            <img 
+              src={logoBackground} 
+              alt="" 
+              style={{ width: '300px', height: '300px', objectFit: 'contain' }}
+            />
+          </div>
           
-          <div className="border-8 border-double border-green-700 p-4 h-full relative bg-white/90" style={{ zIndex: 1 }}>
-            <div className="border-2 border-green-600 p-8 h-full bg-white/95">
+          <div className="border-8 border-double border-green-700 p-4 h-full relative" style={{ zIndex: 2 }}>
+            <div className="border-2 border-green-600 p-8 h-full bg-white/90">
               <div className="text-center space-y-6">
                 <div className="mb-6">
                   <h1 className="text-2xl font-bold text-green-700 mb-2">
