@@ -113,6 +113,26 @@ const calculateQuestionCount = (exam: any): number => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve static files from client/public directory
+  const path = await import('path');
+  const fs = await import('fs');
+  
+  app.get("/api/static/:filename", async (req, res) => {
+    try {
+      const filename = req.params.filename;
+      const filePath = path.join(process.cwd(), 'client', 'public', filename);
+      
+      if (!fs.existsSync(filePath)) {
+        return res.status(404).json({ message: "File not found" });
+      }
+      
+      res.sendFile(filePath);
+    } catch (error) {
+      console.error("Error serving static file:", error);
+      res.status(500).json({ message: "Error serving file" });
+    }
+  });
+
   // Auth endpoint - returns current user information
   app.get("/api/auth/user", async (req, res) => {
     try {
