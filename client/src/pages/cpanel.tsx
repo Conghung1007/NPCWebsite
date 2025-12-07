@@ -49,6 +49,9 @@ export function CpanelPage({ tab }: CpanelPageProps) {
   });
   const [currentPage, setCurrentPage] = useState(1);
   const messagesPerPage = 9;
+  const [userSearchQuery, setUserSearchQuery] = useState("");
+  const [userCurrentPage, setUserCurrentPage] = useState(1);
+  const usersPerPage = 10;
   const { toast } = useToast();
 
   useEffect(() => {
@@ -446,7 +449,21 @@ export function CpanelPage({ tab }: CpanelPageProps) {
             )}
 
             {/* Users Content - For managers and admins */}
-            {canManageUsers && activeTab === "users" && (
+            {canManageUsers && activeTab === "users" && (() => {
+              const filteredUsers = users
+                .filter(u => 
+                  u.username.toLowerCase().includes(userSearchQuery.toLowerCase()) ||
+                  (u.fullName && u.fullName.toLowerCase().includes(userSearchQuery.toLowerCase())) ||
+                  (u.email && u.email.toLowerCase().includes(userSearchQuery.toLowerCase())) ||
+                  (u.phone && u.phone.includes(userSearchQuery))
+                )
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+              
+              const totalUserPages = Math.ceil(filteredUsers.length / usersPerPage);
+              const startUserIndex = (userCurrentPage - 1) * usersPerPage;
+              const paginatedUsers = filteredUsers.slice(startUserIndex, startUserIndex + usersPerPage);
+              
+              return (
               <div className="space-y-6">
                 <Card>
                   <CardHeader>
@@ -457,7 +474,7 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                           Danh sách người dùng
                         </CardTitle>
                         <CardDescription className="text-sm text-muted-foreground mt-[12px] mb-[12px]">
-                          Quản lý tất cả người dùng trong hệ thống
+                          Quản lý tất cả người dùng trong hệ thống ({filteredUsers.length} người dùng)
                         </CardDescription>
                       </div>
                       {!isAddingUser && !editingUser && (
@@ -469,6 +486,18 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                           Thêm người dùng
                         </Button>
                       )}
+                    </div>
+                    <div className="mt-4">
+                      <input
+                        type="text"
+                        placeholder="Tìm kiếm theo tên đăng nhập, họ tên, email hoặc số điện thoại..."
+                        className="w-full px-4 py-2 border rounded-md"
+                        value={userSearchQuery}
+                        onChange={(e) => {
+                          setUserSearchQuery(e.target.value);
+                          setUserCurrentPage(1);
+                        }}
+                      />
                     </div>
                   </CardHeader>
                   <CardContent>
@@ -580,7 +609,7 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {users.map((userItem) => (
+                          {paginatedUsers.map((userItem) => (
                             <TableRow key={userItem.id}>
                               <TableCell className="font-medium flex items-center gap-2">
                                 <User className="w-4 h-4" />
@@ -655,10 +684,45 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                         </TableBody>
                       </Table>
                     )}
+                    
+                    {totalUserPages > 1 && (
+                      <div className="flex items-center justify-center gap-2 mt-6">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setUserCurrentPage(p => Math.max(1, p - 1))}
+                          disabled={userCurrentPage === 1}
+                        >
+                          Trước
+                        </Button>
+                        <div className="flex items-center gap-1">
+                          {Array.from({ length: totalUserPages }, (_, i) => i + 1).map((page) => (
+                            <Button
+                              key={page}
+                              variant={userCurrentPage === page ? "default" : "outline"}
+                              size="sm"
+                              onClick={() => setUserCurrentPage(page)}
+                              className="w-8 h-8 p-0"
+                            >
+                              {page}
+                            </Button>
+                          ))}
+                        </div>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setUserCurrentPage(p => Math.min(totalUserPages, p + 1))}
+                          disabled={userCurrentPage === totalUserPages}
+                        >
+                          Sau
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               </div>
-            )}
+            );
+            })()}
 
             {/* Messages Content - For all authenticated users */}
             {activeTab === "messages" && (
