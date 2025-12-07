@@ -256,13 +256,13 @@ export function CertificatePage({ attemptId }: CertificatePageProps) {
           <div className="border-8 border-double border-green-700 p-4 h-full relative">
             <div className="border-2 border-green-600 p-8 h-full bg-white relative">
               <div 
-                className="absolute inset-0 flex items-center justify-center pointer-events-none"
-                style={{ zIndex: 0 }}
+                className="absolute inset-0 flex items-center pointer-events-none"
+                style={{ zIndex: 0, justifyContent: 'center', paddingBottom: '200px' }}
               >
                 <img 
                   src={logoBackground} 
                   alt="" 
-                  style={{ width: '280px', height: '280px', objectFit: 'contain' }}
+                  style={{ width: '560px', height: '560px', objectFit: 'contain' }}
                 />
               </div>
               <div className="text-center space-y-6">
