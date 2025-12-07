@@ -250,23 +250,29 @@ export function CertificatePage({ attemptId }: CertificatePageProps) {
       <div className="flex justify-center py-8 print:py-0">
         <div 
           ref={certificateRef}
-          className="bg-white shadow-lg print:shadow-none w-[210mm] min-h-[297mm] p-4 print:p-2 relative" 
-          style={{ fontFamily: "'Times New Roman', serif" }}
+          className="bg-white shadow-lg print:shadow-none w-[210mm] min-h-[297mm] p-10 print:p-8 relative" 
+          style={{ 
+            fontFamily: "'Times New Roman', serif",
+            backgroundImage: `url(${logoBackground})`,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'center center',
+            backgroundSize: '350px 350px'
+          }}
         >
           <div 
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            style={{ zIndex: 0 }}
-          >
-            <img 
-              src={logoBackground} 
-              alt="" 
-              className="w-[350px] h-[350px] object-contain"
-              style={{ opacity: 0.12 }}
-            />
-          </div>
+            className="absolute inset-10 pointer-events-none"
+            style={{ 
+              zIndex: 0,
+              backgroundImage: `url(${logoBackground})`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'center center',
+              backgroundSize: '350px 350px',
+              opacity: 0.15
+            }}
+          />
           
-          <div className="border-8 border-double border-green-700 p-2 h-full relative" style={{ zIndex: 1 }}>
-            <div className="border-2 border-green-600 p-6 h-full">
+          <div className="border-8 border-double border-green-700 p-4 h-full relative bg-white/90" style={{ zIndex: 1 }}>
+            <div className="border-2 border-green-600 p-8 h-full bg-white/95">
               <div className="text-center space-y-6">
                 <div className="mb-6">
                   <h1 className="text-2xl font-bold text-green-700 mb-2">
