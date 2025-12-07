@@ -253,19 +253,18 @@ export function CertificatePage({ attemptId }: CertificatePageProps) {
           className="bg-white shadow-lg print:shadow-none w-[210mm] min-h-[297mm] p-10 print:p-8 relative" 
           style={{ fontFamily: "'Times New Roman', serif" }}
         >
-          <div 
-            className="absolute inset-0 flex items-center justify-center pointer-events-none"
-            style={{ zIndex: 1 }}
-          >
-            <img 
-              src={logoBackground} 
-              alt="" 
-              style={{ width: '300px', height: '300px', objectFit: 'contain' }}
-            />
-          </div>
-          
-          <div className="border-8 border-double border-green-700 p-4 h-full relative" style={{ zIndex: 2 }}>
-            <div className="border-2 border-green-600 p-8 h-full bg-white/90">
+          <div className="border-8 border-double border-green-700 p-4 h-full relative">
+            <div className="border-2 border-green-600 p-8 h-full bg-white relative">
+              <div 
+                className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                style={{ zIndex: 0 }}
+              >
+                <img 
+                  src={logoBackground} 
+                  alt="" 
+                  style={{ width: '280px', height: '280px', objectFit: 'contain' }}
+                />
+              </div>
               <div className="text-center space-y-6">
                 <div className="mb-6">
                   <h1 className="text-2xl font-bold text-green-700 mb-2">
