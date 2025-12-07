@@ -6,6 +6,7 @@ import { type ExamAttempt, type Exam, type User } from "@shared/schema";
 import { useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
+import logoBackground from "@assets/image_1765066723975.png";
 
 interface CertificatePageProps {
   attemptId: string;
@@ -249,33 +250,41 @@ export function CertificatePage({ attemptId }: CertificatePageProps) {
       <div className="flex justify-center py-8 print:py-0">
         <div 
           ref={certificateRef}
-          className="bg-white shadow-lg print:shadow-none w-[210mm] min-h-[297mm] p-12 print:p-8" 
+          className="bg-white shadow-lg print:shadow-none w-[210mm] min-h-[297mm] p-6 print:p-4 relative" 
           style={{ fontFamily: "'Times New Roman', serif" }}
         >
-          <div className="border-4 border-green-700 p-8 h-full">
+          <div 
+            className="absolute inset-0 flex items-center justify-center pointer-events-none"
+            style={{ zIndex: 0 }}
+          >
+            <img 
+              src={logoBackground} 
+              alt="" 
+              className="w-[300px] h-[300px] object-contain"
+              style={{ opacity: 0.08 }}
+            />
+          </div>
+          <div className="border-4 border-green-700 p-8 h-full m-4 relative" style={{ zIndex: 1 }}>
             <div className="text-center space-y-6">
               <div className="mb-8">
                 <h1 className="text-2xl font-bold text-green-700 mb-2">
                   TRI NHAN ONLINE JAPANESE - LANGUAGE PROFICIENCY TEST
                 </h1>
-                <h2 className="text-xl font-semibold text-green-600">
+                <h2 className="text-xl font-semibold text-green-600 mb-2">
                   CERTIFICATE OF RESULT AND SCORES
                 </h2>
+                <p className="text-green-700 font-semibold text-lg">
+                  TRI NHAN ONLINE ⽇本語能⼒試験
+                </p>
+                <p className="text-green-600 text-base">
+                  確定結果及び成績に関する証明書。
+                </p>
               </div>
 
               <div className="py-6 border-y-2 border-green-200">
                 <h3 className="text-3xl font-bold text-green-800 mb-4">
                   {exam.title}
                 </h3>
-              </div>
-
-              <div className="space-y-4 text-lg">
-                <p className="text-green-700 font-semibold text-xl">
-                  TRI NHAN ONLINE ⽇本語能⼒試験
-                </p>
-                <p className="text-green-600">
-                  確定結果及び成績に関する証明書。
-                </p>
               </div>
 
               <div className="my-8 text-base leading-relaxed">
