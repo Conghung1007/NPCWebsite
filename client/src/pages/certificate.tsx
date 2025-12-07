@@ -23,7 +23,7 @@ export function CertificatePage({ attemptId }: CertificatePageProps) {
   });
 
   const { data: user, isLoading: userLoading } = useQuery<User>({
-    queryKey: ["/api/user"],
+    queryKey: ["/api/auth/user"],
     retry: false,
   });
 
