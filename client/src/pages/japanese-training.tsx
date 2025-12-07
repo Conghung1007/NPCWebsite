@@ -43,10 +43,8 @@ export default function JapaneseTraining() {
   const [editValues, setEditValues] = useState<Record<string, string>>(() => {
     try {
       const saved = localStorage.getItem('japanese-training-edit-values');
-      console.log('Loading japanese-training-edit-values from localStorage:', saved);
       return saved ? JSON.parse(saved) : {};
     } catch (error) {
-      console.error('Failed to load japanese-training edit values from localStorage:', error);
       return {};
     }
   });
@@ -57,11 +55,8 @@ export default function JapaneseTraining() {
   };
 
   const handleEditSave = (fieldName: string, value: string) => {
-    console.log(`Saving field ${fieldName} with value:`, value);
     const updatedEditValues = { ...editValues, [fieldName]: value };
     setEditValues(updatedEditValues);
-    // Save to localStorage
-    console.log('Saving japanese-training-edit-values to localStorage:', updatedEditValues);
     localStorage.setItem('japanese-training-edit-values', JSON.stringify(updatedEditValues));
     setEditingField(null);
   };

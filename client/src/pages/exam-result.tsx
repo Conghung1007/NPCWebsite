@@ -34,12 +34,6 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
     retry: false,
   });
 
-  // DEBUG: Log received data
-  console.log("=== EXAM RESULT PAGE LOADED ===");
-  console.log("Attempt:", attempt);
-  console.log("Exam:", exam);
-  console.log("Questions with answers:", questionsWithAnswers);
-
   if (attemptLoading || examLoading || questionsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-blue-50 flex items-center justify-center">
@@ -120,52 +114,22 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
   const calculateEarnedPoints = (item: any) => {
     let earned = 0;
     
-    // Debug logging
-    console.log("=== calculateEarnedPoints ===");
-    console.log("Parent question:", {
-      id: item.question.id,
-      userAnswer: item.userAnswer,
-      userAnswerType: typeof item.userAnswer,
-      correctAnswer: item.question.correctAnswer,
-      correctAnswerType: typeof item.question.correctAnswer,
-      points: item.question.points
-    });
-    
     // Check parent - convert both to string for comparison
     if (String(item.userAnswer) === String(item.question.correctAnswer)) {
-      // Parse to number since points come from database as string
       const points = parseFloat(item.question.points) || 1;
       earned += points;
-      console.log(`✓ Parent correct! Added ${points} points`);
-    } else {
-      console.log("✗ Parent incorrect");
     }
     
     // Check sub-questions - userAnswer is embedded in each sub-question object
     if (item.question.subQuestions && Array.isArray(item.question.subQuestions)) {
-      item.question.subQuestions.forEach((sub: any, idx: number) => {
-        console.log(`Sub-question ${idx}:`, {
-          id: sub.id,
-          userAnswer: sub.userAnswer,
-          userAnswerType: typeof sub.userAnswer,
-          correctAnswer: sub.correctAnswer,
-          correctAnswerType: typeof sub.correctAnswer,
-          points: sub.points
-        });
-        
-        // userAnswer is directly in the sub object (from backend)
-        // Convert both to string for comparison
+      item.question.subQuestions.forEach((sub: any) => {
         if (String(sub.userAnswer) === String(sub.correctAnswer)) {
           const points = parseFloat(sub.points) || 1;
           earned += points;
-          console.log(`✓ Sub-question ${idx} correct! Added ${points} points`);
-        } else {
-          console.log(`✗ Sub-question ${idx} incorrect`);
         }
       });
     }
     
-    console.log(`Total earned: ${earned} points`);
     return earned;
   };
   

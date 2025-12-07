@@ -11,7 +11,6 @@ interface ArticleCardProps {
 
 export function ArticleCard({ article, onClick }: ArticleCardProps) {
   const [, setLocation] = useLocation();
-  console.log('ArticleCard rendering:', article.title);
   
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString("vi-VN");

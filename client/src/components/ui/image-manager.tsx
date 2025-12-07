@@ -38,10 +38,6 @@ export function ImageManager({
     enabled: isOpen,
   });
 
-  console.log('ImageManager - existingImages:', existingImages);
-  console.log('ImageManager - loadingImages:', loadingImages);
-  console.log('ImageManager - imagesError:', imagesError);
-
   // Delete image mutation
   const deleteImageMutation = useMutation({
     mutationFn: async (fileName: string) => {

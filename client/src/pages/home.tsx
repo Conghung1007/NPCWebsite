@@ -42,10 +42,8 @@ export default function Home() {
   const [editValues, setEditValues] = useState<Record<string, string>>(() => {
     try {
       const saved = localStorage.getItem('home-edit-values');
-      console.log('Loading home-edit-values from localStorage:', saved);
       return saved ? JSON.parse(saved) : {};
     } catch (error) {
-      console.error('Failed to load home edit values from localStorage:', error);
       return {};
     }
   });
@@ -81,11 +79,8 @@ export default function Home() {
       }
     }
     
-    console.log(`Saving field ${fieldName} with value:`, value);
     const updatedEditValues = { ...editValues, [fieldName]: value };
     setEditValues(updatedEditValues);
-    // Save to localStorage
-    console.log('Saving home-edit-values to localStorage:', updatedEditValues);
     localStorage.setItem('home-edit-values', JSON.stringify(updatedEditValues));
     setEditingField(null);
   };
@@ -185,16 +180,12 @@ export default function Home() {
     
     try {
       const saved = localStorage.getItem('home-service-texts');
-      console.log('Loading home-service-texts from localStorage:', saved);
       const savedServiceTexts = saved ? JSON.parse(saved) : defaultServiceTexts;
       
-      // Check if we have editValues from localStorage that should override serviceTexts
       const savedEditValues = localStorage.getItem('home-edit-values');
       if (savedEditValues) {
         try {
           const editValues = JSON.parse(savedEditValues);
-          console.log('Merging editValues into serviceTexts:', editValues);
-          // Merge editValues that are hero fields into serviceTexts
           const heroFields = ['heroTitle', 'heroSubtitle', 'heroDescription'];
           heroFields.forEach(field => {
             if (editValues[field]) {
@@ -202,13 +193,11 @@ export default function Home() {
             }
           });
         } catch (e) {
-          console.error('Failed to parse editValues:', e);
         }
       }
       
       return savedServiceTexts;
     } catch (error) {
-      console.error('Failed to load home service texts from localStorage:', error);
       return defaultServiceTexts;
     }
   });
@@ -216,8 +205,6 @@ export default function Home() {
   const handleServiceTextUpdate = (fieldName: string, newValue: string) => {
     const updatedTexts = { ...serviceTexts, [fieldName]: newValue };
     setServiceTexts(updatedTexts);
-    // Save to localStorage
-    console.log('Saving home-service-texts to localStorage:', updatedTexts);
     localStorage.setItem('home-service-texts', JSON.stringify(updatedTexts));
     
     // Also update the services array with the new text
@@ -304,7 +291,6 @@ export default function Home() {
   const [testimonials, setTestimonials] = useState(() => {
     try {
       const saved = localStorage.getItem('home-testimonials');
-      console.log('Loading home-testimonials from localStorage:', saved);
       return saved ? JSON.parse(saved) : [
         {
           id: 1,
@@ -329,7 +315,6 @@ export default function Home() {
         }
       ];
     } catch (error) {
-      console.error('Failed to load home testimonials from localStorage:', error);
       return [
         {
           id: 1,
@@ -371,8 +356,6 @@ export default function Home() {
         : testimonial
     );
     setTestimonials(updatedTestimonials);
-    // Save to localStorage
-    console.log('Saving home-testimonials to localStorage:', updatedTestimonials);
     localStorage.setItem('home-testimonials', JSON.stringify(updatedTestimonials));
   };
 

@@ -59,23 +59,17 @@ export default function VisaServices() {
     setEditValues({});
   };
 
-  // Handle document text updates
   const handleDocumentUpdate = (index: number, newValue: string) => {
     const updatedDocs = [...requiredDocuments];
     updatedDocs[index] = newValue;
     setRequiredDocuments(updatedDocs);
-    // Save to localStorage
-    console.log('Saving visa-required-documents to localStorage:', updatedDocs);
     localStorage.setItem('visa-required-documents', JSON.stringify(updatedDocs));
   };
 
-  // Handle FAQ updates
   const handleFaqQuestionUpdate = (index: number, newValue: string) => {
     const updatedFaqs = [...faqs];
     updatedFaqs[index] = { ...updatedFaqs[index], question: newValue };
     setFaqs(updatedFaqs);
-    // Save to localStorage
-    console.log('Saving FAQ questions to localStorage:', updatedFaqs);
     localStorage.setItem('visa-faqs', JSON.stringify(updatedFaqs));
   };
 
@@ -83,8 +77,6 @@ export default function VisaServices() {
     const updatedFaqs = [...faqs];
     updatedFaqs[index] = { ...updatedFaqs[index], answer: newValue };
     setFaqs(updatedFaqs);
-    // Save to localStorage
-    console.log('Saving FAQ answers to localStorage:', updatedFaqs);
     localStorage.setItem('visa-faqs', JSON.stringify(updatedFaqs));
   };
 
@@ -152,11 +144,9 @@ export default function VisaServices() {
     }
   ];
 
-  // Load data from localStorage or use defaults
   const [requiredDocuments, setRequiredDocuments] = useState(() => {
     try {
       const saved = localStorage.getItem('visa-required-documents');
-      console.log('Loading visa-required-documents from localStorage:', saved);
       return saved ? JSON.parse(saved) : [
         "Hộ chiếu còn hạn tối thiểu 6 tháng",
         "Đơn xin visa đã điền đầy đủ", 
@@ -180,7 +170,6 @@ export default function VisaServices() {
   const [faqs, setFaqs] = useState(() => {
     try {
       const saved = localStorage.getItem('visa-faqs');
-      console.log('Loading visa-faqs from localStorage:', saved);
       return saved ? JSON.parse(saved) : [
         {
           question: "Thời gian xử lý visa là bao lâu?",

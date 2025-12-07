@@ -23,7 +23,6 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
         throw new Error('Failed to fetch articles');
       }
       const data = await response.json();
-      console.log('ArticleSection - Fetched articles:', { category, articles: data });
       return data;
     }
   });
@@ -78,16 +77,13 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {articles?.map((article) => {
-                console.log('ArticleSection - Rendering article:', article);
-                return (
-                  <div key={article.id} className="w-full h-full flex">
-                    <ArticleCard
-                      article={article}
-                    />
-                  </div>
-                );
-              })}
+              {articles?.map((article) => (
+                <div key={article.id} className="w-full h-full flex">
+                  <ArticleCard
+                    article={article}
+                  />
+                </div>
+              ))}
             </div>
 
             {/* Pagination - always show for service pages */}

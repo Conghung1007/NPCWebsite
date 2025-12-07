@@ -36,10 +36,8 @@ export default function StudyAbroad() {
   const [editValues, setEditValues] = useState<Record<string, string>>(() => {
     try {
       const saved = localStorage.getItem('study-abroad-edit-values');
-      console.log('Loading study-abroad-edit-values from localStorage:', saved);
       return saved ? JSON.parse(saved) : {};
     } catch (error) {
-      console.error('Failed to load study-abroad edit values from localStorage:', error);
       return {};
     }
   });
@@ -50,11 +48,8 @@ export default function StudyAbroad() {
   };
 
   const handleEditSave = (fieldName: string, value: string) => {
-    console.log(`Saving field ${fieldName} with value:`, value);
     const updatedEditValues = { ...editValues, [fieldName]: value };
     setEditValues(updatedEditValues);
-    // Save to localStorage
-    console.log('Saving study-abroad-edit-values to localStorage:', updatedEditValues);
     localStorage.setItem('study-abroad-edit-values', JSON.stringify(updatedEditValues));
     setEditingField(null);
   };
