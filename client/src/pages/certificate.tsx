@@ -6,7 +6,7 @@ import { type ExamAttempt, type Exam, type User } from "@shared/schema";
 import { useRef, useState } from "react";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import logoBackground from "@assets/image_1765067549814.png";
+const logoBackground = "/logo-certificate.png";
 
 interface CertificatePageProps {
   attemptId: string;
