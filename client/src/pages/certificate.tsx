@@ -250,7 +250,7 @@ export function CertificatePage({ attemptId }: CertificatePageProps) {
       <div className="flex justify-center py-8 print:py-0">
         <div 
           ref={certificateRef}
-          className="bg-white shadow-lg print:shadow-none w-[210mm] min-h-[297mm] p-6 print:p-4 relative" 
+          className="bg-white shadow-lg print:shadow-none w-[210mm] min-h-[297mm] p-4 print:p-2 relative" 
           style={{ fontFamily: "'Times New Roman', serif" }}
         >
           <div 
@@ -260,26 +260,30 @@ export function CertificatePage({ attemptId }: CertificatePageProps) {
             <img 
               src={logoBackground} 
               alt="" 
-              className="w-[300px] h-[300px] object-contain"
-              style={{ opacity: 0.08 }}
+              className="w-[350px] h-[350px] object-contain"
+              style={{ opacity: 0.12 }}
             />
           </div>
-          <div className="border-4 border-green-700 p-8 h-full m-4 relative" style={{ zIndex: 1 }}>
-            <div className="text-center space-y-6">
-              <div className="mb-8">
-                <h1 className="text-2xl font-bold text-green-700 mb-2">
-                  TRI NHAN ONLINE JAPANESE - LANGUAGE PROFICIENCY TEST
-                </h1>
-                <h2 className="text-xl font-semibold text-green-600 mb-2">
-                  CERTIFICATE OF RESULT AND SCORES
-                </h2>
-                <p className="text-green-700 font-semibold text-lg">
-                  TRI NHAN ONLINE ⽇本語能⼒試験
-                </p>
-                <p className="text-green-600 text-base">
-                  確定結果及び成績に関する証明書。
-                </p>
-              </div>
+          
+          <div className="border-8 border-double border-green-700 p-2 h-full relative" style={{ zIndex: 1 }}>
+            <div className="border-2 border-green-600 p-6 h-full">
+              <div className="text-center space-y-6">
+                <div className="mb-6">
+                  <h1 className="text-2xl font-bold text-green-700 mb-2">
+                    TRI NHAN ONLINE JAPANESE - LANGUAGE PROFICIENCY TEST
+                  </h1>
+                  <h2 className="text-xl font-semibold text-green-600 mb-4">
+                    CERTIFICATE OF RESULT AND SCORES
+                  </h2>
+                  <div className="mt-4">
+                    <p className="text-green-700 font-semibold text-lg">
+                      TRI NHAN ONLINE ⽇本語能⼒試験
+                    </p>
+                    <p className="text-green-600 text-base">
+                      確定結果及び成績に関する証明書。
+                    </p>
+                  </div>
+                </div>
 
               <div className="py-6 border-y-2 border-green-200">
                 <h3 className="text-3xl font-bold text-green-800 mb-4">
@@ -327,6 +331,7 @@ export function CertificatePage({ attemptId }: CertificatePageProps) {
                   </p>
                 </div>
               </div>
+            </div>
             </div>
           </div>
         </div>
