@@ -208,7 +208,7 @@ export function CertificatePage({ attemptId }: CertificatePageProps) {
 
               <div className="py-6 border-y-2 border-green-200">
                 <h3 className="text-3xl font-bold text-green-800 mb-4">
-                  "{exam.title}"
+                  {exam.title}
                 </h3>
               </div>
 
@@ -226,23 +226,24 @@ export function CertificatePage({ attemptId }: CertificatePageProps) {
                   {japaneseDate}に、TRI NHAN が実施した⽇本語能⼒試験に関し、確定結果及び成績を次のとおり証明します。
                 </p>
                 <p>
-                  This is to certify the result and the score of Japanese - Language Proficiency Test given on <strong>"{formattedDate}"</strong>, jointly administered by Trí Nhân Online
+                  This is to certify the result and the score of Japanese - Language Proficiency Test given on<br />
+                  <strong>{formattedDate}</strong>, jointly administered by Trí Nhân Online
                 </p>
               </div>
 
               <div className="my-10 py-6 bg-green-50 rounded-lg">
-                <table className="w-full text-left">
+                <table className="w-full text-center">
                   <tbody>
                     <tr className="border-b border-green-200">
                       <td className="py-3 px-4 font-semibold text-green-700 w-1/3">⽒名 / Name:</td>
                       <td className="py-3 px-4 text-xl font-bold text-green-900">
-                        "{user.fullName || user.username}"
+                        {user.fullName || user.username}
                       </td>
                     </tr>
                     <tr>
                       <td className="py-3 px-4 font-semibold text-green-700">結果 / Result:</td>
                       <td className="py-3 px-4">
-                        <span className="text-xl font-bold text-green-600 bg-green-100 px-4 py-1 rounded">
+                        <span className="text-xl font-bold text-green-600">
                           Đạt / Pass
                         </span>
                       </td>
