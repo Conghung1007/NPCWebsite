@@ -95,13 +95,13 @@ export function CpanelPage({ tab }: CpanelPageProps) {
 
   // Define permissions based on user role
   const isManager = user?.role === "manager";
-  const canManageUsers = user?.role === "manager"; // Only managers can manage users
+  const canManageUsers = user?.role === "manager" || user?.role === "admin"; // Managers and admins can manage users
   const canManageRegistrations = user?.role === "manager" || user?.role === "admin";
 
-  // Fetch users (for managers only)
+  // Fetch users (for managers and admins)
   const { data: users = [], isLoading: usersLoading, refetch: refetchUsers } = useQuery<UserType[]>({
     queryKey: ["/api/users"],
-    enabled: user?.role === "manager",
+    enabled: user?.role === "manager" || user?.role === "admin",
   });
 
   // Fetch messages/contact requests
