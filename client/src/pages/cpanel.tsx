@@ -125,10 +125,19 @@ export function CpanelPage({ tab }: CpanelPageProps) {
   };
 
   const handleSaveUser = async () => {
-    if (!formData.username || !formData.password) {
+    if (!formData.username) {
       toast({
         title: "Lỗi",
-        description: "Vui lòng điền đầy đủ thông tin",
+        description: "Vui lòng nhập tên đăng nhập",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!editingUser && !formData.password) {
+      toast({
+        title: "Lỗi",
+        description: "Vui lòng nhập mật khẩu cho người dùng mới",
         variant: "destructive",
       });
       return;

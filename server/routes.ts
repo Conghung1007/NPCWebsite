@@ -329,18 +329,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { id } = req.params;
       const { username, fullName, email, phone, password, role } = req.body;
       
-      if (!username || !password || !role) {
-        return res.status(400).json({ message: "Missing required fields" });
+      if (!username) {
+        return res.status(400).json({ message: "Username is required" });
       }
 
-      const updatedUser = await storage.updateUser(id, { 
+      const updateData: any = { 
         username: username.toLowerCase(), 
         fullName: fullName || null,
         email: email || null,
         phone: phone || null,
-        password, 
-        role 
-      });
+        role: role || "user"
+      };
+      
+      if (password) {
+        updateData.password = password;
+      }
+
+      const updatedUser = await storage.updateUser(id, updateData);
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
