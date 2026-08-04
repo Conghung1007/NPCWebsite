@@ -1,0 +1,652 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Do not set overflow-x:hidden/clip on html/body or tall page wrappers.
+ * CSS overflow pairing turns the other axis into auto/clip and creates a
+ * second vertical scrollbar (esp. with reveal translateY transforms).
+ */
+html, body {
+  max-width: 100%;
+}
+
+/* Ensure all containers respect viewport width */
+* {
+  box-sizing: border-box;
+}
+
+/* Fix any element that might cause overflow */
+img, video, iframe, object, embed {
+  max-width: 100%;
+  height: auto;
+}
+
+/* 100vw includes scrollbar gutter and can force horizontal overflow */
+.w-screen {
+  max-width: 100%;
+}
+
+/* Site header — fixed via class, no !important overrides */
+:root {
+  --header-height: 5rem; /* 80px desktop */
+}
+
+@media (max-width: 640px) {
+  :root {
+    --header-height: 4rem; /* 64px mobile */
+  }
+}
+
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  z-index: 50;
+}
+
+/* Offset main content for fixed header */
+main {
+  padding-top: var(--header-height);
+}
+
+/* Ensure forms don't stretch full width */
+.max-w-md {
+  max-width: 28rem !important; /* Force form max width */
+}
+
+/* Additional constraints for form containers */
+form, .card {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+@layer utilities {
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  
+  .line-clamp-3 {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  /* Scroll to top button animation */
+  .scroll-to-top-enter {
+    animation: scrollToTopFadeIn 0.3s ease-out;
+  }
+
+  @keyframes scrollToTopFadeIn {
+    from {
+      opacity: 0;
+      transform: translateY(20px) scale(0.8);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+}
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(20, 14.3%, 4.1%);
+  --muted: hsl(60, 4.8%, 95.9%);
+  --muted-foreground: hsl(25, 5.3%, 44.7%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(20, 14.3%, 4.1%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(20, 14.3%, 4.1%);
+  --border: hsl(20, 5.9%, 90%);
+  --input: hsl(20, 5.9%, 90%);
+  --primary: hsl(142, 76%, 36%);
+  --primary-foreground: hsl(210, 40%, 98%);
+  --secondary: hsl(138, 76%, 97%);
+  --secondary-foreground: hsl(142, 76%, 36%);
+  --accent: hsl(142, 69%, 58%);
+  --accent-foreground: hsl(210, 40%, 98%);
+  --destructive: hsl(0, 84.2%, 60.2%);
+  --destructive-foreground: hsl(60, 9.1%, 97.8%);
+  --ring: hsl(20, 14.3%, 4.1%);
+  --radius: 0.5rem;
+  --neutral: hsl(210, 40%, 98%);
+}
+
+.dark {
+  --background: hsl(240, 10%, 3.9%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(240, 3.7%, 15.9%);
+  --muted-foreground: hsl(240, 5%, 64.9%);
+  --popover: hsl(240, 10%, 3.9%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(240, 10%, 3.9%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(240, 3.7%, 15.9%);
+  --input: hsl(240, 3.7%, 15.9%);
+  --primary: hsl(142, 76%, 36%);
+  --primary-foreground: hsl(210, 40%, 98%);
+  --secondary: hsl(138, 76%, 97%);
+  --secondary-foreground: hsl(142, 76%, 36%);
+  --accent: hsl(142, 69%, 58%);
+  --accent-foreground: hsl(210, 40%, 98%);
+  --destructive: hsl(0, 62.8%, 30.6%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(240, 4.9%, 83.9%);
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .hero-gradient {
+    background: linear-gradient(135deg, hsl(142, 76%, 36%) 0%, hsl(142, 69%, 58%) 100%);
+  }
+  
+  .service-card-hover {
+    @apply transition-all duration-300 hover:shadow-xl hover:-translate-y-1;
+  }
+  
+  .btn-primary {
+    @apply bg-primary text-primary-foreground px-6 py-3 rounded-lg font-semibold shadow-sm transition-all duration-200;
+  }
+  .btn-primary:hover {
+    background-color: hsl(142, 76%, 30%);
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  }
+  
+  .btn-secondary {
+    @apply bg-secondary text-secondary-foreground px-6 py-3 rounded-lg font-semibold transition-all duration-200;
+  }
+  .btn-secondary:hover {
+    background-color: hsl(142, 76%, 36%, 0.12);
+    color: hsl(142, 76%, 36%);
+  }
+  
+  /* Light green — white/light surfaces only; do not use on hero-gradient */
+  .btn-accent {
+    @apply bg-accent text-accent-foreground px-6 py-3 rounded-lg font-semibold shadow-sm transition-all duration-200;
+  }
+  .btn-accent:hover {
+    background-color: hsl(142, 76%, 36%);
+    color: hsl(210, 40%, 98%);
+  }
+
+  @keyframes scroll {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(-50%);
+    }
+  }
+
+  .animate-scroll {
+    animation: scroll 30s linear infinite;
+  }
+
+  @keyframes homeFadeUp {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .home-fade-up {
+    animation: homeFadeUp 0.55s ease-out both;
+  }
+
+  /* —— Site-wide page / scroll motion (GPU-friendly) —— */
+  @keyframes pageEnter {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes routeProgress {
+    0% {
+      transform: scaleX(0.08);
+      opacity: 0.7;
+    }
+    50% {
+      transform: scaleX(0.55);
+      opacity: 1;
+    }
+    100% {
+      transform: scaleX(0.92);
+      opacity: 0.85;
+    }
+  }
+
+  @keyframes skeletonShimmer {
+    0% {
+      background-position: 100% 0;
+    }
+    100% {
+      background-position: -100% 0;
+    }
+  }
+
+  .page-enter {
+    animation: pageEnter 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .reveal-section {
+    opacity: 0;
+    transform: translateY(18px);
+    transition:
+      opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    will-change: opacity, transform;
+  }
+
+  .reveal-section.is-inview {
+    opacity: 1;
+    transform: translateY(0);
+    will-change: auto;
+  }
+
+  .route-progress {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 2px;
+    z-index: 200;
+    transform-origin: left center;
+    background: linear-gradient(
+      90deg,
+      hsl(142, 76%, 36%),
+      hsl(142, 69%, 58%)
+    );
+    animation: routeProgress 1.1s ease-in-out infinite;
+    pointer-events: none;
+  }
+
+  .page-loading-shell {
+    padding: 1.5rem 1rem 3rem;
+    max-width: 80rem;
+    margin: 0 auto;
+  }
+
+  .page-loading-hero {
+    height: min(42svh, 280px);
+    border-radius: 0.75rem;
+    margin-bottom: 1.5rem;
+    background: linear-gradient(
+      110deg,
+      hsl(142, 40%, 94%) 25%,
+      hsl(142, 45%, 88%) 37%,
+      hsl(142, 40%, 94%) 63%
+    );
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.2s linear infinite;
+  }
+
+  .page-loading-row {
+    display: grid;
+    gap: 0.75rem;
+    grid-template-columns: 1fr;
+  }
+
+  @media (min-width: 640px) {
+    .page-loading-row {
+      grid-template-columns: repeat(3, 1fr);
+      gap: 1rem;
+    }
+  }
+
+  .page-loading-card {
+    height: 7.5rem;
+    border-radius: 0.75rem;
+    background: linear-gradient(
+      110deg,
+      hsl(0, 0%, 94%) 25%,
+      hsl(0, 0%, 90%) 37%,
+      hsl(0, 0%, 94%) 63%
+    );
+    background-size: 200% 100%;
+    animation: skeletonShimmer 1.2s linear infinite;
+  }
+
+  .page-loading-card:nth-child(2) {
+    animation-delay: 0.1s;
+  }
+
+  .page-loading-card:nth-child(3) {
+    animation-delay: 0.2s;
+  }
+
+  /* Mobile: shorter / subtler motion */
+  @media (max-width: 640px) {
+    .page-enter {
+      animation-duration: 0.32s;
+    }
+
+    .home-fade-up {
+      animation-duration: 0.4s;
+    }
+
+    .reveal-section {
+      transform: translateY(12px);
+      transition-duration: 0.4s;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .home-fade-up,
+    .page-enter,
+    .route-progress,
+    .page-loading-hero,
+    .page-loading-card {
+      animation: none !important;
+    }
+
+    .reveal-section {
+      opacity: 1;
+      transform: none;
+      transition: none;
+    }
+
+    html {
+      scroll-behavior: auto;
+    }
+  }
+}
+
+/* ===== TipTap WYSIWYG (aligned with Examonline / Thitoptop) ===== */
+.tiptap-wysiwyg {
+  padding: 1rem 1.25rem;
+  min-height: 380px;
+  outline: none;
+  font-size: 1rem;
+  line-height: 1.75;
+  color: hsl(var(--foreground));
+}
+
+.tiptap-wysiwyg > * + * {
+  margin-top: 0.75em;
+}
+
+.tiptap-wysiwyg p {
+  margin-top: 0;
+  margin-bottom: 0.75em;
+}
+
+.tiptap-wysiwyg p:last-child {
+  margin-bottom: 0;
+}
+
+.tiptap-wysiwyg h1 {
+  font-family: var(--font-display, inherit);
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.tiptap-wysiwyg h2 {
+  font-family: var(--font-display, inherit);
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 1.25rem;
+  margin-bottom: 0.4rem;
+}
+
+.tiptap-wysiwyg h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-top: 1rem;
+  margin-bottom: 0.3rem;
+}
+
+.tiptap-wysiwyg strong {
+  font-weight: 700;
+}
+
+.tiptap-wysiwyg em {
+  font-style: italic;
+}
+
+.tiptap-wysiwyg a {
+  color: hsl(142, 76%, 36%);
+  text-decoration: underline;
+}
+
+.tiptap-wysiwyg ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.tiptap-wysiwyg ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin-top: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.tiptap-wysiwyg li {
+  margin-bottom: 0.25rem;
+}
+
+.tiptap-wysiwyg hr {
+  border: none;
+  border-top: 2px solid hsl(var(--border));
+  margin: 1.5rem 0;
+}
+
+.tiptap-wysiwyg img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--border));
+  margin: 0.75rem 0;
+  display: block;
+}
+
+.tiptap-wysiwyg img.ProseMirror-selectednode {
+  outline: 3px solid hsl(142, 76%, 36%);
+  outline-offset: 2px;
+}
+
+.tiptap-wysiwyg p.is-empty:first-child::before,
+.tiptap-wysiwyg .is-empty::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: hsl(var(--muted-foreground));
+  pointer-events: none;
+  height: 0;
+}
+
+/* Match TipTap editor output on article detail */
+.article-html-content {
+  font-size: 1.0625rem;
+  line-height: 1.8;
+  color: hsl(var(--foreground));
+}
+
+.article-html-content > * + * {
+  margin-top: 0.85em;
+}
+
+.article-html-content h1 {
+  font-family: var(--font-display, inherit);
+  font-size: 1.875rem;
+  font-weight: 700;
+  line-height: 1.25;
+  margin-top: 1.75rem;
+  margin-bottom: 0.5rem;
+}
+
+.article-html-content h2 {
+  font-family: var(--font-display, inherit);
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1.3;
+  margin-top: 1.5rem;
+  margin-bottom: 0.4rem;
+}
+
+.article-html-content h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  line-height: 1.4;
+  margin-top: 1.25rem;
+  margin-bottom: 0.35rem;
+}
+
+.article-html-content p {
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+.article-html-content strong {
+  font-weight: 700;
+}
+
+.article-html-content em {
+  font-style: italic;
+}
+
+.article-html-content ul {
+  list-style-type: disc;
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.article-html-content ol {
+  list-style-type: decimal;
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.article-html-content li {
+  margin-bottom: 0.35rem;
+}
+
+.article-html-content li p {
+  margin: 0;
+}
+
+.article-html-content a {
+  color: hsl(142, 76%, 36%);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.article-html-content a:hover {
+  color: hsl(142, 76%, 28%);
+}
+
+.article-html-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 0.5rem;
+  border: 1px solid hsl(var(--border));
+  margin: 1.25rem auto;
+  display: block;
+}
+
+.article-html-content blockquote {
+  border-left: 3px solid hsl(142, 76%, 36%);
+  padding-left: 1rem;
+  margin: 1rem 0;
+  color: hsl(var(--muted-foreground));
+  font-style: italic;
+}
+
+.article-html-content code {
+  font-size: 0.9em;
+  background: hsl(var(--muted));
+  padding: 0.15em 0.4em;
+  border-radius: 0.25rem;
+}
+
+.article-html-content pre {
+  background: hsl(var(--muted));
+  padding: 1rem;
+  border-radius: 0.5rem;
+  overflow-x: auto;
+  margin: 1rem 0;
+}
+
+.article-html-content pre code {
+  background: transparent;
+  padding: 0;
+}
+
+.article-html-content hr {
+  border: none;
+  border-top: 2px solid hsl(var(--border));
+  margin: 1.75rem 0;
+}
+
+/* Line clamp utilities */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.line-clamp-3 {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* Exam taking / result — deter copy & image download */
+.exam-content-protected {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.exam-content-protected img,
+.exam-protected-media {
+  -webkit-user-drag: none;
+  user-drag: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.line-clamp-4 {
+  display: -webkit-box;
+  -webkit-line-clamp: 4;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
