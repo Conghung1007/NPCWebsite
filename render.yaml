@@ -28,3 +28,13 @@ services:
         sync: false
       - key: PAYOS_CHECKSUM_KEY
         sync: false
+      - key: R2_PRIMARY_ACCOUNT_ID
+        sync: false
+      - key: R2_PRIMARY_ACCESS_KEY_ID
+        sync: false
+      - key: R2_PRIMARY_SECRET_ACCESS_KEY
+        sync: false
+      - key: R2_PRIMARY_BUCKET_NAME
+        sync: false
+      - key: R2_PRIMARY_ENDPOINT
+        sync: false
