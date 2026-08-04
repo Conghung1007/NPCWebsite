@@ -1,0 +1,30 @@
+# Render Blueprint — NPC Website (separate from Thitoptop)
+# Docs: https://render.com/docs/blueprint-spec
+services:
+  - type: web
+    name: npc-website
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    autoDeployTrigger: commit
+    buildCommand: npm install --include=dev && npm run build
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: NODE_VERSION
+        value: "20"
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: DATABASE_URL
+        sync: false
+      - key: PUBLIC_APP_URL
+        sync: false
+      - key: PAYOS_CLIENT_ID
+        sync: false
+      - key: PAYOS_API_KEY
+        sync: false
+      - key: PAYOS_CHECKSUM_KEY
+        sync: false
