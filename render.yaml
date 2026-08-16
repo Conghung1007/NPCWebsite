@@ -36,7 +36,8 @@ services:
 
     autoDeployTrigger: commit
 
-    buildCommand: npm install --include=dev && npm run build
+    # Free tier often OOMs on Vite; raise heap for install + build
+    buildCommand: export NODE_OPTIONS=--max-old-space-size=4096 && npm install --include=dev && npm run build
 
     startCommand: npm start
 
@@ -61,6 +62,10 @@ services:
       - key: NODE_VERSION
 
         value: "20"
+
+      - key: NODE_OPTIONS
+
+        value: --max-old-space-size=4096
 
       - key: SESSION_SECRET
 
