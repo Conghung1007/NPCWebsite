@@ -17,10 +17,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiFetch, apiRequest } from "@/lib/queryClient";
 import { formatVnd } from "@/hooks/useCart";
 import { Plus, Edit, Trash2, Users } from "lucide-react";
 import type { ClassSession, Course, Enrollment } from "@shared/schema";
+import { useAdminPortal } from "@/contexts/AdminPortalContext";
+import { portalBadgeLabel } from "@/components/AdminPortalFilter";
+import { PORTAL_IDS, PORTAL_META, type PortalId } from "@/lib/portal";
 
 const LEVELS = ["N5", "N4", "N3", "N2", "N1", "Khác"];
 
@@ -33,6 +36,7 @@ const emptyCourse = {
   coverImageUrl: "",
   isPublished: false,
   sortOrder: 0,
+  portal: "tnjs" as PortalId,
 };
 
 const emptySession = {
@@ -45,6 +49,7 @@ const emptySession = {
   priceVnd: 0,
   capacity: 10,
   status: "draft" as const,
+  portal: "tnjs" as PortalId,
 };
 
 function toInputDate(value: string | Date | null | undefined): string {
@@ -57,6 +62,7 @@ function toInputDate(value: string | Date | null | undefined): string {
 export function ClassManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { listQuery, defaultPortal } = useAdminPortal();
   const [courseDialog, setCourseDialog] = useState(false);
   const [sessionDialog, setSessionDialog] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Course | null>(null);
@@ -66,18 +72,18 @@ export function ClassManager() {
   const [enrollSessionId, setEnrollSessionId] = useState<string | null>(null);
 
   const { data: courses = [], isLoading: coursesLoading } = useQuery<Course[]>({
-    queryKey: ["/api/admin/courses"],
+    queryKey: ["/api/admin/courses", listQuery],
     queryFn: async () => {
-      const res = await fetch("/api/admin/courses", { credentials: "include" });
+      const res = await apiFetch(`/api/admin/courses?${listQuery}`);
       if (!res.ok) throw new Error("Không tải khóa học");
       return res.json();
     },
   });
 
   const { data: sessions = [], isLoading: sessionsLoading } = useQuery<SessionRow[]>({
-    queryKey: ["/api/admin/class-sessions"],
+    queryKey: ["/api/admin/class-sessions", listQuery],
     queryFn: async () => {
-      const res = await fetch("/api/admin/class-sessions", { credentials: "include" });
+      const res = await apiFetch(`/api/admin/class-sessions?${listQuery}`);
       if (!res.ok) throw new Error("Không tải lớp học");
       return res.json();
     },
@@ -87,9 +93,8 @@ export function ClassManager() {
     queryKey: ["/api/admin/class-sessions", enrollSessionId, "enrollments"],
     enabled: !!enrollSessionId,
     queryFn: async () => {
-      const res = await fetch(
+      const res = await apiFetch(
         `/api/admin/class-sessions/${enrollSessionId}/enrollments`,
-        { credentials: "include" },
       );
       if (!res.ok) throw new Error("Không tải ghi danh");
       return res.json();
@@ -112,6 +117,7 @@ export function ClassManager() {
         coverImageUrl: courseForm.coverImageUrl.trim() || null,
         isPublished: courseForm.isPublished,
         sortOrder: Number(courseForm.sortOrder) || 0,
+        portal: courseForm.portal,
       };
       if (editingCourse) {
         return apiRequest("PUT", `/api/admin/courses/${editingCourse.id}`, payload);
@@ -153,6 +159,7 @@ export function ClassManager() {
         priceVnd: Number(sessionForm.priceVnd) || 0,
         capacity: Number(sessionForm.capacity) || 10,
         status: sessionForm.status,
+        portal: sessionForm.portal,
       };
       if (editingSession) {
         return apiRequest("PUT", `/api/admin/class-sessions/${editingSession.id}`, payload);
@@ -186,7 +193,10 @@ export function ClassManager() {
 
   const openCreateCourse = () => {
     setEditingCourse(null);
-    setCourseForm(emptyCourse);
+    setCourseForm({
+      ...emptyCourse,
+      portal: defaultPortal === "group" ? "tnjs" : defaultPortal,
+    });
     setCourseDialog(true);
   };
 
@@ -199,15 +209,20 @@ export function ClassManager() {
       coverImageUrl: c.coverImageUrl || "",
       isPublished: !!c.isPublished,
       sortOrder: c.sortOrder ?? 0,
+      portal: (c.portal as PortalId) || "tnjs",
     });
     setCourseDialog(true);
   };
 
   const openCreateSession = () => {
+    const course = courses[0];
     setEditingSession(null);
     setSessionForm({
       ...emptySession,
-      courseId: courses[0]?.id || "",
+      courseId: course?.id || "",
+      portal:
+        (course?.portal as PortalId) ||
+        (defaultPortal === "group" ? "tnjs" : defaultPortal),
     });
     setSessionDialog(true);
   };
@@ -224,6 +239,7 @@ export function ClassManager() {
       priceVnd: s.priceVnd,
       capacity: s.capacity,
       status: (s.status as any) || "draft",
+      portal: (s.portal as PortalId) || "tnjs",
     });
     setSessionDialog(true);
   };
@@ -269,6 +285,7 @@ export function ClassManager() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Tên</TableHead>
+                  <TableHead>Portal</TableHead>
                   <TableHead>Cấp</TableHead>
                   <TableHead>Trạng thái</TableHead>
                   <TableHead></TableHead>
@@ -278,6 +295,9 @@ export function ClassManager() {
                 {courses.map((c) => (
                   <TableRow key={c.id}>
                     <TableCell className="font-medium">{c.title}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{portalBadgeLabel(c.portal)}</Badge>
+                    </TableCell>
                     <TableCell>{c.level}</TableCell>
                     <TableCell>
                       {c.isPublished ? (
@@ -334,6 +354,7 @@ export function ClassManager() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Lớp</TableHead>
+                    <TableHead>Portal</TableHead>
                     <TableHead>Khóa</TableHead>
                     <TableHead>Lịch</TableHead>
                     <TableHead>Giá</TableHead>
@@ -347,6 +368,9 @@ export function ClassManager() {
                     <TableRow key={s.id}>
                       <TableCell className="font-medium max-w-[180px]">
                         <span className="line-clamp-2">{s.title}</span>
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{portalBadgeLabel(s.portal)}</Badge>
                       </TableCell>
                       <TableCell>
                         {s.courseTitle || courseTitleById.get(s.courseId) || "—"}
@@ -428,6 +452,26 @@ export function ClassManager() {
               </Select>
             </div>
             <div>
+              <Label>Portal</Label>
+              <Select
+                value={courseForm.portal}
+                onValueChange={(v) =>
+                  setCourseForm({ ...courseForm, portal: v as PortalId })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PORTAL_IDS.map((id) => (
+                    <SelectItem key={id} value={id}>
+                      {PORTAL_META[id].brand}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
               <Label>Mô tả</Label>
               <Textarea
                 value={courseForm.description}
@@ -478,7 +522,14 @@ export function ClassManager() {
               <Label>Khóa học</Label>
               <Select
                 value={sessionForm.courseId}
-                onValueChange={(v) => setSessionForm({ ...sessionForm, courseId: v })}
+                onValueChange={(v) => {
+                  const course = courses.find((c) => c.id === v);
+                  setSessionForm({
+                    ...sessionForm,
+                    courseId: v,
+                    portal: (course?.portal as PortalId) || sessionForm.portal,
+                  });
+                }}
               >
                 <SelectTrigger>
                   <SelectValue placeholder="Chọn khóa" />
@@ -487,6 +538,26 @@ export function ClassManager() {
                   {courses.map((c) => (
                     <SelectItem key={c.id} value={c.id}>
                       {c.title} ({c.level})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Portal</Label>
+              <Select
+                value={sessionForm.portal}
+                onValueChange={(v) =>
+                  setSessionForm({ ...sessionForm, portal: v as PortalId })
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {PORTAL_IDS.map((id) => (
+                    <SelectItem key={id} value={id}>
+                      {PORTAL_META[id].brand}
                     </SelectItem>
                   ))}
                 </SelectContent>

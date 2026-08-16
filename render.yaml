@@ -1,40 +1,133 @@
-# Render Blueprint — NPC Website (separate from Thitoptop)
+# Render Blueprint — NPC Website (1 service; 4 portal domains later)
+
 # Docs: https://render.com/docs/blueprint-spec
+
+#
+
+# Phase 4 — when DNS is ready, uncomment `domains` below and set env then redeploy:
+
+#   PUBLIC_APP_URL=https://npgroup.vn
+
+#   COOKIE_DOMAIN=.npgroup.vn
+
+#   VITE_GROUP_ORIGIN=https://npgroup.vn
+
+#   VITE_TNJS_ORIGIN=https://tnjs.npgroup.vn
+
+#   VITE_DUHOC_ORIGIN=https://duhoc.npgroup.vn
+
+#   VITE_DAOTAO_ORIGIN=https://daotao.npgroup.vn
+
+# Until then: use https://<service>.onrender.com/?portal=group|tnjs|duhoc|daotao
+
 services:
+
   - type: web
+
     name: npc-website
+
     runtime: node
+
     plan: free
+
     region: singapore
+
     branch: main
+
     autoDeployTrigger: commit
+
     buildCommand: npm install --include=dev && npm run build
+
     startCommand: npm start
+
     healthCheckPath: /api/health
+
+    # domains:
+
+    #   - npgroup.vn
+
+    #   - tnjs.npgroup.vn
+
+    #   - duhoc.npgroup.vn
+
+    #   - daotao.npgroup.vn
+
     envVars:
+
       - key: NODE_ENV
+
         value: production
+
       - key: NODE_VERSION
+
         value: "20"
+
       - key: SESSION_SECRET
+
         generateValue: true
+
       - key: DATABASE_URL
+
         sync: false
+
       - key: PUBLIC_APP_URL
+
         sync: false
+
+      - key: COOKIE_DOMAIN
+
+        sync: false
+
+      - key: ALLOWED_ORIGINS
+
+        sync: false
+
       - key: PAYOS_CLIENT_ID
+
         sync: false
+
       - key: PAYOS_API_KEY
+
         sync: false
+
       - key: PAYOS_CHECKSUM_KEY
+
         sync: false
+
       - key: R2_PRIMARY_ACCOUNT_ID
+
         sync: false
+
       - key: R2_PRIMARY_ACCESS_KEY_ID
+
         sync: false
+
       - key: R2_PRIMARY_SECRET_ACCESS_KEY
+
         sync: false
+
       - key: R2_PRIMARY_BUCKET_NAME
+
         sync: false
+
       - key: R2_PRIMARY_ENDPOINT
+
         sync: false
+
+      - key: VITE_GROUP_ORIGIN
+
+        sync: false
+
+      - key: VITE_TNJS_ORIGIN
+
+        sync: false
+
+      - key: VITE_DUHOC_ORIGIN
+
+        sync: false
+
+      - key: VITE_DAOTAO_ORIGIN
+
+        sync: false
+
+

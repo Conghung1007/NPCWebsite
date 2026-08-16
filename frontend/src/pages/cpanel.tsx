@@ -13,10 +13,13 @@ import { ArticleManager } from "@/components/ArticleManager";
 import { ExamManager } from "@/components/ExamManager";
 import { ContactInfoManager } from "@/components/ContactInfoManager";
 import { QuestionBankManager } from "@/components/QuestionBankManager";
+import { AdminPortalFilter } from "@/components/AdminPortalFilter";
+import { AdminPortalProvider } from "@/contexts/AdminPortalContext";
 
 import { Pagination } from "@/components/ui/pagination";
 import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText, Image, Check, X, MapPin, HelpCircle, Trophy, GraduationCap, Receipt, BarChart3 } from "lucide-react";
-import { type User as UserType, type ContactRequest, type RegistrationRequest } from "@shared/schema";
+import { PORTAL_IDS, PORTAL_META, type PortalId } from "@/lib/portal";
+import { portalBadgeLabel } from "@/components/AdminPortalFilter";
 import { ExamResultsManager } from "@/components/ExamResultsManager";
 import { ClassManager } from "@/components/ClassManager";
 import { OrdersManager } from "@/components/OrdersManager";
@@ -32,7 +35,15 @@ export function CpanelPage({ tab }: CpanelPageProps) {
   const [activeTab, setActiveTab] = useState<string>("");
   const [editingUserId, setEditingUserId] = useState<string | null>(null);
   const [isAddingUser, setIsAddingUser] = useState(false);
-  const [formData, setFormData] = useState({ username: "", fullName: "", email: "", phone: "", password: "", role: "user" as "user" | "manager" | "admin" });
+  const [formData, setFormData] = useState({
+    username: "",
+    fullName: "",
+    email: "",
+    phone: "",
+    password: "",
+    role: "user" as "user" | "manager" | "admin",
+    portals: [] as PortalId[],
+  });
   const [showPasswords, setShowPasswords] = useState<Record<string, boolean>>({});
   const [showFormPassword, setShowFormPassword] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ isOpen: boolean; user: UserType | null }>({
@@ -129,13 +140,24 @@ export function CpanelPage({ tab }: CpanelPageProps) {
       phone: userToEdit.phone || "",
       password: "",
       role: userToEdit.role as "user" | "manager" | "admin",
+      portals: (userToEdit.portals || []).filter((p): p is PortalId =>
+        (PORTAL_IDS as readonly string[]).includes(p),
+      ),
     });
   };
 
   const handleCancelEdit = () => {
     setEditingUserId(null);
     setIsAddingUser(false);
-    setFormData({ username: "", fullName: "", email: "", phone: "", password: "", role: "user" });
+    setFormData({
+      username: "",
+      fullName: "",
+      email: "",
+      phone: "",
+      password: "",
+      role: "user",
+      portals: [],
+    });
     setShowFormPassword(false);
   };
 
@@ -168,6 +190,7 @@ export function CpanelPage({ tab }: CpanelPageProps) {
         email: formData.email || null,
         phone: formData.phone || null,
         role: formData.role,
+        portals: formData.role === "user" ? null : formData.portals,
       };
       
       if (formData.password) {
@@ -377,15 +400,17 @@ export function CpanelPage({ tab }: CpanelPageProps) {
   };
 
   return (
+    <AdminPortalProvider>
     <div className="min-h-screen bg-gray-50/50 py-8">
       <div className="container mx-auto px-4">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">
             Control Panel
           </h1>
-          <p className="text-gray-600 mt-2 mb-6">
+          <p className="text-gray-600 mt-2 mb-4">
             Chào mừng {user.username} ({user.role})
           </p>
+          <AdminPortalFilter className="rounded-lg border bg-white px-4 py-3 shadow-sm" />
         </div>
 
         <div className="flex gap-8">
@@ -527,7 +552,15 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                         <Button 
                           onClick={() => {
                             setIsAddingUser(true);
-                            setFormData({ username: "", fullName: "", email: "", phone: "", password: "", role: "user" });
+                            setFormData({
+                              username: "",
+                              fullName: "",
+                              email: "",
+                              phone: "",
+                              password: "",
+                              role: "user",
+                              portals: [],
+                            });
                           }}
                           className="flex items-center gap-2"
                         >
@@ -563,6 +596,7 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                             <TableHead>Email</TableHead>
                             <TableHead>Số điện thoại</TableHead>
                             <TableHead>Vai trò</TableHead>
+                            <TableHead>Portal</TableHead>
                             <TableHead>Mật khẩu</TableHead>
                             <TableHead>Ngày tạo</TableHead>
                             <TableHead>Thao tác</TableHead>
@@ -617,6 +651,34 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                                   <option value="manager">manager</option>
                                   <option value="admin">admin</option>
                                 </select>
+                              </TableCell>
+                              <TableCell>
+                                {formData.role === "user" ? (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                ) : (
+                                  <div className="flex flex-col gap-1 min-w-[140px]">
+                                    {PORTAL_IDS.map((id) => (
+                                      <label key={id} className="flex items-center gap-1 text-xs">
+                                        <input
+                                          type="checkbox"
+                                          checked={formData.portals.includes(id)}
+                                          onChange={(e) => {
+                                            setFormData((prev) => ({
+                                              ...prev,
+                                              portals: e.target.checked
+                                                ? [...prev.portals, id]
+                                                : prev.portals.filter((p) => p !== id),
+                                            }));
+                                          }}
+                                        />
+                                        {PORTAL_META[id].brand}
+                                      </label>
+                                    ))}
+                                    <span className="text-[10px] text-muted-foreground">
+                                      Trống = tất cả
+                                    </span>
+                                  </div>
+                                )}
                               </TableCell>
                               <TableCell>
                                 <div className="relative">
@@ -717,6 +779,46 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                                   <Badge variant={userItem.role === "manager" ? "default" : "secondary"}>
                                     {userItem.role}
                                   </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell>
+                                {editingUserId === userItem.id ? (
+                                  formData.role === "user" ? (
+                                    <span className="text-xs text-muted-foreground">—</span>
+                                  ) : (
+                                    <div className="flex flex-col gap-1 min-w-[140px]">
+                                      {PORTAL_IDS.map((id) => (
+                                        <label key={id} className="flex items-center gap-1 text-xs">
+                                          <input
+                                            type="checkbox"
+                                            checked={formData.portals.includes(id)}
+                                            onChange={(e) => {
+                                              setFormData((prev) => ({
+                                                ...prev,
+                                                portals: e.target.checked
+                                                  ? [...prev.portals, id]
+                                                  : prev.portals.filter((p) => p !== id),
+                                              }));
+                                            }}
+                                          />
+                                          {PORTAL_META[id].brand}
+                                        </label>
+                                      ))}
+                                      <span className="text-[10px] text-muted-foreground">
+                                        Trống = tất cả
+                                      </span>
+                                    </div>
+                                  )
+                                ) : userItem.role === "user" ? (
+                                  <span className="text-xs text-muted-foreground">—</span>
+                                ) : !userItem.portals?.length ? (
+                                  <span className="text-xs text-muted-foreground">Tất cả</span>
+                                ) : (
+                                  <span className="text-xs">
+                                    {userItem.portals
+                                      .map((p) => portalBadgeLabel(p))
+                                      .join(", ")}
+                                  </span>
                                 )}
                               </TableCell>
                               <TableCell>
@@ -842,6 +944,7 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                               <TableHead>Tên</TableHead>
                               <TableHead>Email</TableHead>
                               <TableHead>Số điện thoại</TableHead>
+                              <TableHead>Portal</TableHead>
                               <TableHead>Dịch vụ</TableHead>
                               <TableHead>Tin nhắn</TableHead>
                               <TableHead>Ngày gửi</TableHead>
@@ -856,6 +959,11 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                                 </TableCell>
                                 <TableCell>{message.email}</TableCell>
                                 <TableCell>{message.phone}</TableCell>
+                                <TableCell>
+                                  <Badge variant="outline">
+                                    {portalBadgeLabel(message.portal)}
+                                  </Badge>
+                                </TableCell>
                                 <TableCell>
                                   <Badge variant="outline" className="text-sm">
                                     {getServiceName(message.service || "")}
@@ -1229,6 +1337,7 @@ export function CpanelPage({ tab }: CpanelPageProps) {
         </Dialog>
       </div>
     </div>
+    </AdminPortalProvider>
   );
 }
 

@@ -1,17 +1,20 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiFetch, apiRequest } from "@/lib/queryClient";
+import { resolvePortal } from "@/lib/portal";
 
 export const siteContentKeys = {
-  page: (page: string) => ["/api/site-contents", page] as const,
+  page: (page: string, portal?: string) =>
+    ["/api/site-contents", page, portal || resolvePortal()] as const,
 };
 
 export function useSiteContents(page = "home") {
+  const portal = resolvePortal();
   return useQuery<Record<string, string>>({
-    queryKey: siteContentKeys.page(page),
+    queryKey: siteContentKeys.page(page, portal),
     queryFn: async () => {
-      const res = await fetch(`/api/site-contents?page=${encodeURIComponent(page)}`, {
-        credentials: "include",
-      });
+      const res = await apiFetch(
+        `/api/site-contents?page=${encodeURIComponent(page)}`,
+      );
       if (!res.ok) throw new Error("Không thể tải nội dung trang");
       return res.json();
     },

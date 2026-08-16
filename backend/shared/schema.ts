@@ -11,6 +11,8 @@ export const users = pgTable("users", {
   phone: text("phone").unique(),
   password: text("password").notNull(),
   role: text("role").notNull().default("user"), // user, manager, admin
+  /** null/[] = all portals; otherwise manager is limited to these portal ids */
+  portals: text("portals").array(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -21,6 +23,7 @@ export const contactRequests = pgTable("contact_requests", {
   email: text("email").notNull(),
   service: text("service"),
   message: text("message").notNull(),
+  portal: text("portal").notNull().default("group"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -31,6 +34,7 @@ export const articles = pgTable("articles", {
   imageUrl: text("image_url"),
   videoUrl: text("video_url"), // Add video URL field
   category: text("category").notNull(), // visa-services, study-abroad, japanese-training
+  portal: text("portal").notNull().default("group"), // group | tnjs | duhoc | daotao
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -39,6 +43,7 @@ export const uiImages = pgTable("ui_images", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   imageUrl: text("image_url").notNull(),
   imageType: text("image_type").notNull(), // hero, service, testimonial, feature, ui
+  portal: text("portal").notNull().default("group"),
   altText: text("alt_text"),
   description: text("description"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
@@ -176,6 +181,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   phone: true,
   password: true,
   role: true,
+  portals: true,
 });
 
 
@@ -310,6 +316,7 @@ export const testimonials = pgTable("testimonials", {
   rating: integer("rating").default(5),
   displayOrder: integer("display_order").default(0),
   isActive: boolean("is_active").default(true),
+  portal: text("portal").notNull().default("group"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -333,10 +340,15 @@ export const siteContents = pgTable(
     page: text("page").notNull().default("home"),
     key: text("key").notNull(),
     value: text("value").notNull(),
+    portal: text("portal").notNull().default("group"),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
-    pageKeyIdx: uniqueIndex("site_contents_page_key_idx").on(table.page, table.key),
+    pageKeyPortalIdx: uniqueIndex("site_contents_page_key_portal_idx").on(
+      table.page,
+      table.key,
+      table.portal,
+    ),
   }),
 );
 
@@ -344,10 +356,12 @@ export const upsertSiteContentSchema = z.object({
   page: z.string().min(1).default("home"),
   key: z.string().min(1),
   value: z.string(),
+  portal: z.enum(["group", "tnjs", "duhoc", "daotao"]).optional(),
 });
 
 export const bulkUpsertSiteContentSchema = z.object({
   page: z.string().min(1).default("home"),
+  portal: z.enum(["group", "tnjs", "duhoc", "daotao"]).optional(),
   entries: z.array(
     z.object({
       key: z.string().min(1),
@@ -369,6 +383,7 @@ export const courses = pgTable("courses", {
   coverImageUrl: text("cover_image_url"),
   isPublished: boolean("is_published").default(false).notNull(),
   sortOrder: integer("sort_order").default(0).notNull(),
+  portal: text("portal").notNull().default("tnjs"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -386,6 +401,7 @@ export const classSessions = pgTable("class_sessions", {
   enrolledCount: integer("enrolled_count").notNull().default(0),
   reservedCount: integer("reserved_count").notNull().default(0), // pending checkouts
   status: text("status").notNull().default("draft"), // draft | published | full | closed
+  portal: text("portal").notNull().default("tnjs"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -426,6 +442,7 @@ export const orders = pgTable("orders", {
   userId: varchar("user_id"),
   totalVnd: integer("total_vnd").notNull().default(0),
   status: text("status").notNull().default("pending"), // pending | paid | failed | cancelled | expired
+  portal: text("portal").notNull().default("tnjs"),
   paymentLinkId: text("payment_link_id"),
   checkoutUrl: text("checkout_url"),
   paidAt: timestamp("paid_at"),

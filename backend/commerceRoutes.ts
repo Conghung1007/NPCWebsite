@@ -32,10 +32,19 @@ import {
   verifyPayosWebhook,
 } from "./payos";
 import { randomUUID } from "crypto";
+import { isPortalId, normalizeAllowedPortals, canAccessPortal } from "@shared/portal";
+import { resolveCookieDomain, resolvePublicBaseUrl } from "@shared/origins";
 
 type SessionReq = Request & {
   session: Request["session"] & {
-    user?: { id: string; role: string; fullName?: string | null; email?: string | null; phone?: string | null };
+    user?: {
+      id: string;
+      role: string;
+      fullName?: string | null;
+      email?: string | null;
+      phone?: string | null;
+      portals?: string[] | null;
+    };
     cartGuestToken?: string;
   };
 };
@@ -49,16 +58,26 @@ function requireAdminOrManager(req: any, res: any, next: any) {
   next();
 }
 
+function sessionAllowedPortals(sessionUser: any) {
+  return normalizeAllowedPortals(sessionUser?.portals);
+}
+
+function denyPortalAccess(res: Response) {
+  return res.status(403).json({ message: "Bạn không có quyền truy cập portal này" });
+}
+
 function ensureGuestToken(req: SessionReq, res: Response): string {
   if (!req.session.cartGuestToken) {
     req.session.cartGuestToken = randomUUID();
   }
-  // Mirror to cookie for resilience across session resets
+  const cookieDomain = resolveCookieDomain();
+  // Mirror to cookie for resilience across session resets / portal hosts
   res.cookie("npc_cart_token", req.session.cartGuestToken, {
     httpOnly: true,
     sameSite: "lax",
     maxAge: 7 * 24 * 60 * 60 * 1000,
     secure: process.env.NODE_ENV === "production",
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
   });
   return req.session.cartGuestToken;
 }
@@ -103,6 +122,7 @@ const courseBodySchema = z.object({
   coverImageUrl: z.string().nullable().optional(),
   isPublished: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
+  portal: z.enum(["group", "tnjs", "duhoc", "daotao"]).optional(),
 });
 
 const classSessionBodySchema = z.object({
@@ -115,6 +135,7 @@ const classSessionBodySchema = z.object({
   priceVnd: z.number().int().min(0),
   capacity: z.number().int().min(1).default(10),
   status: z.enum(["draft", "published", "full", "closed"]).optional(),
+  portal: z.enum(["group", "tnjs", "duhoc", "daotao"]).optional(),
 });
 
 const checkoutSchema = z.object({
@@ -132,9 +153,13 @@ function parseDate(value: unknown): Date | null {
 
 export function registerCommerceRoutes(app: Express) {
   // -------- Public catalog --------
-  app.get("/api/courses", async (_req, res) => {
+  app.get("/api/courses", async (req, res) => {
     try {
-      const items = await listCourses({ publishedOnly: true });
+      const allPortals = req.query.all === "1";
+      const items = await listCourses({
+        publishedOnly: true,
+        portal: allPortals ? undefined : req.portal,
+      });
       res.json(items);
     } catch (error) {
       console.error("list courses:", error);
@@ -146,9 +171,11 @@ export function registerCommerceRoutes(app: Express) {
     try {
       const courseId =
         typeof req.query.courseId === "string" ? req.query.courseId : undefined;
+      const allPortals = req.query.all === "1";
       const items = await listClassSessions({
         courseId,
         publicOnly: true,
+        portal: allPortals ? undefined : req.portal,
       });
       res.json(items);
     } catch (error) {
@@ -171,9 +198,22 @@ export function registerCommerceRoutes(app: Express) {
   });
 
   // -------- Admin courses --------
-  app.get("/api/admin/courses", requireAdminOrManager, async (_req, res) => {
+  app.get("/api/admin/courses", requireAdminOrManager, async (req, res) => {
     try {
-      res.json(await listCourses());
+      const allPortals = req.query.all === "1";
+      const portal =
+        !allPortals && isPortalId(req.query.portal)
+          ? req.query.portal
+          : undefined;
+      const allowed = sessionAllowedPortals((req as any).user);
+      if (allowed && portal && !canAccessPortal(allowed, portal)) {
+        return denyPortalAccess(res);
+      }
+      let courses = await listCourses({ portal });
+      if (allowed && allPortals) {
+        courses = courses.filter((c) => canAccessPortal(allowed, c.portal));
+      }
+      res.json(courses);
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: "Lỗi tải khóa học" });
@@ -183,7 +223,14 @@ export function registerCommerceRoutes(app: Express) {
   app.post("/api/admin/courses", requireAdminOrManager, async (req, res) => {
     try {
       const body = courseBodySchema.parse(req.body);
-      const created = await createCourse(body);
+      const portal = body.portal || req.portal || "tnjs";
+      if (!canAccessPortal(sessionAllowedPortals((req as any).user), portal)) {
+        return denyPortalAccess(res);
+      }
+      const created = await createCourse({
+        ...body,
+        portal,
+      });
       res.status(201).json(created);
     } catch (error: any) {
       if (error?.name === "ZodError") {
@@ -225,7 +272,20 @@ export function registerCommerceRoutes(app: Express) {
     try {
       const courseId =
         typeof req.query.courseId === "string" ? req.query.courseId : undefined;
-      res.json(await listClassSessions({ courseId }));
+      const allPortals = req.query.all === "1";
+      const portal =
+        !allPortals && isPortalId(req.query.portal)
+          ? req.query.portal
+          : undefined;
+      const allowed = sessionAllowedPortals((req as any).user);
+      if (allowed && portal && !canAccessPortal(allowed, portal)) {
+        return denyPortalAccess(res);
+      }
+      let sessions = await listClassSessions({ courseId, portal });
+      if (allowed && allPortals) {
+        sessions = sessions.filter((s) => canAccessPortal(allowed, s.portal));
+      }
+      res.json(sessions);
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: "Lỗi tải lớp học" });
@@ -235,8 +295,13 @@ export function registerCommerceRoutes(app: Express) {
   app.post("/api/admin/class-sessions", requireAdminOrManager, async (req, res) => {
     try {
       const body = classSessionBodySchema.parse(req.body);
+      const portal = body.portal || req.portal || "tnjs";
+      if (!canAccessPortal(sessionAllowedPortals((req as any).user), portal)) {
+        return denyPortalAccess(res);
+      }
       const created = await createClassSession({
         ...body,
+        portal,
         startDate: parseDate(body.startDate) as any,
         endDate: parseDate(body.endDate) as any,
       });
@@ -299,9 +364,23 @@ export function registerCommerceRoutes(app: Express) {
         typeof req.query.status === "string" && req.query.status !== "all"
           ? req.query.status
           : undefined;
+      const allPortals = req.query.all === "1";
+      const portal =
+        !allPortals && isPortalId(req.query.portal)
+          ? req.query.portal
+          : undefined;
+      const allowed = sessionAllowedPortals((req as any).user);
+      if (allowed && portal && !canAccessPortal(allowed, portal)) {
+        return denyPortalAccess(res);
+      }
       const limit = Math.min(200, parseInt(String(req.query.limit || "50"), 10) || 50);
       const offset = Math.max(0, parseInt(String(req.query.offset || "0"), 10) || 0);
-      res.json(await listOrders({ status, limit, offset }));
+      const result = await listOrders({ status, limit, offset, portal });
+      if (allowed && allPortals) {
+        const items = result.items.filter((o) => canAccessPortal(allowed, o.portal));
+        return res.json({ items, total: items.length });
+      }
+      res.json(result);
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: "Lỗi tải đơn hàng" });
@@ -337,7 +416,22 @@ export function registerCommerceRoutes(app: Express) {
         to.setHours(23, 59, 59, 999);
       }
 
-      res.json(await getOrderStats({ from, to }));
+      const allPortals = req.query.all === "1";
+      let portal =
+        !allPortals && isPortalId(req.query.portal)
+          ? req.query.portal
+          : undefined;
+      const allowed = sessionAllowedPortals((req as any).user);
+      if (allowed) {
+        if (portal && !canAccessPortal(allowed, portal)) {
+          return denyPortalAccess(res);
+        }
+        if (!portal) {
+          portal = allowed[0];
+        }
+      }
+
+      res.json(await getOrderStats({ from, to, portal }));
     } catch (error) {
       console.error(error);
       res.status(500).json({ message: "Lỗi tải thống kê đơn hàng" });
@@ -401,9 +495,12 @@ export function registerCommerceRoutes(app: Express) {
         userId: sessionUser?.id || null,
       });
 
-      const baseUrl =
-        process.env.PUBLIC_APP_URL ||
-        `${req.protocol}://${req.get("host")}`;
+      const baseUrl = resolvePublicBaseUrl({
+        host: req.get("x-forwarded-host") || req.get("host"),
+        forwardedProto: req.get("x-forwarded-proto"),
+        protocol: req.protocol,
+        portal: req.portal || order.portal,
+      });
       const returnUrl =
         process.env.PAYOS_RETURN_URL ||
         `${baseUrl}/checkout/success?order=${encodeURIComponent(order.code)}`;

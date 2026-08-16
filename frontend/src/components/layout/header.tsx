@@ -16,16 +16,23 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { User as AppUser } from "@shared/schema";
 import { cn } from "@/lib/utils";
+import { usePortal } from "@/contexts/PortalContext";
+import { getNavigation, portalHref, portalPath, type NavItem } from "@/lib/portal";
 
-const navigation = [
-  { name: "Trang chủ", href: "/", shortName: "Trang chủ" },
-  { name: "Dịch vụ xin thị thực", href: "/visa-services", shortName: "Visa" },
-  { name: "Tư vấn du học", href: "/study-abroad", shortName: "Du học" },
-  { name: "Đào tạo tiếng Nhật", href: "/japanese-training", shortName: "Tiếng Nhật" },
-  { name: "Thi trực tuyến", href: "/online-exam", shortName: "Thi online" },
-] as const;
-
-const CTA = { name: "Tư vấn miễn phí", href: "/contact" } as const;
+function getHeaderCta(portal: ReturnType<typeof usePortal>["portal"]) {
+  if (portal === "tnjs") {
+    return {
+      name: "Đăng ký học miễn phí",
+      shortName: "Đăng ký",
+      href: portalPath("tnjs", "/#jp-tu-van"),
+    };
+  }
+  return {
+    name: "Tư vấn miễn phí",
+    shortName: "Tư vấn",
+    href: "/contact",
+  };
+}
 
 const roleLabel: Record<string, string> = {
   admin: "Quản trị viên",
@@ -34,42 +41,182 @@ const roleLabel: Record<string, string> = {
 };
 
 function isActivePath(location: string, href: string) {
-  if (href === "/") return location === "/";
-  return location === href || location.startsWith(`${href}/`);
+  if (href.startsWith("http://") || href.startsWith("https://")) return false;
+  try {
+    const url = new URL(href, "http://local.invalid");
+    const pathOnly = url.pathname || "/";
+    if (pathOnly === "/") {
+      return location === "/" || location === "";
+    }
+    return location === pathOnly || location.startsWith(`${pathOnly}/`);
+  } catch {
+    const pathOnly = href.split("#")[0]?.split("?")[0] || "/";
+    if (pathOnly === "/") return location === "/" || location === "";
+    return location === pathOnly || location.startsWith(`${pathOnly}/`);
+  }
 }
 
-function Brand({ compact = false }: { compact?: boolean }) {
+function Brand({
+  compact = false,
+  showTagline = true,
+  /** Sub-portal header: smaller mark so two-row layout feels balanced */
+  portal = false,
+}: {
+  compact?: boolean;
+  showTagline?: boolean;
+  portal?: boolean;
+}) {
+  const { portal: portalId, meta } = usePortal();
+
   return (
     <Link
       href="/"
-      className="flex items-center gap-2.5 sm:gap-3 shrink-0 group"
+      className={cn(
+        "flex items-center shrink-0 group",
+        portal ? "gap-3" : "gap-3 sm:gap-3.5",
+      )}
       data-testid="header-logo"
-      aria-label="N&P Company — Trang chủ"
+      aria-label={`${meta.brand} — Trang chủ`}
     >
       <span
         className={cn(
-          "flex items-center justify-center rounded-full bg-primary text-primary-foreground font-bold shadow-sm group-hover:bg-[hsl(142,76%,30%)] transition-all",
-          compact ? "h-9 w-9 text-xs" : "h-10 w-10 sm:h-11 sm:w-11 text-sm sm:text-base",
+          "flex items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold transition-all duration-200",
+          portal
+            ? compact
+              ? "h-9 w-9 text-xs"
+              : "h-12 w-12 text-sm"
+            : compact
+              ? "h-9 w-9 text-xs"
+              : "h-11 w-11 sm:h-12 sm:w-12 text-sm sm:text-base",
         )}
         aria-hidden
       >
-        N&P
+        {portalId === "tnjs"
+          ? "TN"
+          : portalId === "duhoc"
+            ? "DH"
+            : portalId === "daotao"
+              ? "ĐT"
+              : "N&P"}
       </span>
-      <span className="flex flex-col leading-tight min-w-0">
+      <span className="flex flex-col justify-center min-w-0 gap-0.5">
         <span
           className={cn(
-            "font-bold text-primary tracking-tight transition-all",
-            compact ? "text-base sm:text-lg" : "text-lg sm:text-xl",
+            "font-display font-bold text-foreground tracking-tight transition-all duration-200 leading-none",
+            portal
+              ? compact
+                ? "text-base sm:text-lg"
+                : "text-xl"
+              : compact
+                ? "text-base sm:text-lg"
+                : "text-lg sm:text-xl lg:text-[1.35rem]",
           )}
         >
-          N&P Company
+          {meta.brand}
         </span>
-        {!compact && (
-          <span className="hidden sm:block text-[11px] text-muted-foreground whitespace-nowrap">
-            Công ty TNHH N&P
+        {showTagline && !compact && (
+          <span className="hidden sm:block text-[11px] sm:text-xs text-muted-foreground/90 tracking-wide leading-snug">
+            {meta.tagline}
           </span>
         )}
       </span>
+    </Link>
+  );
+}
+
+function GroupHomeLink({ className }: { className?: string }) {
+  return (
+    <a
+      href={portalHref("group", "/")}
+      className={cn(
+        "text-sm font-medium text-muted-foreground hover:text-primary transition-colors tracking-wide",
+        className,
+      )}
+    >
+      N&P Group
+    </a>
+  );
+}
+
+function NavLinkItem({
+  item,
+  location,
+  mobile,
+  onNavigate,
+  respectHideBelowXl = true,
+  stacked = false,
+}: {
+  item: NavItem;
+  location: string;
+  mobile?: boolean;
+  onNavigate?: () => void;
+  respectHideBelowXl?: boolean;
+  /** Bottom row of sub-portal header: larger type, no side padding (align with N&P Group) */
+  stacked?: boolean;
+}) {
+  const active = !item.external && isActivePath(location, item.href);
+  const className = cn(
+    "relative font-medium transition-colors duration-200 whitespace-nowrap",
+    mobile
+      ? "block w-full text-left px-4 py-3 text-[15px] rounded-xl"
+      : stacked
+        ? cn(
+            "inline-flex items-center py-1.5 text-sm tracking-[0.01em]",
+            respectHideBelowXl && item.hideBelowXl && "hidden xl:inline-flex",
+          )
+        : cn(
+            "inline-flex items-center px-3.5 py-2 text-sm tracking-[0.01em]",
+            respectHideBelowXl && item.hideBelowXl && "hidden xl:inline-flex",
+          ),
+    mobile
+      ? active
+        ? "text-primary bg-primary/8"
+        : "text-foreground/85 hover:bg-muted/70 hover:text-foreground"
+      : active
+        ? "text-foreground"
+        : "text-muted-foreground hover:text-foreground",
+  );
+
+  const label = mobile ? item.name : item.shortName;
+
+  const inner = (
+    <>
+      {label}
+      {!mobile && active && (
+        <span
+          className={cn(
+            "absolute -bottom-0.5 h-[2px] rounded-full bg-primary",
+            stacked ? "left-0 right-0" : "left-3.5 right-3.5",
+          )}
+          aria-hidden
+        />
+      )}
+    </>
+  );
+
+  if (item.external || item.href.includes("?") || item.href.includes("#")) {
+    return (
+      <a
+        href={item.href}
+        onClick={onNavigate}
+        data-testid={`nav-link-${item.shortName}`}
+        className={className}
+        aria-current={active ? "page" : undefined}
+      >
+        {inner}
+      </a>
+    );
+  }
+
+  return (
+    <Link
+      href={item.href}
+      onClick={onNavigate}
+      data-testid={`nav-link-${item.href}`}
+      aria-current={active ? "page" : undefined}
+      className={className}
+    >
+      {inner}
     </Link>
   );
 }
@@ -78,55 +225,33 @@ function NavLinks({
   location,
   className,
   onNavigate,
-  compact = false,
-  showCta = true,
+  mobile = false,
+  respectHideBelowXl = true,
+  stacked = false,
 }: {
   location: string;
   className?: string;
   onNavigate?: () => void;
-  compact?: boolean;
-  showCta?: boolean;
+  mobile?: boolean;
+  respectHideBelowXl?: boolean;
+  stacked?: boolean;
 }) {
+  const { portal } = usePortal();
+  const navigation = getNavigation(portal);
+
   return (
     <div className={cn("flex items-center", className)}>
-      {navigation.map((item) => {
-        const active = isActivePath(location, item.href);
-        return (
-          <Link
-            key={item.href}
-            href={item.href}
-            onClick={onNavigate}
-            data-testid={`nav-link-${item.href}`}
-            aria-current={active ? "page" : undefined}
-            className={cn(
-              "px-3 py-2 text-sm font-semibold rounded-lg transition-colors whitespace-nowrap",
-              compact ? "block w-full text-left" : "text-center",
-              active
-                ? "text-white bg-primary shadow-sm"
-                : "text-foreground hover:text-primary hover:bg-primary/10",
-            )}
-          >
-            {compact ? item.name : item.shortName}
-          </Link>
-        );
-      })}
-      {showCta && (
-        <Link
-          href={CTA.href}
-          onClick={onNavigate}
-          data-testid={`nav-link-${CTA.href}`}
-          aria-current={isActivePath(location, CTA.href) ? "page" : undefined}
-          className={cn(
-            "px-3 py-2 text-sm font-semibold rounded-lg transition-colors whitespace-nowrap shadow-sm",
-            compact ? "block w-full text-left mt-1" : "ml-1",
-            isActivePath(location, CTA.href)
-              ? "bg-primary text-white hover:bg-[hsl(142,76%,30%)]"
-              : "bg-primary text-primary-foreground hover:bg-[hsl(142,76%,30%)]",
-          )}
-        >
-          {CTA.name}
-        </Link>
-      )}
+      {navigation.map((item) => (
+        <NavLinkItem
+          key={`${item.href}-${item.shortName}`}
+          item={item}
+          location={location}
+          mobile={mobile}
+          onNavigate={onNavigate}
+          respectHideBelowXl={respectHideBelowXl}
+          stacked={stacked}
+        />
+      ))}
     </div>
   );
 }
@@ -142,18 +267,37 @@ function ContactCta({
   className?: string;
   onNavigate?: () => void;
 }) {
-  const active = isActivePath(location, CTA.href);
+  const { portal } = usePortal();
+  const cta = getHeaderCta(portal);
+  const active = isActivePath(location, cta.href);
+  const classNames = cn(
+    "font-semibold shadow-none whitespace-nowrap",
+    size === "default" && "h-10 px-5",
+    size === "sm" && "h-8 px-3.5 text-xs",
+    className,
+  );
+  const usesAnchor = cta.href.includes("?") || cta.href.includes("#");
+
+  if (usesAnchor) {
+    return (
+      <a href={cta.href} onClick={onNavigate} data-testid={`nav-link-${cta.name}`}>
+        <Button size={size} className={classNames}>
+          <span className="sm:hidden">{cta.shortName}</span>
+          <span className="hidden sm:inline">{cta.name}</span>
+        </Button>
+      </a>
+    );
+  }
+
   return (
-    <Link href={CTA.href} onClick={onNavigate} data-testid={`nav-link-${CTA.href}`}>
+    <Link href={cta.href} onClick={onNavigate} data-testid={`nav-link-${cta.href}`}>
       <Button
         size={size}
         aria-current={active ? "page" : undefined}
-        className={cn(
-          "shadow-sm whitespace-nowrap",
-          className,
-        )}
+        className={classNames}
       >
-        {CTA.name}
+        <span className="sm:hidden">{cta.shortName}</span>
+        <span className="hidden sm:inline">{cta.name}</span>
       </Button>
     </Link>
   );
@@ -174,17 +318,20 @@ function UserMenu({
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
-          variant="outline"
+          variant="ghost"
           size={size}
-          className="text-sm"
+          className={cn(
+            "text-sm font-medium text-muted-foreground hover:text-foreground",
+            size === "default" && "h-10 px-3",
+          )}
           data-testid="user-menu-button"
           aria-label={`Tài khoản ${user.username}`}
         >
-          <User className="w-4 h-4 mr-1.5" />
-          <span className="max-w-[8rem] truncate">{user.username}</span>
+          <User className="w-4 h-4 mr-1.5 opacity-70" />
+          <span className="max-w-[7.5rem] truncate">{user.username}</span>
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="z-[100]">
+      <DropdownMenuContent align="end" className="z-[100] w-48">
         <DropdownMenuItem disabled>
           <span className="font-medium">{roleLabel[user.role] || user.role}</span>
         </DropdownMenuItem>
@@ -209,11 +356,15 @@ function UserMenu({
 function CartButton({ size = "default" }: { size?: "default" | "sm" }) {
   const { itemCount } = useCart();
   return (
-    <Link href="/cart" data-testid="nav-cart">
+    <Link href="/cart" data-testid="nav-cart" className="shrink-0">
       <Button
         variant="outline"
         size={size}
-        className="relative"
+        className={cn(
+          "relative border-border/80 bg-transparent hover:bg-muted/50",
+          size === "default" && "h-10 w-10 px-0",
+          size === "sm" && "h-9 w-9 px-0",
+        )}
         aria-label={`Giỏ hàng${itemCount ? `, ${itemCount} mục` : ""}`}
       >
         <ShoppingCart className="w-4 h-4" />
@@ -241,14 +392,30 @@ function AuthActions({
   }
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-3">
       <Link href="/login">
-        <Button variant="outline" size={size} data-testid="login-button">
+        <Button
+          variant="ghost"
+          size={size}
+          data-testid="login-button"
+          className={cn(
+            "font-medium text-muted-foreground hover:text-foreground",
+            size === "default" && "h-10 px-3.5",
+          )}
+        >
           Đăng nhập
         </Button>
       </Link>
       <Link href="/register">
-        <Button size={size} data-testid="register-button">
+        <Button
+          variant="outline"
+          size={size}
+          data-testid="register-button"
+          className={cn(
+            "font-medium border-border/80 bg-transparent hover:bg-muted/50",
+            size === "default" && "h-10 px-3.5",
+          )}
+        >
           Đăng ký
         </Button>
       </Link>
@@ -269,18 +436,18 @@ function MobileAuth({
     const isStaff = user.role === "manager" || user.role === "admin";
     return (
       <div className="space-y-2">
-        <div className="px-4 py-2 bg-muted/60 rounded-lg text-sm">
+        <div className="px-4 py-3 bg-muted/50 rounded-xl text-sm">
           <span className="font-medium">{user.username}</span>
           <br />
-          <span className="text-muted-foreground">
-            ({roleLabel[user.role] || user.role})
+          <span className="text-muted-foreground text-xs">
+            {roleLabel[user.role] || user.role}
           </span>
         </div>
         {isStaff && (
           <Link href="/cpanel" className="block" onClick={onNavigate}>
             <Button
               variant="outline"
-              className="w-full justify-start"
+              className="w-full justify-start h-11"
               data-testid="cpanel-button-mobile"
             >
               <Settings className="w-4 h-4 mr-2" />
@@ -290,7 +457,7 @@ function MobileAuth({
         )}
         <Button
           variant="outline"
-          className="w-full justify-start"
+          className="w-full justify-start h-11"
           onClick={() => {
             onLogout();
             onNavigate();
@@ -307,12 +474,16 @@ function MobileAuth({
   return (
     <div className="space-y-2">
       <Link href="/register" className="block" onClick={onNavigate}>
-        <Button className="w-full" data-testid="register-button-mobile">
+        <Button className="w-full h-11" data-testid="register-button-mobile">
           Đăng ký
         </Button>
       </Link>
       <Link href="/login" className="block" onClick={onNavigate}>
-        <Button variant="outline" className="w-full" data-testid="login-button-mobile">
+        <Button
+          variant="outline"
+          className="w-full h-11"
+          data-testid="login-button-mobile"
+        >
           Đăng nhập
         </Button>
       </Link>
@@ -325,10 +496,13 @@ export function Header() {
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const { user } = useAuth();
+  const { portal } = usePortal();
   const queryClient = useQueryClient();
+  const isSubPortal = portal !== "group";
+  const isTnjs = portal === "tnjs";
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 12);
+    const onScroll = () => setScrolled(window.scrollY > 24);
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
@@ -355,11 +529,72 @@ export function Header() {
   const handleLogout = () => logoutMutation.mutate();
   const closeMobile = () => setIsOpen(false);
 
+  const mobileActions = (
+    <div className="flex lg:hidden items-center gap-1.5">
+      {isTnjs && <CartButton size="sm" />}
+      <div className="hidden md:flex items-center gap-1.5">
+        <AuthActions user={user} onLogout={handleLogout} size="sm" />
+        {!isSubPortal && <ContactCta location={location} size="sm" />}
+      </div>
+
+      <Sheet open={isOpen} onOpenChange={setIsOpen}>
+        <SheetTrigger asChild>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-10 w-10 px-0"
+            data-testid="mobile-menu-button"
+            aria-expanded={isOpen}
+            aria-controls="mobile-navigation"
+            aria-label={isOpen ? "Đóng menu" : "Mở menu"}
+          >
+            <Menu className="h-5 w-5" />
+          </Button>
+        </SheetTrigger>
+        <SheetContent
+          side="right"
+          id="mobile-navigation"
+          className="w-[min(100%,20rem)] sm:w-80 flex flex-col px-5"
+        >
+          <div className="mt-6 mb-4 pb-4 border-b border-border/70 space-y-3">
+            <Brand />
+            {isSubPortal && (
+              <GroupHomeLink className="inline-flex" />
+            )}
+          </div>
+          <NavLinks
+            location={location}
+            mobile
+            onNavigate={closeMobile}
+            className="flex-col items-stretch gap-0.5"
+          />
+          <div className="border-t border-border/70 mt-auto pt-5 space-y-3 pb-2">
+            <ContactCta
+              location={location}
+              className="w-full md:hidden"
+              onNavigate={closeMobile}
+            />
+            <div className="md:hidden">
+              <MobileAuth
+                user={user}
+                onLogout={handleLogout}
+                onNavigate={closeMobile}
+              />
+            </div>
+          </div>
+        </SheetContent>
+      </Sheet>
+    </div>
+  );
+
   return (
     <header
       className={cn(
-        "site-header bg-white/95 border-b border-border/80 backdrop-blur-sm transition-all duration-200",
-        scrolled ? "shadow-md" : "shadow-sm",
+        "site-header transition-[background-color,box-shadow,border-color] duration-300 ease-out",
+        isSubPortal && "site-header--stacked",
+        scrolled
+          ? "bg-white/90 border-b border-border/60 shadow-[0_1px_0_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(0,0,0,0.08)] backdrop-blur-xl"
+          : "bg-white/80 border-b border-transparent backdrop-blur-md",
       )}
     >
       <a
@@ -369,79 +604,85 @@ export function Header() {
         Bỏ qua điều hướng
       </a>
 
+      {/* Desktop: stacked layout for TNJS / Du học / Đào tạo */}
+      {isSubPortal ? (
+        <nav
+          className={cn(
+            "mx-auto hidden lg:grid w-full max-w-[90rem] px-5 sm:px-8 lg:px-10",
+            "grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-2 gap-x-14 xl:gap-x-16 items-center",
+            "transition-[padding] duration-300 ease-out",
+            scrolled ? "py-1.5" : "py-2.5",
+          )}
+          aria-label="Điều hướng chính"
+        >
+          <div className="row-span-2 self-center">
+            <Brand
+              portal
+              compact={scrolled}
+              showTagline={!scrolled}
+            />
+          </div>
+
+          <div className="flex items-center min-h-10 pl-6 xl:pl-10">
+            <GroupHomeLink />
+          </div>
+
+          {/* Hàng trên: giỏ + auth; hàng dưới: CTA căn giữa dưới Đăng nhập/Đăng ký */}
+          <div className="row-span-2 self-center flex items-start gap-3 shrink-0">
+            {portal === "tnjs" && (
+              <div className="flex h-10 items-center">
+                <CartButton />
+              </div>
+            )}
+            <div className="flex flex-col items-center gap-1.5">
+              <AuthActions user={user} onLogout={handleLogout} />
+              <ContactCta location={location} size="sm" />
+            </div>
+          </div>
+
+          <div className="flex items-center min-h-11 pl-6 xl:pl-10">
+            <NavLinks
+              location={location}
+              respectHideBelowXl={false}
+              stacked
+              className="flex flex-wrap gap-x-5 xl:gap-x-7 gap-y-1"
+            />
+          </div>
+        </nav>
+      ) : (
+        <nav
+          className={cn(
+            "mx-auto hidden lg:flex w-full max-w-[90rem] items-center justify-between gap-6 sm:gap-8 px-5 sm:px-8 lg:px-10 transition-[height,padding] duration-300 ease-out",
+            scrolled
+              ? "h-[var(--header-height-scrolled)]"
+              : "h-[var(--header-height)]",
+          )}
+          aria-label="Điều hướng chính"
+        >
+          <Brand compact={scrolled} />
+          <NavLinks
+            location={location}
+            className="flex flex-1 justify-center gap-1 xl:gap-1.5"
+          />
+          <div className="flex items-center gap-4 shrink-0">
+            <AuthActions user={user} onLogout={handleLogout} />
+            <ContactCta location={location} />
+          </div>
+        </nav>
+      )}
+
+      {/* Mobile / tablet bar */}
       <nav
         className={cn(
-          "mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 transition-[height] duration-200",
-          scrolled ? "h-14" : "h-[var(--header-height)]",
+          "mx-auto flex lg:hidden w-full max-w-[90rem] items-center justify-between gap-4 px-5 sm:px-8",
+          scrolled
+            ? "h-[var(--header-height-scrolled)]"
+            : "h-[var(--header-height)]",
         )}
         aria-label="Điều hướng chính"
       >
-        <Brand compact={scrolled} />
-
-        <NavLinks
-          location={location}
-          showCta={false}
-          className="hidden lg:flex flex-1 justify-center gap-0.5"
-        />
-
-        <div className="hidden lg:flex items-center gap-2 shrink-0">
-          <CartButton />
-          <ContactCta location={location} />
-          <AuthActions user={user} onLogout={handleLogout} />
-        </div>
-
-        <div className="flex lg:hidden items-center gap-2">
-          <CartButton size="sm" />
-          <div className="hidden md:flex items-center gap-2">
-            <ContactCta location={location} size="sm" />
-            <AuthActions user={user} onLogout={handleLogout} size="sm" />
-          </div>
-
-          <Sheet open={isOpen} onOpenChange={setIsOpen}>
-            <SheetTrigger asChild>
-              <Button
-                variant="ghost"
-                size="sm"
-                data-testid="mobile-menu-button"
-                aria-expanded={isOpen}
-                aria-controls="mobile-navigation"
-                aria-label={isOpen ? "Đóng menu" : "Mở menu"}
-              >
-                <Menu className="h-6 w-6" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent
-              side="left"
-              id="mobile-navigation"
-              className="w-72 sm:w-80 flex flex-col"
-            >
-              <div className="mt-8 mb-4">
-                <Brand />
-              </div>
-              <NavLinks
-                location={location}
-                compact
-                showCta={false}
-                onNavigate={closeMobile}
-                className="flex-col items-stretch gap-1"
-              />
-              <div className="border-t mt-4 pt-4 space-y-3">
-                <ContactCta
-                  location={location}
-                  className="w-full md:hidden"
-                  onNavigate={closeMobile}
-                />
-                <div className="md:hidden">
-                  <MobileAuth
-                    user={user}
-                    onLogout={handleLogout}
-                    onNavigate={closeMobile}
-                  />
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
-        </div>
+        <Brand compact={scrolled} showTagline={false} />
+        {mobileActions}
       </nav>
     </header>
   );

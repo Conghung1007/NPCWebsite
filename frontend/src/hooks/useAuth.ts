@@ -1,5 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import type { User } from "@shared/schema";
+import { apiFetch } from "@/lib/queryClient";
 
 export function useAuth() {
   const { data: user, isLoading, error } = useQuery<User>({
@@ -9,9 +10,7 @@ export function useAuth() {
     throwOnError: false,
     // Custom query function to handle 401 properly
     queryFn: async () => {
-      const res = await fetch("/api/auth/user", {
-        credentials: "include",
-      });
+      const res = await apiFetch("/api/auth/user");
       
       if (res.status === 401) {
         return null; // Return null for 401, which means not authenticated

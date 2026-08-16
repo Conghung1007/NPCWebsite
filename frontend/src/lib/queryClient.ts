@@ -1,4 +1,5 @@
 import { QueryClient, QueryFunction } from "@tanstack/react-query";
+import { resolvePortal } from "@/lib/portal";
 
 async function throwIfResNotOk(res: Response) {
   if (!res.ok) {
@@ -9,7 +10,6 @@ async function throwIfResNotOk(res: Response) {
         throw new Error(json.message);
       }
     } catch (e) {
-      // Prefer API `message` when body is JSON; ignore JSON parse failures
       if (e instanceof Error && !(e instanceof SyntaxError)) {
         throw e;
       }
@@ -18,16 +18,45 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+/** Merge X-Portal (and optional extras) for API calls */
+export function portalHeaders(extra?: HeadersInit): HeadersInit {
+  const base: Record<string, string> = { "X-Portal": resolvePortal() };
+  if (!extra) return base;
+  if (extra instanceof Headers) {
+    extra.forEach((v, k) => {
+      base[k] = v;
+    });
+    return base;
+  }
+  if (Array.isArray(extra)) {
+    for (const [k, v] of extra) base[k] = v;
+    return base;
+  }
+  return { ...base, ...(extra as Record<string, string>) };
+}
+
+/** fetch with credentials + X-Portal — prefer this over raw fetch for /api */
+export async function apiFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit,
+): Promise<Response> {
+  const headers = portalHeaders(init?.headers);
+  return fetch(input, {
+    ...init,
+    credentials: init?.credentials ?? "include",
+    headers,
+  });
+}
+
 export async function apiRequest(
   method: string,
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  const res = await fetch(url, {
+  const res = await apiFetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers: data ? { "Content-Type": "application/json" } : undefined,
     body: data ? JSON.stringify(data) : undefined,
-    credentials: "include",
   });
 
   await throwIfResNotOk(res);
@@ -40,9 +69,7 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    const res = await fetch(queryKey.join("/") as string, {
-      credentials: "include",
-    });
+    const res = await apiFetch(queryKey.join("/") as string);
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;
@@ -58,7 +85,6 @@ export const queryClient = new QueryClient({
       queryFn: getQueryFn({ on401: "throw" }),
       refetchInterval: false,
       refetchOnWindowFocus: false,
-      // Cache briefly to cut duplicate requests without serving forever-stale data
       staleTime: 60_000,
       retry: 1,
     },

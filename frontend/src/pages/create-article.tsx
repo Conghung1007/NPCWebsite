@@ -13,14 +13,27 @@ import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, PlusCircle } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { extractTempImageUrlsFromHtml, cleanupTempMediaUrls } from "@/lib/tempMediaCleanup";
+import { apiFetch } from "@/lib/queryClient";
+import { PORTAL_IDS, PORTAL_META, type PortalId } from "@/lib/portal";
 
 const createArticleSchema = z.object({
   title: z.string().min(1, "Tiêu đề không được để trống"),
   content: z.string().min(10, "Nội dung phải có ít nhất 10 ký tự"),
   category: z.string().min(1, "Vui lòng chọn danh mục"),
+  portal: z.enum(["group", "tnjs", "duhoc", "daotao"]),
 });
 
 type CreateArticleForm = z.infer<typeof createArticleSchema>;
+
+function defaultPortalFromStorage(): PortalId {
+  try {
+    const v = localStorage.getItem("npc_admin_portal_filter");
+    if (v && (PORTAL_IDS as readonly string[]).includes(v)) return v as PortalId;
+  } catch {
+    /* ignore */
+  }
+  return "group";
+}
 
 export default function CreateArticle() {
   const [, setLocation] = useLocation();
@@ -33,12 +46,13 @@ export default function CreateArticle() {
       title: "",
       content: "",
       category: "",
+      portal: defaultPortalFromStorage(),
     },
   });
 
   const createArticleMutation = useMutation({
     mutationFn: async (data: CreateArticleForm) => {
-      const response = await fetch("/api/articles", {
+      const response = await apiFetch("/api/articles", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -97,7 +111,7 @@ export default function CreateArticle() {
     { value: "visa-services", label: "Dịch vụ Visa" },
     { value: "study-abroad", label: "Du học" },
     { value: "japanese-training", label: "Đào tạo tiếng Nhật" },
-
+    { value: "soft-skills", label: "Kỹ năng mềm" },
   ];
 
   return (
@@ -163,6 +177,31 @@ export default function CreateArticle() {
                           {categoryOptions.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="portal"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Portal *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Chọn portal" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {PORTAL_IDS.map((id) => (
+                            <SelectItem key={id} value={id}>
+                              {PORTAL_META[id].brand}
                             </SelectItem>
                           ))}
                         </SelectContent>

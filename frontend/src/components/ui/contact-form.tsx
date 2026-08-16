@@ -17,6 +17,9 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
+import { usePortal } from "@/contexts/PortalContext";
+import type { PortalId } from "@/lib/portal";
+import { useEffect } from "react";
 
 const baseFields = {
   name: z.string().min(2, "Họ tên phải có ít nhất 2 ký tự"),
@@ -45,13 +48,38 @@ interface ContactFormProps {
   submitMessage?: string;
 }
 
-const SERVICES = [
-  { value: "visa", label: "Dịch vụ xin thị thực" },
-  { value: "study-abroad", label: "Tư vấn du học" },
-  { value: "japanese", label: "Đào tạo tiếng Nhật" },
-  { value: "online-exam", label: "Thi trực tuyến" },
-  { value: "other", label: "Khác" },
-];
+const SERVICES_BY_PORTAL: Record<PortalId, { value: string; label: string }[]> = {
+  group: [
+    { value: "visa", label: "Dịch vụ xin thị thực" },
+    { value: "study-abroad", label: "Tư vấn du học" },
+    { value: "japanese", label: "Đào tạo tiếng Nhật" },
+    { value: "soft-skills", label: "Kỹ năng mềm" },
+    { value: "online-exam", label: "Thi trực tuyến" },
+    { value: "other", label: "Khác" },
+  ],
+  tnjs: [
+    { value: "japanese", label: "Khóa tiếng Nhật / JLPT" },
+    { value: "online-exam", label: "Thi trực tuyến" },
+    { value: "other", label: "Khác" },
+  ],
+  duhoc: [
+    { value: "study-abroad", label: "Tư vấn du học" },
+    { value: "visa", label: "Visa du học" },
+    { value: "other", label: "Khác" },
+  ],
+  daotao: [
+    { value: "soft-skills", label: "Kỹ năng mềm" },
+    { value: "enterprise", label: "Đào tạo doanh nghiệp" },
+    { value: "other", label: "Khác" },
+  ],
+};
+
+const DEFAULT_SERVICE: Record<PortalId, string> = {
+  group: "",
+  tnjs: "japanese",
+  duhoc: "study-abroad",
+  daotao: "soft-skills",
+};
 
 export function ContactForm({
   variant = "page",
@@ -60,14 +88,18 @@ export function ContactForm({
   submitMessage = "Yêu cầu tư vấn miễn phí từ trang chủ",
 }: ContactFormProps) {
   const { toast } = useToast();
+  const { portal } = usePortal();
   const isHero = variant === "hero";
+  const services = SERVICES_BY_PORTAL[portal] || SERVICES_BY_PORTAL.group;
+  const resolvedDefault =
+    defaultService || DEFAULT_SERVICE[portal] || "";
 
   const heroForm = useForm<HeroFormValues>({
     resolver: zodResolver(heroFormSchema),
     defaultValues: {
       name: "",
       phone: "",
-      service: defaultService,
+      service: resolvedDefault,
       privacy: false,
     },
   });
@@ -78,11 +110,16 @@ export function ContactForm({
       name: "",
       phone: "",
       email: "",
-      service: defaultService,
+      service: resolvedDefault,
       message: "",
       privacy: false,
     },
   });
+
+  useEffect(() => {
+    heroForm.setValue("service", resolvedDefault);
+    pageForm.setValue("service", resolvedDefault);
+  }, [resolvedDefault, portal]);
 
   const contactMutation = useMutation({
     mutationFn: async (data: {
@@ -91,8 +128,12 @@ export function ContactForm({
       email: string;
       service?: string;
       message: string;
+      portal?: string;
     }) => {
-      const response = await apiRequest("POST", "/api/contact", data);
+      const response = await apiRequest("POST", "/api/contact", {
+        ...data,
+        portal,
+      });
       return response.json();
     },
     onSuccess: (data) => {
@@ -117,15 +158,18 @@ export function ContactForm({
     contactMutation.mutate({
       name: rest.name,
       phone: rest.phone,
-      service: rest.service || defaultService || undefined,
+      service: rest.service || resolvedDefault || undefined,
       email: `sdt.${rest.phone.replace(/\D/g, "")}@lienhe.np`,
-      message: submitMessage,
+      message: `[${portal}] ${submitMessage}`,
     });
   };
 
   const onPageSubmit = (data: PageFormValues) => {
     const { privacy: _privacy, ...contactData } = data;
-    contactMutation.mutate(contactData);
+    contactMutation.mutate({
+      ...contactData,
+      message: `[${portal}] ${contactData.message}`,
+    });
   };
 
   const labelClass = isHero ? "text-white" : "";
@@ -185,7 +229,7 @@ export function ContactForm({
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {SERVICES.map((service) => (
+                      {services.map((service) => (
                         <SelectItem key={service.value} value={service.value}>
                           {service.label}
                         </SelectItem>
@@ -296,11 +340,11 @@ export function ContactForm({
                     </SelectTrigger>
                   </FormControl>
                   <SelectContent>
-                    {SERVICES.map((service) => (
-                      <SelectItem key={service.value} value={service.value}>
-                        {service.label}
-                      </SelectItem>
-                    ))}
+                    {services.map((service) => (
+                        <SelectItem key={service.value} value={service.value}>
+                          {service.label}
+                        </SelectItem>
+                      ))}
                   </SelectContent>
                 </Select>
                 <FormMessage />

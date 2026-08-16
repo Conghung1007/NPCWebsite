@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { apiRequest } from "@/lib/queryClient";
+import { apiFetch, apiRequest } from "@/lib/queryClient";
 import type { ClassSession } from "@shared/schema";
 
 export type CartItemView = {
@@ -28,7 +28,7 @@ export function useCart() {
   const cartQuery = useQuery<CartView>({
     queryKey: cartKeys.all,
     queryFn: async () => {
-      const res = await fetch("/api/cart", { credentials: "include" });
+      const res = await apiFetch("/api/cart");
       if (!res.ok) throw new Error("Không tải được giỏ hàng");
       return res.json();
     },

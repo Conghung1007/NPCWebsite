@@ -31,6 +31,8 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { cn } from "@/lib/utils";
+import { usePortal } from "@/contexts/PortalContext";
+import { portalHref } from "@/lib/portal";
 
 type DocTypeKey = "tourism" | "business" | "study" | "residence";
 
@@ -161,9 +163,17 @@ function parseJson<T>(raw: string | undefined, fallback: T): T {
 
 export default function VisaServices() {
   const [, setLocation] = useLocation();
+  const { portal } = usePortal();
   const { user, hasImageEditPermission } = useAuth();
   const hasEditPermission = user?.role === "manager" || user?.role === "admin";
   const { getImageByType, invalidateCache } = useUiImages();
+
+  // Visa lives under the Du học portal — send group (etc.) visitors there
+  useEffect(() => {
+    if (portal !== "duhoc") {
+      window.location.replace(portalHref("duhoc", "/visa-services"));
+    }
+  }, [portal]);
 
   const [heroOverride, setHeroOverride] = useState<string | null>(null);
   const [consultationOverride, setConsultationOverride] = useState<string | null>(null);
@@ -309,6 +319,14 @@ export default function VisaServices() {
     setActiveDocType(key);
     document.getElementById("visa-documents")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
+
+  if (portal !== "duhoc") {
+    return (
+      <div className="min-h-[40vh] flex items-center justify-center text-muted-foreground text-sm">
+        Đang chuyển tới cổng Du học…
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-full">

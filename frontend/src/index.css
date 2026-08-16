@@ -27,14 +27,24 @@ img, video, iframe, object, embed {
   max-width: 100%;
 }
 
-/* Site header — fixed via class, no !important overrides */
+/* Site header — fixed; expanded height reserved for main offset */
 :root {
-  --header-height: 5rem; /* 80px desktop */
+  --header-height: 5.75rem; /* ~92px desktop expanded */
+  --header-height-scrolled: 4rem; /* 64px sticky compact */
 }
 
 @media (max-width: 640px) {
   :root {
-    --header-height: 4rem; /* 64px mobile */
+    --header-height: 4.25rem; /* 68px */
+    --header-height-scrolled: 3.5rem; /* 56px */
+  }
+}
+
+/* Sub-portals (TNJS / Du học / Đào tạo): two-row desktop header */
+@media (min-width: 1024px) {
+  :root:has(.site-header--stacked) {
+    --header-height: 7.25rem;
+    --header-height-scrolled: 6rem;
   }
 }
 
@@ -47,7 +57,7 @@ img, video, iframe, object, embed {
   z-index: 50;
 }
 
-/* Offset main content for fixed header */
+/* Offset main content for fixed header (always expanded height → no layout jump) */
 main {
   padding-top: var(--header-height);
 }
@@ -117,6 +127,26 @@ form, .card {
   --ring: hsl(20, 14.3%, 4.1%);
   --radius: 0.5rem;
   --neutral: hsl(210, 40%, 98%);
+}
+
+/* Portal accents — same design system, subtle hue shift */
+html[data-portal="tnjs"] {
+  --primary: hsl(152, 72%, 32%);
+  --secondary: hsl(150, 50%, 96%);
+  --secondary-foreground: hsl(152, 72%, 28%);
+  --accent: hsl(152, 60%, 42%);
+}
+html[data-portal="duhoc"] {
+  --primary: hsl(175, 55%, 30%);
+  --secondary: hsl(175, 40%, 96%);
+  --secondary-foreground: hsl(175, 55%, 26%);
+  --accent: hsl(175, 45%, 40%);
+}
+html[data-portal="daotao"] {
+  --primary: hsl(95, 48%, 32%);
+  --secondary: hsl(95, 35%, 96%);
+  --secondary-foreground: hsl(95, 48%, 28%);
+  --accent: hsl(95, 40%, 42%);
 }
 
 .dark {
@@ -216,6 +246,21 @@ form, .card {
 
   .home-fade-up {
     animation: homeFadeUp 0.55s ease-out both;
+  }
+
+  @keyframes tnjs-hero-pan {
+    from {
+      transform: scale(1.02) translate3d(0, 0, 0);
+    }
+    to {
+      transform: scale(1.08) translate3d(-1.5%, 1%, 0);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .motion-safe\:animate-\[tnjs-hero-pan_28s_ease-in-out_infinite_alternate\] {
+      animation: none !important;
+    }
   }
 
   /* —— Site-wide page / scroll motion (GPU-friendly) —— */

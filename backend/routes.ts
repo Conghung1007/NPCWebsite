@@ -25,6 +25,8 @@ import {
 } from "./examAttemptSession";
 import multer from "multer";
 import { registerCommerceRoutes } from "./commerceRoutes";
+import { portalMiddleware } from "./portalMiddleware";
+import { portalFromArticleCategory, isPortalId, normalizeAllowedPortals, canAccessPortal, sanitizePortalsInput } from "@shared/portal";
 
 // Configure multer for file uploads
 const upload = multer({ 
@@ -73,6 +75,14 @@ function sanitizeUsers<T extends { password?: string }>(users: T[]) {
 
 function isAdminOrManager(sessionUser: any): boolean {
   return !!sessionUser && (sessionUser.role === "admin" || sessionUser.role === "manager");
+}
+
+function sessionAllowedPortals(sessionUser: any) {
+  return normalizeAllowedPortals(sessionUser?.portals);
+}
+
+function denyPortalAccess(res: any) {
+  return res.status(403).json({ message: "Bạn không có quyền truy cập portal này" });
 }
 
 /** Owner, staff, anonymous (no userId), or any attempt on a demo exam. */
@@ -190,6 +200,7 @@ const calculateQuestionCount = (exam: any): number => {
 };
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  app.use(portalMiddleware);
   registerCommerceRoutes(app);
 
   // Serve static files from frontend/public directory
@@ -372,7 +383,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create new user
   app.post("/api/users", requireAdminOrManager, async (req, res) => {
     try {
-      const { username, fullName, email, phone, password, role } = req.body;
+      const { username, fullName, email, phone, password, role, portals } = req.body;
       
       if (!username || !password || !role) {
         return res.status(400).json({ message: "Missing required fields" });
@@ -390,7 +401,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         email: email || null,
         phone: phone || null,
         password, 
-        role 
+        role,
+        portals: role === "user" ? null : sanitizePortalsInput(portals),
       });
       res.status(201).json(sanitizeUser(newUser));
     } catch (error) {
@@ -403,18 +415,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/users/:id", requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
-      const { username, fullName, email, phone, password, role } = req.body;
+      const { username, fullName, email, phone, password, role, portals } = req.body;
       
       if (!username) {
         return res.status(400).json({ message: "Username is required" });
       }
 
+      const nextRole = role || "user";
       const updateData: any = { 
         username: username.toLowerCase(), 
         fullName: fullName || null,
         email: email || null,
         phone: phone || null,
-        role: role || "user"
+        role: nextRole,
+        portals: nextRole === "user" ? null : sanitizePortalsInput(portals),
       };
       
       if (password) {
@@ -1449,7 +1463,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Contact form submission
   app.post("/api/contact", async (req, res) => {
     try {
-      const contactData = insertContactRequestSchema.parse(req.body);
+      const contactData = insertContactRequestSchema.parse({
+        ...req.body,
+        portal: isPortalId(req.body?.portal) ? req.body.portal : req.portal || "group",
+      });
       const contact = await storage.createContactRequest(contactData);
       
       // Here you would typically send an email notification
@@ -1476,7 +1493,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/contact", requireAdminOrManager, async (req, res) => {
     try {
       const requests = await storage.getContactRequests();
-      res.json(requests);
+      const allowed = sessionAllowedPortals((req as any).user || (req.session as any)?.user);
+      const filtered = allowed
+        ? requests.filter((r) => canAccessPortal(allowed, r.portal))
+        : requests;
+      res.json(filtered);
     } catch (error) {
       res.status(500).json({ 
         success: false, 
@@ -1504,10 +1525,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Article routes
   app.get("/api/articles", async (req, res) => {
     try {
-      const category = req.query.category as string;
-      const articles = category 
-        ? await storage.getArticlesByCategory(category)
-        : await storage.getAllArticles();
+      const category = req.query.category as string | undefined;
+      const allPortals = req.query.all === "1";
+      const portal = allPortals ? undefined : req.portal;
+      const sessionUser = (req.session as any)?.user;
+      const allowed = isAdminOrManager(sessionUser)
+        ? sessionAllowedPortals(sessionUser)
+        : null;
+
+      if (allowed && !allPortals && !canAccessPortal(allowed, portal)) {
+        return denyPortalAccess(res);
+      }
+
+      let articles = category
+        ? await storage.getArticlesByCategory(category, portal)
+        : await storage.getAllArticles(portal);
+
+      if (allowed && allPortals) {
+        articles = articles.filter((a) => canAccessPortal(allowed, a.portal));
+      }
+
       res.json(articles);
     } catch (error) {
       res.status(500).json({ 
@@ -1518,9 +1555,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Testimonials (homepage CMS)
-  app.get("/api/testimonials", async (_req, res) => {
+  app.get("/api/testimonials", async (req, res) => {
     try {
-      const list = await storage.ensureDefaultTestimonials();
+      const allPortals = req.query.all === "1";
+      const portal = allPortals ? undefined : req.portal;
+      const list = await storage.ensureDefaultTestimonials(portal);
       res.json(list);
     } catch (error) {
       console.error("Error fetching testimonials:", error);
@@ -1576,7 +1615,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/site-contents", async (req, res) => {
     try {
       const page = (req.query.page as string) || "home";
-      const rows = await storage.getSiteContents(page);
+      const allPortals = req.query.all === "1";
+      const portal = allPortals ? undefined : req.portal;
+      const rows = await storage.getSiteContents(page, portal);
       const map: Record<string, string> = {};
       for (const row of rows) {
         map[row.key] = row.value;
@@ -1591,7 +1632,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/site-contents", requireAdminOrManager, async (req, res) => {
     try {
       const data = upsertSiteContentSchema.parse(req.body);
-      const row = await storage.upsertSiteContent(data.page, data.key, data.value);
+      const portal = data.portal || req.portal;
+      const row = await storage.upsertSiteContent(
+        data.page,
+        data.key,
+        data.value,
+        portal,
+      );
       res.json(row);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1605,7 +1652,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/site-contents/bulk", requireAdminOrManager, async (req, res) => {
     try {
       const data = bulkUpsertSiteContentSchema.parse(req.body);
-      const rows = await storage.bulkUpsertSiteContents(data.page, data.entries);
+      const portal = data.portal || req.portal;
+      const rows = await storage.bulkUpsertSiteContents(
+        data.page,
+        data.entries,
+        portal,
+      );
       res.json(rows);
     } catch (error) {
       if (error instanceof z.ZodError) {
@@ -1618,7 +1670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/articles", requireAdminOrManager, async (req, res) => {
     try {
-      const { title, content, category } = req.body;
+      const { title, content, category, portal: bodyPortal } = req.body;
       
       if (!title || !content || !category) {
         return res.status(400).json({ message: "Title, content, and category are required" });
@@ -1628,12 +1680,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         typeof content === "string" ? content : "",
       );
       const imageUrl = firstArticleImageUrl(promotedContent);
+      const portal = isPortalId(bodyPortal)
+        ? bodyPortal
+        : portalFromArticleCategory(category);
+
+      const allowed = sessionAllowedPortals((req as any).user);
+      if (!canAccessPortal(allowed, portal)) {
+        return denyPortalAccess(res);
+      }
 
       const article = await storage.createArticle({
         title,
         content: promotedContent,
         category,
         imageUrl,
+        portal,
         videoUrl: null,
       });
 
@@ -1788,7 +1849,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/articles/:id", requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
-      const { title, content, category } = req.body;
+      const { title, content, category, portal: bodyPortal } = req.body;
       
       if (!title || !content || !category) {
         return res.status(400).json({ message: "Title, content, and category are required" });
@@ -1828,11 +1889,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
+      const portal = isPortalId(bodyPortal)
+          ? bodyPortal
+          : existing.portal || portalFromArticleCategory(category);
+
+      const allowed = sessionAllowedPortals((req as any).user);
+      if (!canAccessPortal(allowed, existing.portal) || !canAccessPortal(allowed, portal)) {
+        return denyPortalAccess(res);
+      }
+
       const updatedArticle = await storage.updateArticle(id, {
         title,
         content: promotedContent,
         category,
         imageUrl,
+        portal,
       });
 
       res.json({ article: updatedArticle });
@@ -2195,7 +2266,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Get all UI images 
   app.get("/api/ui-images", async (req, res) => {
     try {
-      const uiImages = await storage.getAllUiImages();
+      const allPortals = req.query.all === "1";
+      const portal = allPortals ? undefined : req.portal;
+      const uiImages = await storage.getAllUiImages(portal);
       res.json(uiImages);
     } catch (error) {
       console.error("Error fetching UI images:", error);

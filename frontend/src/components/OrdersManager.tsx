@@ -14,6 +14,9 @@ import { Pagination } from "@/components/ui/pagination";
 import { formatVnd } from "@/hooks/useCart";
 import type { Order, OrderItem } from "@shared/schema";
 import { Receipt } from "lucide-react";
+import { useAdminPortal } from "@/contexts/AdminPortalContext";
+import { portalBadgeLabel } from "@/components/AdminPortalFilter";
+import { apiFetch } from "@/lib/queryClient";
 
 type OrderRow = Order & { items: OrderItem[] };
 
@@ -22,16 +25,20 @@ const PAGE_SIZE = 15;
 export function OrdersManager() {
   const [status, setStatus] = useState("all");
   const [page, setPage] = useState(1);
+  const { listQuery } = useAdminPortal();
 
   const { data, isLoading } = useQuery<{ items: OrderRow[]; total: number }>({
-    queryKey: ["/api/admin/orders", status, page],
+    queryKey: ["/api/admin/orders", status, page, listQuery],
     queryFn: async () => {
       const params = new URLSearchParams({
         limit: String(PAGE_SIZE),
         offset: String((page - 1) * PAGE_SIZE),
       });
       if (status !== "all") params.set("status", status);
-      const res = await fetch(`/api/admin/orders?${params}`, { credentials: "include" });
+      const q = listQuery.includes("=") ? listQuery.split("=") : null;
+      if (q?.[0] === "all") params.set("all", "1");
+      else if (q?.[0] === "portal" && q[1]) params.set("portal", q[1]);
+      const res = await apiFetch(`/api/admin/orders?${params}`);
       if (!res.ok) throw new Error("Không tải đơn hàng");
       return res.json();
     },
@@ -102,6 +109,7 @@ export function OrdersManager() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Mã</TableHead>
+                    <TableHead>Portal</TableHead>
                     <TableHead>Khách</TableHead>
                     <TableHead>Lớp</TableHead>
                     <TableHead>Tổng</TableHead>
@@ -113,6 +121,9 @@ export function OrdersManager() {
                   {items.map((o) => (
                     <TableRow key={o.id}>
                       <TableCell className="font-mono text-xs">{o.code}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline">{portalBadgeLabel(o.portal)}</Badge>
+                      </TableCell>
                       <TableCell>
                         <div className="font-medium">{o.fullName}</div>
                         <div className="text-xs text-muted-foreground">{o.phone}</div>

@@ -87,6 +87,14 @@ const WHY_ICONS = [Eye, Heart, TrendingUp, Users];
 const PROCESS_ICONS = [MessageCircle, FileText, Send, CheckCircle2];
 
 export default function StudyAbroad() {
+  useEffect(() => {
+    const hash = window.location.hash.replace(/^#/, "");
+    if (!hash) return;
+    const t = window.setTimeout(() => {
+      document.getElementById(hash)?.scrollIntoView({ behavior: "smooth" });
+    }, 120);
+    return () => window.clearTimeout(t);
+  }, []);
   const { hasImageEditPermission, user } = useAuth();
   const hasEditPermission = user?.role === "manager" || user?.role === "admin";
   const { getImageByType, invalidateCache } = useUiImages();
@@ -321,7 +329,11 @@ export default function StudyAbroad() {
       </section>
 
       {/* Markets */}
-      <section className="bg-white border-b border-border/60" aria-label="Thị trường du học">
+      <section
+        id="study-countries"
+        className="bg-white border-b border-border/60"
+        aria-label="Thị trường du học"
+      >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 sm:py-8 text-center">
           <h2 className="text-sm font-semibold text-foreground mb-2">
             <EditableText

@@ -18,18 +18,22 @@ import {
   ChevronDown
 } from "lucide-react";
 import type { Article } from "@shared/schema";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { apiFetch } from "@/lib/queryClient";
+import { useAdminPortal } from "@/contexts/AdminPortalContext";
+import { portalBadgeLabel } from "@/components/AdminPortalFilter";
 
 const categories = [
   { value: "visa-services", label: "Dịch vụ visa" },
   { value: "study-abroad", label: "Tư vấn du học" },
   { value: "japanese-training", label: "Đào tạo tiếng Nhật" },
-
+  { value: "soft-skills", label: "Kỹ năng mềm" },
 ];
 
 export function ArticleManager() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { listQuery, filter } = useAdminPortal();
   const [currentPage, setCurrentPage] = useState(1);
   const articlesPerPage = 6;
   const [sortBy, setSortBy] = useState<'newest' | 'oldest' | 'title' | 'custom'>('custom');
@@ -38,15 +42,23 @@ export function ArticleManager() {
     article: null
   });
 
-  // Fetch articles
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter]);
+
   const { data: articles = [], isLoading, refetch } = useQuery<Article[]>({
-    queryKey: ["/api/articles"],
+    queryKey: ["/api/articles", "admin", listQuery],
+    queryFn: async () => {
+      const res = await apiFetch(`/api/articles?${listQuery}`);
+      if (!res.ok) throw new Error("Failed to fetch articles");
+      return res.json();
+    },
   });
 
   // Delete article mutation
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const response = await fetch(`/api/articles/${id}`, {
+      const response = await apiFetch(`/api/articles/${id}`, {
         method: "DELETE",
       });
       if (!response.ok) throw new Error("Failed to delete article");
@@ -77,7 +89,7 @@ export function ArticleManager() {
   // Move article order mutation
   const moveOrderMutation = useMutation({
     mutationFn: async ({ id, direction }: { id: string; direction: 'up' | 'down' }) => {
-      const response = await fetch(`/api/articles/${id}/move`, {
+      const response = await apiFetch(`/api/articles/${id}/move`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -176,6 +188,9 @@ export function ArticleManager() {
                   <div className="flex-1">
                     <div className="flex items-center gap-3 mb-2">
                       <h3 className="font-medium">{article.title}</h3>
+                      <Badge variant="outline">
+                        {portalBadgeLabel(article.portal)}
+                      </Badge>
                       <Badge variant="secondary">
                         {getCategoryLabel(article.category)}
                       </Badge>

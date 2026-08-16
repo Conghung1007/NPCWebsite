@@ -6,6 +6,8 @@ import { useCart, formatVnd } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Calendar, MapPin, ShoppingCart } from "lucide-react";
 import type { ClassSession } from "@shared/schema";
+import { apiFetch } from "@/lib/queryClient";
+import { resolvePortal } from "@/lib/portal";
 
 type SessionDetail = ClassSession & {
   courseTitle?: string;
@@ -23,9 +25,9 @@ export default function ClassDetailPage({ id }: ClassDetailPageProps) {
   const { addItem } = useCart();
 
   const { data: session, isLoading, isError } = useQuery<SessionDetail>({
-    queryKey: ["/api/class-sessions", id],
+    queryKey: ["/api/class-sessions", id, resolvePortal()],
     queryFn: async () => {
-      const res = await fetch(`/api/class-sessions/${id}`, { credentials: "include" });
+      const res = await apiFetch(`/api/class-sessions/${id}`);
       if (!res.ok) throw new Error("Không tìm thấy lớp");
       return res.json();
     },

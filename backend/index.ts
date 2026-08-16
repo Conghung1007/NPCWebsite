@@ -3,15 +3,45 @@ import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import {
+  allowedCorsOrigins,
+  resolveCookieDomain,
+} from "@shared/origins";
 
 const app = express();
 
-// Required behind Railway / reverse proxies (secure cookies, correct IPs)
+// Required behind Render / reverse proxies (secure cookies, correct IPs)
 app.set("trust proxy", 1);
+
+const cookieDomain = resolveCookieDomain();
+if (cookieDomain) {
+  log(`Session cookie domain: ${cookieDomain}`);
+}
 
 // JSON body limit: large enough for exam payloads, avoid unbounded 100MB default
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: false, limit: "10mb" }));
+
+// Credentialed CORS for portal subdomains (same app, shared cookie Domain)
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && allowedCorsOrigins().includes(origin)) {
+    res.setHeader("Access-Control-Allow-Origin", origin);
+    res.setHeader("Access-Control-Allow-Credentials", "true");
+    res.setHeader(
+      "Access-Control-Allow-Headers",
+      "Content-Type, X-Portal, Authorization",
+    );
+    res.setHeader(
+      "Access-Control-Allow-Methods",
+      "GET,POST,PUT,PATCH,DELETE,OPTIONS",
+    );
+  }
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(204);
+  }
+  next();
+});
 
 app.use(
   session({
@@ -23,6 +53,7 @@ app.use(
       httpOnly: true,
       maxAge: 24 * 60 * 60 * 1000,
       sameSite: "lax",
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
     },
   }),
 );
@@ -40,7 +71,11 @@ app.use((req, res, next) => {
 
 (async () => {
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true });
+    res.json({
+      ok: true,
+      publicAppUrl: process.env.PUBLIC_APP_URL || null,
+      cookieDomain: cookieDomain || null,
+    });
   });
 
   const server = await registerRoutes(app);

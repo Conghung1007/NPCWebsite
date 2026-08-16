@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { useToast } from "@/hooks/use-toast";
+import { apiFetch } from "@/lib/queryClient";
 
 interface ImageManagerProps {
   isOpen: boolean;
@@ -41,7 +42,7 @@ export function ImageManager({
   // Delete image mutation
   const deleteImageMutation = useMutation({
     mutationFn: async (fileName: string) => {
-      const response = await fetch(`/api/ui-images/${fileName}`, {
+      const response = await apiFetch(`/api/ui-images/${fileName}`, {
         method: 'DELETE',
       });
       if (!response.ok) {
@@ -117,7 +118,7 @@ export function ImageManager({
       formData.append('imageType', imageType);
       formData.append('altText', altText);
       
-      const serverUploadResponse = await fetch('/api/ui-images/server-upload', {
+      const serverUploadResponse = await apiFetch('/api/ui-images/server-upload', {
         method: 'POST',
         body: formData
       });
@@ -170,7 +171,7 @@ export function ImageManager({
         setUploading(true);
         
         // Update the UI image in database
-        const updateResponse = await fetch(`/api/ui-images`, {
+        const updateResponse = await apiFetch(`/api/ui-images`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

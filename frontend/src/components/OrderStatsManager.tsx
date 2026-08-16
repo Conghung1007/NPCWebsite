@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatVnd } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
+import { useAdminPortal } from "@/contexts/AdminPortalContext";
+import { apiFetch } from "@/lib/queryClient";
 import {
   BarChart3,
   Download,
@@ -81,6 +83,7 @@ function toInputDate(d: Date): string {
 
 export function OrderStatsManager() {
   const { toast } = useToast();
+  const { listQuery } = useAdminPortal();
   const [from, setFrom] = useState("");
   const [to, setTo] = useState("");
 
@@ -88,16 +91,19 @@ export function OrderStatsManager() {
     const p = new URLSearchParams();
     if (from) p.set("from", from);
     if (to) p.set("to", to);
+    const q = listQuery.includes("=") ? listQuery.split("=") : null;
+    if (q?.[0] === "all") p.set("all", "1");
+    else if (q?.[0] === "portal" && q[1]) p.set("portal", q[1]);
     return p.toString();
-  }, [from, to]);
+  }, [from, to, listQuery]);
 
   const { data, isLoading, isError, refetch } = useQuery<OrderStatsResponse>({
-    queryKey: ["/api/admin/orders/stats", from, to],
+    queryKey: ["/api/admin/orders/stats", from, to, listQuery],
     queryFn: async () => {
       const url = queryParams
         ? `/api/admin/orders/stats?${queryParams}`
-        : "/api/admin/orders/stats";
-      const res = await fetch(url, { credentials: "include" });
+        : "/api/admin/orders/stats?all=1";
+      const res = await apiFetch(url);
       if (!res.ok) throw new Error("Không tải được thống kê");
       return res.json();
     },

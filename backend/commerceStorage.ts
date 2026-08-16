@@ -41,12 +41,17 @@ export function isSessionSellable(session: ClassSession): boolean {
 
 export async function listCourses(opts?: {
   publishedOnly?: boolean;
+  portal?: string;
 }): Promise<Course[]> {
-  if (opts?.publishedOnly) {
+  const conditions = [];
+  if (opts?.publishedOnly) conditions.push(eq(courses.isPublished, true));
+  if (opts?.portal) conditions.push(eq(courses.portal, opts.portal));
+
+  if (conditions.length) {
     return db
       .select()
       .from(courses)
-      .where(eq(courses.isPublished, true))
+      .where(and(...conditions))
       .orderBy(asc(courses.sortOrder), desc(courses.createdAt));
   }
   return db
@@ -72,6 +77,7 @@ export async function createCourse(
       coverImageUrl: data.coverImageUrl ?? null,
       isPublished: data.isPublished ?? false,
       sortOrder: data.sortOrder ?? 0,
+      portal: data.portal ?? "tnjs",
     })
     .returning();
   return row;
@@ -107,6 +113,7 @@ export async function listClassSessions(opts?: {
   courseId?: string;
   status?: string;
   publicOnly?: boolean;
+  portal?: string;
 }): Promise<(ClassSession & { courseTitle?: string; courseLevel?: string })[]> {
   const rows = await db
     .select({
@@ -119,6 +126,9 @@ export async function listClassSessions(opts?: {
     .orderBy(desc(classSessions.startDate), desc(classSessions.createdAt));
 
   let filtered = rows;
+  if (opts?.portal) {
+    filtered = filtered.filter((r) => r.session.portal === opts.portal);
+  }
   if (opts?.courseId) {
     filtered = filtered.filter((r) => r.session.courseId === opts.courseId);
   }
@@ -195,6 +205,7 @@ export async function createClassSession(
       priceVnd: data.priceVnd ?? 0,
       capacity: data.capacity ?? 10,
       status: data.status ?? "draft",
+      portal: data.portal ?? "tnjs",
     })
     .returning();
   return row;
@@ -520,6 +531,9 @@ export async function createPendingOrder(
       0,
     );
 
+    const orderPortal =
+      cart.items[0]?.classSession?.portal || "tnjs";
+
     const [order] = await db
       .insert(orders)
       .values({
@@ -532,6 +546,7 @@ export async function createPendingOrder(
         userId: input.userId || null,
         totalVnd,
         status: "pending",
+        portal: orderPortal,
         expiresAt: new Date(Date.now() + ORDER_PENDING_TTL_MS),
       })
       .returning();
@@ -675,6 +690,7 @@ export async function listOrders(opts?: {
   status?: string;
   limit?: number;
   offset?: number;
+  portal?: string;
 }): Promise<{ items: (Order & { items: OrderItem[] })[]; total: number }> {
   const all = await db
     .select()
@@ -684,6 +700,9 @@ export async function listOrders(opts?: {
   let filtered = all;
   if (opts?.status) {
     filtered = filtered.filter((o) => o.status === opts.status);
+  }
+  if (opts?.portal) {
+    filtered = filtered.filter((o) => o.portal === opts.portal);
   }
   const total = filtered.length;
   const offset = opts?.offset ?? 0;
@@ -759,8 +778,12 @@ function inRange(date: Date | null | undefined, from?: Date, to?: Date): boolean
 export async function getOrderStats(opts?: {
   from?: Date;
   to?: Date;
+  portal?: string;
 }): Promise<OrderStats> {
-  const allOrders = await db.select().from(orders).orderBy(desc(orders.createdAt));
+  let allOrders = await db.select().from(orders).orderBy(desc(orders.createdAt));
+  if (opts?.portal) {
+    allOrders = allOrders.filter((o) => o.portal === opts.portal);
+  }
   const allItems = await db.select().from(orderItems);
   const itemsByOrder = new Map<string, OrderItem[]>();
   for (const item of allItems) {

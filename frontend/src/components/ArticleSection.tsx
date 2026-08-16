@@ -4,6 +4,8 @@ import { ArticleCard } from "./ArticleCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Pagination } from "@/components/ui/pagination";
 import type { Article } from "@shared/schema";
+import { apiFetch } from "@/lib/queryClient";
+import { resolvePortal } from "@/lib/portal";
 
 interface ArticleSectionProps {
   category: string;
@@ -17,11 +19,14 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
   const sectionRef = useRef<HTMLElement>(null);
   const reactId = useId();
   const sectionDomId = `articles-${category}`.replace(/[^a-z0-9-]/gi, "-");
+  const portal = resolvePortal();
 
   const { data: allArticles, isLoading, error } = useQuery<Article[]>({
-    queryKey: ["/api/articles", category],
+    queryKey: ["/api/articles", category, portal],
     queryFn: async () => {
-      const response = await fetch(`/api/articles?category=${category}`);
+      const response = await apiFetch(
+        `/api/articles?category=${encodeURIComponent(category)}`,
+      );
       if (!response.ok) {
         throw new Error("Failed to fetch articles");
       }

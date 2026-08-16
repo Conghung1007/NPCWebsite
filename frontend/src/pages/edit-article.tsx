@@ -14,11 +14,14 @@ import { ArrowLeft, Edit3 } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { extractTempImageUrlsFromHtml, cleanupTempMediaUrls } from "@/lib/tempMediaCleanup";
 import type { Article } from "@shared/schema";
+import { apiFetch } from "@/lib/queryClient";
+import { PORTAL_IDS, PORTAL_META } from "@/lib/portal";
 
 const editArticleSchema = z.object({
   title: z.string().min(1, "Tiêu đề không được để trống"),
   content: z.string().min(10, "Nội dung phải có ít nhất 10 ký tự"),
   category: z.string().min(1, "Vui lòng chọn danh mục"),
+  portal: z.enum(["group", "tnjs", "duhoc", "daotao"]),
 });
 
 type EditArticleForm = z.infer<typeof editArticleSchema>;
@@ -38,6 +41,7 @@ export default function EditArticle() {
       title: "",
       content: "",
       category: "",
+      portal: "group",
     },
   });
 
@@ -45,7 +49,7 @@ export default function EditArticle() {
   const { data: article, isLoading: articleLoading } = useQuery<Article>({
     queryKey: ["/api/articles", articleId],
     queryFn: async () => {
-      const response = await fetch(`/api/articles/${articleId}`);
+      const response = await apiFetch(`/api/articles/${articleId}`);
       if (!response.ok) {
         throw new Error("Không thể tải bài viết");
       }
@@ -61,13 +65,14 @@ export default function EditArticle() {
         title: article.title,
         content: article.content,
         category: article.category,
+        portal: (article.portal as EditArticleForm["portal"]) || "group",
       });
     }
   }, [article, form]);
 
   const updateArticleMutation = useMutation({
     mutationFn: async (data: EditArticleForm) => {
-      const response = await fetch(`/api/articles/${articleId}`, {
+      const response = await apiFetch(`/api/articles/${articleId}`, {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
@@ -122,7 +127,7 @@ export default function EditArticle() {
     { value: "visa-services", label: "Dịch vụ Visa" },
     { value: "study-abroad", label: "Du học" },
     { value: "japanese-training", label: "Đào tạo tiếng Nhật" },
-
+    { value: "soft-skills", label: "Kỹ năng mềm" },
   ];
 
   if (!articleId) {
@@ -224,6 +229,31 @@ export default function EditArticle() {
                           {categoryOptions.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
                               {option.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="portal"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Portal *</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Chọn portal" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {PORTAL_IDS.map((id) => (
+                            <SelectItem key={id} value={id}>
+                              {PORTAL_META[id].brand}
                             </SelectItem>
                           ))}
                         </SelectContent>

@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { formatVnd } from "@/hooks/useCart";
 import { CheckCircle, Clock, XCircle } from "lucide-react";
+import { apiFetch } from "@/lib/queryClient";
 
 export default function CheckoutSuccessPage() {
   const search = useSearch();
@@ -16,9 +17,7 @@ export default function CheckoutSuccessPage() {
     queryKey: ["/api/orders", orderCode],
     enabled: !!orderCode,
     queryFn: async () => {
-      const res = await fetch(`/api/orders/${encodeURIComponent(orderCode)}`, {
-        credentials: "include",
-      });
+      const res = await apiFetch(`/api/orders/${encodeURIComponent(orderCode)}`);
       if (!res.ok) throw new Error("Không tìm thấy đơn");
       return res.json();
     },

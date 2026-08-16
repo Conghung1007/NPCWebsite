@@ -1,5 +1,6 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
+import { resolvePortal } from "@/lib/portal";
 
 interface UiImage {
   id: string;
@@ -126,7 +127,7 @@ export function useUiImages() {
   const queryClient = useQueryClient();
 
   const { data: uiImages, isLoading } = useQuery<UiImage[]>({
-    queryKey: ["/api/ui-images"],
+    queryKey: ["/api/ui-images", resolvePortal()],
     retry: false,
   });
 

@@ -58,22 +58,22 @@ export interface IStorage {
   deleteContactInfo(id: string): Promise<boolean>;
   
   createArticle(article: InsertArticle): Promise<Article>;
-  getArticlesByCategory(category: string): Promise<Article[]>;
-  getAllArticles(): Promise<Article[]>;
-  getArticles(): Promise<Article[]>;
+  getArticlesByCategory(category: string, portal?: string): Promise<Article[]>;
+  getAllArticles(portal?: string): Promise<Article[]>;
+  getArticles(portal?: string): Promise<Article[]>;
   getArticle(id: string): Promise<Article | undefined>;
-  updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number }): Promise<Article | null>;
+  updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number; portal?: string }): Promise<Article | null>;
   deleteArticle(id: string): Promise<boolean>;
   moveArticleOrder(id: string, direction: 'up' | 'down'): Promise<boolean>;
   
   // UI Images methods
   createUiImage(uiImage: InsertUiImage): Promise<UiImage>;
-  getUiImagesByType(imageType: string): Promise<UiImage[]>;
-  getAllUiImages(): Promise<UiImage[]>;
+  getUiImagesByType(imageType: string, portal?: string): Promise<UiImage[]>;
+  getAllUiImages(portal?: string): Promise<UiImage[]>;
   updateUiImage(id: string, updateData: Partial<InsertUiImage>): Promise<UiImage | null>;
   updateUiImageByType(imageType: string, updateData: Partial<InsertUiImage>): Promise<UiImage | null>;
   deleteUiImage(id: string): Promise<boolean>;
-  getUiImageByType(imageType: string): Promise<UiImage | undefined>;
+  getUiImageByType(imageType: string, portal?: string): Promise<UiImage | undefined>;
   
   // Registration request methods
   createRegistrationRequest(request: InsertRegistrationRequest): Promise<RegistrationRequest>;
@@ -123,20 +123,21 @@ export interface IStorage {
   }): Promise<{ attempts: ExamAttempt[]; total: number }>;
 
   // Testimonials
-  getTestimonials(): Promise<Testimonial[]>;
-  getAllTestimonials(): Promise<Testimonial[]>;
+  getTestimonials(portal?: string): Promise<Testimonial[]>;
+  getAllTestimonials(portal?: string): Promise<Testimonial[]>;
   getTestimonial(id: string): Promise<Testimonial | undefined>;
   createTestimonial(data: InsertTestimonial): Promise<Testimonial>;
   updateTestimonial(id: string, data: Partial<InsertTestimonial>): Promise<Testimonial | null>;
   deleteTestimonial(id: string): Promise<boolean>;
-  ensureDefaultTestimonials(): Promise<Testimonial[]>;
+  ensureDefaultTestimonials(portal?: string): Promise<Testimonial[]>;
 
   // Site contents (CMS copy)
-  getSiteContents(page: string): Promise<SiteContent[]>;
-  upsertSiteContent(page: string, key: string, value: string): Promise<SiteContent>;
+  getSiteContents(page: string, portal?: string): Promise<SiteContent[]>;
+  upsertSiteContent(page: string, key: string, value: string, portal?: string): Promise<SiteContent>;
   bulkUpsertSiteContents(
     page: string,
     entries: Array<{ key: string; value: string }>,
+    portal?: string,
   ): Promise<SiteContent[]>;
 }
 
@@ -193,6 +194,7 @@ export class MemStorage implements IStorage {
       email: insertUser.email ?? null,
       phone: insertUser.phone ?? null,
       role: insertUser.role || "user",
+      portals: insertUser.portals ?? null,
       createdAt: new Date()
     };
     this.users.set(id, user);
@@ -254,6 +256,7 @@ export class MemStorage implements IStorage {
       ...insertRequest,
       id,
       service: insertRequest.service || null,
+      portal: insertRequest.portal || "group",
       createdAt: new Date(),
     };
     this.contactRequests.set(id, request);
@@ -270,16 +273,16 @@ export class MemStorage implements IStorage {
     return this.contactRequests.delete(id);
   }
 
-  async getTestimonials(): Promise<Testimonial[]> {
+  async getTestimonials(portal?: string): Promise<Testimonial[]> {
     return Array.from(this.testimonials.values())
-      .filter((t) => t.isActive !== false)
+      .filter((t) => t.isActive !== false && (!portal || t.portal === portal))
       .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
   }
 
-  async getAllTestimonials(): Promise<Testimonial[]> {
-    return Array.from(this.testimonials.values()).sort(
-      (a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0),
-    );
+  async getAllTestimonials(portal?: string): Promise<Testimonial[]> {
+    return Array.from(this.testimonials.values())
+      .filter((t) => !portal || t.portal === portal)
+      .sort((a, b) => (a.displayOrder ?? 0) - (b.displayOrder ?? 0));
   }
 
   async getTestimonial(id: string): Promise<Testimonial | undefined> {
@@ -297,6 +300,7 @@ export class MemStorage implements IStorage {
       rating: data.rating ?? 5,
       displayOrder: data.displayOrder ?? 0,
       isActive: data.isActive ?? true,
+      portal: data.portal || "group",
       createdAt: new Date(),
       updatedAt: new Date(),
     };
@@ -323,7 +327,7 @@ export class MemStorage implements IStorage {
     return this.testimonials.delete(id);
   }
 
-  async ensureDefaultTestimonials(): Promise<Testimonial[]> {
+  async ensureDefaultTestimonials(portal?: string): Promise<Testimonial[]> {
     if (this.testimonials.size === 0) {
       for (const item of DEFAULT_TESTIMONIALS) {
         await this.createTestimonial(item);
@@ -336,12 +340,19 @@ export class MemStorage implements IStorage {
     return `${page}::${key}`;
   }
 
-  async getSiteContents(page: string): Promise<SiteContent[]> {
-    return Array.from(this.siteContents.values()).filter((row) => row.page === page);
+  async getSiteContents(page: string, portal: string = "group"): Promise<SiteContent[]> {
+    return Array.from(this.siteContents.values()).filter(
+      (row) => row.page === page && row.portal === portal,
+    );
   }
 
-  async upsertSiteContent(page: string, key: string, value: string): Promise<SiteContent> {
-    const mapKey = this.siteContentMapKey(page, key);
+  async upsertSiteContent(
+    page: string,
+    key: string,
+    value: string,
+    portal: string = "group",
+  ): Promise<SiteContent> {
+    const mapKey = `${portal}::${page}::${key}`;
     const existing = this.siteContents.get(mapKey);
     if (existing) {
       const updated: SiteContent = { ...existing, value, updatedAt: new Date() };
@@ -353,6 +364,7 @@ export class MemStorage implements IStorage {
       page,
       key,
       value,
+      portal,
       updatedAt: new Date(),
     };
     this.siteContents.set(mapKey, row);
@@ -362,10 +374,13 @@ export class MemStorage implements IStorage {
   async bulkUpsertSiteContents(
     page: string,
     entries: Array<{ key: string; value: string }>,
+    portal: string = "group",
   ): Promise<SiteContent[]> {
     const results: SiteContent[] = [];
     for (const entry of entries) {
-      results.push(await this.upsertSiteContent(page, entry.key, entry.value));
+      results.push(
+        await this.upsertSiteContent(page, entry.key, entry.value, portal),
+      );
     }
     return results;
   }
@@ -425,6 +440,7 @@ export class MemStorage implements IStorage {
       id,
       imageUrl: insertArticle.imageUrl || null,
       videoUrl: insertArticle.videoUrl ?? null,
+      portal: insertArticle.portal || "group",
       sortOrder: insertArticle.sortOrder || 0,
       createdAt: new Date(),
     };
@@ -432,27 +448,31 @@ export class MemStorage implements IStorage {
     return article;
   }
 
-  async getArticlesByCategory(category: string): Promise<Article[]> {
+  async getArticlesByCategory(category: string, portal?: string): Promise<Article[]> {
     return Array.from(this.articles.values())
-      .filter(article => article.category === category)
+      .filter(
+        (article) =>
+          article.category === category &&
+          (!portal || article.portal === portal),
+      )
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
-  async getAllArticles(): Promise<Article[]> {
-    return Array.from(this.articles.values()).sort(
-      (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
-    );
+  async getAllArticles(portal?: string): Promise<Article[]> {
+    return Array.from(this.articles.values())
+      .filter((a) => !portal || a.portal === portal)
+      .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
   }
 
   async getArticle(id: string): Promise<Article | undefined> {
     return this.articles.get(id);
   }
 
-  async getArticles(): Promise<Article[]> {
+  async getArticles(portal?: string): Promise<Article[]> {
     return this.getAllArticles();
   }
 
-  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number }): Promise<Article | null> {
+  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number; portal?: string }): Promise<Article | null> {
     const existingArticle = this.articles.get(id);
     if (!existingArticle) {
       return null;
@@ -465,6 +485,7 @@ export class MemStorage implements IStorage {
       category: updateData.category,
       imageUrl: updateData.imageUrl !== undefined ? updateData.imageUrl : existingArticle.imageUrl,
       sortOrder: updateData.sortOrder !== undefined ? updateData.sortOrder : existingArticle.sortOrder,
+      portal: updateData.portal !== undefined ? updateData.portal : existingArticle.portal,
     };
     
     this.articles.set(id, updatedArticle);
@@ -514,6 +535,7 @@ export class MemStorage implements IStorage {
         username: "manager1",
         password: "123456",
         role: "manager",
+        portals: null,
         createdAt: new Date()
       },
       {
@@ -521,6 +543,7 @@ export class MemStorage implements IStorage {
         username: "manager2", 
         password: "123456",
         role: "manager",
+        portals: null,
         createdAt: new Date()
       },
       {
@@ -528,6 +551,7 @@ export class MemStorage implements IStorage {
         username: "admin1",
         password: "123456", 
         role: "admin",
+        portals: null,
         createdAt: new Date()
       },
       {
@@ -535,6 +559,7 @@ export class MemStorage implements IStorage {
         username: "admin2",
         password: "123456",
         role: "admin", 
+        portals: null,
         createdAt: new Date()
       },
       {
@@ -542,6 +567,7 @@ export class MemStorage implements IStorage {
         username: "admin3",
         password: "123456",
         role: "admin",
+        portals: null,
         createdAt: new Date()
       }
     ];
@@ -745,6 +771,7 @@ export class MemStorage implements IStorage {
     const uiImage: UiImage = {
       ...uiImageData,
       id,
+      portal: uiImageData.portal || "group",
       altText: uiImageData.altText ?? null,
       description: uiImageData.description ?? null,
       createdAt: new Date(),
@@ -754,14 +781,18 @@ export class MemStorage implements IStorage {
     return uiImage;
   }
 
-  async getUiImagesByType(imageType: string): Promise<UiImage[]> {
+  async getUiImagesByType(imageType: string, portal?: string): Promise<UiImage[]> {
     return Array.from(this.uiImages.values()).filter(
-      (image) => image.imageType === imageType
+      (image) =>
+        image.imageType === imageType &&
+        (!portal || image.portal === portal),
     );
   }
 
-  async getAllUiImages(): Promise<UiImage[]> {
-    return Array.from(this.uiImages.values());
+  async getAllUiImages(portal?: string): Promise<UiImage[]> {
+    return Array.from(this.uiImages.values()).filter(
+      (image) => !portal || image.portal === portal,
+    );
   }
 
   async updateUiImage(id: string, updateData: Partial<InsertUiImage>): Promise<UiImage | null> {
@@ -800,7 +831,7 @@ export class MemStorage implements IStorage {
     return this.uiImages.delete(id);
   }
 
-  async getUiImageByType(imageType: string): Promise<UiImage | undefined> {
+  async getUiImageByType(imageType: string, portal?: string): Promise<UiImage | undefined> {
     return Array.from(this.uiImages.values()).find(
       (image) => image.imageType === imageType
     );
@@ -1229,7 +1260,8 @@ export class DatabaseStorage implements IStorage {
       .values({
         ...insertUser,
         fullName: insertUser.fullName ?? null, // Ensure fullName is properly set
-        role: insertUser.role || "user" // Ensure role defaults to "user" if not provided
+        role: insertUser.role || "user", // Ensure role defaults to "user" if not provided
+        portals: insertUser.portals ?? null,
       })
       .returning();
     return user;
@@ -1290,11 +1322,16 @@ export class DatabaseStorage implements IStorage {
     return article;
   }
 
-  async getArticlesByCategory(category: string): Promise<Article[]> {
-    return await db.select().from(articles).where(eq(articles.category, category));
+  async getArticlesByCategory(category: string, portal?: string): Promise<Article[]> {
+    const conditions = [eq(articles.category, category)];
+    if (portal) conditions.push(eq(articles.portal, portal));
+    return await db.select().from(articles).where(and(...conditions));
   }
 
-  async getAllArticles(): Promise<Article[]> {
+  async getAllArticles(portal?: string): Promise<Article[]> {
+    if (portal) {
+      return await db.select().from(articles).where(eq(articles.portal, portal));
+    }
     return await db.select().from(articles);
   }
 
@@ -1303,11 +1340,11 @@ export class DatabaseStorage implements IStorage {
     return article || undefined;
   }
 
-  async getArticles(): Promise<Article[]> {
-    return this.getAllArticles();
+  async getArticles(portal?: string): Promise<Article[]> {
+    return this.getAllArticles(portal);
   }
 
-  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number }): Promise<Article | null> {
+  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number; portal?: string }): Promise<Article | null> {
     const [updatedArticle] = await db
       .update(articles)
       .set(updateData)
@@ -1393,11 +1430,16 @@ export class DatabaseStorage implements IStorage {
     return uiImage;
   }
 
-  async getUiImagesByType(imageType: string): Promise<UiImage[]> {
-    return await db.select().from(uiImages).where(eq(uiImages.imageType, imageType));
+  async getUiImagesByType(imageType: string, portal?: string): Promise<UiImage[]> {
+    const conditions = [eq(uiImages.imageType, imageType)];
+    if (portal) conditions.push(eq(uiImages.portal, portal));
+    return await db.select().from(uiImages).where(and(...conditions));
   }
 
-  async getAllUiImages(): Promise<UiImage[]> {
+  async getAllUiImages(portal?: string): Promise<UiImage[]> {
+    if (portal) {
+      return await db.select().from(uiImages).where(eq(uiImages.portal, portal));
+    }
     return await db.select().from(uiImages);
   }
 
@@ -1424,8 +1466,10 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
-  async getUiImageByType(imageType: string): Promise<UiImage | undefined> {
-    const [uiImage] = await db.select().from(uiImages).where(eq(uiImages.imageType, imageType));
+  async getUiImageByType(imageType: string, portal?: string): Promise<UiImage | undefined> {
+    const conditions = [eq(uiImages.imageType, imageType)];
+    if (portal) conditions.push(eq(uiImages.portal, portal));
+    const [uiImage] = await db.select().from(uiImages).where(and(...conditions));
     return uiImage || undefined;
   }
 
@@ -1864,15 +1908,24 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
-  async getTestimonials(): Promise<Testimonial[]> {
+  async getTestimonials(portal?: string): Promise<Testimonial[]> {
+    const conditions = [eq(testimonials.isActive, true)];
+    if (portal) conditions.push(eq(testimonials.portal, portal));
     return await db
       .select()
       .from(testimonials)
-      .where(eq(testimonials.isActive, true))
+      .where(and(...conditions))
       .orderBy(asc(testimonials.displayOrder));
   }
 
-  async getAllTestimonials(): Promise<Testimonial[]> {
+  async getAllTestimonials(portal?: string): Promise<Testimonial[]> {
+    if (portal) {
+      return await db
+        .select()
+        .from(testimonials)
+        .where(eq(testimonials.portal, portal))
+        .orderBy(asc(testimonials.displayOrder));
+    }
     return await db
       .select()
       .from(testimonials)
@@ -1906,25 +1959,39 @@ export class DatabaseStorage implements IStorage {
     return (result.rowCount || 0) > 0;
   }
 
-  async ensureDefaultTestimonials(): Promise<Testimonial[]> {
-    const existing = await this.getAllTestimonials();
+  async ensureDefaultTestimonials(portal: string = "group"): Promise<Testimonial[]> {
+    const existing = await this.getAllTestimonials(portal);
     if (existing.length === 0) {
       for (const item of DEFAULT_TESTIMONIALS) {
-        await this.createTestimonial(item);
+        await this.createTestimonial({ ...item, portal });
       }
     }
-    return this.getTestimonials();
+    return this.getTestimonials(portal);
   }
 
-  async getSiteContents(page: string): Promise<SiteContent[]> {
-    return await db.select().from(siteContents).where(eq(siteContents.page, page));
+  async getSiteContents(page: string, portal: string = "group"): Promise<SiteContent[]> {
+    return await db
+      .select()
+      .from(siteContents)
+      .where(and(eq(siteContents.page, page), eq(siteContents.portal, portal)));
   }
 
-  async upsertSiteContent(page: string, key: string, value: string): Promise<SiteContent> {
+  async upsertSiteContent(
+    page: string,
+    key: string,
+    value: string,
+    portal: string = "group",
+  ): Promise<SiteContent> {
     const [existing] = await db
       .select()
       .from(siteContents)
-      .where(and(eq(siteContents.page, page), eq(siteContents.key, key)));
+      .where(
+        and(
+          eq(siteContents.page, page),
+          eq(siteContents.key, key),
+          eq(siteContents.portal, portal),
+        ),
+      );
 
     if (existing) {
       const [updated] = await db
@@ -1937,7 +2004,7 @@ export class DatabaseStorage implements IStorage {
 
     const [created] = await db
       .insert(siteContents)
-      .values({ page, key, value })
+      .values({ page, key, value, portal })
       .returning();
     return created;
   }
@@ -1945,10 +2012,13 @@ export class DatabaseStorage implements IStorage {
   async bulkUpsertSiteContents(
     page: string,
     entries: Array<{ key: string; value: string }>,
+    portal: string = "group",
   ): Promise<SiteContent[]> {
     const results: SiteContent[] = [];
     for (const entry of entries) {
-      results.push(await this.upsertSiteContent(page, entry.key, entry.value));
+      results.push(
+        await this.upsertSiteContent(page, entry.key, entry.value, portal),
+      );
     }
     return results;
   }

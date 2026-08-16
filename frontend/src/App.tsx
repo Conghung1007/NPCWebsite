@@ -5,16 +5,17 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout/layout";
+import { PortalProvider } from "@/contexts/PortalContext";
+import { PortalRouteGuard } from "@/components/PortalRouteGuard";
 
-// Eager: common public pages for fast first paint
 import NotFound from "@/pages/not-found";
-import Home from "@/pages/home";
+import PortalHome, {
+  RedirectJapaneseTrainingToHome,
+} from "@/pages/portal-home";
 import Login from "@/pages/login";
 
-// Lazy: heavy / infrequently visited routes
 const VisaServices = lazy(() => import("@/pages/visa-services"));
 const StudyAbroad = lazy(() => import("@/pages/study-abroad"));
-const JapaneseTraining = lazy(() => import("@/pages/japanese-training"));
 const ClassesPage = lazy(() => import("@/pages/classes"));
 const ClassDetailPage = lazy(() => import("@/pages/class-detail"));
 const CartPage = lazy(() => import("@/pages/cart"));
@@ -36,6 +37,17 @@ const ManageQuestions = lazy(() => import("@/pages/manage-questions"));
 const ExamAttemptsPage = lazy(() => import("@/pages/exam-attempts"));
 const CertificatePage = lazy(() => import("@/pages/certificate"));
 const CpanelPage = lazy(() => import("@/pages/cpanel"));
+const LegacyCompanyHome = lazy(() => import("@/pages/home"));
+const PortalSectionRoute = lazy(() =>
+  import("@/pages/portal-section-routes").then((m) => ({
+    default: m.PortalSectionRoute,
+  })),
+);
+const PortalNewsRoute = lazy(() =>
+  import("@/pages/portal-section-routes").then((m) => ({
+    default: m.PortalNewsRoute,
+  })),
+);
 
 function PageFallback() {
   return (
@@ -64,10 +76,14 @@ function Router() {
     <Layout>
       <Suspense fallback={<PageFallback />}>
         <Switch>
-          <Route path="/" component={Home} />
+          <Route path="/" component={PortalHome} />
+          <Route path="/company" component={LegacyCompanyHome} />
           <Route path="/visa-services" component={VisaServices} />
           <Route path="/study-abroad" component={StudyAbroad} />
-          <Route path="/japanese-training" component={JapaneseTraining} />
+          <Route
+            path="/japanese-training"
+            component={RedirectJapaneseTrainingToHome}
+          />
           <Route path="/classes" component={ClassesPage} />
           <Route
             path="/classes/:id"
@@ -98,6 +114,39 @@ function Router() {
           <Route path="/register" component={Register} />
           <Route path="/register-success" component={RegisterSuccess} />
           <Route path="/contact" component={Contact} />
+          <Route path="/news" component={PortalNewsRoute} />
+          <Route
+            path="/countries"
+            component={() => <PortalSectionRoute slug="countries" />}
+          />
+          <Route
+            path="/schools"
+            component={() => <PortalSectionRoute slug="schools" />}
+          />
+          <Route
+            path="/costs"
+            component={() => <PortalSectionRoute slug="costs" />}
+          />
+          <Route
+            path="/documents"
+            component={() => <PortalSectionRoute slug="documents" />}
+          />
+          <Route
+            path="/faq"
+            component={() => <PortalSectionRoute slug="faq" />}
+          />
+          <Route
+            path="/courses"
+            component={() => <PortalSectionRoute slug="courses" />}
+          />
+          <Route
+            path="/schedule"
+            component={() => <PortalSectionRoute slug="schedule" />}
+          />
+          <Route
+            path="/enterprise"
+            component={() => <PortalSectionRoute slug="enterprise" />}
+          />
           <Route path="/article/:id" component={ArticleDetail} />
           <Route path="/create-article" component={CreateArticle} />
           <Route path="/edit-article/:id" component={EditArticle} />
@@ -126,8 +175,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <Toaster />
-        <Router />
+        <PortalProvider>
+          <Toaster />
+          <PortalRouteGuard>
+            <Router />
+          </PortalRouteGuard>
+        </PortalProvider>
       </TooltipProvider>
     </QueryClientProvider>
   );

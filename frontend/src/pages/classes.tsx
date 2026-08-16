@@ -7,6 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Calendar, MapPin, ShoppingCart, ArrowRight } from "lucide-react";
 import type { ClassSession } from "@shared/schema";
 import { useState } from "react";
+import { resolvePortal } from "@/lib/portal";
+import { apiFetch } from "@/lib/queryClient";
 import {
   Select,
   SelectContent,
@@ -23,9 +25,9 @@ export default function ClassesPage() {
   const [level, setLevel] = useState("all");
 
   const { data: sessions = [], isLoading } = useQuery<SessionRow[]>({
-    queryKey: ["/api/class-sessions"],
+    queryKey: ["/api/class-sessions", resolvePortal()],
     queryFn: async () => {
-      const res = await fetch("/api/class-sessions", { credentials: "include" });
+      const res = await apiFetch("/api/class-sessions");
       if (!res.ok) throw new Error("Không tải lớp học");
       return res.json();
     },
