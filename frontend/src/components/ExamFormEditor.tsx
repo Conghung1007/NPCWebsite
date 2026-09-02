@@ -37,6 +37,9 @@ export const examFormSchema = z.object({
   description: z.string().optional(),
   passingScore: z.number().min(0, "Ngưỡng đạt phải lớn hơn hoặc bằng 0"),
   isDemo: z.boolean().default(false),
+  level: z.enum(["N5", "N4", "N3", "N2", "N1"]).optional().nullable(),
+  isLevelTrial: z.boolean().default(false),
+  packageId: z.string().optional().nullable(),
 });
 
 export type ExamFormData = z.infer<typeof examFormSchema>;
@@ -129,7 +132,17 @@ export function ExamFormEditor({
       description: "",
       passingScore: 0,
       isDemo: false,
+      level: null,
+      isLevelTrial: false,
+      packageId: null,
     },
+  });
+
+  const { data: packageCatalog = [] } = useQuery<
+    { id: string; name: string; level: string | null; examCount: number; priceVnd: number }[]
+  >({
+    queryKey: ["/api/admin/exam-package-catalog"],
+    retry: false,
   });
 
   const hydratedKeyRef = useRef<string | null>(null);
@@ -553,7 +566,117 @@ export function ExamFormEditor({
                         </FormControl>
                         <div className="space-y-1 leading-none">
                           <FormLabel>
-                            Bài thi demo (không cần đăng nhập)
+                            Đề miễn phí (không cần đăng nhập)
+                          </FormLabel>
+                        </div>
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="packageId"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Gói đề (mua bán)</FormLabel>
+                        <Select
+                          value={field.value || "none"}
+                          onValueChange={(v) => {
+                            const id = v === "none" ? null : v;
+                            field.onChange(id);
+                            const pkg = packageCatalog.find((p) => p.id === id);
+                            if (pkg?.level) {
+                              form.setValue(
+                                "level",
+                                pkg.level as
+                                  | "N5"
+                                  | "N4"
+                                  | "N3"
+                                  | "N2"
+                                  | "N1",
+                              );
+                            }
+                          }}
+                          disabled={form.watch("isDemo")}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Chọn gói" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">Không thuộc gói</SelectItem>
+                            {packageCatalog.map((p) => (
+                              <SelectItem key={p.id} value={p.id}>
+                                {p.name} · {p.examCount} đề ·{" "}
+                                {p.priceVnd.toLocaleString("vi-VN")}đ
+                                {p.level ? ` · ${p.level}` : ""}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Tạo gói (số đề + giá) trong Cpanel trước, rồi gắn đề vào
+                          gói tại đây.
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="level"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Cấp độ (N5→N1)</FormLabel>
+                        <Select
+                          value={field.value || "none"}
+                          onValueChange={(v) =>
+                            field.onChange(v === "none" ? null : v)
+                          }
+                          disabled={form.watch("isDemo")}
+                        >
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Chọn cấp" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="none">Không gắn cấp</SelectItem>
+                            {(["N5", "N4", "N3", "N2", "N1"] as const).map((lv) => (
+                              <SelectItem key={lv} value={lv}>
+                                {lv}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          Thường tự điền theo gói. Dùng cho thi thử theo cấp.
+                        </p>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="isLevelTrial"
+                    render={({ field }) => (
+                      <FormItem className="flex items-center space-x-3 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            disabled={
+                              form.watch("isDemo") ||
+                              (!form.watch("level") && !form.watch("packageId"))
+                            }
+                          />
+                        </FormControl>
+                        <div className="space-y-1 leading-none">
+                          <FormLabel>
+                            Đề số 1 trong cấp/gói (thi thử 10 câu khi đã đăng ký)
                           </FormLabel>
                         </div>
                       </FormItem>

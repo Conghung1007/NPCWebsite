@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback } from "react";
-import { resolvePortal } from "@/lib/portal";
+import { apiFetch } from "@/lib/queryClient";
+import { resolvePortal, type PortalId } from "@/lib/portal";
 
 interface UiImage {
   id: string;
@@ -21,11 +22,21 @@ const TYPE_ALIASES: Record<string, string[]> = {
   "study-abroad-hero": ["study-abroad-hero", "study-abroad"],
   "study-abroad-students": ["study-abroad-students", "study-abroad"],
   "japanese-hero": ["japanese-hero", "japanese-training-hero", "japanese-training"],
+  "japanese-hero-1": ["japanese-hero-1", "japanese-hero", "japanese-training-hero"],
+  "japanese-hero-2": ["japanese-hero-2"],
+  "japanese-hero-3": ["japanese-hero-3"],
+  "japanese-hero-4": ["japanese-hero-4"],
+  "japanese-hero-5": ["japanese-hero-5"],
   "japanese-training-hero": [
     "japanese-training-hero",
     "japanese-hero",
     "japanese-training",
   ],
+  "japanese-why": ["japanese-why", "japanese-classroom", "japanese-training"],
+  "japanese-course-0": ["japanese-course-0", "japanese-classroom"],
+  "japanese-course-1": ["japanese-course-1", "japanese-classroom"],
+  "japanese-course-2": ["japanese-course-2", "japanese-classroom"],
+  "japanese-course-3": ["japanese-course-3", "japanese-classroom"],
   "japanese-classroom": [
     "japanese-classroom",
     "japanese-training-classroom",
@@ -39,6 +50,35 @@ const TYPE_ALIASES: Record<string, string[]> = {
   "instructor-1": ["instructor-1", "japanese-instructor-1"],
   "instructor-2": ["instructor-2", "japanese-instructor-2"],
   "instructor-3": ["instructor-3", "japanese-instructor-3"],
+  "group-hero": ["group-hero", "hero-banner", "hero"],
+  "group-hero-1": ["group-hero-1", "group-hero", "hero-banner"],
+  "group-pillar-0": ["group-pillar-0", "japanese-hero", "japanese-training"],
+  "group-pillar-1": ["group-pillar-1", "study-abroad-hero", "study-abroad"],
+  "group-pillar-2": ["group-pillar-2", "visa-hero", "visa-service"],
+  "group-pillar-3": ["group-pillar-3", "online-exam", "exam"],
+  "huongnghiep-hero": ["huongnghiep-hero", "study-abroad-hero", "study-abroad"],
+  "huongnghiep-hero-1": [
+    "huongnghiep-hero-1",
+    "huongnghiep-hero",
+    "study-abroad-hero",
+  ],
+  "huongnghiep-track-0": [
+    "huongnghiep-track-0",
+    "study-abroad-students",
+    "study-abroad",
+  ],
+  "huongnghiep-track-1": ["huongnghiep-track-1", "study-abroad-hero"],
+  "huongnghiep-track-2": ["huongnghiep-track-2", "study-abroad-students"],
+  "dichvu-hero": ["dichvu-hero", "visa-hero", "visa-service"],
+  "dichvu-hero-1": ["dichvu-hero-1", "dichvu-hero", "visa-hero"],
+  "dichvu-service-0": ["dichvu-service-0", "visa-consultation"],
+  "dichvu-service-1": ["dichvu-service-1", "visa-service"],
+  "dichvu-service-2": ["dichvu-service-2", "visa-hero"],
+  "exam-hero": ["exam-hero", "online-exam", "exam"],
+  "exam-hero-1": ["exam-hero-1", "exam-hero", "online-exam"],
+  "exam-feature-0": ["exam-feature-0", "online-exam"],
+  "exam-feature-1": ["exam-feature-1", "online-exam"],
+  "exam-feature-2": ["exam-feature-2", "japanese-hero"],
 };
 
 /** Public fallbacks when CMS has no usable URL (API down / private R2 only) */
@@ -57,8 +97,18 @@ export const UI_IMAGE_FALLBACKS: Record<string, string> = {
     "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
   "japanese-hero":
     "https://images.unsplash.com/photo-1528164344705-47542687000d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2092&q=80",
+  "japanese-why":
+    "https://images.unsplash.com/photo-1523240335866-6a7f0b4c8b0e?ixlib=rb-4.0.3&auto=format&fit=crop&w=1600&q=80",
   "japanese-classroom":
     "https://images.unsplash.com/photo-1528164344705-47542687000d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2092&q=80",
+  "group-hero":
+    "https://images.unsplash.com/photo-1521737604893-d14cc237f11d?ixlib=rb-4.0.3&auto=format&fit=crop&w=2084&q=80",
+  "huongnghiep-hero":
+    "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
+  "dichvu-hero":
+    "https://images.unsplash.com/photo-1578662996442-48f60103fc96?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
+  "exam-hero":
+    "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
   "online-exam":
     "https://images.unsplash.com/photo-1434030216411-0b793f4b4173?ixlib=rb-4.0.3&auto=format&fit=crop&w=2070&q=80",
   "contact-hero":
@@ -70,6 +120,19 @@ export const UI_IMAGE_FALLBACKS: Record<string, string> = {
  * Unsigned R2 host URLs and proxy paths often 404 when R2 env is missing.
  */
 function rewritePrivateR2ToProxy(url: string): string | null {
+  if (!url) return null;
+
+  // Legacy server-upload returned /api/ui-images/<file> but that route is not a file server
+  if (/^\/api\/ui-images\/[^/?]+$/i.test(url)) {
+    const fileName = url.split("/").pop();
+    if (fileName) return `/api/proxy-image/primary/ui-images/${fileName}`;
+  }
+  // Direct /ui-images/<file> serve path — prefer proxy for CORS/cache consistency
+  if (/^\/ui-images\/[^/?]+$/i.test(url)) {
+    const fileName = url.split("/").pop();
+    if (fileName) return `/api/proxy-image/primary/ui-images/${fileName}`;
+  }
+
   if (!url.includes(".r2.cloudflarestorage.com")) return null;
   if (/[?&]X-Amz-/i.test(url)) return null;
   try {
@@ -123,13 +186,31 @@ function pickBestUrl(candidates: UiImage[]): string {
   return "";
 }
 
-export function useUiImages() {
+/** @param portal — when editing from cpanel, pass the page's portal (not browser context) */
+export function useUiImages(portal?: PortalId) {
   const queryClient = useQueryClient();
+  const effectivePortal = portal ?? resolvePortal();
 
   const { data: uiImages, isLoading } = useQuery<UiImage[]>({
-    queryKey: ["/api/ui-images", resolvePortal()],
+    queryKey: ["/api/ui-images", effectivePortal],
+    queryFn: async () => {
+      const res = await apiFetch(
+        `/api/ui-images?portal=${encodeURIComponent(effectivePortal)}`,
+      );
+      if (!res.ok) throw new Error("Không tải được hình ảnh");
+      return res.json();
+    },
     retry: false,
   });
+
+  const getExactImageByType = useCallback(
+    (imageType: string): string => {
+      if (!uiImages?.length) return "";
+      const exact = uiImages.filter((img) => img.imageType === imageType);
+      return pickBestUrl(exact);
+    },
+    [uiImages],
+  );
 
   const getImageByType = useCallback(
     (imageType: string, fallbackUrl?: string): string => {
@@ -162,6 +243,7 @@ export function useUiImages() {
     uiImages,
     isLoading,
     getImageByType,
+    getExactImageByType,
     invalidateCache,
   };
 }

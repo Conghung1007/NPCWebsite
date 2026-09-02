@@ -20,7 +20,7 @@ const createArticleSchema = z.object({
   title: z.string().min(1, "Tiêu đề không được để trống"),
   content: z.string().min(10, "Nội dung phải có ít nhất 10 ký tự"),
   category: z.string().min(1, "Vui lòng chọn danh mục"),
-  portal: z.enum(["group", "tnjs", "duhoc", "daotao"]),
+  portal: z.enum(["group", "huongnghiep", "dichvu", "luyenthi"]),
 });
 
 type CreateArticleForm = z.infer<typeof createArticleSchema>;

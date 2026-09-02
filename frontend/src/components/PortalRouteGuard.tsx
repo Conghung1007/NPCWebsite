@@ -6,22 +6,12 @@ import NotFound from "@/pages/not-found";
 
 /** Path prefixes allowed per portal (plus always-shared paths). */
 const PORTAL_PATHS: Record<PortalId, string[]> = {
-  group: ["/", "/company", "/contact", "/visa-services", "/study-abroad"],
-  tnjs: [
+  group: ["/", "/contact", "/japanese-training"],
+  huongnghiep: [
     "/",
-    "/classes",
-    "/cart",
-    "/checkout",
-    "/online-exam",
-    "/exam",
-    "/exam-attempts",
-    "/certificate",
-    "/news",
-    "/contact",
-    "/japanese-training",
-  ],
-  duhoc: [
-    "/",
+    "/du-hoc",
+    "/di-lam",
+    "/dao-tao-nghe",
     "/countries",
     "/schools",
     "/costs",
@@ -32,11 +22,26 @@ const PORTAL_PATHS: Record<PortalId, string[]> = {
     "/news",
     "/contact",
   ],
-  daotao: [
+  dichvu: [
     "/",
+    "/bien-phien-dich",
+    "/ky-nang-mem",
+    "/tu-van-doanh-nghiep",
     "/courses",
     "/schedule",
     "/enterprise",
+    "/news",
+    "/contact",
+  ],
+  luyenthi: [
+    "/",
+    "/classes",
+    "/cart",
+    "/checkout",
+    "/online-exam",
+    "/exam",
+    "/exam-attempts",
+    "/certificate",
     "/news",
     "/contact",
   ],
@@ -45,6 +50,7 @@ const PORTAL_PATHS: Record<PortalId, string[]> = {
 const SHARED_PREFIXES = [
   "/login",
   "/register",
+  "/company",
   "/cpanel",
   "/article",
   "/create-article",

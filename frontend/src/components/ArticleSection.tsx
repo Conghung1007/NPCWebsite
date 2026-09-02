@@ -11,12 +11,22 @@ interface ArticleSectionProps {
   category: string;
   title: string;
   description?: string;
+  /** When true, skip heading (parent already shows one). */
+  hideHeader?: boolean;
+  /** When true, no outer section padding/bg — nest inside another section. */
+  embedded?: boolean;
 }
 
-export function ArticleSection({ category, title, description }: ArticleSectionProps) {
+export function ArticleSection({
+  category,
+  title,
+  description,
+  hideHeader = false,
+  embedded = false,
+}: ArticleSectionProps) {
   const [currentPage, setCurrentPage] = useState(1);
   const articlesPerPage = 9;
-  const sectionRef = useRef<HTMLElement>(null);
+  const sectionRef = useRef<HTMLDivElement>(null);
   const reactId = useId();
   const sectionDomId = `articles-${category}`.replace(/[^a-z0-9-]/gi, "-");
   const portal = resolvePortal();
@@ -55,9 +65,16 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
   };
 
   if (error) {
+    if (embedded) {
+      return (
+        <p className="text-center text-sm text-muted-foreground">
+          Không thể tải bài viết. Vui lòng thử lại sau.
+        </p>
+      );
+    }
     return (
-      <section className="py-16 sm:py-20 bg-neutral">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+      <section className="bg-neutral py-16 sm:py-20">
+        <div className="mx-auto max-w-7xl px-4 text-center sm:px-6 lg:px-8">
           <p className="text-sm text-muted-foreground">
             Không thể tải bài viết. Vui lòng thử lại sau.
           </p>
@@ -66,71 +83,96 @@ export function ArticleSection({ category, title, description }: ArticleSectionP
     );
   }
 
-  return (
-    <section
-      ref={sectionRef}
-      id={sectionDomId}
-      className="py-16 sm:py-20 bg-neutral"
-      aria-labelledby={`${reactId}-heading`}
-    >
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="text-center mb-10 max-w-2xl mx-auto">
+  const body = (
+    <>
+      {!hideHeader ? (
+        <div className="mx-auto mb-10 max-w-2xl text-center">
           <h2
             id={`${reactId}-heading`}
-            className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-2"
+            className="mb-2 font-display text-2xl font-bold text-foreground sm:text-3xl"
           >
             {title}
           </h2>
           {description ? (
-            <p className="text-sm sm:text-base text-muted-foreground">{description}</p>
+            <p className="text-sm text-muted-foreground sm:text-base">
+              {description}
+            </p>
           ) : null}
         </div>
+      ) : (
+        <h2 id={`${reactId}-heading`} className="sr-only">
+          {title || "Tin tức"}
+        </h2>
+      )}
 
-        {isLoading ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {Array.from({ length: 6 }).map((_, index) => (
-              <div key={index} className="space-y-3">
-                <Skeleton className="aspect-video rounded-lg" />
-                <Skeleton className="h-4 w-3/4" />
-                <Skeleton className="h-4 w-1/2" />
-                <Skeleton className="h-16 w-full" />
-              </div>
+      {isLoading ? (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, index) => (
+            <div key={index} className="space-y-3">
+              <Skeleton className="aspect-video rounded-lg" />
+              <Skeleton className="h-4 w-3/4" />
+              <Skeleton className="h-4 w-1/2" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          ))}
+        </div>
+      ) : null}
+
+      {!isLoading && totalArticles === 0 ? (
+        <div className="py-8 text-center">
+          <p className="text-sm text-muted-foreground">
+            Chưa có bài viết nào trong danh mục này.
+          </p>
+        </div>
+      ) : null}
+
+      {!isLoading && totalArticles > 0 ? (
+        <>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {articles.map((article) => (
+              <ArticleCard key={article.id} article={article} />
             ))}
           </div>
-        ) : null}
 
-        {!isLoading && totalArticles === 0 ? (
-          <div className="text-center py-8">
-            <p className="text-sm text-muted-foreground">
-              Chưa có bài viết nào trong danh mục này.
-            </p>
-          </div>
-        ) : null}
-
-        {!isLoading && totalArticles > 0 ? (
-          <>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {articles.map((article) => (
-                <ArticleCard key={article.id} article={article} />
-              ))}
+          {totalPages > 1 ? (
+            <div className="mt-10">
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={handlePageChange}
+              />
             </div>
+          ) : null}
 
-            {totalPages > 1 ? (
-              <div className="mt-10">
-                <Pagination
-                  currentPage={currentPage}
-                  totalPages={totalPages}
-                  onPageChange={handlePageChange}
-                />
-              </div>
-            ) : null}
+          <p className="mt-6 text-center text-sm text-muted-foreground">
+            Hiển thị {startIndex + 1}–{Math.min(endIndex, totalArticles)} /{" "}
+            {totalArticles} bài viết
+          </p>
+        </>
+      ) : null}
+    </>
+  );
 
-            <p className="mt-6 text-center text-sm text-muted-foreground">
-              Hiển thị {startIndex + 1}–{Math.min(endIndex, totalArticles)} / {totalArticles} bài
-              viết
-            </p>
-          </>
-        ) : null}
+  if (embedded) {
+    return (
+      <div
+        ref={sectionRef}
+        id={sectionDomId}
+        aria-labelledby={`${reactId}-heading`}
+      >
+        {body}
+      </div>
+    );
+  }
+
+  return (
+    <section
+      id={sectionDomId}
+      className="bg-neutral py-16 sm:py-20"
+      aria-labelledby={`${reactId}-heading`}
+    >
+      <div ref={sectionRef} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        {body}
       </div>
     </section>
   );

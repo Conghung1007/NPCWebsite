@@ -2,6 +2,8 @@ import { usePortal } from "@/contexts/PortalContext";
 import {
   DUHOC_SECTIONS,
   DAOTAO_SECTIONS,
+  HUONGNGHIEP_TRACKS,
+  DICHVU_SECTIONS,
   PortalSectionPage,
   PortalNewsPage,
   getSectionBySlug,
@@ -9,7 +11,7 @@ import {
 import NotFound from "@/pages/not-found";
 import { PORTAL_META } from "@/lib/portal";
 
-/** Route wrapper: /countries | /schools | ... for duhoc / daotao */
+/** Route wrapper: section pages for huongnghiep / dichvu */
 export function PortalSectionRoute({ slug }: { slug: string }) {
   const { portal } = usePortal();
   const section = getSectionBySlug(portal, slug);
@@ -24,35 +26,34 @@ export function PortalSectionRoute({ slug }: { slug: string }) {
 
 export function PortalNewsRoute() {
   const { portal } = usePortal();
-  if (portal === "tnjs") {
+  if (portal === "luyenthi") {
     return (
       <PortalNewsPage
         category="japanese-training"
-        title="Tin tức TNJS"
-        description="Cập nhật khóa học, lịch thi và hoạt động đào tạo tiếng Nhật."
+        title="Tin tức luyện thi"
+        description="Cập nhật đề thi, lịch thi và hoạt động luyện thi."
       />
     );
   }
-  if (portal === "daotao") {
+  if (portal === "dichvu") {
     return (
       <PortalNewsPage
         category="soft-skills"
-        title="Tin tức đào tạo"
-        description="Tin tức và thông báo từ cổng kỹ năng mềm N&P."
+        title="Tin tức dịch vụ"
+        description="Tin tức kỹ năng mềm và dịch vụ doanh nghiệp N&P."
       />
     );
   }
-  if (portal === "duhoc") {
+  if (portal === "huongnghiep") {
     return (
       <PortalNewsPage
         category="study-abroad"
-        title="Tin tức du học"
-        description="Thông tin tuyển sinh, học bổng và cập nhật từ các thị trường du học."
+        title="Tin tức hướng nghiệp"
+        description="Thông tin du học, nghề nghiệp và cập nhật từ thị trường."
       />
     );
   }
   return <NotFound />;
 }
 
-/** Optional index of all section cards — used by daotao home */
-export { DUHOC_SECTIONS, DAOTAO_SECTIONS };
+export { DUHOC_SECTIONS, DAOTAO_SECTIONS, HUONGNGHIEP_TRACKS, DICHVU_SECTIONS };

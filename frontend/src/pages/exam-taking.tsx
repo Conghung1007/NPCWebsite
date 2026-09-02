@@ -8,14 +8,25 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Clock, ChevronLeft, ChevronRight, FileText, CheckCircle, ArrowRight, Volume2, Eye, BookOpen, MessageSquare, Headphones, FileInput } from "lucide-react";
+import { Clock, ChevronLeft, ChevronRight, FileText, CheckCircle, ArrowRight, Volume2, Eye, BookOpen, MessageSquare, Headphones, FileInput, ShoppingCart } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
+import { useCart } from "@/hooks/useCart";
+import { useToast } from "@/hooks/use-toast";
 import { type Exam, type Question, type User } from "@shared/schema";
 import { ExamAudioPlayer } from "@/components/ExamAudioPlayer";
 import { ExamProtectedContent, ProtectedExamImage } from "@/components/ExamProtectedContent";
 import { examKeys } from "@/lib/queryKeys";
 import { resolveExamMediaUrl } from "@/lib/examMediaUrl";
+import {
+  EXAM_PACKAGE_PRICE_VND,
+  EXAM_TRIAL_QUESTION_LIMIT,
+  type ExamAccessMode,
+  truncateSectionsForTrial,
+  countAnsweredScorableUnits,
+  collectTrialQuestionIdsFromSections,
+  countScorableUnits,
+} from "@shared/examAccess";
 
 // Fisher-Yates shuffle algorithm to randomize question order
 function shuffleArray<T>(array: T[]): T[] {
@@ -102,6 +113,8 @@ interface ExamTakingPageProps {
 export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [, setLocation] = useLocation();
   const { user } = useAuth();
+  const { addPackage } = useCart();
+  const { toast } = useToast();
   
   // Dynamic section exam state
   const [examSections, setExamSections] = useState<ExamSection[]>([]);
@@ -125,6 +138,11 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [waitStartTime, setWaitStartTime] = useState<number | null>(null);
   const [attemptId, setAttemptId] = useState<string | null>(null);
   const [isStarting, setIsStarting] = useState(false);
+  const [accessMode, setAccessMode] = useState<ExamAccessMode>("full");
+  const [showPurchaseDialog, setShowPurchaseDialog] = useState(false);
+  const [sectionsReady, setSectionsReady] = useState(false);
+  const purchaseNavRef = useRef<"home" | "cart" | null>(null);
+  const trialSubmitTriggeredRef = useRef(false);
 
   // Derive/shuffle sections only once (or restore from draft) — avoid wiping answers/timer
   const sectionsInitializedRef = useRef(false);
@@ -137,12 +155,111 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     retry: false,
   });
 
+  const { data: examAccess, isFetched: examAccessFetched, isError: examAccessError } = useQuery<{
+    mode: ExamAccessMode;
+    reason?: string;
+    requiresLogin?: boolean;
+    requiresPurchase?: boolean;
+    level?: string | null;
+    packageId?: string | null;
+    priceVnd?: number;
+  }>({
+    queryKey: ["/api/exams", examId, "access"],
+    queryFn: async () => {
+      const res = await fetch(`/api/exams/${examId}/access`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("access");
+      return res.json();
+    },
+    enabled: !!examId,
+    retry: false,
+  });
+
   // Fetch all questions
   const { data: allQuestions = [], isLoading: questionsLoading } = useQuery<Question[]>({
     queryKey: examKeys.questions(examId),
     enabled: !!examId && !!exam,
     retry: false,
   });
+
+  useEffect(() => {
+    if (examAccess?.mode) setAccessMode(examAccess.mode);
+  }, [examAccess?.mode]);
+
+  const linkedPackageId =
+    examAccess?.packageId ||
+    (exam as { packageId?: string | null } | undefined)?.packageId ||
+    null;
+
+  const { data: storePackages = [] } = useQuery<
+    Array<{ id: string; level: string | null; name: string }>
+  >({
+    queryKey: ["/api/exam-packages"],
+    enabled: showPurchaseDialog && !linkedPackageId && !!examAccess?.level,
+    retry: false,
+  });
+
+  const purchasePackageId =
+    linkedPackageId ||
+    (examAccess?.level
+      ? storePackages.find((p) => p.level === examAccess.level)?.id
+      : null);
+
+  const purchasePriceVnd =
+    examAccess?.priceVnd ?? EXAM_PACKAGE_PRICE_VND;
+
+  const handlePurchaseDismiss = useCallback(() => {
+    clearExamDraft(examId);
+    setShowPurchaseDialog(false);
+    setLocation("/");
+  }, [examId, setLocation]);
+
+  const handlePurchaseAddToCart = useCallback(() => {
+    if (!purchasePackageId) {
+      toast({
+        title: "Chưa xác định được gói đề",
+        description: "Vui lòng chọn gói trên trang chủ.",
+        variant: "destructive",
+      });
+      handlePurchaseDismiss();
+      return;
+    }
+
+    purchaseNavRef.current = "cart";
+    setShowPurchaseDialog(false);
+    addPackage.mutate(purchasePackageId, {
+      onSuccess: () => {
+        clearExamDraft(examId);
+        purchaseNavRef.current = null;
+        toast({ title: "Đã thêm vào giỏ", description: "Chuyển tới thanh toán." });
+        setLocation("/cart");
+      },
+      onError: (err: Error) => {
+        purchaseNavRef.current = null;
+        toast({
+          title: "Không thêm được vào giỏ",
+          description: err.message || "Thử lại sau.",
+          variant: "destructive",
+        });
+      },
+    });
+  }, [
+    addPackage,
+    examId,
+    handlePurchaseDismiss,
+    purchasePackageId,
+    setLocation,
+    toast,
+  ]);
+
+  const applyTrialLimit = useCallback(
+    (sections: ExamSection[], mode: ExamAccessMode) => {
+      if (mode !== "trial") return sections;
+      return truncateSectionsForTrial(sections, EXAM_TRIAL_QUESTION_LIMIT);
+    },
+    [],
+  );
 
   // Shared function to derive sections from exam data
   const deriveExamSections = useCallback((exam: any, allQuestions: Question[]): ExamSection[] => {
@@ -267,12 +384,17 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
       if (serverAttempt?.status === "in_progress") {
         const cs = (serverAttempt.clientState || {}) as any;
-        const sections =
+        let sections =
           (cs.examSections?.length ? cs.examSections : draft?.examSections) ||
           deriveExamSections(exam, allQuestions);
+        const modeFromCs = (cs.accessMode || examAccess?.mode) as ExamAccessMode | undefined;
+        if (modeFromCs === "trial") {
+          sections = truncateSectionsForTrial(sections, EXAM_TRIAL_QUESTION_LIMIT);
+        }
         setExamSections(sections);
         setAttemptId(serverAttempt.id);
         setExamStarted(true);
+        if (modeFromCs) setAccessMode(modeFromCs);
         const idx = cs.currentSectionIndex ?? draft?.currentSectionIndex ?? 0;
         setCurrentSectionIndex(idx);
         setCurrentQuestionIndex(cs.currentQuestionIndex ?? draft?.currentQuestionIndex ?? 0);
@@ -295,6 +417,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         }
         setSectionTimeLeft(remaining);
         sectionsInitializedRef.current = true;
+        setSectionsReady(true);
         return;
       }
 
@@ -310,15 +433,23 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         setSectionResults({});
         setSectionCompleted(false);
         sectionsInitializedRef.current = true;
+        setSectionsReady(true);
         return;
       }
 
-      setExamSections(deriveExamSections(exam, allQuestions));
+      let sections = deriveExamSections(exam, allQuestions);
+      if (!examAccess) {
+        if (!examAccessFetched) return;
+      } else if (examAccess.mode === "trial") {
+        sections = truncateSectionsForTrial(sections, EXAM_TRIAL_QUESTION_LIMIT);
+      }
+      setExamSections(sections);
       sectionsInitializedRef.current = true;
+      setSectionsReady(true);
     };
 
     void restore();
-  }, [exam, allQuestions, deriveExamSections, examId]);
+  }, [exam, allQuestions, deriveExamSections, examId, examAccess, examAccessFetched]);
 
   // Persist local cache + server draft while in progress
   useEffect(() => {
@@ -341,6 +472,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     examId,
     attemptId,
     examStarted,
+    accessMode,
     currentSectionIndex,
     currentQuestionIndex,
     sectionTimeLeft,
@@ -362,6 +494,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         credentials: "include",
         body: JSON.stringify({
           clientState: {
+            accessMode,
             currentSectionIndex,
             currentQuestionIndex,
             completedSections: Array.from(completedSections),
@@ -369,7 +502,6 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             sectionCompleted,
             examSections: examSections.map((s) => ({
               ...s,
-              // Keep question order for resume; strip heavy fields if needed later
             })),
           },
           currentSectionAnswers: sectionAnswers,
@@ -380,6 +512,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   }, [
     attemptId,
     examStarted,
+    accessMode,
     sectionCompleted,
     sectionAnswers,
     currentSectionIndex,
@@ -493,28 +626,25 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   // Show immediate exit confirmation
   const showExitConfirmation = () => {
     if (isExamInProgress) {
-      // Use router navigation for speed
-      setPendingNavigation("/online-exam");
+      setPendingNavigation("/");
       setShowExitDialog(true);
     }
   };
 
   // Handle exit confirmation
   const handleExitConfirm = () => {
-    // Clean up immediately
+    const nav = pendingNavigation;
+    const exitAction = pendingExitAction;
     setPendingExitAction(null);
     setPendingNavigation(null);
     setShowExitDialog(false);
-    
-    // Navigate immediately if there's a pending navigation
-    if (pendingNavigation) {
-      setLocation(pendingNavigation);
+
+    if (nav) {
+      setLocation(nav);
       return;
     }
-    
-    // Execute pending exit action immediately
-    if (pendingExitAction) {
-      pendingExitAction();
+    if (exitAction) {
+      exitAction();
     }
   };
 
@@ -564,6 +694,12 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     onError: (error) => {
       console.error("Error submitting exam:", error);
       setIsSubmitting(false);
+      trialSubmitTriggeredRef.current = false;
+      toast({
+        title: "Không nộp được bài thi",
+        description: error instanceof Error ? error.message : "Thử lại sau.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -599,18 +735,12 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     return response.json();
   };
 
-  // Helper: Get total question count including sub-questions
+  // Helper: Get total scorable units in a section (aligned with trial limit)
   const getTotalQuestionCount = (questions: Question[]) => {
-    let total = 0;
-    questions.forEach(question => {
-      // Count parent question (always 1)
-      total += 1;
-      // Count sub-questions if they exist
-      if ((question as any).subQuestions && Array.isArray((question as any).subQuestions)) {
-        total += (question as any).subQuestions.length;
-      }
-    });
-    return total;
+    return questions.reduce(
+      (sum, question) => sum + countScorableUnits(question as any),
+      0,
+    );
   };
 
   // Helper: Flatten all questions (parent + sub) into a single array
@@ -692,10 +822,16 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       setSectionCompleted(true);
     } catch (error) {
       console.error("Error completing section:", error);
+      trialSubmitTriggeredRef.current = false;
+      toast({
+        title: "Không hoàn thành được phần thi",
+        description: error instanceof Error ? error.message : "Thử lại sau.",
+        variant: "destructive",
+      });
     } finally {
       setIsSubmitting(false);
     }
-  }, [getCurrentSection, sectionAnswers, sectionTimeLeft, isSubmitting, sectionResults, currentSectionIndex, examSections, attemptId, submitExamMutation]);
+  }, [getCurrentSection, getSectionConfig, sectionAnswers, sectionTimeLeft, isSubmitting, sectionResults, currentSectionIndex, examSections, attemptId, submitExamMutation, toast]);
 
   // Handle final exam submission (after last section overlay)
   const handleFinalSubmit = useCallback(() => {
@@ -739,6 +875,13 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     handleSectionComplete();
   }, [handleSectionComplete]);
 
+  const triggerTrialSubmit = useCallback(() => {
+    if (trialSubmitTriggeredRef.current || accessMode !== "trial") return;
+    if (isSubmitting || sectionCompleted) return;
+    trialSubmitTriggeredRef.current = true;
+    void handleSectionComplete();
+  }, [accessMode, handleSectionComplete, isSubmitting, sectionCompleted]);
+
   // Stable timer: one interval per section, not recreated every second
   const sectionTimeUpRef = useRef(handleSectionTimeUp);
   sectionTimeUpRef.current = handleSectionTimeUp;
@@ -770,28 +913,64 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   };
 
   const handleAnswerChange = (questionId: string, answer: string) => {
-    setSectionAnswers(prev => ({
-      ...prev,
-      [questionId]: answer,
-    }));
+    if (accessMode === "trial" && trialSubmitTriggeredRef.current) return;
+    setSectionAnswers((prev) => {
+      const next = { ...prev, [questionId]: answer };
+      if (accessMode === "trial") {
+        const answered = countAnsweredScorableUnits(
+          examSections,
+          currentSectionIndex,
+          next,
+        );
+        if (answered >= EXAM_TRIAL_QUESTION_LIMIT) {
+          queueMicrotask(() => triggerTrialSubmit());
+        }
+      }
+      return next;
+    });
   };
 
   const handleNext = () => {
     const currentSection = getCurrentSection();
-    if (currentSection && currentQuestionIndex < currentSection.questions.length - 1) {
-      setCurrentQuestionIndex(prev => prev + 1);
+    if (
+      currentSection &&
+      currentQuestionIndex < currentSection.questions.length - 1
+    ) {
+      setCurrentQuestionIndex((prev) => prev + 1);
+      return;
+    }
+    if (accessMode === "trial") {
+      const answered = countAnsweredScorableUnits(
+        examSections,
+        currentSectionIndex,
+        sectionAnswers,
+      );
+      if (answered >= EXAM_TRIAL_QUESTION_LIMIT) {
+        triggerTrialSubmit();
+      }
     }
   };
 
   const handlePrevious = () => {
     if (currentQuestionIndex > 0) {
-      setCurrentQuestionIndex(prev => prev - 1);
+      setCurrentQuestionIndex((prev) => prev - 1);
     }
   };
 
   const startExam = async () => {
     if (isStarting) return;
-    const firstSection = examSections[0];
+    if (examAccess?.mode === "denied") {
+      if (examAccess.requiresPurchase) setShowPurchaseDialog(true);
+      return;
+    }
+    const mode = examAccess?.mode || accessMode;
+    let firstSections = examSections;
+    if (mode === "trial" && examSections.length) {
+      firstSections = applyTrialLimit(examSections, "trial");
+      setExamSections(firstSections);
+      setAccessMode("trial");
+    }
+    const firstSection = firstSections[0];
     if (!firstSection) return;
     setIsStarting(true);
     try {
@@ -799,26 +978,42 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ examId }),
+        body: JSON.stringify({
+          examId,
+          trialQuestionIds:
+            mode === "trial"
+              ? collectTrialQuestionIdsFromSections(firstSections)
+              : undefined,
+        }),
       });
       if (!startRes.ok) {
         const errBody = await startRes.json().catch(() => ({}));
+        if (startRes.status === 403 || startRes.status === 401) {
+          setShowPurchaseDialog(true);
+        }
         throw new Error(errBody.message || "Không bắt đầu được bài thi");
       }
       const attempt = await startRes.json();
       setAttemptId(attempt.id);
+      const modeFromServer = (attempt.accessMode ||
+        attempt.clientState?.accessMode ||
+        mode) as ExamAccessMode;
+      setAccessMode(modeFromServer);
+
+      trialSubmitTriggeredRef.current = false;
 
       // If server resumed an existing session with clientState, restore it
       const cs = attempt.clientState as any;
       if (cs?.examSections?.length) {
-        setExamSections(cs.examSections);
+        const restored = applyTrialLimit(cs.examSections, modeFromServer);
+        setExamSections(restored);
         setCurrentSectionIndex(cs.currentSectionIndex || 0);
         setCurrentQuestionIndex(cs.currentQuestionIndex || 0);
         setSectionAnswers(cs.currentSectionAnswers || {});
         setCompletedSections(new Set(cs.completedSections || []));
         setSectionResults(cs.sectionResults || {});
         setSectionCompleted(!!cs.sectionCompleted);
-        const section = cs.examSections[cs.currentSectionIndex || 0];
+        const section = restored[cs.currentSectionIndex || 0];
         if (!cs.sectionCompleted && section) {
           await startSectionOnServer(attempt.id, section.id);
           setSectionTimeLeft(section.timeLimit * 60);
@@ -856,13 +1051,30 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   };
 
   // Show loading while fetching data
-  if (examLoading || questionsLoading) {
+  if (examLoading || questionsLoading || !sectionsReady) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto"></div>
           <p className="mt-4 text-lg text-gray-600">Đang tải đề thi...</p>
         </div>
+      </div>
+    );
+  }
+
+  if (examAccessFetched && (examAccessError || !examAccess)) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="text-center py-12">
+            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Không kiểm tra được quyền thi</h2>
+            <p className="text-gray-600 mb-6">
+              Vui lòng đăng nhập lại hoặc tải lại trang.
+            </p>
+            <Button onClick={() => setLocation("/")}>Về trang chủ</Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
@@ -877,7 +1089,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             <p className="text-gray-600 mb-6">
               Đề thi này không tồn tại, đã bị ẩn, hoặc đã bị xóa.
             </p>
-            <Button onClick={() => handleNavigateWithConfirm("/online-exam")}>
+            <Button onClick={() => handleNavigateWithConfirm("/")}>
               Về trang chủ
             </Button>
           </CardContent>
@@ -896,7 +1108,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             <p className="text-gray-600 mb-6">
               Đề thi này hiện không mở để làm bài. Vui lòng chọn đề khác.
             </p>
-            <Button onClick={() => handleNavigateWithConfirm("/online-exam")}>
+            <Button onClick={() => handleNavigateWithConfirm("/")}>
               Về danh sách đề thi
             </Button>
           </CardContent>
@@ -905,23 +1117,49 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     );
   }
 
-  // Auth for official exams — before start screen
-  if (!exam.isDemo && !user) {
+  // Access gates — before start screen
+  if (examAccess?.mode === "denied" && examAccess.requiresLogin && !user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
         <Card className="max-w-md mx-auto">
           <CardContent className="text-center py-12">
             <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <h2 className="text-xl font-semibold mb-2">Cần đăng nhập</h2>
+            <h2 className="text-xl font-semibold mb-2">Cần đăng ký / đăng nhập</h2>
             <p className="text-gray-600 mb-6">
-              Đây là đề thi chính thức, bạn cần đăng nhập để tham gia.
+              {examAccess.reason ||
+                "Đăng ký tài khoản để thi thử đề số 1 mỗi cấp hoặc mua gói đề."}
             </p>
             <div className="space-x-4">
               <Button variant="outline" onClick={() => handleNavigateWithConfirm("/login")}>
                 Đăng nhập
               </Button>
-              <Button onClick={() => handleNavigateWithConfirm("/online-exam")}>
-                Về trang chủ
+              <Button onClick={() => handleNavigateWithConfirm("/")}>
+                Về cổng Luyện thi
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (examAccess?.mode === "denied" && examAccess.requiresPurchase) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <Card className="max-w-md mx-auto">
+          <CardContent className="text-center py-12">
+            <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <h2 className="text-xl font-semibold mb-2">Cần mua gói đề</h2>
+            <p className="text-gray-600 mb-6">
+              {examAccess.reason ||
+                `Mua gói ${examAccess.level || ""} (${EXAM_PACKAGE_PRICE_VND.toLocaleString("vi-VN")}đ) để thi đầy đủ.`}
+            </p>
+            <div className="space-x-4">
+              <Button onClick={() => handleNavigateWithConfirm("/#exam-packages")}>
+                Xem gói &amp; QR
+              </Button>
+              <Button variant="outline" onClick={() => handleNavigateWithConfirm("/")}>
+                Về cổng Luyện thi
               </Button>
             </div>
           </CardContent>
@@ -1064,7 +1302,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                       
                       <Button 
                         variant="outline" 
-                        onClick={() => handleNavigateWithConfirm("/online-exam")}
+                        onClick={() => handleNavigateWithConfirm("/")}
                         className="w-full mt-3"
                         data-testid="button-back-to-list"
                       >
@@ -1920,6 +2158,48 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               className="bg-red-600 hover:bg-red-700"
             >
               OK
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog
+        open={showPurchaseDialog}
+        onOpenChange={(open) => {
+          if (open) {
+            setShowPurchaseDialog(true);
+            return;
+          }
+          setShowPurchaseDialog(false);
+          if (purchaseNavRef.current === "cart") {
+            purchaseNavRef.current = null;
+            return;
+          }
+          clearExamDraft(examId);
+          setLocation("/");
+        }}
+      >
+        <DialogContent className="w-[90vw] max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mua gói để tiếp tục</DialogTitle>
+            <DialogDescription>
+              Bạn đã làm hết {EXAM_TRIAL_QUESTION_LIMIT} câu thi thử
+              {examAccess?.level ? ` cấp ${examAccess.level}` : ""}. Thêm gói đề (
+              {purchasePriceVnd.toLocaleString("vi-VN")}đ) vào giỏ để làm đầy đủ
+              đề. Đóng hộp thoại sẽ quay về trang chủ Luyện thi.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={handlePurchaseDismiss}>
+              Về trang chủ
+            </Button>
+            <Button
+              onClick={handlePurchaseAddToCart}
+              disabled={addPackage.isPending}
+              className="gap-2"
+            >
+              <ShoppingCart className="h-4 w-4" />
+              {addPackage.isPending ? "Đang thêm…" : "Thêm vào giỏ hàng"}
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -11,13 +11,22 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { ArticleManager } from "@/components/ArticleManager";
 import { ExamManager } from "@/components/ExamManager";
+import { ExamPackageAdmin } from "@/components/ExamPackageAdmin";
+import { PaymentSettingsAdmin } from "@/components/PaymentSettingsAdmin";
 import { ContactInfoManager } from "@/components/ContactInfoManager";
 import { QuestionBankManager } from "@/components/QuestionBankManager";
+import { PageContentAdmin } from "@/components/PageContentAdmin";
+import { TestimonialManager } from "@/components/TestimonialManager";
+import { AdminDashboard } from "@/components/AdminDashboard";
+import { SiteSettingsAdmin } from "@/components/SiteSettingsAdmin";
+import { CpanelSidebar } from "@/components/CpanelSidebar";
 import { AdminPortalFilter } from "@/components/AdminPortalFilter";
-import { AdminPortalProvider } from "@/contexts/AdminPortalContext";
+import { AdminPortalProvider, useAdminPortal } from "@/contexts/AdminPortalContext";
+import { useAdminDashboardSummary } from "@/hooks/useSiteSettings";
+import { apiFetch } from "@/lib/queryClient";
 
 import { Pagination } from "@/components/ui/pagination";
-import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText, Image, Check, X, MapPin, HelpCircle, Trophy, GraduationCap, Receipt, BarChart3 } from "lucide-react";
+import { Users, MessageSquare, Shield, User, Plus, Edit, Eye, EyeOff, Trash2, FileText, Image, Check, X, MapPin, HelpCircle, Trophy, GraduationCap, Receipt, BarChart3, LayoutTemplate, Package, MessageCircle } from "lucide-react";
 import { PORTAL_IDS, PORTAL_META, type PortalId } from "@/lib/portal";
 import { portalBadgeLabel } from "@/components/AdminPortalFilter";
 import { ExamResultsManager } from "@/components/ExamResultsManager";
@@ -30,6 +39,14 @@ interface CpanelPageProps {
 }
 
 export function CpanelPage({ tab }: CpanelPageProps) {
+  return (
+    <AdminPortalProvider>
+      <CpanelPageInner tab={tab} />
+    </AdminPortalProvider>
+  );
+}
+
+function CpanelPageInner({ tab }: CpanelPageProps) {
   const [location, setLocation] = useLocation();
   const { user, isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<string>("");
@@ -58,16 +75,14 @@ export function CpanelPage({ tab }: CpanelPageProps) {
     isOpen: false,
     message: null
   });
-  const [deleteRegistrationConfirm, setDeleteRegistrationConfirm] = useState<{ isOpen: boolean; registration: any | null }>({
-    isOpen: false,
-    registration: null
-  });
   const [currentPage, setCurrentPage] = useState(1);
   const messagesPerPage = 9;
   const [userSearchQuery, setUserSearchQuery] = useState("");
   const [userCurrentPage, setUserCurrentPage] = useState(1);
   const usersPerPage = 10;
   const { toast } = useToast();
+  const { filter } = useAdminPortal();
+  const { data: dashSummary } = useAdminDashboardSummary(filter);
 
   useEffect(() => {
     // Don't do anything while authentication is loading
@@ -96,10 +111,14 @@ export function CpanelPage({ tab }: CpanelPageProps) {
     }
     
     // Valid tabs list
-    const validTabs = ['registrations', 'exams', 'results', 'classes', 'orders', 'stats', 'questions', 'articles', 'contact-info', 'messages', 'users'];
-    const defaultTab = (user.role === "manager" || user.role === "admin") ? "registrations" : "exams";
+    const validTabs = ['dashboard', 'exams', 'exam-packages', 'results', 'classes', 'orders', 'stats', 'questions', 'articles', 'page-content', 'page-layouts', 'testimonials', 'site-settings', 'contact-info', 'messages', 'users'];
+    const defaultTab = "dashboard";
     
     // Check URL path for tab (from route param)
+    if (tab === "page-layouts") {
+      setLocation("/cpanel/page-content", { replace: true });
+      return;
+    }
     if (tab && validTabs.includes(tab)) {
       setActiveTab(tab);
     } else {
@@ -111,7 +130,6 @@ export function CpanelPage({ tab }: CpanelPageProps) {
   // Define permissions based on user role
   const isManager = user?.role === "manager";
   const canManageUsers = user?.role === "manager"; // Only managers can manage users
-  const canManageRegistrations = user?.role === "manager" || user?.role === "admin";
 
   // Fetch users (for managers only)
   const { data: users = [], isLoading: usersLoading, refetch: refetchUsers } = useQuery<UserType[]>({
@@ -123,12 +141,6 @@ export function CpanelPage({ tab }: CpanelPageProps) {
   const { data: messages = [], isLoading: messagesLoading, refetch: refetchContactRequests } = useQuery<ContactRequest[]>({
     queryKey: ["/api/contact"],
     enabled: !!user,
-  });
-
-  // Fetch registration requests (for managers and admins)
-  const { data: registrationRequests = [], isLoading: registrationsLoading, refetch: refetchRegistrations } = useQuery<RegistrationRequest[]>({
-    queryKey: ["/api/registration-requests"],
-    enabled: !!user && canManageRegistrations,
   });
 
   const handleEditUser = (userToEdit: UserType) => {
@@ -261,8 +273,16 @@ export function CpanelPage({ tab }: CpanelPageProps) {
     setDeleteConfirm({ isOpen: false, user: null });
   };
 
-  const handleViewMessage = (message: any) => {
+  const handleViewMessage = async (message: any) => {
     setMessageDetail({ isOpen: true, message });
+    if (!message.isRead) {
+      try {
+        await apiFetch(`/api/contact/${message.id}/read`, { method: "PATCH" });
+        refetchContactRequests();
+      } catch {
+        /* ignore */
+      }
+    }
   };
 
   const handleDeleteMessage = (message: any) => {
@@ -307,70 +327,6 @@ export function CpanelPage({ tab }: CpanelPageProps) {
     setDeleteMessageConfirm({ isOpen: false, message: null });
   };
 
-  // Registration handlers
-  const handleApproveRegistration = async (requestId: string) => {
-    try {
-      const response = await fetch(`/api/registration-requests/${requestId}/approve`, {
-        method: "POST",
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Thành công",
-          description: "Đã duyệt đăng ký và tạo tài khoản",
-        });
-        refetchRegistrations();
-        refetchUsers(); // Cập nhật danh sách users để hiển thị tài khoản mới được duyệt
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Có lỗi xảy ra");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể duyệt đăng ký",
-        variant: "destructive",
-      });
-    }
-  };
-
-  const handleDeleteRegistration = (registration: any) => {
-    setDeleteRegistrationConfirm({ isOpen: true, registration });
-  };
-
-  const confirmDeleteRegistration = async () => {
-    if (!deleteRegistrationConfirm.registration) return;
-
-    try {
-      const response = await fetch(`/api/registration-requests/${deleteRegistrationConfirm.registration.id}`, {
-        method: "DELETE",
-      });
-
-      if (response.ok) {
-        toast({
-          title: "Thành công",
-          description: "Đã xóa yêu cầu đăng ký",
-        });
-        refetchRegistrations();
-      } else {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Có lỗi xảy ra");
-      }
-    } catch (error: any) {
-      toast({
-        title: "Lỗi",
-        description: error.message || "Không thể xóa yêu cầu đăng ký",
-        variant: "destructive",
-      });
-    } finally {
-      setDeleteRegistrationConfirm({ isOpen: false, registration: null });
-    }
-  };
-
-  const cancelDeleteRegistration = () => {
-    setDeleteRegistrationConfirm({ isOpen: false, registration: null });
-  };
-
   const getServiceName = (service: string) => {
     const serviceNames: Record<string, string> = {
       'visa-services': 'Dịch vụ Visa',
@@ -400,7 +356,6 @@ export function CpanelPage({ tab }: CpanelPageProps) {
   };
 
   return (
-    <AdminPortalProvider>
     <div className="min-h-screen bg-gray-50/50 py-8">
       <div className="container mx-auto px-4">
         <div className="mb-8">
@@ -414,109 +369,62 @@ export function CpanelPage({ tab }: CpanelPageProps) {
         </div>
 
         <div className="flex gap-8">
-          {/* Left Sidebar - Navigation */}
-          <div className="flex-shrink-0">
-            <div className="space-y-2">
-              {canManageRegistrations && (
-                <Button 
-                  variant={activeTab === "registrations" ? "default" : "ghost"}
-                  className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                  onClick={() => setLocation("/cpanel/registrations")}
-                >
-                  <Shield className="w-5 h-5" />
-                  Duyệt đăng ký
-                </Button>
-              )}
-              <Button 
-                variant={activeTab === "exams" ? "default" : "ghost"}
-                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setLocation("/cpanel/exams")}
-              >
-                <FileText className="w-5 h-5" />
-                Quản lý bài thi
-              </Button>
-              <Button 
-                variant={activeTab === "results" ? "default" : "ghost"}
-                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setLocation("/cpanel/results")}
-              >
-                <Trophy className="w-5 h-5" />
-                Kết quả thi
-              </Button>
-              <Button 
-                variant={activeTab === "classes" ? "default" : "ghost"}
-                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setLocation("/cpanel/classes")}
-              >
-                <GraduationCap className="w-5 h-5" />
-                Lớp học
-              </Button>
-              <Button 
-                variant={activeTab === "orders" ? "default" : "ghost"}
-                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setLocation("/cpanel/orders")}
-              >
-                <Receipt className="w-5 h-5" />
-                Đơn hàng
-              </Button>
-              <Button 
-                variant={activeTab === "stats" ? "default" : "ghost"}
-                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setLocation("/cpanel/stats")}
-              >
-                <BarChart3 className="w-5 h-5" />
-                Thống kê
-              </Button>
-              <Button 
-                variant={activeTab === "questions" ? "default" : "ghost"}
-                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setLocation("/cpanel/questions")}
-              >
-                <HelpCircle className="w-5 h-5" />
-                Bộ câu hỏi
-              </Button>
-              <Button 
-                variant={activeTab === "articles" ? "default" : "ghost"}
-                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setLocation("/cpanel/articles")}
-              >
-                <FileText className="w-5 h-5" />
-                Quản lý bài viết
-              </Button>
-              <Button 
-                variant={activeTab === "contact-info" ? "default" : "ghost"}
-                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setLocation("/cpanel/contact-info")}
-              >
-                <MapPin className="w-5 h-5" />
-                Thông tin liên hệ
-              </Button>
-              <Button 
-                variant={activeTab === "messages" ? "default" : "ghost"}
-                className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                onClick={() => setLocation("/cpanel/messages")}
-              >
-                <MessageSquare className="w-5 h-5" />
-                Tin nhắn liên hệ
-              </Button>
-              {canManageUsers && (
-                <Button 
-                  variant={activeTab === "users" ? "default" : "ghost"}
-                  className="justify-start flex items-center gap-2 h-12 px-4 pl-[30px] pr-[30px]"
-                  onClick={() => setLocation("/cpanel/users")}
-                >
-                  <Users className="w-5 h-5" />
-                  Quản lý người dùng
-                </Button>
-              )}
-            </div>
-          </div>
+          <CpanelSidebar
+            activeTab={activeTab}
+            canManageUsers={canManageUsers}
+            unreadMessages={dashSummary?.unreadMessages}
+            pendingOrders={dashSummary?.pendingOrders}
+            onNavigate={(t) => setLocation(`/cpanel/${t}`)}
+          />
 
           {/* Right Content Area */}
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
+            {activeTab === "dashboard" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Bảng điều khiển</CardTitle>
+                  <CardDescription>
+                    Tổng quan tin nhắn, đơn hàng và lượt truy cập — theo mô hình admin TNJS.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <AdminDashboard onNavigate={(t) => setLocation(`/cpanel/${t}`)} />
+                </CardContent>
+              </Card>
+            )}
+
+            {activeTab === "site-settings" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Cấu hình chung</CardTitle>
+                  <CardDescription>
+                    Hotline, mạng xã hội, logo, popup — tương đương TNJS «Cấu hình chung» + «Hình ảnh».
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <SiteSettingsAdmin />
+                </CardContent>
+              </Card>
+            )}
+
             {/* Articles Content - Available for all users */}
             {activeTab === "articles" && (
               <ArticleManager />
+            )}
+
+            {activeTab === "page-content" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Nội dung trang</CardTitle>
+                  <CardDescription>
+                    Quản lý tập trung như admin TNJS: chọn trang → chỉnh khối, văn bản
+                    hoặc hình ảnh. Không cần sửa trực tiếp trên trang public.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <PageContentAdmin />
+                </CardContent>
+              </Card>
             )}
 
             {/* Users Content - For managers and admins */}
@@ -953,8 +861,14 @@ export function CpanelPage({ tab }: CpanelPageProps) {
                           </TableHeader>
                           <TableBody>
                             {currentMessages.map((message) => (
-                              <TableRow key={message.id}>
+                              <TableRow
+                                key={message.id}
+                                className={!message.isRead ? "bg-emerald-50/60" : undefined}
+                              >
                                 <TableCell className="font-medium">
+                                  {!message.isRead ? (
+                                    <Badge className="mr-2 bg-[#00A651]">Mới</Badge>
+                                  ) : null}
                                   {message.name}
                                 </TableCell>
                                 <TableCell>{message.email}</TableCell>
@@ -1021,175 +935,16 @@ export function CpanelPage({ tab }: CpanelPageProps) {
               </div>
             )}
 
-            {/* Registration Requests Content - For managers and admins */}
-            {canManageRegistrations && activeTab === "registrations" && (
-              <div className="space-y-6">
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Shield className="w-5 h-5" />
-                      Duyệt đăng ký tài khoản
-                    </CardTitle>
-                    <CardDescription>
-                      Xem và duyệt các yêu cầu đăng ký tài khoản mới
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {registrationsLoading ? (
-                      <div className="flex justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                      </div>
-                    ) : registrationRequests.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        Không có yêu cầu đăng ký nào
-                      </div>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Tên đăng nhập</TableHead>
-                            <TableHead>Họ tên</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Số điện thoại</TableHead>
-                            <TableHead>Trạng thái</TableHead>
-                            <TableHead>Ngày đăng ký</TableHead>
-                            <TableHead>Thao tác</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {registrationRequests
-                            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                            .map((request) => (
-                            <TableRow key={request.id}>
-                              <TableCell className="font-medium">
-                                {request.username}
-                              </TableCell>
-                              <TableCell>{request.fullName || "-"}</TableCell>
-                              <TableCell>{request.email}</TableCell>
-                              <TableCell>{request.phone}</TableCell>
-                              <TableCell>
-                                <Badge 
-                                  variant={
-                                    request.status === "pending" ? "default" :
-                                    request.status === "approved" ? "secondary" : 
-                                    "destructive"
-                                  }
-                                >
-                                  {request.status === "pending" ? "Chờ duyệt" :
-                                   request.status === "approved" ? "Đã duyệt" :
-                                   "Đã từ chối"}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {new Date(request.createdAt).toLocaleDateString("vi-VN")}
-                              </TableCell>
-                              <TableCell>
-                                {request.status === "pending" && (
-                                  <div className="flex gap-2">
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleApproveRegistration(request.id)}
-                                      className="text-green-600 hover:text-green-700"
-                                    >
-                                      <Check className="w-4 h-4" />
-                                      Duyệt
-                                    </Button>
-                                    <Button
-                                      size="sm"
-                                      variant="outline"
-                                      onClick={() => handleDeleteRegistration(request)}
-                                      className="text-red-600 hover:text-red-700"
-                                    >
-                                      <X className="w-4 h-4" />
-                                      Xóa
-                                    </Button>
-                                  </div>
-                                )}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Approved Accounts Table */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="w-5 h-5" />
-                      Tài khoản đã duyệt
-                    </CardTitle>
-                    <CardDescription>
-                      Danh sách các tài khoản đã được duyệt từ yêu cầu đăng ký
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {usersLoading ? (
-                      <div className="flex justify-center py-8">
-                        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-                      </div>
-                    ) : (
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>Tên đăng nhập</TableHead>
-                            <TableHead>Họ tên</TableHead>
-                            <TableHead>Email</TableHead>
-                            <TableHead>Số điện thoại</TableHead>
-                            <TableHead>Vai trò</TableHead>
-                            <TableHead>Ngày tạo</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {users.filter(userItem => userItem.role === "user").map((userItem) => (
-                            <TableRow key={userItem.id}>
-                              <TableCell className="font-medium flex items-center gap-2">
-                                <User className="w-4 h-4" />
-                                {userItem.username}
-                              </TableCell>
-                              <TableCell>
-                                {userItem.fullName || "-"}
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-sm text-gray-600">
-                                  {userItem.email || "Chưa có"}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <span className="text-sm text-gray-600">
-                                  {userItem.phone || "Chưa có"}
-                                </span>
-                              </TableCell>
-                              <TableCell>
-                                <Badge variant="secondary">
-                                  {userItem.role}
-                                </Badge>
-                              </TableCell>
-                              <TableCell>
-                                {new Date(userItem.createdAt).toLocaleDateString("vi-VN")}
-                              </TableCell>
-                            </TableRow>
-                          ))}
-                        </TableBody>
-                      </Table>
-                    )}
-
-                    {users.filter(userItem => userItem.role === "user").length === 0 && !usersLoading && (
-                      <div className="text-center py-8 text-muted-foreground">
-                        Chưa có tài khoản nào được duyệt
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+            {/* Exams Content - Available for all users */}
+            {activeTab === "exams" && (
+              <div className="space-y-10">
+                <PaymentSettingsAdmin />
+                <ExamManager />
               </div>
             )}
 
-            {/* Exams Content - Available for all users */}
-            {activeTab === "exams" && (
-              <ExamManager />
+            {activeTab === "exam-packages" && (
+              <ExamPackageAdmin />
             )}
 
             {activeTab === "results" && (
@@ -1214,6 +969,20 @@ export function CpanelPage({ tab }: CpanelPageProps) {
             )}
 
             {/* Contact Info Content - Admin/Manager only */}
+            {activeTab === "testimonials" && (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Ý kiến khách hàng</CardTitle>
+                  <CardDescription>
+                    Phản hồi hiển thị trên trang chủ, TNJS, du học và các khối testimonials.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <TestimonialManager />
+                </CardContent>
+              </Card>
+            )}
+
             {activeTab === "contact-info" && (
               <ContactInfoManager />
             )}
@@ -1314,30 +1083,8 @@ export function CpanelPage({ tab }: CpanelPageProps) {
           </DialogContent>
         </Dialog>
 
-        {/* Delete Registration Confirmation Dialog */}
-        <Dialog open={deleteRegistrationConfirm.isOpen} onOpenChange={(open) => !open && cancelDeleteRegistration()}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Xác nhận xóa yêu cầu đăng ký</DialogTitle>
-              <DialogDescription>
-                Bạn có chắc chắn muốn xóa yêu cầu đăng ký của "{deleteRegistrationConfirm.registration?.username}" không?
-                <br />
-                <span className="text-red-600 font-medium">Hành động này không thể hoàn tác.</span>
-              </DialogDescription>
-            </DialogHeader>
-            <DialogFooter>
-              <Button variant="outline" onClick={cancelDeleteRegistration}>
-                Hủy
-              </Button>
-              <Button variant="destructive" onClick={confirmDeleteRegistration}>
-                Xóa yêu cầu
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
     </div>
-    </AdminPortalProvider>
   );
 }
 

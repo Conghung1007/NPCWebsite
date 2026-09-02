@@ -53,6 +53,9 @@ export default function EditExam() {
       description: examData.description || "",
       passingScore: (examData as { passingScore?: number | null }).passingScore ?? 0,
       isDemo: examData.isDemo || false,
+      level: (examData as { level?: string | null }).level as ExamFormData["level"],
+      isLevelTrial: Boolean((examData as { isLevelTrial?: boolean | null }).isLevelTrial),
+      packageId: (examData as { packageId?: string | null }).packageId || null,
     });
 
     const { sections, missingQuestionIds: missing } = hydrateExamSectionsFromExam(
@@ -70,6 +73,9 @@ export default function EditExam() {
         description: "",
         passingScore: 0,
         isDemo: false,
+        level: null,
+        isLevelTrial: false,
+        packageId: null,
       },
     [formValues],
   );

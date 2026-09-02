@@ -20,11 +20,14 @@ import { usePortal } from "@/contexts/PortalContext";
 import { getNavigation, portalHref, portalPath, type NavItem } from "@/lib/portal";
 
 function getHeaderCta(portal: ReturnType<typeof usePortal>["portal"]) {
-  if (portal === "tnjs") {
+  if (portal === "luyenthi") {
+    return null;
+  }
+  if (portal === "dichvu") {
     return {
-      name: "Đăng ký học miễn phí",
-      shortName: "Đăng ký",
-      href: portalPath("tnjs", "/#jp-tu-van"),
+      name: "Liên hệ dịch vụ",
+      shortName: "Liên hệ",
+      href: portalPath("dichvu", "/contact"),
     };
   }
   return {
@@ -91,12 +94,12 @@ function Brand({
         )}
         aria-hidden
       >
-        {portalId === "tnjs"
-          ? "TN"
-          : portalId === "duhoc"
-            ? "DH"
-            : portalId === "daotao"
-              ? "ĐT"
+        {portalId === "huongnghiep"
+          ? "HN"
+          : portalId === "dichvu"
+            ? "DV"
+            : portalId === "luyenthi"
+              ? "LT"
               : "N&P"}
       </span>
       <span className="flex flex-col justify-center min-w-0 gap-0.5">
@@ -155,6 +158,7 @@ function NavLinkItem({
   stacked?: boolean;
 }) {
   const active = !item.external && isActivePath(location, item.href);
+  const tnjsNav = !mobile;
   const className = cn(
     "relative font-medium transition-colors duration-200 whitespace-nowrap",
     mobile
@@ -163,38 +167,85 @@ function NavLinkItem({
         ? cn(
             "inline-flex items-center py-1.5 text-sm tracking-[0.01em]",
             respectHideBelowXl && item.hideBelowXl && "hidden xl:inline-flex",
+            tnjsNav &&
+              "rounded-full px-3.5 font-semibold uppercase tracking-[0.04em] text-[13px]",
+            tnjsNav && active && "bg-[#00A651] text-white",
           )
         : cn(
             "inline-flex items-center px-3.5 py-2 text-sm tracking-[0.01em]",
             respectHideBelowXl && item.hideBelowXl && "hidden xl:inline-flex",
+            tnjsNav && active && "rounded-full bg-[#00A651] px-3.5 text-white font-semibold",
           ),
     mobile
       ? active
         ? "text-primary bg-primary/8"
         : "text-foreground/85 hover:bg-muted/70 hover:text-foreground"
-      : active
+      : active && !tnjsNav
         ? "text-foreground"
-        : "text-muted-foreground hover:text-foreground",
+        : !active
+          ? "text-muted-foreground hover:text-foreground"
+          : undefined,
   );
 
   const label = mobile ? item.name : item.shortName;
 
-  const inner = (
-    <>
-      {label}
-      {!mobile && active && (
-        <span
-          className={cn(
-            "absolute -bottom-0.5 h-[2px] rounded-full bg-primary",
-            stacked ? "left-0 right-0" : "left-3.5 right-3.5",
-          )}
-          aria-hidden
-        />
-      )}
-    </>
-  );
+  if (item.children?.length && !mobile) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className={cn(className, "cursor-pointer")}
+            data-testid={`nav-link-${item.shortName}`}
+          >
+            {label}
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="start" className="min-w-[11rem]">
+          <DropdownMenuItem asChild>
+            <a href={item.href}>{item.name}</a>
+          </DropdownMenuItem>
+          <DropdownMenuSeparator />
+          {item.children.map((child) => (
+            <DropdownMenuItem key={`${child.href}-${child.shortName}`} asChild>
+              <a href={child.href}>{child.name}</a>
+            </DropdownMenuItem>
+          ))}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
 
-  if (item.external || item.href.includes("?") || item.href.includes("#")) {
+  if (item.children?.length && mobile) {
+    return (
+      <div className="w-full">
+        <a
+          href={item.href}
+          onClick={onNavigate}
+          className={className}
+          data-testid={`nav-link-${item.shortName}`}
+        >
+          {item.name}
+        </a>
+        <div className="ml-3 border-l border-border/60 pl-2 space-y-0.5">
+          {item.children.map((child) => (
+            <NavLinkItem
+              key={`${child.href}-${child.shortName}`}
+              item={child}
+              location={location}
+              mobile
+              onNavigate={onNavigate}
+              respectHideBelowXl={false}
+            />
+          ))}
+        </div>
+      </div>
+    );
+  }
+
+  const inner = <>{label}</>;
+
+  if (item.external || /^https?:\/\//i.test(item.href) || item.href.includes("?") || item.href.includes("#")) {
     return (
       <a
         href={item.href}
@@ -269,11 +320,13 @@ function ContactCta({
 }) {
   const { portal } = usePortal();
   const cta = getHeaderCta(portal);
+  if (!cta) return null;
   const active = isActivePath(location, cta.href);
   const classNames = cn(
     "font-semibold shadow-none whitespace-nowrap",
     size === "default" && "h-10 px-5",
     size === "sm" && "h-8 px-3.5 text-xs",
+    "bg-[#FF8800] hover:bg-[#E67700] text-white uppercase tracking-wide font-bold",
     className,
   );
   const usesAnchor = cta.href.includes("?") || cta.href.includes("#");
@@ -499,7 +552,7 @@ export function Header() {
   const { portal } = usePortal();
   const queryClient = useQueryClient();
   const isSubPortal = portal !== "group";
-  const isTnjs = portal === "tnjs";
+  const isLuyenthi = portal === "luyenthi";
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -531,7 +584,7 @@ export function Header() {
 
   const mobileActions = (
     <div className="flex lg:hidden items-center gap-1.5">
-      {isTnjs && <CartButton size="sm" />}
+      {isLuyenthi && <CartButton size="sm" />}
       <div className="hidden md:flex items-center gap-1.5">
         <AuthActions user={user} onLogout={handleLogout} size="sm" />
         {!isSubPortal && <ContactCta location={location} size="sm" />}
@@ -627,9 +680,9 @@ export function Header() {
             <GroupHomeLink />
           </div>
 
-          {/* Hàng trên: giỏ + auth; hàng dưới: CTA căn giữa dưới Đăng nhập/Đăng ký */}
+          {/* Hàng trên: giỏ + auth; hàng dưới: CTA (ẩn trên cổng luyện thi — đã có trong nav) */}
           <div className="row-span-2 self-center flex items-start gap-3 shrink-0">
-            {portal === "tnjs" && (
+            {portal === "luyenthi" && (
               <div className="flex h-10 items-center">
                 <CartButton />
               </div>

@@ -50,35 +50,41 @@ interface ContactFormProps {
 
 const SERVICES_BY_PORTAL: Record<PortalId, { value: string; label: string }[]> = {
   group: [
-    { value: "visa", label: "Dịch vụ xin thị thực" },
-    { value: "study-abroad", label: "Tư vấn du học" },
-    { value: "japanese", label: "Đào tạo tiếng Nhật" },
+    { value: "japanese", label: "Đào tạo tiếng Nhật (TNJS)" },
+    { value: "study-abroad", label: "Hướng nghiệp — Du học" },
+    { value: "career", label: "Hướng nghiệp — Đi làm" },
+    { value: "vocational", label: "Hướng nghiệp — Đào tạo nghề" },
+    { value: "interpreting", label: "Biên phiên dịch" },
     { value: "soft-skills", label: "Kỹ năng mềm" },
-    { value: "online-exam", label: "Thi trực tuyến" },
+    { value: "enterprise", label: "Tư vấn doanh nghiệp" },
+    { value: "online-exam", label: "Luyện thi" },
     { value: "other", label: "Khác" },
   ],
-  tnjs: [
-    { value: "japanese", label: "Khóa tiếng Nhật / JLPT" },
-    { value: "online-exam", label: "Thi trực tuyến" },
+  huongnghiep: [
+    { value: "study-abroad", label: "Du học" },
+    { value: "career", label: "Đi làm" },
+    { value: "vocational", label: "Đào tạo nghề" },
+    { value: "visa", label: "Visa" },
     { value: "other", label: "Khác" },
   ],
-  duhoc: [
-    { value: "study-abroad", label: "Tư vấn du học" },
-    { value: "visa", label: "Visa du học" },
-    { value: "other", label: "Khác" },
-  ],
-  daotao: [
+  dichvu: [
+    { value: "interpreting", label: "Biên phiên dịch" },
     { value: "soft-skills", label: "Kỹ năng mềm" },
-    { value: "enterprise", label: "Đào tạo doanh nghiệp" },
+    { value: "enterprise", label: "Tư vấn doanh nghiệp" },
+    { value: "other", label: "Khác" },
+  ],
+  luyenthi: [
+    { value: "online-exam", label: "Luyện thi / thi thử" },
+    { value: "japanese", label: "Đào tạo tiếng Nhật (TNJS)" },
     { value: "other", label: "Khác" },
   ],
 };
 
 const DEFAULT_SERVICE: Record<PortalId, string> = {
   group: "",
-  tnjs: "japanese",
-  duhoc: "study-abroad",
-  daotao: "soft-skills",
+  huongnghiep: "study-abroad",
+  dichvu: "interpreting",
+  luyenthi: "online-exam",
 };
 
 export function ContactForm({

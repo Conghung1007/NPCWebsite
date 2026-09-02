@@ -41,7 +41,7 @@ export default function DaotaoHome() {
               lộ trình thực hành, sĩ số nhỏ.
             </p>
             <div className="flex flex-wrap gap-3 home-fade-up">
-              <a href={portalPath("daotao", "/courses")}>
+              <a href={portalPath("dichvu", "/courses")}>
                 <Button
                   size="lg"
                   className="bg-white text-primary font-semibold px-8 hover:bg-secondary"
@@ -50,7 +50,7 @@ export default function DaotaoHome() {
                   <ArrowRight className="h-4 w-4 ml-1" />
                 </Button>
               </a>
-              <a href={portalPath("daotao", "/#dt-tu-van")}>
+              <a href={portalPath("dichvu", "/#dt-tu-van")}>
                 <Button
                   size="lg"
                   variant="outline"
@@ -97,7 +97,7 @@ export default function DaotaoHome() {
           {DAOTAO_SECTIONS.map((s, i) => (
             <Link
               key={s.slug}
-              href={portalPath("daotao", `/${s.slug}`)}
+              href={portalPath("dichvu", `/${s.slug}`)}
               className="group block border-t border-foreground/10 pt-5 home-fade-up"
               style={{ animationDelay: `${i * 60}ms` }}
             >
@@ -114,7 +114,7 @@ export default function DaotaoHome() {
             </Link>
           ))}
           <Link
-            href={portalPath("daotao", "/news")}
+            href={portalPath("dichvu", "/news")}
             className="group block border-t border-foreground/10 pt-5 home-fade-up"
           >
             <h3 className="font-display text-lg font-semibold text-foreground mb-2 group-hover:text-primary transition-colors">

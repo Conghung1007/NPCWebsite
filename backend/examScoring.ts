@@ -164,6 +164,121 @@ export function listExamSections(
   ];
 }
 
+export type TrialQuestionSelection = {
+  questionIds: string[];
+  sectionIds: string[];
+};
+
+/** Deterministic first-N scorable units in exam section order (parents with subs expand). */
+export function computeTrialQuestionIds(
+  exam: any,
+  questionsById: Map<string, QuestionLike>,
+  limit: number = 10,
+): TrialQuestionSelection {
+  const questionIds: string[] = [];
+  const sectionIds: string[] = [];
+  const sections = listExamSections(exam).filter((s) =>
+    s.questionIds.some((id) => questionsById.has(id)),
+  );
+
+  for (const section of sections) {
+    if (questionIds.length >= limit) break;
+    let sectionIncluded = false;
+
+    for (const parentId of section.questionIds) {
+      if (questionIds.length >= limit) break;
+      const parent = questionsById.get(parentId);
+      if (!parent) continue;
+
+      if (parent.subQuestions?.length) {
+        const hasParentOptions =
+          Array.isArray(parent.options) && parent.options.length > 0;
+        if (hasParentOptions && questionIds.length < limit) {
+          questionIds.push(parent.id);
+          sectionIncluded = true;
+        }
+        for (const sub of parent.subQuestions) {
+          if (questionIds.length >= limit) break;
+          questionIds.push(sub.id);
+          sectionIncluded = true;
+        }
+      } else {
+        questionIds.push(parent.id);
+        sectionIncluded = true;
+      }
+    }
+
+    if (sectionIncluded) {
+      sectionIds.push(section.id);
+    }
+  }
+
+  return { questionIds, sectionIds };
+}
+
+export function sectionIdsForQuestionIds(
+  exam: any,
+  questionIds: string[],
+  questionsById: Map<string, QuestionLike>,
+): string[] {
+  const allowed = new Set(questionIds);
+  return listExamSections(exam)
+    .filter((section) =>
+      section.questionIds.some((parentId) => {
+        const parent = questionsById.get(parentId);
+        if (!parent) return allowed.has(parentId);
+        if (parent.subQuestions?.length) {
+          return parent.subQuestions.some((sub) => allowed.has(sub.id));
+        }
+        return allowed.has(parent.id);
+      }),
+    )
+    .map((s) => s.id);
+}
+
+export function filterQuestionsForTrialIds<T extends QuestionLike>(
+  questions: T[],
+  allowedIds: Set<string>,
+): T[] {
+  const result: T[] = [];
+  for (const q of questions) {
+    if (q.subQuestions?.length) {
+      const subs = q.subQuestions.filter((sub) => allowedIds.has(sub.id));
+      const includeParent = allowedIds.has(q.id);
+      if (!includeParent && subs.length === 0) continue;
+      result.push({
+        ...q,
+        subQuestions: subs.length > 0 ? subs : undefined,
+      });
+    } else if (allowedIds.has(q.id)) {
+      result.push(q);
+    }
+  }
+  return result;
+}
+
+export function filterAnswersToTrialIds(
+  answers: Record<string, string>,
+  trialQuestionIds: Set<string>,
+  validIds: Set<string>,
+): { filtered: Record<string, string>; disallowed: string[] } {
+  const filtered: Record<string, string> = {};
+  const disallowed: string[] = [];
+  for (const [id, value] of Object.entries(answers)) {
+    if (value == null || value === "") continue;
+    if (!validIds.has(id)) {
+      disallowed.push(id);
+      continue;
+    }
+    if (!trialQuestionIds.has(id)) {
+      disallowed.push(id);
+      continue;
+    }
+    filtered[id] = String(value);
+  }
+  return { filtered, disallowed };
+}
+
 export function buildScoringSnapshot(
   exam: any,
   questionsById: Map<string, QuestionLike>

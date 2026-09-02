@@ -15,6 +15,8 @@ interface ImageManagerProps {
   onImageUpdate: (imageUrl: string) => void;
   imageType: string;
   altText: string;
+  /** Target portal for CMS slot (cpanel may differ from browser context) */
+  portal?: string;
   className?: string;
 }
 
@@ -24,6 +26,7 @@ export function ImageManager({
   onImageUpdate,
   imageType,
   altText,
+  portal,
   className = ""
 }: ImageManagerProps) {
   const [uploading, setUploading] = useState(false);
@@ -117,6 +120,7 @@ export function ImageManager({
       formData.append('file', file);
       formData.append('imageType', imageType);
       formData.append('altText', altText);
+      if (portal) formData.append('portal', portal);
       
       const serverUploadResponse = await apiFetch('/api/ui-images/server-upload', {
         method: 'POST',
@@ -125,7 +129,14 @@ export function ImageManager({
       
       if (!serverUploadResponse.ok) {
         const errorText = await serverUploadResponse.text();
-        throw new Error(`Server upload failed: ${errorText}`);
+        let message = errorText;
+        try {
+          const parsed = JSON.parse(errorText);
+          message = parsed.error || parsed.message || errorText;
+        } catch {
+          /* plain text */
+        }
+        throw new Error(message);
       }
       
       const serverUploadData = await serverUploadResponse.json();
@@ -134,8 +145,9 @@ export function ImageManager({
       // Update image directly and switch to existing tab
       onImageUpdate(finalUploadUrl);
       
-      // Refresh the images list
+      // Refresh image pickers + public UI image slots
       queryClient.invalidateQueries({ queryKey: ["/api/images/list"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ui-images"] });
       
       // Switch to existing tab
       setActiveTab("existing");
@@ -149,7 +161,8 @@ export function ImageManager({
       console.error('Upload error:', error);
       toast({
         title: "Lỗi",
-        description: "Không thể upload hình ảnh",
+        description:
+          error instanceof Error ? error.message : "Không thể upload hình ảnh",
         variant: "destructive"
       });
     } finally {
@@ -177,7 +190,8 @@ export function ImageManager({
           body: JSON.stringify({
             imageUrl: selectedExistingImage,
             imageType: imageType,
-            altText: altText
+            altText: altText,
+            ...(portal ? { portal } : {}),
           })
         });
 
@@ -187,6 +201,7 @@ export function ImageManager({
 
         const updateData = await updateResponse.json();
         onImageUpdate(updateData.imageUrl);
+        queryClient.invalidateQueries({ queryKey: ["/api/ui-images"] });
         handleClose();
         
         toast({
@@ -209,8 +224,8 @@ export function ImageManager({
 
   return (
     <div className={className}>
-      <Dialog open={isOpen} onOpenChange={handleClose}>
-        <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden flex flex-col">
+      <Dialog open={isOpen} onOpenChange={(open) => { if (!open) handleClose(); }}>
+        <DialogContent className="max-w-4xl max-h-[95vh] overflow-hidden flex flex-col z-[100]">
           <DialogHeader>
             <DialogTitle>Quản lý hình ảnh</DialogTitle>
           </DialogHeader>

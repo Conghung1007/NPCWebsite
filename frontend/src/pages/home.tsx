@@ -35,45 +35,22 @@ import {
   ShieldCheck,
 } from "lucide-react";
 
-/** Default homepage copy — overridden by DB `site_contents` */
-const HOME_DEFAULTS: Record<string, string> = {
-  heroTitle: "Đối tác tin cậy cho giấc mơ toàn cầu",
-  heroDescription:
-    "Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và hệ thống thi trực tuyến với hơn 10 năm kinh nghiệm",
-  visaTitle: "Dịch vụ xin thị thực",
-  visaDescription:
-    "Hỗ trợ xin thị thực du lịch, công tác, sinh viên cho hơn 50 quốc gia với tỷ lệ thành công 98%",
-  studyTitle: "Tư vấn du học",
-  studyDescription:
-    "Tư vấn chọn trường, chương trình học, hỗ trợ hồ sơ và học bổng tại Nhật, Mỹ, Canada, Châu Âu",
-  japaneseTitle: "Đào tạo tiếng Nhật",
-  japaneseDescription:
-    "Khóa học tiếng Nhật từ cơ bản đến nâng cao, luyện thi JLPT với giảng viên bản ngữ",
-  examTitle: "Thi trực tuyến",
-  examDescription:
-    "Hệ thống thi trực tuyến với đề thi miễn phí và đề thi chính thức đánh giá năng lực tiếng Anh, tiếng Nhật",
-  "services-title": "Dịch vụ chuyên nghiệp",
-  "services-description":
-    "Giải pháp toàn diện cho du lịch, học tập và phát triển sự nghiệp quốc tế",
-  "why-choose-title": "Tại sao chọn N&P?",
-  "why-choose-description":
-    "Với hơn 10 năm kinh nghiệm, chúng tôi tự hào là đối tác đáng tin cậy giúp hàng nghìn khách hàng thực hiện ước mơ toàn cầu",
-  "why-reason-title-0": "Chuyên gia giàu kinh nghiệm",
-  "why-reason-description-0":
-    "Đội ngũ tư vấn viên được đào tạo chuyên sâu, am hiểu thủ tục và quy định quốc tế",
-  "why-reason-title-1": "Hỗ trợ cá nhân hóa",
-  "why-reason-description-1":
-    "Tư vấn 1-1, theo dõi tiến độ và hỗ trợ 24/7 trong suốt quá trình",
-  "why-reason-title-2": "Giá cả cạnh tranh",
-  "why-reason-description-2":
-    "Cam kết giá tốt nhất thị trường với nhiều gói dịch vụ linh hoạt",
-  "why-reason-title-3": "Tỷ lệ thành công cao",
-  "why-reason-description-3":
-    "98% hồ sơ được chấp thuận, cam kết hoàn phí nếu không thành công",
-  "testimonials-title": "Khách hàng nói gì về chúng tôi",
-  "testimonials-description":
-    "Câu chuyện thật từ khách hàng đã đồng hành cùng N&P",
-};
+import { HOME_CONTENT_DEFAULTS } from "@shared/siteContentDefaults";
+import { tnjsTrainingHref } from "@/lib/portal";
+
+const HOME_DEFAULTS = HOME_CONTENT_DEFAULTS;
+
+function navigateService(
+  route: string,
+  external: boolean | undefined,
+  setLocation: (path: string) => void,
+) {
+  if (external || /^https?:\/\//i.test(route)) {
+    window.location.href = route;
+    return;
+  }
+  setLocation(route);
+}
 
 const SERVICE_DEFS = [
   {
@@ -96,7 +73,8 @@ const SERVICE_DEFS = [
     key: "japanese" as const,
     titleKey: "japaneseTitle",
     descriptionKey: "japaneseDescription",
-    route: "/japanese-training",
+    route: tnjsTrainingHref(),
+    external: true,
     imageType: "japanese-training",
     icon: Languages,
   },
@@ -523,11 +501,11 @@ export default function Home() {
                   key={service.key}
                   role="link"
                   tabIndex={0}
-                  onClick={() => setLocation(service.route)}
+                  onClick={() => navigateService(service.route, service.external, setLocation)}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" || e.key === " ") {
                       e.preventDefault();
-                      setLocation(service.route);
+                      navigateService(service.route, service.external, setLocation);
                     }
                   }}
                   className="group text-left rounded-xl overflow-hidden bg-neutral border border-border/70 hover:border-primary/40 hover:shadow-md transition-all cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary home-fade-up"
@@ -592,7 +570,9 @@ export default function Home() {
                     <button
                       type="button"
                       className="inline-flex items-center text-sm font-semibold text-primary group-hover:gap-2 transition-all"
-                      onClick={() => setLocation(service.route)}
+                      onClick={() =>
+                        navigateService(service.route, service.external, setLocation)
+                      }
                     >
                       Tìm hiểu thêm
                       <ArrowRight className="ml-1 h-4 w-4" />

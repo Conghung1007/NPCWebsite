@@ -1,11 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Pagination } from "@/components/ui/pagination";
 import { ContactForm } from "@/components/ui/contact-form";
 import { EditableText } from "@/components/ui/editable-text";
+import { EditableHeroCarousel } from "@/components/ui/editable-hero-carousel";
+import {
+  ExamPackagesSection,
+  ExamAccessGuide,
+} from "@/components/ExamPackagesSection";
+import { TnjsPillTitle } from "@/components/TnjsUi";
+import { TNJS } from "@/lib/tnjsTheme";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import {
@@ -13,7 +19,6 @@ import {
   useUpsertSiteContent,
 } from "@/hooks/useSiteContents";
 import {
-  Clock,
   BookOpen,
   Play,
   Lock,
@@ -22,9 +27,13 @@ import {
   ClipboardCheck,
   BarChart3,
   Languages,
+  QrCode,
+  Check,
 } from "lucide-react";
 import { type Exam } from "@shared/schema";
 import { cn } from "@/lib/utils";
+import { resolveExamAccess } from "@shared/examAccess";
+import { portalHref, tnjsTrainingHref } from "@/lib/portal";
 
 type ExamListItem = Exam & {
   timeLimit?: number;
@@ -33,114 +42,163 @@ type ExamListItem = Exam & {
 
 type ExamFilter = "all" | "demo" | "official";
 
-const LOGIN_ONLINE = `/login?redirect=${encodeURIComponent("/online-exam")}`;
+const LOGIN_ONLINE = `/login?redirect=${encodeURIComponent("/")}`;
 const REGISTER_ONLINE = `/register`;
 
-const EXAM_DEFAULTS: Record<string, string> = {
-  heroTitle: "Thi trực tuyến",
-  heroDescription:
-    "Luyện đề miễn phí ngay, hoặc đăng nhập để làm đề chính thức và lưu kết quả.",
-  "process-title": "Cách thi tại N&P",
-  "process-description":
-    "Ba bước rõ ràng — đề thử không cần tài khoản; đề chính thức lưu kết quả sau khi đăng nhập",
-  "process-0-title": "Chọn đề",
-  "process-0-description": "Thi thử miễn phí hoặc đề chính thức theo mục tiêu",
-  "process-1-title": "Làm bài",
-  "process-1-description": "Theo thời gian và phần thi của đề đã chọn",
-  "process-2-title": "Xem kết quả",
-  "process-2-description":
-    "Đề chính thức lưu điểm; đề thử giúp tự đánh giá",
-  "list-title": "Danh sách đề thi",
-  "list-description": "Lọc miễn phí / chính thức hoặc tìm theo tên đề",
-  "login-banner":
-    "Đề chính thức cần tài khoản để lưu kết quả. Đăng nhập rồi quay lại trang này hoặc vào thẳng đề bạn chọn.",
-  "eco-title": "Luyện thi gắn với khóa tiếng Nhật",
-  "eco-description":
-    "Đề online giúp đo trình độ; lớp N&P đồng hành từ sơ cấp đến JLPT với sensei bản ngữ và lớp nhỏ.",
-};
+import { ONLINE_EXAM_CONTENT_DEFAULTS } from "@shared/siteContentDefaults";
+
+const EXAM_DEFAULTS = ONLINE_EXAM_CONTENT_DEFAULTS;
 
 const PROCESS_ICONS = [ListChecks, ClipboardCheck, BarChart3];
 
 function ExamCardSkeleton() {
   return (
-    <div
-      className="rounded-xl border border-border/70 bg-white p-5 animate-pulse"
-      aria-hidden
-    >
-      <div className="h-5 bg-muted rounded w-3/4 mb-3" />
-      <div className="h-4 bg-muted rounded w-full mb-2" />
-      <div className="h-4 bg-muted rounded w-2/3 mb-6" />
-      <div className="h-3 bg-muted rounded w-1/3 mb-2" />
-      <div className="h-3 bg-muted rounded w-1/4 mb-4" />
-      <div className="h-10 bg-muted rounded w-full" />
+    <div className="overflow-hidden rounded-xl bg-white shadow-lg animate-pulse" aria-hidden>
+      <div className="h-24" style={{ backgroundColor: TNJS.green }} />
+      <div className="h-10" style={{ backgroundColor: TNJS.yellow }} />
+      <div className="space-y-3 p-4" style={{ backgroundColor: TNJS.cream }}>
+        <div className="h-4 w-4/5 rounded bg-black/10" />
+        <div className="h-4 w-3/5 rounded bg-black/10" />
+      </div>
+      <div className="h-16 bg-white p-4">
+        <div className="h-10 rounded bg-black/10" />
+      </div>
     </div>
   );
 }
 
 function ExamCard({
   exam,
-  locked,
+  userId,
+  role,
+  activeLevels,
+  activePackageIds,
 }: {
   exam: ExamListItem;
-  locked?: boolean;
+  userId?: string | null;
+  role?: string | null;
+  activeLevels?: string[];
+  activePackageIds?: string[];
 }) {
   const isDemo = Boolean(exam.isDemo);
+  const access = resolveExamAccess({
+    exam,
+    userId,
+    role,
+    activeLevels,
+    activePackageIds,
+  });
   const loginHref = `/login?redirect=${encodeURIComponent(`/exam/${exam.id}`)}`;
 
+  let badge = isDemo ? "Miễn phí" : exam.level || "Chính thức";
+  if (access.mode === "trial") badge = `Thi thử ${exam.level || ""}`.trim();
+  if (access.mode === "full" && exam.level && !isDemo) badge = `Đã mở ${exam.level}`;
+
+  const bullets = [
+    `${exam.timeLimit ?? "—"} phút làm bài`,
+    access.mode === "trial"
+      ? "10 câu thi thử"
+      : `${exam.questionCount ?? "—"} câu hỏi`,
+    isDemo ? "Không cần đăng nhập" : badge,
+  ];
+
+  const ctaLabel =
+    access.mode === "denied" && access.requiresLogin
+      ? "Đăng nhập để thi"
+      : access.mode === "denied" && access.requiresPurchase
+        ? `Mua gói ${exam.level || ""}`
+        : access.mode === "trial"
+          ? "Thi thử 10 câu"
+          : "Bắt đầu thi";
+
+  const ctaInner = (
+    <span
+      className="inline-flex w-full items-center justify-center gap-2 rounded-md px-3 py-2.5 text-sm font-bold uppercase tracking-wide text-white transition-opacity group-hover:opacity-95"
+      style={{
+        backgroundColor:
+          access.mode === "denied" ? TNJS.greenDeep : TNJS.orange,
+      }}
+    >
+      {access.mode === "denied" && access.requiresLogin ? (
+        <Lock className="h-4 w-4" />
+      ) : access.mode === "denied" && access.requiresPurchase ? (
+        <QrCode className="h-4 w-4" />
+      ) : (
+        <Play className="h-4 w-4" />
+      )}
+      {ctaLabel}
+    </span>
+  );
+
   return (
-    <article className="flex flex-col rounded-xl border border-border/70 bg-white p-5 text-left">
-      <div className="mb-3 flex items-start justify-between gap-2">
-        <h3 className="text-base font-semibold text-foreground leading-snug">
+    <article className="group flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-lg transition-transform duration-300 hover:-translate-y-1.5 home-fade-up">
+      <div
+        className="relative flex h-28 flex-col items-center justify-center px-4 text-white"
+        style={{
+          background: `linear-gradient(160deg, ${TNJS.greenDeep} 0%, ${TNJS.greenBright} 100%)`,
+        }}
+      >
+        <span className="text-[0.65rem] font-semibold uppercase tracking-[0.25em] text-white/80">
+          {isDemo ? "Đề thử" : "JLPT"}
+        </span>
+        <span className="mt-1 line-clamp-2 text-center text-lg font-black leading-tight">
+          {exam.level?.toUpperCase() || (isDemo ? "FREE" : "ĐỀ")}
+        </span>
+        <span
+          className="absolute right-2 top-2 rounded-full px-2 py-0.5 text-[10px] font-bold"
+          style={{
+            backgroundColor: isDemo || access.mode === "full" ? "#fff" : TNJS.yellow,
+            color: isDemo || access.mode === "full" ? TNJS.green : "#111",
+          }}
+        >
+          {badge}
+        </span>
+      </div>
+
+      <div
+        className="relative z-[1] -mt-1 px-3 py-2.5 text-center shadow-sm"
+        style={{ backgroundColor: TNJS.yellow }}
+      >
+        <h3 className="text-[13px] font-extrabold uppercase leading-snug text-neutral-900 line-clamp-2">
           {exam.title}
         </h3>
-        <Badge
-          variant="outline"
-          className={
-            isDemo
-              ? "shrink-0 border-primary/40 text-primary bg-primary/5"
-              : "shrink-0 border-transparent bg-primary text-primary-foreground"
-          }
-        >
-          {isDemo ? "Miễn phí" : "Chính thức"}
-        </Badge>
       </div>
-      {exam.description ? (
-        <p className="text-sm text-muted-foreground mb-4 line-clamp-2 leading-relaxed">
-          {exam.description}
-        </p>
-      ) : (
-        <div className="mb-4" />
-      )}
-      <div className="mt-auto space-y-2 text-sm text-muted-foreground mb-4">
-        <div className="flex items-center gap-2">
-          <Clock className="h-4 w-4 text-primary shrink-0" aria-hidden />
-          <span>{exam.timeLimit ?? "—"} phút</span>
-        </div>
-        <div className="flex items-center gap-2">
-          <BookOpen className="h-4 w-4 text-primary shrink-0" aria-hidden />
-          <span>{exam.questionCount ?? "—"} câu hỏi</span>
-        </div>
+
+      <div className="flex-1 space-y-2 px-4 py-4" style={{ backgroundColor: TNJS.cream }}>
+        {bullets.map((line) => (
+          <p
+            key={line}
+            className="flex items-start gap-2 text-[13px] leading-snug text-neutral-800"
+          >
+            <Check
+              className="mt-0.5 h-4 w-4 shrink-0"
+              style={{ color: TNJS.green }}
+              strokeWidth={3}
+            />
+            <span>{line}</span>
+          </p>
+        ))}
+        {exam.description ? (
+          <p className="line-clamp-2 pl-6 pt-1 text-xs leading-relaxed text-neutral-600">
+            {exam.description}
+          </p>
+        ) : null}
       </div>
-      {locked ? (
-        <Link href={loginHref}>
-          <Button variant="outline" className="w-full border-primary text-primary">
-            <Lock className="w-4 h-4 mr-2" />
-            Đăng nhập để thi
-          </Button>
-        </Link>
-      ) : (
-        <Link href={`/exam/${exam.id}`}>
-          <Button className="w-full bg-primary hover:bg-[hsl(142,76%,30%)] text-primary-foreground">
-            <Play className="w-4 h-4 mr-2" />
-            Bắt đầu thi
-          </Button>
-        </Link>
-      )}
+
+      <div className="border-t border-black/5 bg-white px-4 py-4">
+        {access.mode === "denied" && access.requiresLogin ? (
+          <Link href={loginHref}>{ctaInner}</Link>
+        ) : access.mode === "denied" && access.requiresPurchase ? (
+          <a href="#exam-packages">{ctaInner}</a>
+        ) : (
+          <Link href={`/exam/${exam.id}`}>{ctaInner}</Link>
+        )}
+      </div>
     </article>
   );
 }
 
-export function OnlineExamPage() {
+export function OnlineExamPage({ embed = false }: { embed?: boolean }) {
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const hasEditPermission = user?.role === "manager" || user?.role === "admin";
   const [filter, setFilter] = useState<ExamFilter>("all");
@@ -180,6 +238,17 @@ export function OnlineExamPage() {
     retry: false,
   });
 
+  const { data: packageMe } = useQuery<{
+    activeLevels: string[];
+    activePackageIds: string[];
+  }>({
+    queryKey: ["/api/exam-packages/me"],
+    enabled: isAuthenticated,
+    retry: false,
+  });
+  const activeLevels = packageMe?.activeLevels || [];
+  const activePackageIds = packageMe?.activePackageIds || [];
+
   const activeExams = useMemo(
     () =>
       exams
@@ -218,9 +287,9 @@ export function OnlineExamPage() {
   }, [currentPage, totalPages]);
 
   useEffect(() => {
-    document.title = "Thi Trực Tuyến - N&P Company";
+    document.title = "Luyện thi — N&P Group";
     const content =
-      "Thi thử tiếng Nhật online tại N&P: đề miễn phí không cần đăng nhập, đề chính thức lưu kết quả. Luyện JLPT và kiểm tra trình độ.";
+      "Luyện thi tiếng Nhật online tại N&P: đề miễn phí không cần đăng nhập, đề chính thức lưu kết quả. Luyện JLPT và kiểm tra trình độ.";
     let meta = document.querySelector('meta[name="description"]');
     if (!meta) {
       meta = document.createElement("meta");
@@ -247,19 +316,35 @@ export function OnlineExamPage() {
   const listLoading = isLoading || authLoading;
 
   return (
-    <div className="w-full max-w-full">
-      {/* Hero */}
-      <section className="relative hero-gradient text-white overflow-hidden min-h-[calc(55svh-var(--header-height))] flex items-center">
-        <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-16">
-          <div className="max-w-3xl mx-auto text-center">
-            <p className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mb-3">
-              N&P
+    <div className="w-full max-w-full bg-white">
+      {!embed ? (
+      <>
+      {/* Hero — CTA cam như tnjs.vn */}
+      <EditableHeroCarousel
+        imageTypePrefix="exam"
+        altPrefix="Luyện thi hero"
+        minHeightClassName="min-h-[calc(72svh-var(--header-height))]"
+      >
+        <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
+          <div className="max-w-2xl">
+            <p className="mb-4 font-display text-5xl font-bold tracking-tight text-white drop-shadow-sm home-fade-up sm:text-6xl lg:text-7xl">
+              <EditableText
+                fieldName="brandName"
+                text={getContent("brandName")}
+                className="font-display text-5xl font-bold tracking-tight text-white sm:text-6xl lg:text-7xl"
+                showEditButton={hasEditPermission}
+                editingField={editingField}
+                editValues={editValues}
+                onEditStart={handleEditStart}
+                onEditSave={handleEditSave}
+                onEditCancel={handleEditCancel}
+              />
             </p>
-            <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-semibold text-white/95 mb-3 leading-snug">
+            <h1 className="mb-4 font-display text-xl font-semibold leading-snug text-white/95 home-fade-up sm:text-2xl lg:text-3xl">
               <EditableText
                 fieldName="heroTitle"
                 text={getContent("heroTitle")}
-                className="font-display text-2xl sm:text-3xl lg:text-4xl font-semibold text-white/95"
+                className="font-display text-xl font-semibold text-white/95 sm:text-2xl lg:text-3xl"
                 showEditButton={hasEditPermission}
                 editingField={editingField}
                 editValues={editValues}
@@ -268,11 +353,11 @@ export function OnlineExamPage() {
                 onEditCancel={handleEditCancel}
               />
             </h1>
-            <div className="text-sm sm:text-base text-white/80 mb-8 max-w-xl mx-auto leading-relaxed">
+            <div className="mb-8 max-w-xl text-sm leading-relaxed text-white/85 home-fade-up sm:text-base">
               <EditableText
                 fieldName="heroDescription"
                 text={getContent("heroDescription")}
-                className="text-sm sm:text-base text-white/80"
+                className="text-sm text-white/85 sm:text-base"
                 multiline
                 showEditButton={hasEditPermission}
                 editingField={editingField}
@@ -282,119 +367,133 @@ export function OnlineExamPage() {
                 onEditCancel={handleEditCancel}
               />
             </div>
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <Button
-                size="lg"
-                className="bg-white text-primary shadow-md font-semibold px-8 hover:bg-secondary hover:text-primary"
+            <div className="flex flex-col gap-3 home-fade-up sm:flex-row">
+              <button
+                type="button"
                 onClick={() => scrollToExams("demo")}
+                className="rounded-md px-8 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-opacity hover:opacity-95"
+                style={{ backgroundColor: TNJS.orange }}
               >
                 Thi thử miễn phí
-              </Button>
+              </button>
               {isAuthenticated ? (
-                <Button
-                  variant="outline"
-                  size="lg"
-                  className="border-2 border-white bg-transparent text-white font-semibold px-8 hover:bg-white hover:text-primary hover:border-white"
+                <button
+                  type="button"
                   onClick={() => scrollToExams("official")}
+                  className="rounded-md border-2 border-white bg-transparent px-8 py-3.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-neutral-900"
                 >
                   Đề chính thức
-                </Button>
+                </button>
               ) : (
                 <Link href={LOGIN_ONLINE}>
-                  <Button
-                    variant="outline"
-                    size="lg"
-                    className="border-2 border-white bg-transparent text-white font-semibold px-8 w-full sm:w-auto hover:bg-white hover:text-primary hover:border-white"
-                  >
+                  <span className="inline-flex w-full items-center justify-center rounded-md border-2 border-white bg-transparent px-8 py-3.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-neutral-900 sm:w-auto">
                     Đăng nhập để thi chính thức
-                  </Button>
+                  </span>
                 </Link>
               )}
             </div>
           </div>
         </div>
-      </section>
+      </EditableHeroCarousel>
 
-      {/* Stats */}
-      <section className="py-12 sm:py-14 bg-white border-b border-border/60">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-3 gap-6 max-w-3xl mx-auto text-center">
+      {/* Stats — khối than như “Vì sao chọn chúng tôi” */}
+      <section className="py-14 sm:py-16" style={{ backgroundColor: TNJS.charcoal }}>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <TnjsPillTitle variant="onDark">Vì sao luyện thi tại N&P</TnjsPillTitle>
+          <p className="mx-auto mb-10 max-w-xl text-center text-sm text-white/70">
+            Số liệu đề đang mở trên hệ thống — cập nhật theo danh sách thi hiện tại.
+          </p>
+          <div className="mx-auto grid max-w-4xl grid-cols-3 gap-6 sm:gap-10">
             {(
               [
                 { value: activeExams.length, label: "Đề đang mở" },
                 { value: demoCount, label: "Miễn phí" },
                 { value: officialCount, label: "Chính thức" },
               ] as const
-            ).map((stat) => (
-              <div key={stat.label}>
-                <div className="font-display text-2xl sm:text-3xl font-bold text-foreground">
+            ).map((stat, i) => (
+              <div
+                key={stat.label}
+                className="text-center home-fade-up"
+                style={{ animationDelay: `${i * 60}ms` }}
+              >
+                <p
+                  className="mb-2 text-xs font-bold tracking-[0.2em]"
+                  style={{ color: TNJS.green }}
+                >
+                  {String(i + 1).padStart(2, "0")}
+                </p>
+                <div className="text-3xl font-black tabular-nums text-white sm:text-5xl">
                   {listLoading ? (
-                    <span className="inline-block h-8 w-10 bg-muted rounded animate-pulse" />
+                    <span className="inline-block h-10 w-14 animate-pulse rounded bg-white/20" />
                   ) : (
                     stat.value
                   )}
                 </div>
-                <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                  {stat.label}
-                </p>
+                <p className="mt-2 text-xs text-white/65 sm:text-sm">{stat.label}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How it works */}
+      {/* Quy trình — nền trắng, tiêu đề pill */}
       <section
-        className="py-14 sm:py-16 bg-neutral"
+        className="py-16 sm:py-20"
+        style={{ backgroundColor: TNJS.cream }}
         aria-labelledby="exam-process-heading"
       >
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-10 max-w-2xl mx-auto">
-            <h2
-              id="exam-process-heading"
-              className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-2"
-            >
-              <EditableText
-                fieldName="process-title"
-                text={getContent("process-title")}
-                className="font-display text-2xl sm:text-3xl font-bold text-foreground"
-                showEditButton={hasEditPermission}
-                editingField={editingField}
-                editValues={editValues}
-                onEditStart={handleEditStart}
-                onEditSave={handleEditSave}
-                onEditCancel={handleEditCancel}
-              />
-            </h2>
-            <div className="text-sm sm:text-base text-muted-foreground">
-              <EditableText
-                fieldName="process-description"
-                text={getContent("process-description")}
-                className="text-sm sm:text-base text-muted-foreground"
-                multiline
-                showEditButton={hasEditPermission}
-                editingField={editingField}
-                editValues={editValues}
-                onEditStart={handleEditStart}
-                onEditSave={handleEditSave}
-                onEditCancel={handleEditCancel}
-              />
-            </div>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <TnjsPillTitle id="exam-process-heading" variant="onLight">
+            <EditableText
+              fieldName="process-title"
+              text={getContent("process-title")}
+              className="font-bold uppercase tracking-[0.12em]"
+              showEditButton={hasEditPermission}
+              editingField={editingField}
+              editValues={editValues}
+              onEditStart={handleEditStart}
+              onEditSave={handleEditSave}
+              onEditCancel={handleEditCancel}
+            />
+          </TnjsPillTitle>
+          <div className="mx-auto mb-12 max-w-2xl text-center text-sm text-neutral-600 sm:text-base">
+            <EditableText
+              fieldName="process-description"
+              text={getContent("process-description")}
+              className="text-sm text-neutral-600 sm:text-base"
+              multiline
+              showEditButton={hasEditPermission}
+              editingField={editingField}
+              editValues={editValues}
+              onEditStart={handleEditStart}
+              onEditSave={handleEditSave}
+              onEditCancel={handleEditCancel}
+            />
           </div>
-          <ol className="grid sm:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <ol className="grid gap-8 sm:grid-cols-3">
             {PROCESS_ICONS.map((Icon, index) => (
-              <li key={index} className="text-center">
-                <div className="relative mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-primary text-primary-foreground">
-                  <Icon className="h-6 w-6" aria-hidden />
-                  <span className="absolute -top-1 -right-1 flex h-6 w-6 items-center justify-center rounded-full bg-accent text-xs font-bold text-accent-foreground">
-                    {index + 1}
-                  </span>
-                </div>
-                <h3 className="text-base font-semibold text-foreground mb-1">
+              <li
+                key={index}
+                className="rounded-xl bg-white p-6 text-center shadow-md home-fade-up"
+                style={{ animationDelay: `${index * 70}ms` }}
+              >
+                <span
+                  className="mx-auto mb-4 inline-flex h-14 w-14 items-center justify-center rounded-full text-white"
+                  style={{ backgroundColor: TNJS.green }}
+                >
+                  <Icon className="h-7 w-7" aria-hidden />
+                </span>
+                <p
+                  className="mb-2 text-xs font-bold tracking-[0.2em]"
+                  style={{ color: TNJS.green }}
+                >
+                  {String(index + 1).padStart(2, "0")}
+                </p>
+                <h3 className="mb-2 text-lg font-bold text-neutral-900">
                   <EditableText
                     fieldName={`process-${index}-title`}
                     text={getContent(`process-${index}-title`)}
-                    className="text-base font-semibold text-foreground"
+                    className="text-lg font-bold text-neutral-900"
                     showEditButton={hasEditPermission}
                     editingField={editingField}
                     editValues={editValues}
@@ -403,11 +502,11 @@ export function OnlineExamPage() {
                     onEditCancel={handleEditCancel}
                   />
                 </h3>
-                <div className="text-sm text-muted-foreground leading-relaxed max-w-[16rem] mx-auto">
+                <div className="text-sm leading-relaxed text-neutral-600">
                   <EditableText
                     fieldName={`process-${index}-description`}
                     text={getContent(`process-${index}-description`)}
-                    className="text-sm text-muted-foreground"
+                    className="text-sm text-neutral-600"
                     multiline
                     showEditButton={hasEditPermission}
                     editingField={editingField}
@@ -423,42 +522,55 @@ export function OnlineExamPage() {
         </div>
       </section>
 
-      {/* Exam list */}
+      </>
+      ) : null}
+
+      {/* Gói đề — xanh tnjs */}
+      <section
+        id="exam-packages"
+        className="py-16 sm:py-20"
+        style={{ backgroundColor: TNJS.green }}
+      >
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <ExamPackagesSection />
+        </div>
+      </section>
+
+      {/* Danh sách đề */}
       <section id="exam-list" className="py-16 sm:py-20 bg-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-8 max-w-2xl">
-            <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-2">
-              <EditableText
-                fieldName="list-title"
-                text={getContent("list-title")}
-                className="font-display text-2xl sm:text-3xl font-bold text-foreground"
-                showEditButton={hasEditPermission}
-                editingField={editingField}
-                editValues={editValues}
-                onEditStart={handleEditStart}
-                onEditSave={handleEditSave}
-                onEditCancel={handleEditCancel}
-              />
-            </h2>
-            <div className="text-sm sm:text-base text-muted-foreground">
-              <EditableText
-                fieldName="list-description"
-                text={getContent("list-description")}
-                className="text-sm sm:text-base text-muted-foreground"
-                multiline
-                showEditButton={hasEditPermission}
-                editingField={editingField}
-                editValues={editValues}
-                onEditStart={handleEditStart}
-                onEditSave={handleEditSave}
-                onEditCancel={handleEditCancel}
-              />
-            </div>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <TnjsPillTitle variant="onLight">
+            <EditableText
+              fieldName="list-title"
+              text={getContent("list-title")}
+              className="font-bold uppercase tracking-[0.12em]"
+              showEditButton={hasEditPermission}
+              editingField={editingField}
+              editValues={editValues}
+              onEditStart={handleEditStart}
+              onEditSave={handleEditSave}
+              onEditCancel={handleEditCancel}
+            />
+          </TnjsPillTitle>
+          <div className="mx-auto mb-10 max-w-2xl text-center text-sm text-neutral-600 sm:text-base">
+            <EditableText
+              fieldName="list-description"
+              text={getContent("list-description")}
+              className="text-sm text-neutral-600 sm:text-base"
+              multiline
+              showEditButton={hasEditPermission}
+              editingField={editingField}
+              editValues={editValues}
+              onEditStart={handleEditStart}
+              onEditSave={handleEditSave}
+              onEditCancel={handleEditCancel}
+            />
           </div>
 
-          <div className="flex flex-col sm:flex-row gap-3 sm:items-center sm:justify-between mb-6">
+          <div className="mb-8 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div
-              className="inline-flex rounded-lg border border-border/70 bg-neutral p-1 gap-1"
+              className="inline-flex gap-1 rounded-full border-2 bg-white p-1 shadow-sm"
+              style={{ borderColor: TNJS.green }}
               role="tablist"
               aria-label="Lọc loại đề"
             >
@@ -488,14 +600,19 @@ export function OnlineExamPage() {
                   aria-selected={filter === tab.key}
                   onClick={() => setFilter(tab.key)}
                   className={cn(
-                    "rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+                    "rounded-full px-4 py-2 text-sm font-bold uppercase tracking-wide transition-colors",
                     filter === tab.key
-                      ? "bg-white text-foreground shadow-sm"
-                      : "text-muted-foreground hover:text-foreground",
+                      ? "text-white"
+                      : "text-neutral-600 hover:text-neutral-900",
                   )}
+                  style={
+                    filter === tab.key
+                      ? { backgroundColor: TNJS.green }
+                      : undefined
+                  }
                 >
                   {tab.label}
-                  <span className="ml-1.5 text-xs tabular-nums opacity-70">
+                  <span className="ml-1.5 text-xs tabular-nums opacity-80">
                     {tab.count}
                   </span>
                 </button>
@@ -504,31 +621,37 @@ export function OnlineExamPage() {
 
             <div className="relative w-full sm:max-w-xs">
               <Search
-                className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground"
+                className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-neutral-400"
                 aria-hidden
               />
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 placeholder="Tìm đề thi..."
-                className="pl-9 bg-neutral border-border/70"
+                className="border-2 bg-white pl-9 shadow-sm"
+                style={{ borderColor: `${TNJS.green}55` }}
                 aria-label="Tìm đề thi"
               />
             </div>
           </div>
 
           {showLoginBanner ? (
-            <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 rounded-xl border border-primary/25 bg-primary/5 px-5 py-4">
+            <div
+              className="mb-8 flex flex-col gap-4 rounded-xl px-5 py-5 text-white shadow-md sm:flex-row sm:items-center sm:justify-between"
+              style={{ backgroundColor: TNJS.charcoal }}
+            >
               <div className="flex items-start gap-3">
-                <Lock
-                  className="h-5 w-5 text-primary shrink-0 mt-0.5"
-                  aria-hidden
-                />
-                <div className="text-sm text-foreground">
+                <span
+                  className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full"
+                  style={{ backgroundColor: TNJS.green }}
+                >
+                  <Lock className="h-5 w-5" aria-hidden />
+                </span>
+                <div className="text-sm leading-relaxed text-white/90">
                   <EditableText
                     fieldName="login-banner"
                     text={getContent("login-banner")}
-                    className="text-sm text-foreground"
+                    className="text-sm text-white/90"
                     multiline
                     showEditButton={hasEditPermission}
                     editingField={editingField}
@@ -539,16 +662,19 @@ export function OnlineExamPage() {
                   />
                 </div>
               </div>
-              <div className="flex gap-2 shrink-0">
+              <div className="flex shrink-0 gap-2">
                 <Link href={REGISTER_ONLINE}>
-                  <Button variant="outline" className="border-primary text-primary">
+                  <span className="inline-flex items-center justify-center rounded-md border-2 border-white px-4 py-2 text-sm font-bold uppercase text-white">
                     Đăng ký
-                  </Button>
+                  </span>
                 </Link>
                 <Link href={LOGIN_ONLINE}>
-                  <Button className="bg-primary hover:bg-[hsl(142,76%,30%)] text-primary-foreground">
+                  <span
+                    className="inline-flex items-center justify-center rounded-md px-4 py-2 text-sm font-bold uppercase text-white"
+                    style={{ backgroundColor: TNJS.orange }}
+                  >
                     Đăng nhập
-                  </Button>
+                  </span>
                 </Link>
               </div>
             </div>
@@ -556,7 +682,7 @@ export function OnlineExamPage() {
 
           {listLoading ? (
             <div
-              className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5"
+              className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3"
               aria-busy="true"
               aria-label="Đang tải danh sách đề thi"
             >
@@ -565,12 +691,16 @@ export function OnlineExamPage() {
               ))}
             </div>
           ) : filteredExams.length === 0 ? (
-            <div className="rounded-xl border border-border/70 bg-neutral px-6 py-12 text-center">
+            <div
+              className="rounded-xl border-2 border-dashed px-6 py-14 text-center"
+              style={{ borderColor: TNJS.green, backgroundColor: TNJS.cream }}
+            >
               <BookOpen
-                className="h-10 w-10 text-muted-foreground/50 mx-auto mb-3"
+                className="mx-auto mb-3 h-10 w-10 opacity-50"
+                style={{ color: TNJS.green }}
                 aria-hidden
               />
-              <p className="text-sm text-muted-foreground mb-4">
+              <p className="mx-auto mb-6 max-w-md text-sm text-neutral-600">
                 {activeExams.length === 0
                   ? "Chưa có đề thi nào đang mở."
                   : search.trim()
@@ -579,10 +709,12 @@ export function OnlineExamPage() {
                       ? "Chưa có đề miễn phí."
                       : "Chưa có đề chính thức."}
               </p>
-              <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <div className="flex flex-col justify-center gap-3 sm:flex-row">
                 {search.trim() || filter !== "all" ? (
                   <Button
                     variant="outline"
+                    className="border-2 font-bold"
+                    style={{ borderColor: TNJS.green, color: TNJS.green }}
                     onClick={() => {
                       setSearch("");
                       setFilter("all");
@@ -591,29 +723,42 @@ export function OnlineExamPage() {
                     Xem tất cả đề
                   </Button>
                 ) : null}
-                <Link href="/japanese-training">
-                  <Button className="bg-primary hover:bg-[hsl(142,76%,30%)] text-primary-foreground">
-                    <Languages className="w-4 h-4 mr-2" />
+                <a
+                  href={tnjsTrainingHref()}
+                  rel="noopener noreferrer"
+                >
+                  <span
+                    className="inline-flex items-center justify-center gap-2 rounded-md px-5 py-2.5 text-sm font-bold uppercase text-white"
+                    style={{ backgroundColor: TNJS.orange }}
+                  >
+                    <Languages className="h-4 w-4" />
                     Ôn với khóa tiếng Nhật
-                  </Button>
-                </Link>
+                  </span>
+                </a>
               </div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-              {pageExams.map((exam) => (
-                <ExamCard
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+              {pageExams.map((exam, i) => (
+                <div
                   key={exam.id}
-                  exam={exam}
-                  locked={!exam.isDemo && !isAuthenticated}
-                />
+                  style={{ animationDelay: `${(i % 6) * 50}ms` }}
+                >
+                  <ExamCard
+                    exam={exam}
+                    userId={user?.id}
+                    role={user?.role}
+                    activeLevels={activeLevels}
+                    activePackageIds={activePackageIds}
+                  />
+                </div>
               ))}
             </div>
           )}
 
           {!listLoading && filteredExams.length > examsPerPage ? (
-            <div className="mt-8">
-              <p className="mb-4 text-center text-sm text-muted-foreground">
+            <div className="mt-10">
+              <p className="mb-4 text-center text-sm text-neutral-500">
                 Hiển thị {startIndex + 1}–
                 {Math.min(startIndex + examsPerPage, filteredExams.length)} /{" "}
                 {filteredExams.length} đề
@@ -629,16 +774,22 @@ export function OnlineExamPage() {
         </div>
       </section>
 
-      {/* Ecosystem + CTA */}
-      <section className="py-14 sm:py-16 bg-neutral">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-start">
-            <div>
-              <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-3">
+      {!embed ? (
+      <>
+      {/* Đăng ký / tư vấn — khối xanh như form tnjs */}
+      <section
+        className="py-16 sm:py-20"
+        style={{ backgroundColor: TNJS.green }}
+      >
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <TnjsPillTitle variant="onGreen">Đăng ký tư vấn</TnjsPillTitle>
+          <div className="mx-auto grid max-w-5xl items-start gap-10 lg:grid-cols-2 lg:gap-14">
+            <div className="home-fade-up text-white">
+              <h2 className="mb-3 text-2xl font-black sm:text-3xl">
                 <EditableText
                   fieldName="eco-title"
                   text={getContent("eco-title")}
-                  className="font-display text-2xl sm:text-3xl font-bold text-foreground"
+                  className="text-2xl font-black text-white sm:text-3xl"
                   showEditButton={hasEditPermission}
                   editingField={editingField}
                   editValues={editValues}
@@ -647,11 +798,11 @@ export function OnlineExamPage() {
                   onEditCancel={handleEditCancel}
                 />
               </h2>
-              <div className="text-sm sm:text-base text-muted-foreground mb-6 leading-relaxed max-w-md">
+              <div className="mb-8 max-w-md text-sm leading-relaxed text-white/90 sm:text-base">
                 <EditableText
                   fieldName="eco-description"
                   text={getContent("eco-description")}
-                  className="text-sm sm:text-base text-muted-foreground"
+                  className="text-sm text-white/90 sm:text-base"
                   multiline
                   showEditButton={hasEditPermission}
                   editingField={editingField}
@@ -661,19 +812,26 @@ export function OnlineExamPage() {
                   onEditCancel={handleEditCancel}
                 />
               </div>
-              <Link href="/japanese-training">
-                <Button
-                  size="lg"
-                  variant="outline"
-                  className="border-primary text-primary hover:bg-primary/5 font-semibold"
+              <a
+                href={tnjsTrainingHref()}
+                rel="noopener noreferrer"
+              >
+                <span
+                  className="inline-flex items-center gap-2 rounded-md px-6 py-3 text-sm font-bold uppercase tracking-wide text-white shadow-md transition-opacity hover:opacity-95"
+                  style={{ backgroundColor: TNJS.orange }}
                 >
+                  <Languages className="h-4 w-4" />
                   Xem khóa tiếng Nhật
-                </Button>
-              </Link>
+                </span>
+              </a>
             </div>
-            <div id="exam-tu-van" className="rounded-xl bg-primary p-6 sm:p-8">
+            <div
+              id="exam-tu-van"
+              className="overflow-hidden rounded-xl bg-white p-1 shadow-xl home-fade-up"
+            >
               <ContactForm
                 variant="hero"
+                className="!rounded-xl !shadow-none"
                 defaultService="online-exam"
                 submitMessage="Yêu cầu tư vấn thi online / luyện JLPT từ trang thi trực tuyến"
               />
@@ -681,6 +839,10 @@ export function OnlineExamPage() {
           </div>
         </div>
       </section>
+
+      <ExamAccessGuide />
+      </>
+      ) : null}
     </div>
   );
 }

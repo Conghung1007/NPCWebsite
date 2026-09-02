@@ -7,17 +7,23 @@ import { XCircle } from "lucide-react";
 
 export default function CheckoutCancelPage() {
   const search = useSearch();
-  const orderCode = useMemo(() => {
+  const { orderCode, orderType } = useMemo(() => {
     const params = new URLSearchParams(search);
-    return params.get("order") || "";
+    return {
+      orderCode: params.get("order") || "",
+      orderType: params.get("type") || "class",
+    };
   }, [search]);
+
+  const isExamPackage = orderType === "exam-package";
 
   useEffect(() => {
     if (!orderCode) return;
-    apiRequest("POST", `/api/orders/${encodeURIComponent(orderCode)}/cancel`).catch(
-      () => undefined,
-    );
-  }, [orderCode]);
+    const path = isExamPackage
+      ? `/api/exam-package-orders/${encodeURIComponent(orderCode)}/cancel`
+      : `/api/orders/${encodeURIComponent(orderCode)}/cancel`;
+    apiRequest("POST", path).catch(() => undefined);
+  }, [orderCode, isExamPackage]);
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/60 to-white">
@@ -34,8 +40,10 @@ export default function CheckoutCancelPage() {
           <Link href="/cart">
             <Button>Về giỏ hàng</Button>
           </Link>
-          <Link href="/classes">
-            <Button variant="outline">Xem lớp học</Button>
+          <Link href={isExamPackage ? "/" : "/classes"}>
+            <Button variant="outline">
+              {isExamPackage ? "Xem gói đề" : "Xem lớp học"}
+            </Button>
           </Link>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import { Link } from "wouter";
+import { useMemo } from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -10,6 +11,11 @@ import {
 import { portalHref, portalPath, resolvePortal, type PortalId } from "@/lib/portal";
 import { ArticleSection } from "@/components/ArticleSection";
 import { ContactForm } from "@/components/ui/contact-form";
+import { useSiteContents } from "@/hooks/useSiteContents";
+import {
+  mergePortalSectionContent,
+  portalSectionPageId,
+} from "@/lib/portalSectionContent";
 
 export type PortalSectionDef = {
   slug: string;
@@ -386,12 +392,169 @@ export const DAOTAO_SECTIONS: PortalSectionDef[] = [
   },
 ];
 
+/** Career tracks under Hướng nghiệp (beyond classic du học detail pages) */
+export const HUONGNGHIEP_TRACKS: PortalSectionDef[] = [
+  {
+    slug: "du-hoc",
+    title: "Du học",
+    shortTitle: "Du học",
+    description:
+      "Tư vấn quốc gia, trường, chi phí, hồ sơ và visa — lộ trình rõ ràng theo mục tiêu của bạn.",
+    lead: "Bắt đầu từ đánh giá hồ sơ, chọn thị trường khả thi, rồi triển khai nộp hồ sơ và visa.",
+    cards: [
+      {
+        title: "Quốc gia & trường",
+        body: "So sánh thị trường, lọc trường theo ngành, GPA và ngân sách.",
+      },
+      {
+        title: "Hồ sơ & visa",
+        body: "Checklist giấy tờ, timeline nộp và hỗ trợ xin visa du học.",
+      },
+      {
+        title: "Chi phí tham khảo",
+        body: "Học phí, sinh hoạt và các khoản phát sinh theo quốc gia.",
+      },
+    ],
+    steps: [
+      { title: "Tư vấn 1-1", body: "Đánh giá hồ sơ và mục tiêu." },
+      { title: "Chọn lộ trình", body: "Quốc gia, kỳ nhập học, danh sách trường." },
+      { title: "Nộp hồ sơ & visa", body: "Theo dõi đến khi có kết quả." },
+    ],
+    articleCategory: "study-abroad",
+    ctaLabel: "Tư vấn du học",
+    ctaHref: "/contact",
+    showContactForm: true,
+    contactDefaultService: "study-abroad",
+  },
+  {
+    slug: "di-lam",
+    title: "Đi làm",
+    shortTitle: "Đi làm",
+    description:
+      "Định hướng nghề nghiệp, hồ sơ xin việc và chuẩn bị phỏng vấn — gắn với năng lực thực tế.",
+    lead: "Không chỉ “tìm việc”: làm rõ mục tiêu, làm sạch CV, luyện phỏng vấn và kết nối cơ hội phù hợp.",
+    cards: [
+      {
+        title: "Định hướng nghề",
+        body: "Đánh giá kỹ năng, sở thích và thị trường — chọn hướng đi khả thi.",
+      },
+      {
+        title: "CV & hồ sơ",
+        body: "Chỉnh CV, portfolio ngắn và thư xin việc theo ngành.",
+      },
+      {
+        title: "Phỏng vấn",
+        body: "Luyện câu hỏi thường gặp, thái độ và storytelling.",
+      },
+    ],
+    steps: [
+      { title: "Brief nghề nghiệp", body: "Mục tiêu 6–12 tháng và ràng buộc thực tế." },
+      { title: "Chuẩn bị hồ sơ", body: "CV, LinkedIn / portfolio theo brief." },
+      { title: "Ứng tuyển & follow-up", body: "Gợi ý kênh và cách theo dõi kết quả." },
+    ],
+    articleCategory: "study-abroad",
+    ctaLabel: "Tư vấn đi làm",
+    ctaHref: "/contact",
+    showContactForm: true,
+    contactDefaultService: "career",
+  },
+  {
+    slug: "dao-tao-nghe",
+    title: "Đào tạo nghề",
+    shortTitle: "Đào tạo nghề",
+    description:
+      "Lộ trình kỹ năng nghề gắn nhu cầu doanh nghiệp — thực hành, có định hướng đầu ra.",
+    lead: "Chọn nghề phù hợp năng lực và thị trường, rồi theo lộ trình học ngắn hạn / trung hạn.",
+    cards: [
+      {
+        title: "Chọn nghề",
+        body: "Tư vấn nghề theo sở thích, sức khỏe và nhu cầu tuyển dụng.",
+      },
+      {
+        title: "Lộ trình học",
+        body: "Khóa ngắn hạn, chứng chỉ liên quan và lịch học linh hoạt.",
+      },
+      {
+        title: "Gắn doanh nghiệp",
+        body: "Định hướng thực tập / việc làm khi đủ điều kiện.",
+      },
+    ],
+    steps: [
+      { title: "Tư vấn nghề", body: "Chốt hướng nghề phù hợp." },
+      { title: "Đăng ký lộ trình", body: "Lịch học và yêu cầu đầu vào." },
+      { title: "Học & hỗ trợ đầu ra", body: "Theo dõi tiến độ và cơ hội việc làm." },
+    ],
+    articleCategory: "soft-skills",
+    ctaLabel: "Tư vấn đào tạo nghề",
+    ctaHref: "/contact",
+    showContactForm: true,
+    contactDefaultService: "vocational",
+  },
+];
+
+/** Dich vu service pages → contact-first */
+export const DICHVU_SECTIONS: PortalSectionDef[] = [
+  {
+    slug: "bien-phien-dich",
+    title: "Biên phiên dịch",
+    shortTitle: "Biên phiên dịch",
+    description:
+      "Biên dịch tài liệu và phiên dịch sự kiện / họp — báo giá theo khối lượng và lĩnh vực.",
+    lead: "Để lại nhu cầu (loại tài liệu / sự kiện, ngôn ngữ, deadline) — chúng tôi phản hồi sớm.",
+    bullets: [
+      "Biên dịch tài liệu chuyên ngành",
+      "Phiên dịch họp / sự kiện",
+      "Báo giá theo trang hoặc theo giờ",
+    ],
+    ctaLabel: "Liên hệ biên phiên dịch",
+    ctaHref: "/contact",
+    showContactForm: true,
+    contactDefaultService: "interpreting",
+  },
+  {
+    slug: "ky-nang-mem",
+    title: "Kỹ năng mềm",
+    shortTitle: "Kỹ năng mềm",
+    description:
+      "Giao tiếp, thuyết trình, làm việc nhóm — đăng ký tư vấn khóa hoặc lịch học.",
+    lead: "Sĩ số nhỏ, ưu tiên thực hành. Có thể học trực tiếp hoặc online.",
+    articleCategory: "soft-skills",
+    ctaLabel: "Liên hệ kỹ năng mềm",
+    ctaHref: "/contact",
+    showContactForm: true,
+    contactDefaultService: "soft-skills",
+  },
+  {
+    slug: "tu-van-doanh-nghiep",
+    title: "Tư vấn doanh nghiệp",
+    shortTitle: "Tư vấn DN",
+    description:
+      "Đào tạo in-house và tư vấn phát triển đội ngũ theo brief HR / vận hành.",
+    lead: "Thiết kế theo mục tiêu của bạn — không gói cứng.",
+    articleCategory: "soft-skills",
+    ctaLabel: "Liên hệ doanh nghiệp",
+    ctaHref: "/contact",
+    showContactForm: true,
+    contactDefaultService: "enterprise",
+  },
+];
+
 export function getSectionBySlug(
   portal: PortalId,
   slug: string,
 ): PortalSectionDef | undefined {
-  if (portal === "duhoc") return DUHOC_SECTIONS.find((s) => s.slug === slug);
-  if (portal === "daotao") return DAOTAO_SECTIONS.find((s) => s.slug === slug);
+  if (portal === "huongnghiep") {
+    return (
+      HUONGNGHIEP_TRACKS.find((s) => s.slug === slug) ||
+      DUHOC_SECTIONS.find((s) => s.slug === slug)
+    );
+  }
+  if (portal === "dichvu") {
+    return (
+      DICHVU_SECTIONS.find((s) => s.slug === slug) ||
+      DAOTAO_SECTIONS.find((s) => s.slug === slug)
+    );
+  }
   return undefined;
 }
 
@@ -401,10 +564,16 @@ type PortalSectionPageProps = {
 };
 
 export function PortalSectionPage({
-  section,
+  section: fallback,
   portalLabel,
 }: PortalSectionPageProps) {
   const portal = resolvePortal();
+  const pageId = portalSectionPageId(fallback.slug);
+  const { data: remoteContents = {} } = useSiteContents(pageId);
+  const section = useMemo(
+    () => mergePortalSectionContent(fallback, remoteContents),
+    [fallback, remoteContents],
+  );
   const rawCta = section.ctaHref;
   const ctaHref =
     rawCta && (rawCta.includes("#") || rawCta.startsWith("/"))

@@ -1,7 +1,13 @@
 import { Link, useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
-import { useCart, formatVnd } from "@/hooks/useCart";
-import { Trash2, ShoppingBag, ArrowRight } from "lucide-react";
+import {
+  useCart,
+  formatVnd,
+  isClassCartItem,
+  isExamPackageCartItem,
+} from "@/hooks/useCart";
+import { getEffectiveExamCount, formatExamCountShort, getPackageSaleInfo, formatVnd } from "@/lib/examPackageDisplay";
+import { Trash2, ShoppingBag, ArrowRight, BookOpen } from "lucide-react";
 
 export default function CartPage() {
   const [, setLocation] = useLocation();
@@ -25,9 +31,14 @@ export default function CartPage() {
           <div className="text-center py-16 border border-dashed border-emerald-200 bg-white/80">
             <ShoppingBag className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
             <p className="text-lg font-medium mb-2">Giỏ hàng trống</p>
-            <Link href="/classes">
-              <Button className="mt-4">Xem lớp đang mở</Button>
-            </Link>
+            <div className="flex flex-wrap gap-3 justify-center mt-4">
+              <Link href="/classes">
+                <Button>Xem lớp đang mở</Button>
+              </Link>
+              <Link href="/">
+                <Button variant="outline">Xem gói đề</Button>
+              </Link>
+            </div>
           </div>
         ) : (
           <div className="space-y-4">
@@ -37,20 +48,52 @@ export default function CartPage() {
                 className="flex gap-4 items-start justify-between border border-emerald-100 bg-white p-4"
               >
                 <div className="min-w-0">
-                  <Link
-                    href={`/classes/${item.classSessionId}`}
-                    className="font-semibold hover:text-primary"
-                  >
-                    {item.classSession.title}
-                  </Link>
-                  {item.classSession.scheduleText && (
-                    <p className="text-sm text-muted-foreground mt-1">
-                      {item.classSession.scheduleText}
-                    </p>
-                  )}
-                  <p className="text-primary font-bold mt-2">
-                    {formatVnd(item.classSession.priceVnd)}
-                  </p>
+                  {isClassCartItem(item) ? (
+                    <>
+                      <Link
+                        href={`/classes/${item.classSessionId}`}
+                        className="font-semibold hover:text-primary"
+                      >
+                        {item.classSession.title}
+                      </Link>
+                      {item.classSession.scheduleText && (
+                        <p className="text-sm text-muted-foreground mt-1">
+                          {item.classSession.scheduleText}
+                        </p>
+                      )}
+                      <p className="text-primary font-bold mt-2">
+                        {formatVnd(item.classSession.priceVnd)}
+                      </p>
+                    </>
+                  ) : isExamPackageCartItem(item) ? (
+                    <>
+                      <div className="flex items-center gap-2 font-semibold">
+                        <BookOpen className="w-4 h-4 text-primary shrink-0" />
+                        <span>{item.examPackage.name}</span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        {formatExamCountShort(getEffectiveExamCount(item.examPackage))}
+                        {item.examPackage.level
+                          ? ` · JLPT ${item.examPackage.level.toUpperCase()}`
+                          : ""}
+                      </p>
+                      <p className="text-primary font-bold mt-2">
+                        {(() => {
+                          const sale = getPackageSaleInfo(item.examPackage);
+                          return sale.onSale ? (
+                            <>
+                              <span className="text-sm font-normal text-muted-foreground line-through mr-2">
+                                {formatVnd(sale.compareAtPriceVnd!)}
+                              </span>
+                              {formatVnd(sale.salePriceVnd)}
+                            </>
+                          ) : (
+                            formatVnd(item.examPackage.priceVnd)
+                          );
+                        })()}
+                      </p>
+                    </>
+                  ) : null}
                 </div>
                 <Button
                   variant="ghost"
@@ -62,6 +105,13 @@ export default function CartPage() {
                 </Button>
               </div>
             ))}
+
+            {cart?.hasExamPackages ? (
+              <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded">
+                Gói đề trong giỏ — bấm Thanh toán, đăng ký hoặc đăng nhập nhanh
+                rồi trả qua PayOS để mở quyền thi.
+              </p>
+            ) : null}
 
             <div className="flex items-center justify-between pt-4 border-t">
               <div>

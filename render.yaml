@@ -1,24 +1,26 @@
-# Render Blueprint — NPC Website (1 service; 4 portal domains later)
+# Render Blueprint — NPC Website (1 service; portal domains later)
 
 # Docs: https://render.com/docs/blueprint-spec
 
 #
 
-# Phase 4 — when DNS is ready, uncomment `domains` below and set env then redeploy:
+# When DNS is ready, uncomment `domains` below and set env then redeploy:
 
-#   PUBLIC_APP_URL=https://npgroup.vn
+#   PUBLIC_APP_URL=https://npgroup.com
 
-#   COOKIE_DOMAIN=.npgroup.vn
+#   COOKIE_DOMAIN=.npgroup.com
 
-#   VITE_GROUP_ORIGIN=https://npgroup.vn
+#   VITE_GROUP_ORIGIN=https://npgroup.com
 
-#   VITE_TNJS_ORIGIN=https://tnjs.npgroup.vn
+#   VITE_HUONGNGHIEP_ORIGIN=https://huongnghiep.npgroup.com
 
-#   VITE_DUHOC_ORIGIN=https://duhoc.npgroup.vn
+#   VITE_DICHVU_ORIGIN=https://dichvu.npgroup.com
 
-#   VITE_DAOTAO_ORIGIN=https://daotao.npgroup.vn
+#   VITE_LUYENTHI_ORIGIN=https://luyenthi.npgroup.com
 
-# Until then: use https://<service>.onrender.com/?portal=group|tnjs|duhoc|daotao
+# Đào tạo tiếng Nhật: external https://tnjs.vn (not this service)
+
+# Until DNS: https://<service>.onrender.com/?portal=group|huongnghiep|dichvu|luyenthi
 
 services:
 
@@ -45,13 +47,13 @@ services:
 
     # domains:
 
-    #   - npgroup.vn
+    #   - npgroup.com
 
-    #   - tnjs.npgroup.vn
+    #   - huongnghiep.npgroup.com
 
-    #   - duhoc.npgroup.vn
+    #   - dichvu.npgroup.com
 
-    #   - daotao.npgroup.vn
+    #   - luyenthi.npgroup.com
 
     envVars:
 

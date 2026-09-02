@@ -1,14 +1,25 @@
 import {
   PORTAL_HOSTS,
   PORTAL_IDS,
+  TNJS_EXTERNAL_URL,
+  tnjsTrainingHref,
   isPortalId,
   normalizeAllowedPortals,
+  normalizePortalAlias,
   resolvePortalFromHost,
   type PortalId,
 } from "@shared/portal";
 
 export type { PortalId };
-export { PORTAL_HOSTS, PORTAL_IDS, isPortalId, normalizeAllowedPortals };
+export {
+  PORTAL_HOSTS,
+  PORTAL_IDS,
+  TNJS_EXTERNAL_URL,
+  tnjsTrainingHref,
+  isPortalId,
+  normalizeAllowedPortals,
+  normalizePortalAlias,
+};
 
 export type NavItem = {
   name: string;
@@ -17,6 +28,7 @@ export type NavItem = {
   external?: boolean;
   /** Hide in desktop nav below xl (still shown in mobile sheet) */
   hideBelowXl?: boolean;
+  children?: NavItem[];
 };
 
 const STORAGE_KEY = "npc_portal";
@@ -24,14 +36,14 @@ const STORAGE_KEY = "npc_portal";
 function readQueryPortal(): PortalId | null {
   if (typeof window === "undefined") return null;
   const q = new URLSearchParams(window.location.search).get("portal");
-  return isPortalId(q) ? q : null;
+  return normalizePortalAlias(q);
 }
 
 function readStoredPortal(): PortalId | null {
   if (typeof window === "undefined") return null;
   try {
     const v = localStorage.getItem(STORAGE_KEY);
-    return isPortalId(v) ? v : null;
+    return normalizePortalAlias(v);
   } catch {
     return null;
   }
@@ -58,16 +70,17 @@ export function resolvePortal(): PortalId {
   if (stored) return stored;
 
   const env = import.meta.env.VITE_PORTAL as string | undefined;
-  if (isPortalId(env)) return env;
+  const fromEnv = normalizePortalAlias(env);
+  if (fromEnv) return fromEnv;
 
   return "group";
 }
 
 const ORIGIN_ENV: Record<PortalId, string | undefined> = {
   group: import.meta.env.VITE_GROUP_ORIGIN as string | undefined,
-  tnjs: import.meta.env.VITE_TNJS_ORIGIN as string | undefined,
-  duhoc: import.meta.env.VITE_DUHOC_ORIGIN as string | undefined,
-  daotao: import.meta.env.VITE_DAOTAO_ORIGIN as string | undefined,
+  huongnghiep: import.meta.env.VITE_HUONGNGHIEP_ORIGIN as string | undefined,
+  dichvu: import.meta.env.VITE_DICHVU_ORIGIN as string | undefined,
+  luyenthi: import.meta.env.VITE_LUYENTHI_ORIGIN as string | undefined,
 };
 
 export function portalOrigin(portal: PortalId): string {
@@ -76,8 +89,12 @@ export function portalOrigin(portal: PortalId): string {
   if (typeof window === "undefined") return "";
 
   const host = window.location.hostname.toLowerCase();
-  // On live npgroup hosts: cross-link to sibling subdomains (even without VITE_* at build)
-  if (host === "npgroup.vn" || host.endsWith(".npgroup.vn")) {
+  if (
+    host === "npgroup.com" ||
+    host.endsWith(".npgroup.com") ||
+    host === "npgroup.vn" ||
+    host.endsWith(".npgroup.vn")
+  ) {
     return `https://${PORTAL_HOSTS[portal]}`;
   }
 
@@ -115,14 +132,17 @@ export function portalHref(portal: PortalId, path = "/"): string {
   return `${origin}${pathname || "/"}${hashPart}`;
 }
 
+/** Contact URL on a portal, optional service prefills */
+export function portalContactHref(portal: PortalId, service?: string): string {
+  const base = portalHref(portal, "/contact");
+  if (!service) return base;
+  const sep = base.includes("?") ? "&" : "?";
+  return `${base}${sep}service=${encodeURIComponent(service)}`;
+}
+
 /** @deprecated use portalOrigin('group') */
 export function groupOrigin(): string {
   return portalOrigin("group");
-}
-
-/** @deprecated use portalOrigin('tnjs') */
-export function tnjsOrigin(): string {
-  return portalOrigin("tnjs");
 }
 
 export const PORTAL_META: Record<
@@ -134,125 +154,148 @@ export const PORTAL_META: Record<
     tagline: "Hệ sinh thái giáo dục & quốc tế",
     documentTitle: "N&P Group",
   },
-  tnjs: {
-    brand: "TNJS",
-    tagline: "Đào tạo tiếng Nhật",
-    documentTitle: "TNJS | Đào tạo tiếng Nhật — N&P Group",
+  huongnghiep: {
+    brand: "Hướng nghiệp N&P",
+    tagline: "Du học · Đi làm · Đào tạo nghề",
+    documentTitle: "Hướng nghiệp — N&P Group",
   },
-  duhoc: {
-    brand: "Du học N&P",
-    tagline: "Tư vấn du học & visa",
-    documentTitle: "Du học & Visa — N&P Group",
+  dichvu: {
+    brand: "Dịch vụ N&P",
+    tagline: "Biên phiên dịch · Kỹ năng mềm · Tư vấn DN",
+    documentTitle: "Dịch vụ — N&P Group",
   },
-  daotao: {
-    brand: "Đào tạo N&P",
-    tagline: "Kỹ năng mềm",
-    documentTitle: "Đào tạo kỹ năng mềm — N&P Group",
+  luyenthi: {
+    brand: "Luyện thi N&P",
+    tagline: "Thi thử & luyện đề",
+    documentTitle: "Luyện thi — N&P Group",
   },
 };
 
 export function getNavigation(portal: PortalId): NavItem[] {
-  if (portal === "tnjs") {
-    return [
-      { name: "Giới thiệu", href: portalPath("tnjs", "/"), shortName: "Giới thiệu" },
-      { name: "Khóa học", href: portalPath("tnjs", "/classes"), shortName: "Khóa học" },
-      {
-        name: "Lịch khai giảng",
-        href: portalPath("tnjs", "/#jp-schedule"),
-        shortName: "Lịch KG",
-        hideBelowXl: true,
-      },
-      {
-        name: "Giáo viên",
-        href: portalPath("tnjs", "/#jp-instructors"),
-        shortName: "Giáo viên",
-        hideBelowXl: true,
-      },
-      { name: "Tin tức", href: portalPath("tnjs", "/news"), shortName: "Tin tức" },
-      {
-        name: "Thi trực tuyến",
-        href: portalPath("tnjs", "/online-exam"),
-        shortName: "Thi",
-      },
-      { name: "Liên hệ", href: portalPath("tnjs", "/contact"), shortName: "Liên hệ" },
-    ];
-  }
-  if (portal === "duhoc") {
-    return [
-      { name: "Giới thiệu", href: portalPath("duhoc", "/"), shortName: "Giới thiệu" },
-      {
-        name: "Quốc gia",
-        href: portalPath("duhoc", "/countries"),
-        shortName: "Quốc gia",
-      },
-      {
-        name: "Trường học",
-        href: portalPath("duhoc", "/schools"),
-        shortName: "Trường",
-      },
-      { name: "Chi phí", href: portalPath("duhoc", "/costs"), shortName: "Chi phí" },
-      {
-        name: "Hồ sơ",
-        href: portalPath("duhoc", "/documents"),
-        shortName: "Hồ sơ",
-      },
-      {
-        name: "Visa",
-        href: portalPath("duhoc", "/visa-services"),
-        shortName: "Visa",
-      },
-      { name: "FAQ", href: portalPath("duhoc", "/faq"), shortName: "FAQ" },
-      { name: "Liên hệ", href: portalPath("duhoc", "/contact"), shortName: "Liên hệ" },
-    ];
-  }
-  if (portal === "daotao") {
+  if (portal === "huongnghiep") {
     return [
       {
         name: "Giới thiệu",
-        href: portalPath("daotao", "/"),
+        href: portalPath("huongnghiep", "/"),
         shortName: "Giới thiệu",
       },
       {
-        name: "Khóa học",
-        href: portalPath("daotao", "/courses"),
-        shortName: "Khóa học",
+        name: "Du học",
+        href: portalPath("huongnghiep", "/du-hoc"),
+        shortName: "Du học",
       },
       {
-        name: "Lịch học",
-        href: portalPath("daotao", "/schedule"),
-        shortName: "Lịch học",
+        name: "Đi làm",
+        href: portalPath("huongnghiep", "/di-lam"),
+        shortName: "Đi làm",
       },
       {
-        name: "Doanh nghiệp",
-        href: portalPath("daotao", "/enterprise"),
-        shortName: "DN",
+        name: "Đào tạo nghề",
+        href: portalPath("huongnghiep", "/dao-tao-nghe"),
+        shortName: "Đào tạo nghề",
       },
-      { name: "Tin tức", href: portalPath("daotao", "/news"), shortName: "Tin tức" },
+      {
+        name: "Visa",
+        href: portalPath("huongnghiep", "/visa-services"),
+        shortName: "Visa",
+        hideBelowXl: true,
+      },
+      {
+        name: "Tin tức",
+        href: portalPath("huongnghiep", "/news"),
+        shortName: "Tin tức",
+      },
       {
         name: "Liên hệ",
-        href: portalPath("daotao", "/contact"),
+        href: portalPath("huongnghiep", "/contact"),
         shortName: "Liên hệ",
       },
     ];
   }
+
+  if (portal === "dichvu") {
+    return [
+      {
+        name: "Giới thiệu",
+        href: portalPath("dichvu", "/"),
+        shortName: "Giới thiệu",
+      },
+      {
+        name: "Biên phiên dịch",
+        href: portalContactHref("dichvu", "interpreting"),
+        shortName: "Biên phiên dịch",
+        external: true,
+      },
+      {
+        name: "Kỹ năng mềm",
+        href: portalContactHref("dichvu", "soft-skills"),
+        shortName: "Kỹ năng mềm",
+        external: true,
+      },
+      {
+        name: "Tư vấn doanh nghiệp",
+        href: portalContactHref("dichvu", "enterprise"),
+        shortName: "Tư vấn DN",
+        external: true,
+      },
+      {
+        name: "Liên hệ",
+        href: portalPath("dichvu", "/contact"),
+        shortName: "Liên hệ",
+      },
+    ];
+  }
+
+  if (portal === "luyenthi") {
+    return [
+      {
+        name: "Luyện thi",
+        href: portalPath("luyenthi", "/"),
+        shortName: "Luyện thi",
+      },
+      {
+        name: "Khóa học",
+        href: portalPath("luyenthi", "/classes"),
+        shortName: "Khóa học",
+        hideBelowXl: true,
+      },
+      {
+        name: "Tin tức",
+        href: portalPath("luyenthi", "/news"),
+        shortName: "Tin tức",
+      },
+      {
+        name: "Liên hệ",
+        href: portalPath("luyenthi", "/contact"),
+        shortName: "Liên hệ",
+      },
+    ];
+  }
+
+  // NP Group hub
   return [
-    { name: "Trang chủ", href: portalPath("group", "/"), shortName: "Trang chủ" },
-    {
-      name: "TNJS — Tiếng Nhật",
-      href: portalHref("tnjs", "/"),
-      shortName: "TNJS",
-      external: true,
-    },
-    {
-      name: "Du học",
-      href: portalHref("duhoc", "/"),
-      shortName: "Du học",
-      external: true,
-    },
     {
       name: "Đào tạo",
-      href: portalHref("daotao", "/"),
+      href: tnjsTrainingHref(),
       shortName: "Đào tạo",
+      external: true,
+    },
+    {
+      name: "Hướng nghiệp",
+      href: portalHref("huongnghiep", "/"),
+      shortName: "Hướng nghiệp",
+      external: true,
+    },
+    {
+      name: "Dịch vụ",
+      href: portalHref("dichvu", "/"),
+      shortName: "Dịch vụ",
+      external: true,
+    },
+    {
+      name: "Luyện thi",
+      href: portalHref("luyenthi", "/"),
+      shortName: "Luyện thi",
       external: true,
     },
     {
@@ -264,20 +307,27 @@ export function getNavigation(portal: PortalId): NavItem[] {
 }
 
 export function getFooterServices(portal: PortalId): NavItem[] {
-  if (portal === "tnjs") {
+  if (portal === "huongnghiep") {
     return [
-      { name: "Giới thiệu", href: portalPath("tnjs", "/"), shortName: "Giới thiệu" },
-      { name: "Lớp học", href: portalPath("tnjs", "/classes"), shortName: "Lớp học" },
       {
-        name: "Lịch khai giảng",
-        href: portalPath("tnjs", "/#jp-schedule"),
-        shortName: "Lịch",
+        name: "Du học",
+        href: portalPath("huongnghiep", "/du-hoc"),
+        shortName: "Du học",
       },
-      { name: "Tin tức", href: portalPath("tnjs", "/news"), shortName: "Tin" },
       {
-        name: "Thi trực tuyến",
-        href: portalPath("tnjs", "/online-exam"),
-        shortName: "Thi",
+        name: "Đi làm",
+        href: portalPath("huongnghiep", "/di-lam"),
+        shortName: "Đi làm",
+      },
+      {
+        name: "Đào tạo nghề",
+        href: portalPath("huongnghiep", "/dao-tao-nghe"),
+        shortName: "Đào tạo nghề",
+      },
+      {
+        name: "Visa",
+        href: portalPath("huongnghiep", "/visa-services"),
+        shortName: "Visa",
       },
       {
         name: "N&P Group",
@@ -287,9 +337,26 @@ export function getFooterServices(portal: PortalId): NavItem[] {
       },
     ];
   }
-  if (portal === "duhoc") {
+  if (portal === "dichvu") {
     return [
-      ...getDuhocFooter(),
+      {
+        name: "Biên phiên dịch",
+        href: portalContactHref("dichvu", "interpreting"),
+        shortName: "Biên phiên dịch",
+        external: true,
+      },
+      {
+        name: "Kỹ năng mềm",
+        href: portalContactHref("dichvu", "soft-skills"),
+        shortName: "Kỹ năng mềm",
+        external: true,
+      },
+      {
+        name: "Tư vấn doanh nghiệp",
+        href: portalContactHref("dichvu", "enterprise"),
+        shortName: "Tư vấn DN",
+        external: true,
+      },
       {
         name: "N&P Group",
         href: portalHref("group", "/"),
@@ -298,9 +365,24 @@ export function getFooterServices(portal: PortalId): NavItem[] {
       },
     ];
   }
-  if (portal === "daotao") {
+  if (portal === "luyenthi") {
     return [
-      ...getDaotaoFooter(),
+      {
+        name: "Luyện thi",
+        href: portalPath("luyenthi", "/"),
+        shortName: "Luyện thi",
+      },
+      {
+        name: "Khóa học",
+        href: portalPath("luyenthi", "/classes"),
+        shortName: "Khóa học",
+      },
+      {
+        name: "Đào tạo tiếng Nhật",
+        href: tnjsTrainingHref(),
+        shortName: "TNJS",
+        external: true,
+      },
       {
         name: "N&P Group",
         href: portalHref("group", "/"),
@@ -311,82 +393,28 @@ export function getFooterServices(portal: PortalId): NavItem[] {
   }
   return [
     {
-      name: "TNJS — Đào tạo tiếng Nhật",
-      href: portalHref("tnjs", "/"),
-      shortName: "TNJS",
-      external: true,
-    },
-    {
-      name: "Tư vấn du học & visa",
-      href: portalHref("duhoc", "/"),
-      shortName: "Du học",
-      external: true,
-    },
-    {
-      name: "Đào tạo kỹ năng mềm",
-      href: portalHref("daotao", "/"),
+      name: "Đào tạo tiếng Nhật (TNJS)",
+      href: tnjsTrainingHref(),
       shortName: "Đào tạo",
       external: true,
     },
-  ];
-}
-
-function getDuhocFooter(): NavItem[] {
-  return [
-    { name: "Giới thiệu", href: portalPath("duhoc", "/"), shortName: "Giới thiệu" },
     {
-      name: "Quốc gia",
-      href: portalPath("duhoc", "/countries"),
-      shortName: "Quốc gia",
+      name: "Hướng nghiệp",
+      href: portalHref("huongnghiep", "/"),
+      shortName: "Hướng nghiệp",
+      external: true,
     },
     {
-      name: "Trường học",
-      href: portalPath("duhoc", "/schools"),
-      shortName: "Trường",
-    },
-    { name: "Chi phí", href: portalPath("duhoc", "/costs"), shortName: "Chi phí" },
-    {
-      name: "Hồ sơ",
-      href: portalPath("duhoc", "/documents"),
-      shortName: "Hồ sơ",
+      name: "Dịch vụ",
+      href: portalHref("dichvu", "/"),
+      shortName: "Dịch vụ",
+      external: true,
     },
     {
-      name: "Visa",
-      href: portalPath("duhoc", "/visa-services"),
-      shortName: "Visa",
-    },
-    { name: "FAQ", href: portalPath("duhoc", "/faq"), shortName: "FAQ" },
-    { name: "Liên hệ", href: portalPath("duhoc", "/contact"), shortName: "Liên hệ" },
-  ];
-}
-
-function getDaotaoFooter(): NavItem[] {
-  return [
-    {
-      name: "Giới thiệu",
-      href: portalPath("daotao", "/"),
-      shortName: "Giới thiệu",
-    },
-    {
-      name: "Khóa học",
-      href: portalPath("daotao", "/courses"),
-      shortName: "Khóa học",
-    },
-    {
-      name: "Lịch học",
-      href: portalPath("daotao", "/schedule"),
-      shortName: "Lịch",
-    },
-    {
-      name: "Doanh nghiệp",
-      href: portalPath("daotao", "/enterprise"),
-      shortName: "DN",
-    },
-    { name: "Tin tức", href: portalPath("daotao", "/news"), shortName: "Tin" },
-    {
-      name: "Liên hệ",
-      href: portalPath("daotao", "/contact"),
-      shortName: "Liên hệ",
+      name: "Luyện thi",
+      href: portalHref("luyenthi", "/"),
+      shortName: "Luyện thi",
+      external: true,
     },
   ];
 }

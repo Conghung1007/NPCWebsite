@@ -1,12 +1,14 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { ImageManager } from "@/components/ui/image-manager";
 import { Edit } from "lucide-react";
 
 interface InstructorCardProps {
-  name: string;
-  title: string;
-  description: string;
+  name: ReactNode;
+  title: ReactNode;
+  description: ReactNode;
+  /** Plain name for initials / alt when photo missing */
+  nameLabel?: string;
   avatar?: string | null;
   allowAvatarEdit?: boolean;
   onAvatarUpdate?: (newAvatar: string) => void;
@@ -24,6 +26,7 @@ export function InstructorCard({
   name,
   title,
   description,
+  nameLabel,
   avatar,
   allowAvatarEdit = false,
   onAvatarUpdate,
@@ -32,6 +35,8 @@ export function InstructorCard({
   const [showImageManager, setShowImageManager] = useState(false);
   const [broken, setBroken] = useState(false);
   const showPhoto = Boolean(avatar) && !broken;
+  const label =
+    nameLabel || (typeof name === "string" ? name : "Giảng viên");
 
   return (
     <div className="text-center">
@@ -48,7 +53,7 @@ export function InstructorCard({
             className="w-24 h-24 rounded-full bg-primary/10 text-primary flex items-center justify-center text-lg font-semibold"
             aria-hidden
           >
-            {getInitials(name)}
+            {getInitials(label)}
           </div>
         )}
         {allowAvatarEdit && (
@@ -58,7 +63,7 @@ export function InstructorCard({
               size="sm"
               onClick={() => setShowImageManager(true)}
               className="absolute -top-1 -right-1 w-6 h-6 p-0 bg-white/90 hover:bg-white text-foreground rounded-full"
-              aria-label={`Cập nhật ảnh ${name}`}
+              aria-label={`Cập nhật ảnh ${label}`}
             >
               <Edit className="w-3 h-3" />
             </Button>
@@ -71,7 +76,7 @@ export function InstructorCard({
                 setShowImageManager(false);
               }}
               imageType={imageType}
-              altText={`${name} avatar`}
+              altText={`${label} avatar`}
             />
           </>
         )}

@@ -1,9 +1,9 @@
 /**
- * Production origins / cookie domain for multi-portal hosts on npgroup.vn
+ * Production origins / cookie domain for multi-portal hosts on npgroup.com
  */
-import { PORTAL_HOSTS, isPortalId, type PortalId } from "./portal";
+import { PORTAL_HOSTS, PORTAL_IDS, isPortalId, type PortalId } from "./portal";
 
-/** Cookie Domain shared across apex + subdomains (e.g. `.npgroup.vn`) */
+/** Cookie Domain shared across apex + subdomains (e.g. `.npgroup.com`) */
 export function resolveCookieDomain(): string | undefined {
   const explicit = process.env.COOKIE_DOMAIN?.trim();
   if (explicit) {
@@ -15,10 +15,12 @@ export function resolveCookieDomain(): string | undefined {
   if (!publicUrl) return undefined;
   try {
     const host = new URL(publicUrl).hostname.toLowerCase();
+    if (host === "npgroup.com" || host.endsWith(".npgroup.com")) {
+      return ".npgroup.com";
+    }
     if (host === "npgroup.vn" || host.endsWith(".npgroup.vn")) {
       return ".npgroup.vn";
     }
-    // Generic: share across subdomains of apex (foo.com → .foo.com)
     const parts = host.split(".");
     if (parts.length >= 2) {
       return `.${parts.slice(-2).join(".")}`;
@@ -31,9 +33,10 @@ export function resolveCookieDomain(): string | undefined {
 
 const PORTAL_ORIGIN_ENV: Record<PortalId, string | undefined> = {
   group: process.env.VITE_GROUP_ORIGIN || process.env.GROUP_ORIGIN,
-  tnjs: process.env.VITE_TNJS_ORIGIN || process.env.TNJS_ORIGIN,
-  duhoc: process.env.VITE_DUHOC_ORIGIN || process.env.DUHOC_ORIGIN,
-  daotao: process.env.VITE_DAOTAO_ORIGIN || process.env.DAOTAO_ORIGIN,
+  huongnghiep:
+    process.env.VITE_HUONGNGHIEP_ORIGIN || process.env.HUONGNGHIEP_ORIGIN,
+  dichvu: process.env.VITE_DICHVU_ORIGIN || process.env.DICHVU_ORIGIN,
+  luyenthi: process.env.VITE_LUYENTHI_ORIGIN || process.env.LUYENTHI_ORIGIN,
 };
 
 export function portalPublicOrigin(portal: PortalId): string | undefined {
@@ -63,7 +66,6 @@ export function resolvePublicBaseUrl(input: {
     input.protocol ||
     (process.env.NODE_ENV === "production" ? "https" : "http");
 
-  // Live checkout host (tnjs.npgroup.vn, etc.) — skip bare onrender when custom domains exist
   if (host && !host.endsWith(".onrender.com")) {
     return `${proto}://${hostHeader?.split(",")[0]?.trim()}`;
   }
@@ -86,16 +88,18 @@ export function allowedCorsOrigins(): string[] {
   const publicUrl = process.env.PUBLIC_APP_URL?.replace(/\/$/, "");
   if (publicUrl) set.add(publicUrl);
 
-  for (const id of Object.keys(PORTAL_ORIGIN_ENV) as PortalId[]) {
+  for (const id of PORTAL_IDS) {
     const o = portalPublicOrigin(id);
     if (o) set.add(o);
   }
 
-  // Always allow production hosts from Phase 0 lock
   for (const host of Object.values(PORTAL_HOSTS)) {
     set.add(`https://${host}`);
   }
+  set.add("https://www.npgroup.com");
   set.add("https://www.npgroup.vn");
+  set.add("https://tnjs.vn");
+  set.add("https://www.tnjs.vn");
 
   const extra = process.env.ALLOWED_ORIGINS?.split(",") || [];
   for (const o of extra) {

@@ -23,6 +23,12 @@ export default function Contact() {
   const { hasImageEditPermission } = useAuth();
   const { data: contactInfos = [] } = useContactInfo();
   const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1423666639041-f56000c27a9a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
+  const [serviceFromQuery, setServiceFromQuery] = useState("");
+
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search).get("service");
+    if (q) setServiceFromQuery(q);
+  }, []);
 
   // Update hero image from database when available
   useEffect(() => {
@@ -138,7 +144,7 @@ export default function Contact() {
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
             {/* Contact Form */}
             <div className="order-2 lg:order-1 lg:col-span-2">
-              <ContactForm variant="page" />
+              <ContactForm variant="page" defaultService={serviceFromQuery} />
             </div>
 
             {/* Contact Information */}

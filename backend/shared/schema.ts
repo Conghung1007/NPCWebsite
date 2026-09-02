@@ -2,6 +2,11 @@ import { sql } from "drizzle-orm";
 import { pgTable, text, varchar, timestamp, integer, boolean, jsonb, numeric, doublePrecision, uniqueIndex } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
+import {
+  isPasswordValid,
+  PASSWORD_MIN_LENGTH,
+  PASSWORD_VALIDATION_MESSAGE,
+} from "./passwordRules";
 
 export const users = pgTable("users", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -9,7 +14,10 @@ export const users = pgTable("users", {
   fullName: text("full_name"), // Optional full name for certificate display
   email: text("email").unique(),
   phone: text("phone").unique(),
-  password: text("password").notNull(),
+  /** null for Google-only accounts */
+  password: text("password"),
+  /** Google OAuth subject id */
+  googleId: text("google_id").unique(),
   role: text("role").notNull().default("user"), // user, manager, admin
   /** null/[] = all portals; otherwise manager is limited to these portal ids */
   portals: text("portals").array(),
@@ -24,6 +32,8 @@ export const contactRequests = pgTable("contact_requests", {
   service: text("service"),
   message: text("message").notNull(),
   portal: text("portal").notNull().default("group"),
+  isRead: boolean("is_read").notNull().default(false),
+  readAt: timestamp("read_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -34,7 +44,7 @@ export const articles = pgTable("articles", {
   imageUrl: text("image_url"),
   videoUrl: text("video_url"), // Add video URL field
   category: text("category").notNull(), // visa-services, study-abroad, japanese-training
-  portal: text("portal").notNull().default("group"), // group | tnjs | duhoc | daotao
+  portal: text("portal").notNull().default("group"), // group | huongnghiep | dichvu | luyenthi
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -64,15 +74,33 @@ export const registrationRequests = pgTable("registration_requests", {
   rejectionReason: text("rejection_reason"),
 });
 
+/** OTP codes for email verification (registration, etc.) */
+export const emailVerifications = pgTable("email_verifications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  email: text("email").notNull(),
+  code: text("code").notNull(),
+  type: text("type").notNull(), // registration | password_reset
+  expiresAt: timestamp("expires_at").notNull(),
+  attempts: integer("attempts").default(0),
+  isUsed: boolean("is_used").default(false),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 // Online exam system tables
 export const exams = pgTable("exams", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
   description: text("description"),
-  isDemo: boolean("is_demo").default(false), // Demo exams don't require login
+  isDemo: boolean("is_demo").default(false), // Free — no login required
   isActive: boolean("is_active").default(true),
   passingScore: integer("passing_score"), // Overall exam passing score (number of correct answers needed)
-  
+  /** JLPT-style package level: N1 | N2 | N3 | N4 | N5 */
+  level: text("level"),
+  /** First exam in a level combo — registered users may trial (10 questions) without purchase */
+  isLevelTrial: boolean("is_level_trial").default(false),
+  /** Optional link to purchasable exam package */
+  packageId: text("package_id"),
+
   // New flexible sections structure
   sections: jsonb("sections"), // Array of {id, sectionName, timeLimit, passingScore, content?, descriptionImageUrls?, descriptionAudioUrl?, questionSets: {id, name, questionIds}[]}
   
@@ -91,6 +119,136 @@ export const exams = pgTable("exams", {
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   createdBy: varchar("created_by").notNull(), // Admin/Manager ID
+});
+
+/** Catalog of sellable exam packages (count + price) */
+export const examPackages = pgTable("exam_packages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(),
+  description: text("description"),
+  /** Optional level label N1–N5 for grouping / trial */
+  level: text("level"),
+  /** Declared number of exams included in this package */
+  examCount: integer("exam_count").notNull().default(1),
+  /** Actual sale price charged at checkout */
+  priceVnd: integer("price_vnd").notNull().default(10000),
+  /** Optional list price — when greater than priceVnd, package shows as on sale */
+  compareAtPriceVnd: integer("compare_at_price_vnd"),
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+/** Purchased / pending access to a package (or legacy level) */
+export const examLevelEntitlements = pgTable(
+  "exam_level_entitlements",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").notNull(),
+    level: text("level").notNull().default(""), // legacy / denormalized from package.level
+    packageId: text("package_id"),
+    status: text("status").notNull().default("pending"), // pending | active | rejected
+    amountVnd: integer("amount_vnd").notNull().default(10000),
+    note: text("note"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    reviewedAt: timestamp("reviewed_at"),
+    reviewedBy: varchar("reviewed_by"),
+  },
+  (table) => ({
+    userLevelIdx: uniqueIndex("exam_level_entitlements_user_level_idx").on(
+      table.userId,
+      table.level,
+    ),
+  }),
+);
+
+/** Portal-scoped site config (social, popup, branding) — TNJS-style */
+export const siteSettings = pgTable(
+  "site_settings",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    portal: text("portal").notNull().default("group"),
+    siteName: text("site_name").notNull().default(""),
+    hotline: text("hotline").notNull().default(""),
+    email: text("email").notNull().default(""),
+    address: text("address").notNull().default(""),
+    facebookUrl: text("facebook_url").notNull().default(""),
+    youtubeUrl: text("youtube_url").notNull().default(""),
+    zaloUrl: text("zalo_url").notNull().default(""),
+    linkedinUrl: text("linkedin_url").notNull().default(""),
+    tiktokUrl: text("tiktok_url").notNull().default(""),
+    logoUrl: text("logo_url").notNull().default(""),
+    logoFooterUrl: text("logo_footer_url").notNull().default(""),
+    faviconUrl: text("favicon_url").notNull().default(""),
+    privacyUrl: text("privacy_url").notNull().default(""),
+    termsUrl: text("terms_url").notNull().default(""),
+    popupEnabled: boolean("popup_enabled").notNull().default(false),
+    popupTitle: text("popup_title").notNull().default(""),
+    popupBody: text("popup_body").notNull().default(""),
+    popupImageUrl: text("popup_image_url").notNull().default(""),
+    popupLinkUrl: text("popup_link_url").notNull().default(""),
+    popupDelayMs: integer("popup_delay_ms").notNull().default(1500),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    portalUnique: uniqueIndex("site_settings_portal_idx").on(table.portal),
+  }),
+);
+
+/** Daily page view counts per portal */
+export const pageViewDaily = pgTable(
+  "page_view_daily",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    portal: text("portal").notNull(),
+    viewDate: text("view_date").notNull(),
+    views: integer("views").notNull().default(0),
+  },
+  (table) => ({
+    portalDateUnique: uniqueIndex("page_view_daily_portal_date_idx").on(
+      table.portal,
+      table.viewDate,
+    ),
+  }),
+);
+
+/** Bank display for manual transfer QR — no PayOS secrets */
+export const paymentSettings = pgTable(
+  "payment_settings",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    portal: text("portal").notNull().default("luyenthi"),
+    bankCode: text("bank_code").notNull().default(""),
+    bankName: text("bank_name").notNull().default(""),
+    accountNumber: text("account_number").notNull().default(""),
+    accountName: text("account_name").notNull().default(""),
+    /** Placeholders: {level} {username} {package} {amount} */
+    transferTemplate: text("transfer_template")
+      .notNull()
+      .default("LT {level} {username}"),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    portalUnique: uniqueIndex("payment_settings_portal_idx").on(table.portal),
+  }),
+);
+
+/** PayOS checkout for exam packages (keys stay in env only) */
+export const examPackageOrders = pgTable("exam_package_orders", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  payosOrderCode: integer("payos_order_code").notNull().unique(),
+  userId: varchar("user_id").notNull(),
+  packageId: varchar("package_id").notNull(),
+  amountVnd: integer("amount_vnd").notNull(),
+  status: text("status").notNull().default("pending"),
+  paymentLinkId: text("payment_link_id"),
+  checkoutUrl: text("checkout_url"),
+  entitlementId: varchar("entitlement_id"),
+  expiresAt: timestamp("expires_at"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const questions = pgTable("questions", {
@@ -180,6 +338,7 @@ export const insertUserSchema = createInsertSchema(users).pick({
   email: true,
   phone: true,
   password: true,
+  googleId: true,
   role: true,
   portals: true,
 });
@@ -198,17 +357,22 @@ export const insertRegistrationRequestSchema = createInsertSchema(registrationRe
 export const registrationFormSchema = z.object({
   username: z.string()
     .min(8, "Tên đăng nhập phải có ít nhất 8 ký tự")
-    .max(15, "Tên đăng nhập không được quá 15 ký tự")
+    .max(30, "Tên đăng nhập không được quá 30 ký tự")
     .regex(/^[a-zA-Z0-9_]+$/, "Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới"),
   fullName: z.string().optional(), // Optional full name for certificate display
   email: z.string()
     .email("Email không đúng định dạng")
     .min(1, "Email là bắt buộc"),
-  phone: z.string()
-    .regex(/^[0-9]{10,11}$/, "Số điện thoại phải có 10 hoặc 11 chữ số"),
+  phone: z
+    .string()
+    .trim()
+    .refine(
+      (v) => !v || /^[0-9]{10,11}$/.test(v),
+      "Số điện thoại phải có 10 hoặc 11 chữ số",
+    ),
   password: z.string()
-    .min(8, "Mật khẩu phải có ít nhất 8 ký tự")
-    .regex(/^(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/, "Mật khẩu phải có ít nhất 1 chữ hoa, 1 số và 1 ký tự đặc biệt"),
+    .min(PASSWORD_MIN_LENGTH, "Mật khẩu phải có ít nhất 8 ký tự")
+    .refine(isPasswordValid, PASSWORD_VALIDATION_MESSAGE),
   confirmPassword: z.string(),
   agreeToTerms: z.boolean().refine(val => val === true, "Bạn phải đồng ý với điều khoản dịch vụ"),
 }).refine(data => data.password === data.confirmPassword, {
@@ -305,6 +469,7 @@ export type InsertUiImage = z.infer<typeof insertUiImageSchema>;
 export type RegistrationRequest = typeof registrationRequests.$inferSelect;
 export type InsertRegistrationRequest = z.infer<typeof insertRegistrationRequestSchema>;
 export type RegistrationFormData = z.infer<typeof registrationFormSchema>;
+export type EmailVerification = typeof emailVerifications.$inferSelect;
 
 // Homepage testimonials (CMS)
 export const testimonials = pgTable("testimonials", {
@@ -356,12 +521,12 @@ export const upsertSiteContentSchema = z.object({
   page: z.string().min(1).default("home"),
   key: z.string().min(1),
   value: z.string(),
-  portal: z.enum(["group", "tnjs", "duhoc", "daotao"]).optional(),
+  portal: z.enum(["group", "huongnghiep", "dichvu", "luyenthi"]).optional(),
 });
 
 export const bulkUpsertSiteContentSchema = z.object({
   page: z.string().min(1).default("home"),
-  portal: z.enum(["group", "tnjs", "duhoc", "daotao"]).optional(),
+  portal: z.enum(["group", "huongnghiep", "dichvu", "luyenthi"]).optional(),
   entries: z.array(
     z.object({
       key: z.string().min(1),
@@ -373,6 +538,50 @@ export const bulkUpsertSiteContentSchema = z.object({
 export type SiteContent = typeof siteContents.$inferSelect;
 export type UpsertSiteContent = z.infer<typeof upsertSiteContentSchema>;
 
+/** Marketing page block layouts (section catalog JSON) */
+export const pageLayouts = pgTable(
+  "page_layouts",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    page: text("page").notNull(),
+    portal: text("portal").notNull().default("group"),
+    sections: jsonb("sections").$type<unknown[]>().notNull().default([]),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    pagePortalIdx: uniqueIndex("page_layouts_page_portal_idx").on(
+      table.page,
+      table.portal,
+    ),
+  }),
+);
+
+export type PageLayoutRow = typeof pageLayouts.$inferSelect;
+
+/** Admin-created block pages (dynamic routes under each portal) */
+export const cmsPages = pgTable(
+  "cms_pages",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    portal: text("portal").notNull(),
+    slug: text("slug").notNull(),
+    label: text("label").notNull(),
+    description: text("description").notNull().default(""),
+    imagePrefix: text("image_prefix").notNull().default(""),
+    sortOrder: integer("sort_order").notNull().default(0),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    portalSlugIdx: uniqueIndex("cms_pages_portal_slug_idx").on(
+      table.portal,
+      table.slug,
+    ),
+  }),
+);
+
+export type CmsPage = typeof cmsPages.$inferSelect;
+
 // --- Japanese class catalog + commerce ---
 
 export const courses = pgTable("courses", {
@@ -383,7 +592,7 @@ export const courses = pgTable("courses", {
   coverImageUrl: text("cover_image_url"),
   isPublished: boolean("is_published").default(false).notNull(),
   sortOrder: integer("sort_order").default(0).notNull(),
-  portal: text("portal").notNull().default("tnjs"),
+  portal: text("portal").notNull().default("luyenthi"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -401,7 +610,7 @@ export const classSessions = pgTable("class_sessions", {
   enrolledCount: integer("enrolled_count").notNull().default(0),
   reservedCount: integer("reserved_count").notNull().default(0), // pending checkouts
   status: text("status").notNull().default("draft"), // draft | published | full | closed
-  portal: text("portal").notNull().default("tnjs"),
+  portal: text("portal").notNull().default("luyenthi"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -420,14 +629,18 @@ export const cartItems = pgTable(
   {
     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
     cartId: varchar("cart_id").notNull(),
-    classSessionId: varchar("class_session_id").notNull(),
+    itemType: text("item_type").notNull().default("class"), // class | exam_package
+    classSessionId: varchar("class_session_id"),
+    packageId: varchar("package_id"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
   },
   (table) => ({
-    cartClassUnique: uniqueIndex("cart_items_cart_class_idx").on(
-      table.cartId,
-      table.classSessionId,
-    ),
+    cartClassUnique: uniqueIndex("cart_items_cart_class_idx")
+      .on(table.cartId, table.classSessionId)
+      .where(sql`${table.classSessionId} IS NOT NULL`),
+    cartPackageUnique: uniqueIndex("cart_items_cart_package_idx")
+      .on(table.cartId, table.packageId)
+      .where(sql`${table.packageId} IS NOT NULL`),
   }),
 );
 
@@ -442,7 +655,7 @@ export const orders = pgTable("orders", {
   userId: varchar("user_id"),
   totalVnd: integer("total_vnd").notNull().default(0),
   status: text("status").notNull().default("pending"), // pending | paid | failed | cancelled | expired
-  portal: text("portal").notNull().default("tnjs"),
+  portal: text("portal").notNull().default("luyenthi"),
   paymentLinkId: text("payment_link_id"),
   checkoutUrl: text("checkout_url"),
   paidAt: timestamp("paid_at"),
@@ -454,7 +667,9 @@ export const orders = pgTable("orders", {
 export const orderItems = pgTable("order_items", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   orderId: varchar("order_id").notNull(),
-  classSessionId: varchar("class_session_id").notNull(),
+  itemType: text("item_type").notNull().default("class"), // class | exam_package
+  classSessionId: varchar("class_session_id"),
+  packageId: varchar("package_id"),
   title: text("title").notNull(),
   scheduleText: text("schedule_text"),
   priceVnd: integer("price_vnd").notNull(),
@@ -515,6 +730,12 @@ export type Enrollment = typeof enrollments.$inferSelect;
 
 // Exam system types
 export type Exam = typeof exams.$inferSelect;
+export type ExamPackage = typeof examPackages.$inferSelect;
+export type ExamLevelEntitlement = typeof examLevelEntitlements.$inferSelect;
+export type SiteSetting = typeof siteSettings.$inferSelect;
+export type PageViewDaily = typeof pageViewDaily.$inferSelect;
+export type PaymentSetting = typeof paymentSettings.$inferSelect;
+export type ExamPackageOrder = typeof examPackageOrders.$inferSelect;
 export type InsertExam = z.infer<typeof insertExamSchema>;
 export type Question = typeof questions.$inferSelect;
 export type InsertQuestion = z.infer<typeof insertQuestionSchema>;

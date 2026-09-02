@@ -8,6 +8,7 @@ import {
   computeServerSectionTimeSpent,
   computeWaitSeconds,
   filterAnswersToValidIds,
+  filterAnswersToTrialIds,
   type ScoredSectionResult,
   type ScoringSnapshot,
 } from "./examScoring";
@@ -72,17 +73,45 @@ export function normalizeSectionResults(
   return [];
 }
 
+export type TrialAttemptState = {
+  isTrial: boolean;
+  trialQuestionIds: Set<string>;
+  trialSectionIds: Set<string>;
+};
+
+export function readTrialAttemptState(clientState: unknown): TrialAttemptState {
+  const cs =
+    clientState && typeof clientState === "object"
+      ? (clientState as {
+          accessMode?: string;
+          trialQuestionIds?: string[];
+          trialSectionIds?: string[];
+        })
+      : {};
+  return {
+    isTrial: cs.accessMode === "trial",
+    trialQuestionIds: new Set(
+      (cs.trialQuestionIds || []).filter((id): id is string => typeof id === "string"),
+    ),
+    trialSectionIds: new Set(
+      (cs.trialSectionIds || []).filter((id): id is string => typeof id === "string"),
+    ),
+  };
+}
+
 export async function completeSectionOnAttempt(params: {
   attempt: ExamAttempt;
   exam: any;
   sectionId: string;
   answers: Record<string, string>;
   questionsById: QuestionsById;
+  trialQuestionIds?: Set<string>;
 }): Promise<
   | { ok: true; attempt: ExamAttempt; unknownIds: string[] }
   | { ok: false; status: number; message: string; unknownIds?: string[] }
 > {
-  const { attempt, exam, sectionId, answers, questionsById } = params;
+  const { attempt, exam, sectionId, answers, questionsById, trialQuestionIds } =
+    params;
   const sections = listExamSections(exam).filter((s) =>
     s.questionIds.some((id) => questionsById.has(id))
   );
@@ -92,6 +121,24 @@ export async function completeSectionOnAttempt(params: {
   }
 
   const validIds = collectValidAnswerIds(questionsById);
+  let answersToScore = answers;
+  if (trialQuestionIds && trialQuestionIds.size > 0) {
+    const { filtered, disallowed } = filterAnswersToTrialIds(
+      answers,
+      trialQuestionIds,
+      validIds,
+    );
+    if (disallowed.length > 0) {
+      return {
+        ok: false,
+        status: 403,
+        message: "Vượt quá giới hạn thi thử",
+        unknownIds: disallowed,
+      };
+    }
+    answersToScore = filtered;
+  }
+
   const timeSpent = computeServerSectionTimeSpent(
     attempt.sectionStartedAt,
     section.timeLimit
@@ -101,7 +148,7 @@ export async function completeSectionOnAttempt(params: {
     sectionId,
     type: section.type,
     questionIds: section.questionIds,
-    answers,
+    answers: answersToScore,
     timeSpent,
     questionsById,
     validIds,
@@ -193,4 +240,12 @@ export function applyScoringSnapshotToQuestion(
   };
 }
 
-export { filterAnswersToValidIds, collectValidAnswerIds, listExamSections, computeWaitSeconds };
+export {
+  filterAnswersToValidIds,
+  collectValidAnswerIds,
+  listExamSections,
+  computeWaitSeconds,
+  computeTrialQuestionIds,
+  sectionIdsForQuestionIds,
+  filterQuestionsForTrialIds,
+} from "./examScoring";

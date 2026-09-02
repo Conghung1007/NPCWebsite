@@ -36,7 +36,7 @@ const emptyCourse = {
   coverImageUrl: "",
   isPublished: false,
   sortOrder: 0,
-  portal: "tnjs" as PortalId,
+  portal: "luyenthi" as PortalId,
 };
 
 const emptySession = {
@@ -49,7 +49,7 @@ const emptySession = {
   priceVnd: 0,
   capacity: 10,
   status: "draft" as const,
-  portal: "tnjs" as PortalId,
+  portal: "luyenthi" as PortalId,
 };
 
 function toInputDate(value: string | Date | null | undefined): string {
@@ -195,7 +195,7 @@ export function ClassManager() {
     setEditingCourse(null);
     setCourseForm({
       ...emptyCourse,
-      portal: defaultPortal === "group" ? "tnjs" : defaultPortal,
+      portal: defaultPortal === "group" ? "luyenthi" : defaultPortal,
     });
     setCourseDialog(true);
   };
@@ -209,7 +209,7 @@ export function ClassManager() {
       coverImageUrl: c.coverImageUrl || "",
       isPublished: !!c.isPublished,
       sortOrder: c.sortOrder ?? 0,
-      portal: (c.portal as PortalId) || "tnjs",
+      portal: (c.portal as PortalId) || "luyenthi",
     });
     setCourseDialog(true);
   };
@@ -222,7 +222,7 @@ export function ClassManager() {
       courseId: course?.id || "",
       portal:
         (course?.portal as PortalId) ||
-        (defaultPortal === "group" ? "tnjs" : defaultPortal),
+        (defaultPortal === "group" ? "luyenthi" : defaultPortal),
     });
     setSessionDialog(true);
   };
@@ -239,7 +239,7 @@ export function ClassManager() {
       priceVnd: s.priceVnd,
       capacity: s.capacity,
       status: (s.status as any) || "draft",
-      portal: (s.portal as PortalId) || "tnjs",
+      portal: (s.portal as PortalId) || "luyenthi",
     });
     setSessionDialog(true);
   };

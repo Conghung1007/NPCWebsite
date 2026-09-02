@@ -5,6 +5,8 @@ import { Footer } from "./footer";
 import { Button } from "@/components/ui/button";
 import { ChevronUp } from "lucide-react";
 import { PageTransition } from "@/components/motion/PageTransition";
+import { PageViewTracker } from "@/components/PageViewTracker";
+import { SitePopup } from "@/components/SitePopup";
 import { cn } from "@/lib/utils";
 
 interface LayoutProps {
@@ -55,6 +57,8 @@ export function Layout({ children }: LayoutProps) {
 
   return (
     <div className="min-h-screen flex flex-col w-full max-w-full">
+      <PageViewTracker />
+      <SitePopup />
       <Header />
       <main id="main-content" className="flex-1" tabIndex={-1}>
         <PageTransition>{children}</PageTransition>

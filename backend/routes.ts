@@ -4,10 +4,50 @@ import { randomUUID } from "crypto";
 import { storage } from "./storage";
 import { insertContactRequestSchema, insertArticleSchema, registrationFormSchema, ContactInfo, InsertContactInfo, insertTestimonialSchema, updateTestimonialSchema, upsertSiteContentSchema, bulkUpsertSiteContentSchema } from "@shared/schema";
 import { z } from "zod";
+import {
+  getPageLayout,
+  resetPageLayout,
+  savePageLayout,
+} from "./pageLayouts";
+import {
+  createCmsPage,
+  deleteCmsPage,
+  getCmsPageBySlug,
+  listCmsPages,
+} from "./cmsPages";
+import { cmsPageToContentEntry } from "@shared/cmsPages";
+import { getSiteSettings, upsertSiteSettings } from "./siteSettings";
+import {
+  getMonthlyAnalytics,
+  recordPageView,
+  getTodayViews,
+} from "./pageAnalytics";
+import { getOrderStats } from "./commerceStorage";
+import { siteSettingsInputSchema } from "@shared/siteSettings";
+import { isPortalId, type PortalId } from "@shared/portal";
+import {
+  isLayoutPageId,
+  savePageLayoutSchema,
+  type LayoutPageId,
+} from "@shared/pageSections";
 import { ObjectStorageService, ObjectNotFoundError } from "./objectStorage";
 import { multiR2Storage, type MediaUploadConfig, type FileInfo } from "./multiR2Storage";
 import { r2Manager, EXTERNAL_R2_CONFIGS } from "./r2Config";
 import { cleanupAbandonedTempMedia, startTempMediaGcScheduler } from "./tempMediaGc";
+import {
+  checkRateLimit,
+  generateOTPCode,
+  getExpirationTime,
+  getRateLimitRemaining,
+  isEmailServiceConfigured,
+  sendVerificationEmail,
+} from "./emailService";
+import {
+  findOrCreateGoogleUser,
+  getGoogleClientId,
+  isGoogleAuthConfigured,
+  verifyGoogleCredential,
+} from "./googleAuth";
 import { scoreExamAttempt } from "./examScoring";
 import { didAttemptPass } from "./examPass";
 import {
@@ -22,11 +62,58 @@ import {
   collectValidAnswerIds,
   filterAnswersToValidIds,
   computeWaitSeconds,
+  computeTrialQuestionIds,
+  sectionIdsForQuestionIds,
+  filterQuestionsForTrialIds,
+  readTrialAttemptState,
 } from "./examAttemptSession";
+import { filterAnswersToTrialIds } from "./examScoring";
 import multer from "multer";
 import { registerCommerceRoutes } from "./commerceRoutes";
 import { portalMiddleware } from "./portalMiddleware";
-import { portalFromArticleCategory, isPortalId, normalizeAllowedPortals, canAccessPortal, sanitizePortalsInput } from "@shared/portal";
+import { portalFromArticleCategory, normalizeAllowedPortals, normalizePortalAlias, canAccessPortal, sanitizePortalsInput } from "@shared/portal";
+import {
+  EXAM_PACKAGE_PRICE_VND,
+  EXAM_TRIAL_QUESTION_LIMIT,
+  isExamLevel,
+  resolveExamAccess,
+} from "@shared/examAccess";
+import {
+  listActiveLevelsForUser,
+  listActivePackageIdsForUser,
+  listAllEntitlements,
+  listEntitlementsForUser,
+  requestExamPackage,
+  requestExamPackageById,
+  reviewExamPackage,
+  listExamPackages,
+  getExamPackage,
+  createExamPackage,
+  updateExamPackage,
+  deleteExamPackage,
+  ensureDefaultExamPackages,
+  countExamsInPackage,
+  listExamsInPackage,
+  setPackageExams,
+  resolveDisplayExamCount,
+} from "./examEntitlements";
+import {
+  buildPaymentDisplay,
+  getPaymentSettings,
+  upsertPaymentSettings,
+} from "./paymentSettings";
+import {
+  cancelExamPackageOrder,
+  createExamPackageOrder,
+  fulfillExamPackageOrder,
+  getExamPackageOrderByCode,
+  getExamPackageOrderByPayosCode,
+  getExamPackageOrderWithPackage,
+  updateExamPackageOrderPayment,
+} from "./examPackageCheckout";
+import { createPayosPaymentLink, isPayosConfigured } from "./payos";
+import { resolvePublicBaseUrl } from "@shared/origins";
+import { buildPayosCancelUrl, buildPayosReturnUrl } from "./payosOrderCode";
 
 // Configure multer for file uploads
 const upload = multer({ 
@@ -199,6 +286,98 @@ const calculateQuestionCount = (exam: any): number => {
   return legacyCount;
 };
 
+/** Ensure CMS image URLs use the R2 proxy path (works without public bucket URL). */
+function normalizeUiImagePublicUrl(url: string): string {
+  if (!url || url.startsWith("/api/proxy-image/")) return url;
+  const legacyApi = url.match(/^\/api\/ui-images\/([^/?]+)$/i);
+  if (legacyApi?.[1]) {
+    return `/api/proxy-image/primary/ui-images/${legacyApi[1]}`;
+  }
+  const legacyBare = url.match(/^\/ui-images\/([^/?]+)$/i);
+  if (legacyBare?.[1]) {
+    return `/api/proxy-image/primary/ui-images/${legacyBare[1]}`;
+  }
+  return url;
+}
+
+async function resolveExamAccessForSession(
+  exam: any,
+  sessionUser: { id: string; role?: string } | null | undefined,
+) {
+  const activeLevels = sessionUser?.id
+    ? await listActiveLevelsForUser(sessionUser.id)
+    : [];
+  const activePackageIds = sessionUser?.id
+    ? await listActivePackageIdsForUser(sessionUser.id)
+    : [];
+  let packagePriceVnd: number | null = null;
+  if (exam.packageId) {
+    const pkg = await getExamPackage(exam.packageId);
+    packagePriceVnd = pkg?.priceVnd ?? null;
+  } else if (exam.level) {
+    const pkgs = await listExamPackages({ activeOnly: true });
+    const pkg = pkgs.find((p) => p.level === exam.level);
+    packagePriceVnd = pkg?.priceVnd ?? null;
+  }
+  return resolveExamAccess({
+    exam,
+    userId: sessionUser?.id,
+    role: sessionUser?.role,
+    activeLevels,
+    activePackageIds,
+    packagePriceVnd,
+  });
+}
+
+function buildTrialClientState(
+  exam: any,
+  questionsById: Map<string, any>,
+  bodyTrialIds?: unknown,
+): {
+  accessMode: "trial";
+  trialQuestionIds: string[];
+  trialSectionIds: string[];
+} {
+  const validIds = collectValidAnswerIds(questionsById);
+  let trialQuestionIds: string[];
+  let trialSectionIds: string[];
+
+  if (Array.isArray(bodyTrialIds) && bodyTrialIds.length > 0) {
+    trialQuestionIds = bodyTrialIds
+      .filter((id): id is string => typeof id === "string" && validIds.has(id))
+      .slice(0, EXAM_TRIAL_QUESTION_LIMIT);
+    if (trialQuestionIds.length === 0) {
+      const computed = computeTrialQuestionIds(
+        exam,
+        questionsById,
+        EXAM_TRIAL_QUESTION_LIMIT,
+      );
+      trialQuestionIds = computed.questionIds;
+      trialSectionIds = computed.sectionIds;
+    } else {
+      trialSectionIds = sectionIdsForQuestionIds(
+        exam,
+        trialQuestionIds,
+        questionsById,
+      );
+    }
+  } else {
+    const computed = computeTrialQuestionIds(
+      exam,
+      questionsById,
+      EXAM_TRIAL_QUESTION_LIMIT,
+    );
+    trialQuestionIds = computed.questionIds;
+    trialSectionIds = computed.sectionIds;
+  }
+
+  return {
+    accessMode: "trial",
+    trialQuestionIds,
+    trialSectionIds,
+  };
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(portalMiddleware);
   registerCommerceRoutes(app);
@@ -241,68 +420,290 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Registration endpoint
+  app.get("/api/auth/google/config", (_req, res) => {
+    const clientId = getGoogleClientId();
+    res.json({
+      enabled: isGoogleAuthConfigured(),
+      clientId: clientId || null,
+    });
+  });
+
+  app.post("/api/auth/google", async (req, res) => {
+    try {
+      if (!isGoogleAuthConfigured()) {
+        return res.status(503).json({
+          success: false,
+          message: "Đăng nhập Google chưa được cấu hình. Vui lòng dùng email hoặc liên hệ hỗ trợ.",
+        });
+      }
+
+      const credential = String(req.body?.credential || "").trim();
+      if (!credential) {
+        return res.status(400).json({
+          success: false,
+          message: "Thiếu thông tin xác thực Google",
+        });
+      }
+
+      const profile = await verifyGoogleCredential(credential);
+      const { user, isNew } = await findOrCreateGoogleUser(storage, profile);
+
+      (req.session as any).user = sanitizeUser(user);
+
+      res.json({
+        success: true,
+        isNew,
+        message: isNew ? "Đăng ký thành công!" : "Đăng nhập thành công",
+        user: sanitizeUser(user),
+      });
+    } catch (error) {
+      const code = error instanceof Error ? error.message : "";
+      if (code === "EMAIL_NOT_VERIFIED") {
+        return res.status(400).json({
+          success: false,
+          message: "Email Google chưa được xác minh. Vui lòng xác minh email trên Google rồi thử lại.",
+        });
+      }
+      if (code === "EMAIL_LINKED_OTHER_GOOGLE") {
+        return res.status(409).json({
+          success: false,
+          message: "Email này đã liên kết với tài khoản Google khác.",
+        });
+      }
+      if (code === "INVALID_GOOGLE_TOKEN") {
+        return res.status(401).json({
+          success: false,
+          message: "Phiên Google không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.",
+        });
+      }
+      console.error("Google auth error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Có lỗi xảy ra khi đăng nhập Google. Vui lòng thử lại sau.",
+      });
+    }
+  });
+
+  // Registration endpoint — requires email OTP (Resend)
   app.post("/api/auth/register", async (req, res) => {
     try {
-      // Validate form data
-      const formData = registrationFormSchema.parse(req.body);
-      
-      // Check for duplicates
+      const { code: verificationCode, ...rawBody } = req.body || {};
+      const formData = registrationFormSchema.parse(rawBody);
+
+      if (!verificationCode || !/^\d{6}$/.test(String(verificationCode))) {
+        return res.status(400).json({
+          success: false,
+          message: "Mã xác minh email là bắt buộc",
+        });
+      }
+
+      const phone = (formData.phone || "").trim();
+
       const [usernameExists, emailExists, phoneExists] = await Promise.all([
         storage.checkUsernameExists(formData.username.toLowerCase()),
         storage.checkEmailExists(formData.email.toLowerCase()),
-        storage.checkPhoneExists(formData.phone)
+        phone ? storage.checkPhoneExists(phone) : Promise.resolve(false),
       ]);
 
       if (usernameExists) {
         return res.status(409).json({
           success: false,
-          message: "Tên đăng nhập đã tồn tại"
+          message: "Tên đăng nhập đã tồn tại",
         });
       }
 
       if (emailExists) {
         return res.status(409).json({
           success: false,
-          message: "Email đã được sử dụng"
+          message: "Email đã được sử dụng",
         });
       }
 
       if (phoneExists) {
         return res.status(409).json({
           success: false,
-          message: "Số điện thoại đã được sử dụng"
+          message: "Số điện thoại đã được sử dụng",
         });
       }
 
-      // Create registration request
-      const registrationRequest = await storage.createRegistrationRequest({
-        username: formData.username.toLowerCase(),
-        fullName: formData.fullName || null, // Optional full name for certificate
-        email: formData.email.toLowerCase(),
-        phone: formData.phone,
-        password: formData.password, // In real app, hash this password
-      });
+      const otpResult = await storage.verifyEmailCode(
+        formData.email.toLowerCase(),
+        String(verificationCode),
+        "registration",
+        { consume: false },
+      );
+      if (!otpResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: otpResult.error || "Mã xác minh không hợp lệ hoặc đã hết hạn",
+        });
+      }
+
+      let newUser;
+      try {
+        newUser = await storage.createUser({
+          username: formData.username.toLowerCase(),
+          fullName: formData.fullName || null,
+          email: formData.email.toLowerCase(),
+          phone: phone || null,
+          password: formData.password,
+          role: "user",
+        });
+      } catch (createErr) {
+        console.error("Registration createUser error:", createErr);
+        return res.status(409).json({
+          success: false,
+          message: "Tên đăng nhập hoặc email đã được sử dụng",
+        });
+      }
+
+      if (otpResult.verificationId) {
+        await storage.markEmailVerificationUsed(otpResult.verificationId);
+      }
+
+      (req.session as any).user = sanitizeUser(newUser);
 
       res.json({
         success: true,
-        message: "Đăng ký thành công! Vui lòng chờ xác nhận từ nhân viên tư vấn trong vòng 48h."
+        message: "Đăng ký thành công!",
+        autoLogin: true,
+        user: sanitizeUser(newUser),
       });
-
     } catch (error) {
       if (error instanceof z.ZodError) {
         const firstError = error.errors[0];
         res.status(400).json({
           success: false,
-          message: firstError.message
+          message: firstError.message,
         });
       } else {
         console.error("Registration error:", error);
         res.status(500).json({
           success: false,
-          message: "Có lỗi xảy ra, vui lòng thử lại sau"
+          message: "Có lỗi xảy ra, vui lòng thử lại sau",
         });
       }
+    }
+  });
+
+  async function dispatchRegistrationOtp(email: string) {
+    const normalized = email.toLowerCase();
+    const emailExists = await storage.checkEmailExists(normalized);
+    if (emailExists) {
+      return {
+        status: 400 as const,
+        body: {
+          success: false,
+          message: "Email đã được sử dụng. Vui lòng đăng nhập hoặc dùng email khác.",
+        },
+      };
+    }
+
+    if (!checkRateLimit(normalized, 3, 5)) {
+      const rateLimitInfo = getRateLimitRemaining(normalized);
+      return {
+        status: 429 as const,
+        body: {
+          success: false,
+          message: `Vui lòng đợi ${rateLimitInfo.resetInSeconds} giây trước khi yêu cầu mã mới`,
+          retryAfter: rateLimitInfo.resetInSeconds,
+        },
+      };
+    }
+
+    if (!isEmailServiceConfigured()) {
+      return {
+        status: 503 as const,
+        body: {
+          success: false,
+          message:
+            "Hệ thống email chưa sẵn sàng. Vui lòng thử lại sau hoặc liên hệ hỗ trợ.",
+        },
+      };
+    }
+
+    const code = generateOTPCode();
+    const expiresAt = getExpirationTime(5);
+    await storage.createEmailVerification(normalized, code, "registration", expiresAt);
+    const emailResult = await sendVerificationEmail(normalized, code, "registration");
+    if (!emailResult.success) {
+      await storage.deleteVerificationsByEmail(normalized, "registration");
+      return {
+        status: 500 as const,
+        body: {
+          success: false,
+          message: emailResult.error || "Không thể gửi email xác minh",
+        },
+      };
+    }
+
+    return {
+      status: 200 as const,
+      body: {
+        success: true,
+        emailDispatched: true,
+        message:
+          "Mã xác minh đã được gửi đến email của bạn. Vui lòng kiểm tra hộp thư (và thư rác).",
+        expiresIn: 300,
+      },
+    };
+  }
+
+  app.post("/api/auth/send-verification", async (req, res) => {
+    try {
+      const { email, type } = req.body || {};
+      if (!email || type !== "registration") {
+        return res.status(400).json({
+          success: false,
+          message: "Email và loại xác minh không hợp lệ",
+        });
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(String(email))) {
+        return res.status(400).json({
+          success: false,
+          message: "Định dạng email không hợp lệ",
+        });
+      }
+
+      const result = await dispatchRegistrationOtp(String(email));
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Send verification error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Có lỗi xảy ra, vui lòng thử lại sau",
+      });
+    }
+  });
+
+  app.post("/api/auth/resend-verification", async (req, res) => {
+    try {
+      const { email, type } = req.body || {};
+      if (!email || type !== "registration") {
+        return res.status(400).json({
+          success: false,
+          message: "Email và loại xác minh không hợp lệ",
+        });
+      }
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(String(email))) {
+        return res.status(400).json({
+          success: false,
+          message: "Định dạng email không hợp lệ",
+        });
+      }
+
+      const result = await dispatchRegistrationOtp(String(email));
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Resend verification error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Có lỗi xảy ra, vui lòng thử lại sau",
+      });
     }
   });
 
@@ -310,10 +711,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/check-username", async (req, res) => {
     try {
       const { username } = req.body;
-      if (!username || username.length < 8 || username.length > 15) {
-        return res.status(400).json({ available: false, message: "Tên đăng nhập phải có từ 8-15 ký tự" });
+      if (!username || username.length < 8 || username.length > 30) {
+        return res.status(400).json({ available: false, message: "Tên đăng nhập phải có từ 8-30 ký tự" });
       }
-      
+      if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+        return res.status(400).json({
+          available: false,
+          message: "Tên đăng nhập chỉ được chứa chữ cái, số và dấu gạch dưới",
+        });
+      }
+
       const exists = await storage.checkUsernameExists(username.toLowerCase());
       res.json({ 
         available: !exists, 
@@ -330,7 +737,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!email) {
         return res.status(400).json({ available: false, message: "Email không hợp lệ" });
       }
-      
+
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({ available: false, message: "Email không hợp lệ" });
+      }
+
       const exists = await storage.checkEmailExists(email.toLowerCase());
       res.json({ 
         available: !exists, 
@@ -344,11 +756,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/auth/check-phone", async (req, res) => {
     try {
       const { phone } = req.body;
-      if (!phone) {
-        return res.status(400).json({ available: false, message: "Số điện thoại không hợp lệ" });
+      if (!phone || !String(phone).trim()) {
+        return res.json({ available: true, message: "Số điện thoại tuỳ chọn" });
       }
       
-      const exists = await storage.checkPhoneExists(phone);
+      const exists = await storage.checkPhoneExists(String(phone).trim());
       res.json({ 
         available: !exists, 
         message: exists ? "Số điện thoại đã được sử dụng" : "Số điện thoại có thể sử dụng"
@@ -608,8 +1020,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/exams/:id/questions", async (req, res) => {
     try {
       const { id } = req.params;
-      
-      // First get the exam to access its sections with questionSets
       const exam = await storage.getExam(id);
       if (!exam) {
         return res.status(404).json({ message: "Exam not found" });
@@ -619,50 +1029,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (exam.isActive === false && !isAdminOrManager(sessionUser)) {
         return res.status(404).json({ message: "Exam not found" });
       }
-      
-      // Extract all question IDs from sections (supports both questionSets and legacy questionIds)
-      let allQuestionIds: string[] = [];
-      
-      if (exam.sections && Array.isArray(exam.sections)) {
-        for (const section of exam.sections) {
-          const questionIds = extractQuestionIds(section);
-          allQuestionIds.push(...questionIds);
+
+      const access = await resolveExamAccessForSession(exam, sessionUser);
+      if (access.mode === "denied") {
+        return res.status(access.requiresLogin ? 401 : 403).json({
+          message: access.reason || "Không có quyền xem câu hỏi",
+        });
+      }
+
+      const questionsById = await loadQuestionsByIdForExam(id);
+      let allQuestions = [...questionsById.values()];
+
+      if (access.mode === "trial") {
+        let allowedIds: Set<string> | null = null;
+        if (sessionUser?.id) {
+          const existing = await storage.getInProgressExamAttempt(id, sessionUser.id);
+          if (existing?.clientState) {
+            const attemptTrial = readTrialAttemptState(existing.clientState);
+            if (attemptTrial.trialQuestionIds.size > 0) {
+              allowedIds = attemptTrial.trialQuestionIds;
+            }
+          }
         }
+        if (!allowedIds) {
+          const { questionIds } = computeTrialQuestionIds(
+            exam,
+            questionsById,
+            EXAM_TRIAL_QUESTION_LIMIT,
+          );
+          allowedIds = new Set(questionIds);
+        }
+        allQuestions = filterQuestionsForTrialIds(allQuestions, allowedIds);
       }
-      
-      // Fallback to legacy format if no sections
-      if (allQuestionIds.length === 0) {
-        const legacyQuestions = await storage.getQuestionsByExamId(id);
-        const questionsWithSubs = await Promise.all(
-          legacyQuestions.map(async (question) => {
-            const subQuestions = await storage.getSubQuestions(question.id);
-            return {
-              ...question,
-              subQuestions: subQuestions.length > 0 ? subQuestions : undefined
-            };
-          })
-        );
-        return res.json(questionsWithSubs);
-      }
-      
-      // Fetch questions by their IDs
-      const questions = await Promise.all(
-        allQuestionIds.map(async (qId) => {
-          const question = await storage.getQuestion(qId);
-          if (!question) return null;
-          
-          const subQuestions = await storage.getSubQuestions(question.id);
-          return {
-            ...question,
-            subQuestions: subQuestions.length > 0 ? subQuestions : undefined
-          };
-        })
-      );
-      
-      // Filter out null values (questions that weren't found)
-      const validQuestions = questions.filter(q => q !== null);
-      
-      res.json(validQuestions);
+
+      res.json(allQuestions);
     } catch (error) {
       console.error("Error fetching questions:", error);
       res.status(500).json({ message: "Có lỗi xảy ra khi lấy câu hỏi" });
@@ -773,7 +1173,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/exam-attempts/start", async (req, res) => {
     try {
-      const { examId } = req.body || {};
+      const { examId, trialQuestionIds: bodyTrialIds } = req.body || {};
       const sessionUser = (req.session as any)?.user;
       if (!examId || typeof examId !== "string") {
         return res.status(400).json({ message: "Thiếu mã đề thi" });
@@ -786,15 +1186,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (exam.isActive === false) {
         return res.status(403).json({ message: "Đề thi này hiện không mở để làm bài" });
       }
-      if (!exam.isDemo && !sessionUser) {
-        return res.status(401).json({ message: "Cần đăng nhập để thi đề chính thức" });
+
+      const access = await resolveExamAccessForSession(exam, sessionUser);
+
+      if (access.mode === "denied") {
+        return res.status(access.requiresLogin ? 401 : 403).json({
+          message: access.reason || "Không có quyền thi đề này",
+          access,
+        });
+      }
+
+      const questionsById = await loadQuestionsByIdForExam(examId);
+      let clientState: Record<string, unknown> = { accessMode: access.mode };
+      if (access.mode === "trial") {
+        clientState = buildTrialClientState(exam, questionsById, bodyTrialIds);
       }
 
       // Resume existing in-progress attempt for logged-in users (anti-duplicate session)
       if (sessionUser?.id) {
         const existing = await storage.getInProgressExamAttempt(examId, sessionUser.id);
         if (existing) {
-          return res.json(existing);
+          const existingTrial = readTrialAttemptState(existing.clientState);
+          const cs =
+            existing.clientState && typeof existing.clientState === "object"
+              ? {
+                  ...(existing.clientState as object),
+                  accessMode: access.mode,
+                  ...(access.mode === "trial" && !existingTrial.trialQuestionIds.size
+                    ? {
+                        trialQuestionIds: clientState.trialQuestionIds,
+                        trialSectionIds: clientState.trialSectionIds,
+                      }
+                    : {}),
+                }
+              : clientState;
+          if (!(existing.clientState as any)?.accessMode) {
+            await storage.updateExamAttempt(existing.id, { clientState: cs } as any);
+          }
+          return res.json({ ...existing, clientState: cs, accessMode: access.mode });
         }
       }
 
@@ -808,14 +1237,605 @@ export async function registerRoutes(app: Express): Promise<Server> {
         waitTimeBetweenSections: 0,
         startedAt: new Date(),
         completedAt: null,
-        clientState: null,
+        clientState,
         scoringSnapshot: null,
       } as any);
 
-      res.status(201).json(attempt);
+      res.status(201).json({ ...attempt, accessMode: access.mode });
     } catch (error) {
       console.error("Error starting exam attempt:", error);
       res.status(500).json({ message: "Có lỗi xảy ra khi bắt đầu bài thi" });
+    }
+  });
+
+  // --- Exam packages catalog + purchase / duyệt ---
+
+  app.get("/api/exam-packages", async (_req, res) => {
+    try {
+      res.set("Cache-Control", "no-store");
+      await ensureDefaultExamPackages();
+      const packages = await listExamPackages({ activeOnly: true });
+      const withCounts = await Promise.all(
+        packages.map(async (p) => {
+          const linkedExamCount = await countExamsInPackage(p.id);
+          return {
+            ...p,
+            linkedExamCount,
+            displayExamCount: resolveDisplayExamCount(
+              p.examCount,
+              linkedExamCount,
+            ),
+          };
+        }),
+      );
+      res.json(withCounts);
+    } catch (error) {
+      console.error("Error listing exam packages:", error);
+      res.status(500).json({ message: "Không tải được danh sách gói đề" });
+    }
+  });
+
+  app.get("/api/exam-packages/me", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser?.id) {
+        return res.status(401).json({ message: "Cần đăng nhập" });
+      }
+      const rows = await listEntitlementsForUser(sessionUser.id);
+      const activeLevels = rows
+        .filter((r) => r.status === "active")
+        .map((r) => r.level)
+        .filter(Boolean);
+      const activePackageIds = rows
+        .filter((r) => r.status === "active" && r.packageId)
+        .map((r) => r.packageId as string);
+      res.json({
+        entitlements: rows,
+        activeLevels,
+        activePackageIds,
+      });
+    } catch (error) {
+      console.error("Error listing exam package entitlements:", error);
+      res.status(500).json({ message: "Không tải được quyền luyện thi" });
+    }
+  });
+
+  app.post("/api/exam-packages/request", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser?.id) {
+        return res.status(401).json({ message: "Cần đăng nhập để mua gói đề" });
+      }
+      const packageId = req.body?.packageId;
+      const level = req.body?.level;
+      const note =
+        typeof req.body?.note === "string" ? req.body.note : undefined;
+
+      let row;
+      if (typeof packageId === "string" && packageId) {
+        row = await requestExamPackageById({
+          userId: sessionUser.id,
+          packageId,
+          note,
+        });
+      } else if (isExamLevel(level)) {
+        row = await requestExamPackage({
+          userId: sessionUser.id,
+          level,
+          note,
+        });
+      } else {
+        return res.status(400).json({ message: "Thiếu packageId hoặc level" });
+      }
+      res.status(201).json(row);
+    } catch (error: any) {
+      console.error("Error requesting exam package:", error);
+      res.status(400).json({
+        message: error?.message || "Không gửi được yêu cầu mua gói",
+      });
+    }
+  });
+
+  app.get("/api/payment-status", (_req, res) => {
+    res.json({
+      payosConfigured: isPayosConfigured(),
+    });
+  });
+
+  app.get("/api/payment-display", async (req, res) => {
+    try {
+      const portal =
+        typeof req.query.portal === "string" ? req.query.portal : "luyenthi";
+      const settings = await getPaymentSettings(portal);
+      const amount =
+        typeof req.query.amount === "string"
+          ? Number.parseInt(req.query.amount, 10)
+          : undefined;
+      const level =
+        typeof req.query.level === "string" ? req.query.level : undefined;
+      const username =
+        typeof req.query.username === "string" ? req.query.username : undefined;
+      const packageName =
+        typeof req.query.package === "string" ? req.query.package : undefined;
+
+      const display = buildPaymentDisplay(settings, {
+        amount: Number.isFinite(amount) ? amount : undefined,
+        level,
+        username,
+        packageName,
+      });
+      res.json(display);
+    } catch (error) {
+      console.error("Error loading payment display:", error);
+      res.status(500).json({ message: "Không tải được thông tin thanh toán" });
+    }
+  });
+
+  app.get("/api/admin/payment-settings", requireAdminOrManager, async (req, res) => {
+    try {
+      const portal =
+        typeof req.query.portal === "string" ? req.query.portal : "luyenthi";
+      const settings = await getPaymentSettings(portal);
+      res.json({
+        settings: settings ?? null,
+        payosConfigured: isPayosConfigured(),
+      });
+    } catch (error) {
+      console.error("Error loading admin payment settings:", error);
+      res.status(500).json({ message: "Không tải được cấu hình thanh toán" });
+    }
+  });
+
+  app.put("/api/admin/payment-settings", requireAdminOrManager, async (req, res) => {
+    try {
+      const portal =
+        typeof req.body?.portal === "string" ? req.body.portal : "luyenthi";
+      const bankCode = String(req.body?.bankCode ?? "").trim();
+      const bankName = String(req.body?.bankName ?? "").trim();
+      const accountNumber = String(req.body?.accountNumber ?? "").trim();
+      const accountName = String(req.body?.accountName ?? "").trim();
+      const transferTemplate = String(
+        req.body?.transferTemplate ?? "LT {level} {username}",
+      ).trim();
+
+      if (!bankCode || !accountNumber || !accountName) {
+        return res.status(400).json({
+          message: "Cần mã ngân hàng, số tài khoản và tên chủ tài khoản",
+        });
+      }
+
+      const row = await upsertPaymentSettings(portal, {
+        bankCode,
+        bankName: bankName || bankCode,
+        accountNumber,
+        accountName,
+        transferTemplate,
+      });
+      res.json({
+        settings: row,
+        payosConfigured: isPayosConfigured(),
+      });
+    } catch (error: any) {
+      console.error("Error saving payment settings:", error);
+      res.status(400).json({
+        message: error?.message || "Không lưu được cấu hình thanh toán",
+      });
+    }
+  });
+
+  app.post("/api/exam-packages/checkout", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (!sessionUser?.id) {
+        return res.status(401).json({ message: "Cần đăng nhập để thanh toán" });
+      }
+
+      const packageId = req.body?.packageId;
+      if (typeof packageId !== "string" || !packageId) {
+        return res.status(400).json({ message: "Thiếu packageId" });
+      }
+
+      if (!isPayosConfigured()) {
+        return res.status(503).json({
+          message:
+            "Thanh toán tự động chưa bật. Dùng chuyển khoản thủ công hoặc liên hệ quản trị.",
+          payosConfigured: false,
+        });
+      }
+
+      const { order, pkg } = await createExamPackageOrder({
+        userId: sessionUser.id,
+        packageId,
+      });
+
+      const baseUrl = resolvePublicBaseUrl({
+        host: req.get("x-forwarded-host") || req.get("host"),
+        forwardedProto: req.get("x-forwarded-proto"),
+        protocol: req.protocol,
+        portal: req.portal || "luyenthi",
+      });
+      const returnUrl = process.env.PAYOS_RETURN_URL
+        ? buildPayosReturnUrl(
+            process.env.PAYOS_RETURN_URL,
+            order.code,
+            "exam-package",
+          )
+        : `${baseUrl}/checkout/success?order=${encodeURIComponent(order.code)}&type=exam-package`;
+      const cancelUrl = process.env.PAYOS_CANCEL_URL
+        ? buildPayosCancelUrl(
+            process.env.PAYOS_CANCEL_URL,
+            order.code,
+            "exam-package",
+          )
+        : `${baseUrl}/checkout/cancel?order=${encodeURIComponent(order.code)}&type=exam-package`;
+
+      const payment = await createPayosPaymentLink({
+        orderCode: order.payosOrderCode,
+        amount: order.amountVnd,
+        description: `Goi ${pkg.level || pkg.name}`.slice(0, 25),
+        returnUrl,
+        cancelUrl,
+        buyerName: sessionUser.fullName || sessionUser.username,
+        buyerEmail: sessionUser.email || undefined,
+      });
+
+      await updateExamPackageOrderPayment(order.id, {
+        paymentLinkId: payment.paymentLinkId,
+        checkoutUrl: payment.checkoutUrl,
+      });
+
+      res.status(201).json({
+        orderCode: order.code,
+        checkoutUrl: payment.checkoutUrl,
+        payosConfigured: true,
+      });
+    } catch (error: any) {
+      console.error("exam package checkout error:", error);
+      res.status(400).json({
+        message: error?.message || "Không tạo được link thanh toán",
+      });
+    }
+  });
+
+  app.get("/api/exam-package-orders/:code", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      const data = await getExamPackageOrderWithPackage(req.params.code);
+      if (!data) {
+        return res.status(404).json({ message: "Không tìm thấy đơn gói đề" });
+      }
+      const isStaff =
+        sessionUser?.role === "admin" || sessionUser?.role === "manager";
+      const isOwner = sessionUser?.id === data.order.userId;
+
+      const payload = {
+        code: data.order.code,
+        status: data.order.status,
+        amountVnd: data.order.amountVnd,
+        packageName: data.package?.name ?? null,
+        packageLevel: data.package?.level ?? null,
+        paidAt: data.order.paidAt,
+      };
+
+      if (isOwner || isStaff) {
+        return res.json(payload);
+      }
+
+      // Anonymous polling on success page (code is unguessable)
+      return res.json(payload);
+    } catch (error) {
+      console.error("Error loading exam package order:", error);
+      res.status(500).json({ message: "Không tải được đơn gói đề" });
+    }
+  });
+
+  app.post("/api/exam-package-orders/:code/cancel", async (req, res) => {
+    try {
+      const order = await getExamPackageOrderByCode(req.params.code);
+      if (!order) {
+        return res.status(404).json({ message: "Không tìm thấy đơn gói đề" });
+      }
+      const updated = await cancelExamPackageOrder(order.id);
+      res.json(updated);
+    } catch (error) {
+      console.error("Error cancelling exam package order:", error);
+      res.status(500).json({ message: "Không hủy được đơn gói đề" });
+    }
+  });
+
+  app.get("/api/exams/:id/access", async (req, res) => {
+    try {
+      const exam = await storage.getExam(req.params.id);
+      if (!exam) {
+        return res.status(404).json({ message: "Không tìm thấy đề thi" });
+      }
+      const sessionUser = (req.session as any)?.user;
+      const access = await resolveExamAccessForSession(exam, sessionUser);
+      let packagePriceVnd: number | null = null;
+      if (exam.packageId) {
+        const pkg = await getExamPackage(exam.packageId);
+        packagePriceVnd = pkg?.priceVnd ?? null;
+      } else if (exam.level) {
+        const pkgs = await listExamPackages({ activeOnly: true });
+        const pkg = pkgs.find((p) => p.level === exam.level);
+        packagePriceVnd = pkg?.priceVnd ?? null;
+      }
+      res.json({
+        ...access,
+        priceVnd: packagePriceVnd ?? EXAM_PACKAGE_PRICE_VND,
+        trialQuestionLimit: EXAM_TRIAL_QUESTION_LIMIT,
+      });
+    } catch (error) {
+      console.error("Error resolving exam access:", error);
+      res.status(500).json({ message: "Không kiểm tra được quyền thi" });
+    }
+  });
+
+  app.get("/api/admin/exam-package-catalog", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (
+        !sessionUser ||
+        (sessionUser.role !== "admin" && sessionUser.role !== "manager")
+      ) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      await ensureDefaultExamPackages();
+      const packages = await listExamPackages();
+      const withCounts = await Promise.all(
+        packages.map(async (p) => {
+          const linkedExamCount = await countExamsInPackage(p.id);
+          return {
+            ...p,
+            linkedExamCount,
+            displayExamCount: resolveDisplayExamCount(
+              p.examCount,
+              linkedExamCount,
+            ),
+            examCount:
+              linkedExamCount > 0 ? linkedExamCount : Math.max(0, p.examCount || 0),
+          };
+        }),
+      );
+      res.json(withCounts);
+    } catch (error) {
+      console.error("Error listing package catalog:", error);
+      res.status(500).json({ message: "Không tải catalog gói đề" });
+    }
+  });
+
+  app.get("/api/admin/exam-package-catalog/:id", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (
+        !sessionUser ||
+        (sessionUser.role !== "admin" && sessionUser.role !== "manager")
+      ) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const pkg = await getExamPackage(req.params.id);
+      if (!pkg) {
+        return res.status(404).json({ message: "Không tìm thấy gói" });
+      }
+      const packageExams = await listExamsInPackage(pkg.id);
+      res.json({
+        ...pkg,
+        linkedExamCount: packageExams.length,
+        exams: packageExams,
+      });
+    } catch (error) {
+      console.error("Error fetching package detail:", error);
+      res.status(500).json({ message: "Không tải được chi tiết gói đề" });
+    }
+  });
+
+  app.put("/api/admin/exam-package-catalog/:id/exams", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (
+        !sessionUser ||
+        (sessionUser.role !== "admin" && sessionUser.role !== "manager")
+      ) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const examIds = Array.isArray(req.body?.examIds)
+        ? req.body.examIds.map((id: unknown) => String(id))
+        : [];
+      if (examIds.length === 0) {
+        return res.status(400).json({ message: "Cần chọn ít nhất 1 đề thi" });
+      }
+      const { linkedCount, missingIds } = await setPackageExams(req.params.id, examIds);
+      res.json({ ok: true, linkedCount, missingIds });
+    } catch (error) {
+      console.error("Error updating package exams:", error);
+      res.status(500).json({
+        message:
+          error instanceof Error ? error.message : "Không cập nhật được đề trong gói",
+      });
+    }
+  });
+
+  app.post("/api/admin/exam-package-catalog", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (
+        !sessionUser ||
+        (sessionUser.role !== "admin" && sessionUser.role !== "manager")
+      ) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const { name, description, level, priceVnd, compareAtPriceVnd, isActive, sortOrder, examIds } =
+        req.body || {};
+      if (!name || typeof name !== "string") {
+        return res.status(400).json({ message: "Tên gói là bắt buộc" });
+      }
+      const ids = Array.isArray(examIds)
+        ? examIds.map((id: unknown) => String(id))
+        : [];
+      const selling = isActive !== false;
+      if (selling && ids.length === 0) {
+        return res.status(400).json({
+          message: "Gói đang bán cần có ít nhất 1 đề thi",
+        });
+      }
+      if (selling && (Number(priceVnd) || 0) <= 0) {
+        return res.status(400).json({
+          message: "Gói đang bán cần giá lớn hơn 0",
+        });
+      }
+      const row = await createExamPackage({
+        name,
+        description: description ?? null,
+        level: level ?? null,
+        examCount: ids.length,
+        priceVnd: Number(priceVnd) || 0,
+        compareAtPriceVnd,
+        isActive: isActive !== false,
+        sortOrder: Number(sortOrder) || 0,
+      });
+      const { missingIds: missingExamIds } = await setPackageExams(row.id, ids);
+      const packageExams = await listExamsInPackage(row.id);
+      const fresh = await getExamPackage(row.id);
+      res.status(201).json({
+        ...fresh,
+        linkedExamCount: packageExams.length,
+        displayExamCount: packageExams.length,
+        exams: packageExams,
+        missingExamIds,
+      });
+    } catch (error) {
+      console.error("Error creating package:", error);
+      res.status(500).json({ message: "Không tạo được gói đề" });
+    }
+  });
+
+  app.patch("/api/admin/exam-package-catalog/:id", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (
+        !sessionUser ||
+        (sessionUser.role !== "admin" && sessionUser.role !== "manager")
+      ) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const updated = await updateExamPackage(req.params.id, {
+        name: req.body?.name,
+        description: req.body?.description,
+        level: req.body?.level,
+        priceVnd: req.body?.priceVnd,
+        compareAtPriceVnd: req.body?.compareAtPriceVnd,
+        isActive: req.body?.isActive,
+        sortOrder: req.body?.sortOrder,
+      });
+      if (!updated) {
+        return res.status(404).json({ message: "Không tìm thấy gói" });
+      }
+      const nextActive =
+        req.body?.isActive !== undefined
+          ? req.body.isActive !== false
+          : updated.isActive;
+      const nextPrice =
+        req.body?.priceVnd !== undefined
+          ? Number(req.body.priceVnd) || 0
+          : updated.priceVnd;
+      if (nextActive && nextPrice <= 0) {
+        return res.status(400).json({
+          message: "Gói đang bán cần giá lớn hơn 0",
+        });
+      }
+      let missingExamIds: string[] = [];
+      if (Array.isArray(req.body?.examIds)) {
+        const examIds = req.body.examIds.map((id: unknown) => String(id));
+        if (nextActive && examIds.length === 0) {
+          return res.status(400).json({
+            message: "Gói đang bán cần có ít nhất 1 đề thi",
+          });
+        }
+        const linkResult = await setPackageExams(req.params.id, examIds);
+        missingExamIds = linkResult.missingIds;
+      }
+      const packageExams = await listExamsInPackage(req.params.id);
+      const fresh = await getExamPackage(req.params.id);
+      const linkedExamCount = packageExams.length;
+      res.json({
+        ...fresh,
+        linkedExamCount,
+        displayExamCount: resolveDisplayExamCount(
+          fresh?.examCount ?? 0,
+          linkedExamCount,
+        ),
+        exams: packageExams,
+        missingExamIds,
+      });
+    } catch (error) {
+      console.error("Error updating package:", error);
+      res.status(500).json({ message: "Không cập nhật được gói đề" });
+    }
+  });
+
+  app.delete("/api/admin/exam-package-catalog/:id", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (
+        !sessionUser ||
+        (sessionUser.role !== "admin" && sessionUser.role !== "manager")
+      ) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const ok = await deleteExamPackage(req.params.id);
+      if (!ok) {
+        return res.status(404).json({ message: "Không tìm thấy gói" });
+      }
+      res.json({ ok: true });
+    } catch (error) {
+      console.error("Error deleting package:", error);
+      res.status(500).json({ message: "Không xóa được gói đề" });
+    }
+  });
+
+  app.get("/api/admin/exam-packages", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (
+        !sessionUser ||
+        (sessionUser.role !== "admin" && sessionUser.role !== "manager")
+      ) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const rows = await listAllEntitlements();
+      res.json(rows);
+    } catch (error) {
+      console.error("Error listing admin exam packages:", error);
+      res.status(500).json({ message: "Không tải danh sách yêu cầu mua gói" });
+    }
+  });
+
+  app.patch("/api/admin/exam-packages/:id", async (req, res) => {
+    try {
+      const sessionUser = (req.session as any)?.user;
+      if (
+        !sessionUser ||
+        (sessionUser.role !== "admin" && sessionUser.role !== "manager")
+      ) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const status = req.body?.status;
+      if (status !== "active" && status !== "rejected") {
+        return res.status(400).json({ message: "status phải là active hoặc rejected" });
+      }
+      const updated = await reviewExamPackage({
+        id: req.params.id,
+        status,
+        reviewedBy: sessionUser.id,
+        note: typeof req.body?.note === "string" ? req.body.note : undefined,
+      });
+      if (!updated) {
+        return res.status(404).json({ message: "Không tìm thấy yêu cầu" });
+      }
+      res.json(updated);
+    } catch (error) {
+      console.error("Error reviewing exam package:", error);
+      res.status(500).json({ message: "Không cập nhật được yêu cầu" });
     }
   });
 
@@ -894,11 +1914,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const questionsById = await loadQuestionsByIdForExam(attempt.examId);
       const validIds = collectValidAnswerIds(questionsById);
+      const trialState = readTrialAttemptState(attempt.clientState);
 
       let draftAnswers: Record<string, string> | undefined;
       if (currentSectionAnswers && typeof currentSectionAnswers === "object") {
+        let answersToFilter = currentSectionAnswers;
+        if (trialState.isTrial && trialState.trialQuestionIds.size > 0) {
+          const { filtered, disallowed } = filterAnswersToTrialIds(
+            currentSectionAnswers,
+            trialState.trialQuestionIds,
+            validIds,
+          );
+          if (disallowed.length > 0) {
+            return res.status(403).json({
+              message: "Vượt quá giới hạn thi thử",
+              unknownIds: disallowed,
+            });
+          }
+          answersToFilter = filtered;
+        }
         const { filtered, unknownIds } = filterAnswersToValidIds(
-          currentSectionAnswers,
+          answersToFilter,
           validIds
         );
         if (unknownIds.length > 0) {
@@ -969,12 +2005,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const questionsById = await loadQuestionsByIdForExam(attempt.examId);
+      const trialState = readTrialAttemptState(attempt.clientState);
       const result = await completeSectionOnAttempt({
         attempt,
         exam,
         sectionId,
         answers,
         questionsById,
+        trialQuestionIds:
+          trialState.isTrial && trialState.trialQuestionIds.size > 0
+            ? trialState.trialQuestionIds
+            : undefined,
       });
 
       if (!result.ok) {
@@ -1019,6 +2060,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const questionsById = await loadQuestionsByIdForExam(attempt.examId);
+      const trialState = readTrialAttemptState(attempt.clientState);
       let working = attempt;
 
       // Complete current/last section if answers provided and not yet recorded
@@ -1031,6 +2073,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
             sectionId,
             answers,
             questionsById,
+            trialQuestionIds:
+              trialState.isTrial && trialState.trialQuestionIds.size > 0
+                ? trialState.trialQuestionIds
+                : undefined,
           });
           if (!completed.ok) {
             return res.status(completed.status).json({
@@ -1045,10 +2091,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const sections = listExamSections(exam).filter((s) =>
         s.questionIds.some((qid) => questionsById.has(qid))
       );
+      const requiredSections =
+        trialState.isTrial && trialState.trialSectionIds.size > 0
+          ? sections.filter((s) => trialState.trialSectionIds.has(s.id))
+          : sections;
       const doneIds = new Set(
         normalizeSectionResults(working.sectionResults).map((r) => r.sectionId)
       );
-      const missing = sections.filter((s) => !doneIds.has(s.id));
+      const missing = requiredSections.filter((s) => !doneIds.has(s.id));
       if (missing.length > 0) {
         return res.status(400).json({
           message: "Chưa hoàn thành đủ các phần thi",
@@ -1446,6 +2496,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           user: sanitizeUser(user)
         });
       } else {
+        const existing = await storage.getUserByUsername(username.toLowerCase());
+        if (existing && !existing.password) {
+          return res.status(401).json({
+            success: false,
+            message: "Tài khoản này đăng ký bằng Google. Vui lòng dùng nút «Tiếp tục với Google».",
+          });
+        }
         res.status(401).json({
           success: false,
           message: "Tên đăng nhập hoặc mật khẩu không đúng"
@@ -1465,7 +2522,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const contactData = insertContactRequestSchema.parse({
         ...req.body,
-        portal: isPortalId(req.body?.portal) ? req.body.portal : req.portal || "group",
+        portal: normalizePortalAlias(req.body?.portal) || req.portal || "group",
       });
       const contact = await storage.createContactRequest(contactData);
       
@@ -1522,6 +2579,141 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/contact/:id/read", requireAdminOrManager, async (req, res) => {
+    try {
+      const updated = await storage.markContactRequestRead(req.params.id);
+      if (!updated) {
+        return res.status(404).json({ success: false, message: "Không tìm thấy tin nhắn" });
+      }
+      res.json({ success: true, message: updated });
+    } catch (error) {
+      res.status(500).json({ success: false, message: "Có lỗi xảy ra" });
+    }
+  });
+
+  // Public site settings (branding, social, popup)
+  app.get("/api/site-settings", async (req, res) => {
+    try {
+      const portal = String(req.query.portal || req.portal || "group");
+      const p = isPortalId(portal) ? portal : "group";
+      const settings = await getSiteSettings(p);
+      res.json(settings);
+    } catch (error) {
+      console.error("site-settings get:", error);
+      res.status(500).json({ message: "Không tải được cấu hình" });
+    }
+  });
+
+  app.put("/api/admin/site-settings", requireAdminOrManager, async (req, res) => {
+    try {
+      const portalRaw = String(req.body?.portal || "group");
+      if (!isPortalId(portalRaw)) {
+        return res.status(400).json({ message: "Portal không hợp lệ" });
+      }
+      const parsed = siteSettingsInputSchema.parse(req.body);
+      const saved = await upsertSiteSettings(portalRaw as PortalId, parsed);
+      res.json(saved);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: error.errors[0]?.message || "Dữ liệu không hợp lệ" });
+      }
+      console.error("site-settings put:", error);
+      res.status(500).json({ message: "Không lưu được cấu hình" });
+    }
+  });
+
+  app.post("/api/analytics/pageview", async (req, res) => {
+    try {
+      const portal = String(req.body?.portal || req.portal || "group");
+      if (!isPortalId(portal)) {
+        return res.status(400).json({ ok: false });
+      }
+      await recordPageView(portal);
+      res.json({ ok: true });
+    } catch (error) {
+      res.status(500).json({ ok: false });
+    }
+  });
+
+  app.get("/api/admin/analytics/monthly", requireAdminOrManager, async (req, res) => {
+    try {
+      const portal = String(req.query.portal || "group");
+      if (!isPortalId(portal)) {
+        return res.status(400).json({ message: "Portal không hợp lệ" });
+      }
+      const now = new Date();
+      const year = Number(req.query.year) || now.getFullYear();
+      const month = Number(req.query.month) || now.getMonth() + 1;
+      const data = await getMonthlyAnalytics(portal as PortalId, year, month);
+      res.json(data);
+    } catch (error) {
+      console.error("analytics monthly:", error);
+      res.status(500).json({ message: "Không tải được thống kê" });
+    }
+  });
+
+  app.get("/api/admin/dashboard-summary", requireAdminOrManager, async (req, res) => {
+    try {
+      const portal = req.query.portal ? String(req.query.portal) : null;
+      const allowed = sessionAllowedPortals((req as any).user || (req.session as any)?.user);
+      let portals: string[] | null = null;
+      if (portal && isPortalId(portal)) {
+        portals = [portal];
+      } else if (allowed) {
+        portals = allowed;
+      }
+
+      const p = (portal && isPortalId(portal) ? portal : "group") as PortalId;
+      const now = new Date();
+
+      let unreadMessages = 0;
+      try {
+        unreadMessages = await storage.getContactUnreadCount(portals);
+      } catch (err) {
+        console.error("dashboard-summary unreadMessages:", err);
+      }
+
+      let pendingOrders = 0;
+      let paidOrders = 0;
+      try {
+        const orderStats = await getOrderStats(
+          portal && isPortalId(portal) ? { portal } : undefined,
+        );
+        pendingOrders = orderStats.orderCounts.pending;
+        paidOrders = orderStats.orderCounts.paid;
+      } catch (err) {
+        console.error("dashboard-summary orderStats:", err);
+      }
+
+      let todayViews = 0;
+      let analytics: Awaited<ReturnType<typeof getMonthlyAnalytics>>;
+      try {
+        todayViews = await getTodayViews(p);
+        analytics = await getMonthlyAnalytics(p, now.getFullYear(), now.getMonth() + 1);
+      } catch (err) {
+        console.error("dashboard-summary analytics:", err);
+        const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+        analytics = {
+          month: `${String(now.getMonth() + 1).padStart(2, "0")}-${now.getFullYear()}`,
+          totalViews: 0,
+          daily: Array.from({ length: lastDay }, (_, i) => ({ day: i + 1, views: 0 })),
+        };
+      }
+
+      res.json({
+        unreadMessages,
+        pendingOrders,
+        paidOrders,
+        todayViews,
+        monthViews: analytics.totalViews,
+        analytics,
+      });
+    } catch (error) {
+      console.error("dashboard-summary:", error);
+      res.status(500).json({ message: "Không tải được tổng quan" });
+    }
+  });
+
   // Article routes
   app.get("/api/articles", async (req, res) => {
     try {
@@ -1558,7 +2750,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/testimonials", async (req, res) => {
     try {
       const allPortals = req.query.all === "1";
-      const portal = allPortals ? undefined : req.portal;
+      const portal = allPortals
+        ? undefined
+        : normalizePortalAlias(req.query.portal as string) || req.portal;
       const list = await storage.ensureDefaultTestimonials(portal);
       res.json(list);
     } catch (error) {
@@ -1611,12 +2805,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Custom CMS block pages (admin-created)
+  app.get("/api/cms-pages", async (req, res) => {
+    try {
+      const allPortals = req.query.all === "1";
+      const portal = allPortals
+        ? undefined
+        : normalizePortalAlias(req.query.portal as string) || req.portal;
+      const rows = await listCmsPages(portal);
+      res.json(rows.map(cmsPageToContentEntry));
+    } catch (error) {
+      console.error("Error fetching cms pages:", error);
+      res.status(500).json({ message: "Không thể tải danh sách trang" });
+    }
+  });
+
+  app.get("/api/cms-pages/by-slug/:slug", async (req, res) => {
+    try {
+      const portal = normalizePortalAlias(req.query.portal as string) || req.portal;
+      if (!portal) {
+        return res.status(400).json({ message: "Thiếu portal" });
+      }
+      const row = await getCmsPageBySlug(portal, req.params.slug);
+      if (!row) {
+        return res.status(404).json({ message: "Không tìm thấy trang" });
+      }
+      res.json(cmsPageToContentEntry(row));
+    } catch (error) {
+      console.error("Error fetching cms page:", error);
+      res.status(500).json({ message: "Không thể tải trang" });
+    }
+  });
+
+  app.post("/api/cms-pages", requireAdminOrManager, async (req, res) => {
+    try {
+      const created = await createCmsPage(req.body);
+      res.status(201).json(cmsPageToContentEntry(created));
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Không thể tạo trang";
+      if (msg.includes("Slug") || msg.includes("slug")) {
+        return res.status(400).json({ message: msg });
+      }
+      console.error("Error creating cms page:", error);
+      res.status(500).json({ message: msg });
+    }
+  });
+
+  app.delete("/api/cms-pages/:id", requireAdminOrManager, async (req, res) => {
+    try {
+      const result = await deleteCmsPage(req.params.id);
+      if (!result.deleted) {
+        return res.status(404).json({ message: "Không tìm thấy trang" });
+      }
+      res.json({ ok: true, images: result.images });
+    } catch (error) {
+      console.error("Error deleting cms page:", error);
+      res.status(500).json({ message: "Không thể xóa trang" });
+    }
+  });
+
   // Site contents (editable homepage / page copy)
   app.get("/api/site-contents", async (req, res) => {
     try {
       const page = (req.query.page as string) || "home";
       const allPortals = req.query.all === "1";
-      const portal = allPortals ? undefined : req.portal;
+      const portal = allPortals
+        ? undefined
+        : normalizePortalAlias(req.query.portal as string) || req.portal;
       const rows = await storage.getSiteContents(page, portal);
       const map: Record<string, string> = {};
       for (const row of rows) {
@@ -1668,6 +2923,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Page layouts (section catalog)
+  app.get("/api/page-layouts", async (req, res) => {
+    try {
+      const page = (req.query.page as string) || "group";
+      const portal =
+        (req.query.portal as string) ||
+        (isLayoutPageId(page) ? page : req.portal) ||
+        "group";
+      if (!page.trim()) {
+        return res.status(400).json({ message: "Trang không hợp lệ" });
+      }
+      const layout = await getPageLayout(page, portal);
+      res.json(layout);
+    } catch (error) {
+      console.error("Error fetching page layout:", error);
+      res.status(500).json({ message: "Không thể tải bố cục trang" });
+    }
+  });
+
+  app.put("/api/page-layouts", requireAdminOrManager, async (req, res) => {
+    try {
+      const data = savePageLayoutSchema.parse(req.body);
+      const portal = data.portal || data.page;
+      const layout = await savePageLayout(data.page, portal, data.sections);
+      res.json(layout);
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res
+          .status(400)
+          .json({ message: "Dữ liệu không hợp lệ", errors: error.errors });
+      }
+      console.error("Error saving page layout:", error);
+      res.status(500).json({ message: "Không thể lưu bố cục trang" });
+    }
+  });
+
+  app.post("/api/page-layouts/reset", requireAdminOrManager, async (req, res) => {
+    try {
+      const page = (req.body?.page as string) || "group";
+      const portal = (req.body?.portal as string) || page;
+      if (!page.trim()) {
+        return res.status(400).json({ message: "Trang không hợp lệ" });
+      }
+      const layout = await resetPageLayout(page, portal);
+      res.json(layout);
+    } catch (error) {
+      console.error("Error resetting page layout:", error);
+      res.status(500).json({ message: "Không thể đặt lại bố cục" });
+    }
+  });
+
   app.post("/api/articles", requireAdminOrManager, async (req, res) => {
     try {
       const { title, content, category, portal: bodyPortal } = req.body;
@@ -1680,9 +2986,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         typeof content === "string" ? content : "",
       );
       const imageUrl = firstArticleImageUrl(promotedContent);
-      const portal = isPortalId(bodyPortal)
-        ? bodyPortal
-        : portalFromArticleCategory(category);
+      const portal =
+        normalizePortalAlias(bodyPortal) ||
+        portalFromArticleCategory(category);
 
       const allowed = sessionAllowedPortals((req as any).user);
       if (!canAccessPortal(allowed, portal)) {
@@ -1889,9 +3195,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      const portal = isPortalId(bodyPortal)
-          ? bodyPortal
-          : existing.portal || portalFromArticleCategory(category);
+      const portal =
+        normalizePortalAlias(bodyPortal) ||
+        normalizePortalAlias(existing.portal) ||
+        portalFromArticleCategory(category);
 
       const allowed = sessionAllowedPortals((req as any).user);
       if (!canAccessPortal(allowed, existing.portal) || !canAccessPortal(allowed, portal)) {
@@ -2267,7 +3574,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/ui-images", async (req, res) => {
     try {
       const allPortals = req.query.all === "1";
-      const portal = allPortals ? undefined : req.portal;
+      const portal = allPortals
+        ? undefined
+        : normalizePortalAlias(req.query.portal as string) || req.portal;
       const uiImages = await storage.getAllUiImages(portal);
       res.json(uiImages);
     } catch (error) {
@@ -2377,7 +3686,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/ui-images/server-upload", requireImageEditPermission, upload.single('file'), async (req, res) => {
     try {
       const file = req.file;
-      const { imageType, altText } = req.body;
+      const { imageType, altText, portal: bodyPortal } = req.body;
+      const portal = normalizePortalAlias(bodyPortal) || req.portal || "group";
       
       if (!file || !imageType) {
         return res.status(400).json({ error: "Missing file or imageType" });
@@ -2387,7 +3697,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const timestamp = Date.now();
       const fileExtension = file.originalname.split('.').pop();
       const uniqueFileName = `${imageType}-${timestamp}.${fileExtension}`;
-      const fullPath = `ui-images/${uniqueFileName}`;
       
       // Upload directly to R2 from server using multiR2Storage
       const uploadConfig: MediaUploadConfig = {
@@ -2402,18 +3711,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!uploadResult.success) {
         return res.status(500).json({ error: uploadResult.error || "Upload to R2 failed" });
       }
+
+      // Public URL must go through proxy (raw /api/ui-images/* is not a file route)
+      const publicUrl = `/api/proxy-image/primary/ui-images/${uniqueFileName}`;
       
-      // Save to database/storage
-      const uiImage = await storage.createUiImage({
-        imageUrl: uploadResult.url!,
-        imageType: imageType,
+      // Upsert by imageType + portal so slots don't duplicate
+      let uiImage = await storage.updateUiImageByType(imageType, {
+        imageUrl: publicUrl,
         altText: altText || null,
-        description: null
+        description: null,
+        portal,
       });
+      if (!uiImage) {
+        uiImage = await storage.createUiImage({
+          imageUrl: publicUrl,
+          imageType,
+          portal,
+          altText: altText || null,
+          description: null,
+        });
+      }
       
       res.json({
         success: true,
-        imageUrl: uploadResult.url,
+        imageUrl: publicUrl,
         imageType: imageType,
         uiImage: uiImage
       });
@@ -2463,18 +3784,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Get existing UI images from R2
-  app.get("/api/ui-images", async (req, res) => {
-    try {
-      const { config = "primary" } = req.query;
-      const images = await multiR2Storage.listFiles(config as string, "ui-images/");
-      res.json(images);
-    } catch (error) {
-      console.error("Error listing UI images:", error);
-      res.status(500).json({ error: "Failed to list images" });
-    }
-  });
-
   // Delete UI image from R2
   app.delete("/api/ui-images/:fileName", requireImageEditPermission, async (req, res) => {
     try {
@@ -2494,20 +3803,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // Update UI image metadata
+  // Update UI image metadata (assign existing R2/public URL to an imageType slot)
   app.put("/api/ui-images", requireImageEditPermission, async (req, res) => {
     try {
-      const { imageUrl, imageType, altText, description } = req.body;
+      const { imageUrl, imageType, altText, description, portal: bodyPortal } = req.body;
+      const portal = normalizePortalAlias(bodyPortal) || req.portal || "group";
       
       if (!imageUrl || !imageType) {
         return res.status(400).json({ error: "Missing required fields" });
       }
 
+      const publicUrl = normalizeUiImagePublicUrl(imageUrl);
+
       // Try to update existing UI image first
       let updatedImage = await storage.updateUiImageByType(imageType, {
-        imageUrl,
+        imageUrl: publicUrl,
         altText: altText || null,
-        description: description || null
+        description: description || null,
+        portal,
       });
       
       // If not found, create a new UI image
@@ -2515,7 +3828,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         console.log(`Creating new UI image for type: ${imageType}`);
         updatedImage = await storage.createUiImage({
           imageType,
-          imageUrl,
+          imageUrl: publicUrl,
+          portal,
           altText: altText || null,
           description: description || null
         });
@@ -4343,7 +5657,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(401).json({ message: "Unauthorized" });
       }
 
-      const { title, description, isDemo, sections, passingScore } = req.body;
+      const { title, description, isDemo, sections, passingScore, level, isLevelTrial, packageId } = req.body;
 
       console.log("Creating exam with sections:", JSON.stringify(sections, null, 2));
 
@@ -4385,6 +5699,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title,
         description: description || null,
         isDemo: isDemo || false,
+        level: isExamLevel(level) ? level : null,
+        isLevelTrial: Boolean(isLevelTrial) && !isDemo,
+        packageId:
+          typeof packageId === "string" && packageId.trim()
+            ? packageId.trim()
+            : null,
         sections: sanitizedSections,
         isActive: true,
         passingScore: passingScore !== undefined ? passingScore : null,
@@ -4422,7 +5742,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const { id } = req.params;
-      const { title, description, isDemo, sections, isActive, passingScore } = req.body;
+      const { title, description, isDemo, sections, isActive, passingScore, level, isLevelTrial, packageId } = req.body;
 
       if (!title) {
         return res.status(400).json({ 
@@ -4496,6 +5816,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
         description: description || null,
         isDemo: isDemo || false,
         passingScore: passingScore !== undefined ? passingScore : undefined,
+        level: level === null || level === "" ? null : isExamLevel(level) ? level : undefined,
+        isLevelTrial:
+          isLevelTrial !== undefined
+            ? Boolean(isLevelTrial) && !isDemo
+            : undefined,
+        packageId:
+          packageId === null || packageId === ""
+            ? null
+            : typeof packageId === "string"
+              ? packageId
+              : undefined,
       };
       if (sanitizedSections !== undefined) {
         updatePayload.sections = sanitizedSections;

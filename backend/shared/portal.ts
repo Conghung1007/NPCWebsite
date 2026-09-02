@@ -1,17 +1,53 @@
-/** Shared portal IDs — Phase 0 locked hostnames on npgroup.vn */
+/** Shared portal IDs — N&P Group hub + 3 product portals (+ external TNJS) */
 
-export const PORTAL_IDS = ["group", "tnjs", "duhoc", "daotao"] as const;
+export const PORTAL_IDS = [
+  "group",
+  "huongnghiep",
+  "dichvu",
+  "luyenthi",
+] as const;
 export type PortalId = (typeof PORTAL_IDS)[number];
 
+/** Production hostnames (npgroup.com + subdomains). TNJS is external tnjs.vn */
 export const PORTAL_HOSTS = {
-  group: "npgroup.vn",
-  tnjs: "tnjs.npgroup.vn",
-  duhoc: "duhoc.npgroup.vn",
-  daotao: "daotao.npgroup.vn",
+  group: "npgroup.com",
+  huongnghiep: "huongnghiep.npgroup.com",
+  dichvu: "dichvu.npgroup.com",
+  luyenthi: "luyenthi.npgroup.com",
 } as const;
 
+/** External Japanese training product site */
+export const TNJS_EXTERNAL_URL = "https://tnjs.vn/";
+
+/** User-facing link for Đào tạo / TNJS (always external tnjs.vn) */
+export function tnjsTrainingHref(): string {
+  return TNJS_EXTERNAL_URL;
+}
+
 export function isPortalId(value: unknown): value is PortalId {
-  return typeof value === "string" && (PORTAL_IDS as readonly string[]).includes(value);
+  return (
+    typeof value === "string" &&
+    (PORTAL_IDS as readonly string[]).includes(value)
+  );
+}
+
+/** Map legacy portal query/host values → current PortalId */
+export function normalizePortalAlias(value: unknown): PortalId | null {
+  if (isPortalId(value)) return value;
+  if (typeof value !== "string") return null;
+  switch (value.toLowerCase()) {
+    case "duhoc":
+      return "huongnghiep";
+    case "daotao":
+      return "dichvu";
+    case "tnjs":
+      return "luyenthi";
+    case "npgroup":
+    case "npc":
+      return "group";
+    default:
+      return null;
+  }
 }
 
 /**
@@ -20,7 +56,13 @@ export function isPortalId(value: unknown): value is PortalId {
  */
 export function normalizeAllowedPortals(portals: unknown): PortalId[] | null {
   if (!Array.isArray(portals) || portals.length === 0) return null;
-  const ids = [...new Set(portals.filter(isPortalId))];
+  const ids = Array.from(
+    new Set(
+      portals
+        .map((p) => normalizePortalAlias(p) ?? (isPortalId(p) ? p : null))
+        .filter((p): p is PortalId => !!p),
+    ),
+  );
   return ids.length ? ids : null;
 }
 
@@ -29,7 +71,8 @@ export function canAccessPortal(
   portal: string | null | undefined,
 ): boolean {
   if (!allowed) return true;
-  return isPortalId(portal) && allowed.includes(portal);
+  const id = normalizePortalAlias(portal) ?? (isPortalId(portal) ? portal : null);
+  return !!id && allowed.includes(id);
 }
 
 /** Sanitize portals from admin form body (empty → null = all). */
@@ -39,16 +82,16 @@ export function sanitizePortalsInput(raw: unknown): PortalId[] | null {
   return normalizeAllowedPortals(raw);
 }
 
-/** Map legacy article category → portal */
+/** Map article category → portal */
 export function portalFromArticleCategory(category: string): PortalId {
   switch (category) {
     case "japanese-training":
-      return "tnjs";
+      return "luyenthi";
     case "study-abroad":
     case "visa-services":
-      return "duhoc";
+      return "huongnghiep";
     case "soft-skills":
-      return "daotao";
+      return "dichvu";
     default:
       return "group";
   }
@@ -56,19 +99,38 @@ export function portalFromArticleCategory(category: string): PortalId {
 
 export function resolvePortalFromHost(hostname: string): PortalId | null {
   const host = hostname.toLowerCase().split(":")[0];
-  if (host.startsWith("tnjs.") || host === "tnjs.localhost") return "tnjs";
-  if (host.startsWith("duhoc.") || host === "duhoc.localhost") return "duhoc";
-  if (host.startsWith("daotao.") || host === "daotao.localhost") return "daotao";
+
   if (
+    host.startsWith("huongnghiep.") ||
+    host === "huongnghiep.localhost" ||
+    host.startsWith("duhoc.")
+  ) {
+    return "huongnghiep";
+  }
+  if (
+    host.startsWith("dichvu.") ||
+    host === "dichvu.localhost" ||
+    host.startsWith("daotao.")
+  ) {
+    return "dichvu";
+  }
+  if (
+    host.startsWith("luyenthi.") ||
+    host === "luyenthi.localhost" ||
+    host.startsWith("tnjs.")
+  ) {
+    return "luyenthi";
+  }
+  if (
+    host === "npgroup.com" ||
+    host === "www.npgroup.com" ||
     host === "npgroup.vn" ||
     host === "www.npgroup.vn" ||
-    host === "npgroup.localhost" ||
-    host === "npgroup.com" ||
-    host === "www.npgroup.com"
+    host === "npgroup.localhost"
   ) {
     return "group";
   }
-  if (host.includes("npcwebsite") && !host.startsWith("tnjs.")) return "group";
+  if (host.includes("npcwebsite")) return "group";
   return null;
 }
 
@@ -82,12 +144,15 @@ export function resolvePortalFromRequest(input: {
   hostname?: string;
   envPortal?: string | undefined;
 }): PortalId {
-  if (isPortalId(input.queryPortal)) return input.queryPortal;
-  if (isPortalId(input.headerPortal)) return input.headerPortal;
+  const fromQuery = normalizePortalAlias(input.queryPortal);
+  if (fromQuery) return fromQuery;
+  const fromHeader = normalizePortalAlias(input.headerPortal);
+  if (fromHeader) return fromHeader;
   if (input.hostname) {
     const fromHost = resolvePortalFromHost(input.hostname);
     if (fromHost) return fromHost;
   }
-  if (isPortalId(input.envPortal)) return input.envPortal;
+  const fromEnv = normalizePortalAlias(input.envPortal);
+  if (fromEnv) return fromEnv;
   return "group";
 }

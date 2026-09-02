@@ -108,7 +108,7 @@ form, .card {
 :root {
   --background: hsl(0, 0%, 100%);
   --foreground: hsl(20, 14.3%, 4.1%);
-  --muted: hsl(60, 4.8%, 95.9%);
+  --muted: hsl(48, 40%, 96%);
   --muted-foreground: hsl(25, 5.3%, 44.7%);
   --popover: hsl(0, 0%, 100%);
   --popover-foreground: hsl(20, 14.3%, 4.1%);
@@ -116,37 +116,43 @@ form, .card {
   --card-foreground: hsl(20, 14.3%, 4.1%);
   --border: hsl(20, 5.9%, 90%);
   --input: hsl(20, 5.9%, 90%);
-  --primary: hsl(142, 76%, 36%);
-  --primary-foreground: hsl(210, 40%, 98%);
-  --secondary: hsl(138, 76%, 97%);
-  --secondary-foreground: hsl(142, 76%, 36%);
-  --accent: hsl(142, 69%, 58%);
-  --accent-foreground: hsl(210, 40%, 98%);
+  /* tnjs.vn green #00A651 */
+  --primary: hsl(152, 100%, 33%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(48, 70%, 94%);
+  --secondary-foreground: hsl(152, 100%, 28%);
+  /* tnjs.vn orange #FF8800 */
+  --accent: hsl(33, 100%, 50%);
+  --accent-foreground: hsl(0, 0%, 100%);
   --destructive: hsl(0, 84.2%, 60.2%);
   --destructive-foreground: hsl(60, 9.1%, 97.8%);
-  --ring: hsl(20, 14.3%, 4.1%);
+  --ring: hsl(152, 100%, 33%);
   --radius: 0.5rem;
-  --neutral: hsl(210, 40%, 98%);
+  --neutral: hsl(48, 30%, 97%);
 }
 
-/* Portal accents — same design system, subtle hue shift */
-html[data-portal="tnjs"] {
-  --primary: hsl(152, 72%, 32%);
-  --secondary: hsl(150, 50%, 96%);
-  --secondary-foreground: hsl(152, 72%, 28%);
-  --accent: hsl(152, 60%, 42%);
+/* Portal accents — cùng hệ tnjs, lệch nhẹ theo cổng */
+/* Luyện thi — palette bám https://tnjs.vn/ (#00A651 / #FF8800) */
+html[data-portal="luyenthi"] {
+  --primary: hsl(152, 100%, 33%);
+  --secondary: hsl(48, 70%, 94%);
+  --secondary-foreground: hsl(152, 100%, 28%);
+  --accent: hsl(33, 100%, 50%);
+  --accent-foreground: hsl(0, 0%, 100%);
 }
-html[data-portal="duhoc"] {
-  --primary: hsl(175, 55%, 30%);
-  --secondary: hsl(175, 40%, 96%);
-  --secondary-foreground: hsl(175, 55%, 26%);
-  --accent: hsl(175, 45%, 40%);
+html[data-portal="huongnghiep"] {
+  --primary: hsl(152, 85%, 30%);
+  --secondary: hsl(48, 50%, 95%);
+  --secondary-foreground: hsl(152, 85%, 26%);
+  --accent: hsl(33, 100%, 50%);
+  --accent-foreground: hsl(0, 0%, 100%);
 }
-html[data-portal="daotao"] {
-  --primary: hsl(95, 48%, 32%);
-  --secondary: hsl(95, 35%, 96%);
-  --secondary-foreground: hsl(95, 48%, 28%);
-  --accent: hsl(95, 40%, 42%);
+html[data-portal="dichvu"] {
+  --primary: hsl(152, 70%, 28%);
+  --secondary: hsl(48, 40%, 95%);
+  --secondary-foreground: hsl(152, 70%, 24%);
+  --accent: hsl(33, 100%, 50%);
+  --accent-foreground: hsl(0, 0%, 100%);
 }
 
 .dark {

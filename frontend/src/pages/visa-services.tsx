@@ -34,96 +34,48 @@ import { cn } from "@/lib/utils";
 import { usePortal } from "@/contexts/PortalContext";
 import { portalHref } from "@/lib/portal";
 
+import { VISA_CONTENT_DEFAULTS } from "@shared/siteContentDefaults";
+
 type DocTypeKey = "tourism" | "business" | "study" | "residence";
 
-const VISA_DEFAULTS: Record<string, string> = {
-  heroTitle: "Dịch vụ xin thị thực",
-  heroDescription:
-    "Chuyên gia hàng đầu về dịch vụ xin visa với tỷ lệ thành công 98% cho hơn 50 quốc gia trên thế giới",
-  "types-title": "Các loại thị thực chúng tôi hỗ trợ",
-  "type-0-title": "Visa Du Lịch",
-  "type-0-description": "Thăm quan, nghỉ dưỡng",
-  "type-1-title": "Visa Công Tác",
-  "type-1-description": "Họp hội nghị, hợp tác",
-  "type-2-title": "Visa Du Học",
-  "type-2-description": "Học tập, nghiên cứu",
-  "type-3-title": "Visa Định Cư",
-  "type-3-description": "Sinh sống lâu dài",
-  "countries-title": "Quốc gia chuyên môn",
-  "countries-line":
-    "Nhật Bản · Hàn Quốc · Mỹ · Canada · Úc · Anh · Đức · và hơn 40 quốc gia khác",
-  "process-title": "Quy trình xin thị thực",
-  "process-description":
-    "Bốn bước rõ ràng — cùng lộ trình với mọi dịch vụ tại N&P",
-  "documents-title": "Hồ sơ theo loại visa",
-  "documents-note":
-    "Danh sách mang tính tham khảo. Checklist chi tiết theo quốc gia sẽ được gửi sau buổi tư vấn.",
-  "faq-title": "Câu hỏi thường gặp",
-};
+const VISA_DEFAULTS = VISA_CONTENT_DEFAULTS;
+
+function parseDocsByType(raw?: string): Record<DocTypeKey, string[]> {
+  const fallback = JSON.parse(VISA_CONTENT_DEFAULTS["documents-by-type"]) as Record<
+    DocTypeKey,
+    string[]
+  >;
+  if (!raw) return fallback;
+  try {
+    const parsed = JSON.parse(raw) as Record<DocTypeKey, string[]>;
+    return { ...fallback, ...parsed };
+  } catch {
+    return fallback;
+  }
+}
+
+function parseFaqs(raw?: string): Array<{ question: string; answer: string }> {
+  const fallback = JSON.parse(VISA_CONTENT_DEFAULTS.faqs) as Array<{
+    question: string;
+    answer: string;
+  }>;
+  if (!raw) return fallback;
+  try {
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? parsed : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+const DEFAULT_DOCS_BY_TYPE = parseDocsByType();
+const DEFAULT_FAQS = parseFaqs();
 
 const DOC_TYPE_META: Array<{ key: DocTypeKey; label: string; typeIndex: number }> = [
   { key: "tourism", label: "Du lịch", typeIndex: 0 },
   { key: "business", label: "Công tác", typeIndex: 1 },
   { key: "study", label: "Du học", typeIndex: 2 },
   { key: "residence", label: "Định cư", typeIndex: 3 },
-];
-
-const DEFAULT_DOCS_BY_TYPE: Record<DocTypeKey, string[]> = {
-  tourism: [
-    "Hộ chiếu còn hạn tối thiểu 6 tháng",
-    "Đơn xin visa du lịch",
-    "Ảnh 4x6 cm nền trắng",
-    "Chứng minh tài chính / sổ tiết kiệm",
-    "Lịch trình chuyến đi dự kiến",
-    "Bảo hiểm du lịch (nếu quốc gia yêu cầu)",
-  ],
-  business: [
-    "Hộ chiếu còn hạn tối thiểu 6 tháng",
-    "Đơn xin visa công tác",
-    "Ảnh 4x6 cm nền trắng",
-    "Thư mời từ đối tác / công ty nước ngoài",
-    "Giấy phép kinh doanh hoặc hợp đồng lao động",
-    "Chứng minh tài chính chuyến đi",
-  ],
-  study: [
-    "Hộ chiếu còn hạn tối thiểu 6 tháng",
-    "Đơn xin visa du học",
-    "Ảnh theo tiêu chuẩn lãnh sự",
-    "Giấy nhập học / COE (nếu có)",
-    "Bảng điểm, bằng cấp liên quan",
-    "Chứng minh tài chính hoặc bảo lãnh",
-  ],
-  residence: [
-    "Hộ chiếu còn hạn tối thiểu 6 tháng",
-    "Đơn xin visa định cư",
-    "Ảnh theo tiêu chuẩn lãnh sự",
-    "Giấy tờ hôn nhân / bảo lãnh (nếu áp dụng)",
-    "Lý lịch tư pháp",
-    "Chứng minh tài chính dài hạn",
-  ],
-};
-
-const DEFAULT_FAQS = [
-  {
-    question: "Thời gian xử lý visa là bao lâu?",
-    answer:
-      "Thông thường từ 5-15 ngày làm việc tùy thuộc vào quốc gia và loại visa. Chúng tôi sẽ thông báo chính xác thời gian cho từng trường hợp cụ thể.",
-  },
-  {
-    question: "Chi phí dịch vụ bao gồm những gì?",
-    answer:
-      "Chi phí bao gồm tư vấn, kiểm tra hồ sơ, nộp đơn và theo dõi kết quả. Lệ phí lãnh sự được tính riêng theo quy định của từng quốc gia.",
-  },
-  {
-    question: "Nếu bị từ chối có được hoàn phí?",
-    answer:
-      "Lệ phí lãnh sự không hoàn lại theo quy định quốc tế. Chi phí dịch vụ có chính sách hoàn tiền theo cam kết trong hợp đồng.",
-  },
-  {
-    question: "Tỷ lệ thành công của N&P như thế nào?",
-    answer:
-      "N&P có tỷ lệ thành công 98% nhờ quy trình chuyên nghiệp và kinh nghiệm nhiều năm. Chúng tôi cam kết hỗ trợ tối đa để hồ sơ của bạn được chấp thuận.",
-  },
 ];
 
 const TYPE_ICONS = [Plane, Briefcase, GraduationCap, Home];
@@ -168,10 +120,10 @@ export default function VisaServices() {
   const hasEditPermission = user?.role === "manager" || user?.role === "admin";
   const { getImageByType, invalidateCache } = useUiImages();
 
-  // Visa lives under the Du học portal — send group (etc.) visitors there
+  // Visa lives under Hướng nghiệp — send other-portal visitors there
   useEffect(() => {
-    if (portal !== "duhoc") {
-      window.location.replace(portalHref("duhoc", "/visa-services"));
+    if (portal !== "huongnghiep") {
+      window.location.replace(portalHref("huongnghiep", "/visa-services"));
     }
   }, [portal]);
 
@@ -320,10 +272,10 @@ export default function VisaServices() {
     document.getElementById("visa-documents")?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  if (portal !== "duhoc") {
+  if (portal !== "huongnghiep") {
     return (
       <div className="min-h-[40vh] flex items-center justify-center text-muted-foreground text-sm">
-        Đang chuyển tới cổng Du học…
+        Đang chuyển tới cổng Hướng nghiệp…
       </div>
     );
   }

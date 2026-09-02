@@ -2,6 +2,7 @@ import type { Express, Request, Response } from "express";
 import { z } from "zod";
 import {
   addCartItem,
+  addCartExamPackage,
   cancelPendingOrder,
   createClassSession,
   createCourse,
@@ -34,6 +35,14 @@ import {
 import { randomUUID } from "crypto";
 import { isPortalId, normalizeAllowedPortals, canAccessPortal } from "@shared/portal";
 import { resolveCookieDomain, resolvePublicBaseUrl } from "@shared/origins";
+import {
+  buildPayosCancelUrl,
+  buildPayosReturnUrl,
+} from "./payosOrderCode";
+import {
+  fulfillExamPackageOrder,
+  getExamPackageOrderByPayosCode,
+} from "./examPackageCheckout";
 
 type SessionReq = Request & {
   session: Request["session"] & {
@@ -122,7 +131,7 @@ const courseBodySchema = z.object({
   coverImageUrl: z.string().nullable().optional(),
   isPublished: z.boolean().optional(),
   sortOrder: z.number().int().optional(),
-  portal: z.enum(["group", "tnjs", "duhoc", "daotao"]).optional(),
+  portal: z.enum(["group", "huongnghiep", "dichvu", "luyenthi"]).optional(),
 });
 
 const classSessionBodySchema = z.object({
@@ -135,7 +144,7 @@ const classSessionBodySchema = z.object({
   priceVnd: z.number().int().min(0),
   capacity: z.number().int().min(1).default(10),
   status: z.enum(["draft", "published", "full", "closed"]).optional(),
-  portal: z.enum(["group", "tnjs", "duhoc", "daotao"]).optional(),
+  portal: z.enum(["group", "huongnghiep", "dichvu", "luyenthi"]).optional(),
 });
 
 const checkoutSchema = z.object({
@@ -223,7 +232,7 @@ export function registerCommerceRoutes(app: Express) {
   app.post("/api/admin/courses", requireAdminOrManager, async (req, res) => {
     try {
       const body = courseBodySchema.parse(req.body);
-      const portal = body.portal || req.portal || "tnjs";
+      const portal = body.portal || req.portal || "luyenthi";
       if (!canAccessPortal(sessionAllowedPortals((req as any).user), portal)) {
         return denyPortalAccess(res);
       }
@@ -295,7 +304,7 @@ export function registerCommerceRoutes(app: Express) {
   app.post("/api/admin/class-sessions", requireAdminOrManager, async (req, res) => {
     try {
       const body = classSessionBodySchema.parse(req.body);
-      const portal = body.portal || req.portal || "tnjs";
+      const portal = body.portal || req.portal || "luyenthi";
       if (!canAccessPortal(sessionAllowedPortals((req as any).user), portal)) {
         return denyPortalAccess(res);
       }
@@ -452,12 +461,30 @@ export function registerCommerceRoutes(app: Express) {
 
   app.post("/api/cart/items", async (req, res) => {
     try {
-      const classSessionId = String(req.body?.classSessionId || "");
-      if (!classSessionId) {
-        return res.status(400).json({ message: "Thiếu classSessionId" });
+      const classSessionId =
+        typeof req.body?.classSessionId === "string"
+          ? req.body.classSessionId.trim()
+          : "";
+      const packageId =
+        typeof req.body?.packageId === "string" ? req.body.packageId.trim() : "";
+
+      if (!classSessionId && !packageId) {
+        return res
+          .status(400)
+          .json({ message: "Thiếu classSessionId hoặc packageId" });
       }
+      if (classSessionId && packageId) {
+        return res.status(400).json({
+          message: "Chỉ thêm một loại mục mỗi lần (lớp hoặc gói đề)",
+        });
+      }
+
       const cart = await resolveCart(req as SessionReq, res);
-      await addCartItem(cart.id, classSessionId);
+      if (packageId) {
+        await addCartExamPackage(cart.id, packageId);
+      } else {
+        await addCartItem(cart.id, classSessionId);
+      }
       const full = await getCartWithItems(cart.id);
       res.status(201).json(full);
     } catch (error: any) {
@@ -485,6 +512,12 @@ export function registerCommerceRoutes(app: Express) {
       const body = checkoutSchema.parse(req.body);
       const sessionUser = (req as SessionReq).session?.user;
       const cart = await resolveCart(req as SessionReq, res);
+      const cartFull = await getCartWithItems(cart.id);
+      if (cartFull?.hasExamPackages && !sessionUser?.id) {
+        return res.status(401).json({
+          message: "Cần đăng nhập để thanh toán gói đề trong giỏ hàng",
+        });
+      }
 
       const { order, items } = await createPendingOrder({
         cartId: cart.id,
@@ -501,12 +534,12 @@ export function registerCommerceRoutes(app: Express) {
         protocol: req.protocol,
         portal: req.portal || order.portal,
       });
-      const returnUrl =
-        process.env.PAYOS_RETURN_URL ||
-        `${baseUrl}/checkout/success?order=${encodeURIComponent(order.code)}`;
-      const cancelUrl =
-        process.env.PAYOS_CANCEL_URL ||
-        `${baseUrl}/checkout/cancel?order=${encodeURIComponent(order.code)}`;
+      const returnUrl = process.env.PAYOS_RETURN_URL
+        ? buildPayosReturnUrl(process.env.PAYOS_RETURN_URL, order.code)
+        : `${baseUrl}/checkout/success?order=${encodeURIComponent(order.code)}`;
+      const cancelUrl = process.env.PAYOS_CANCEL_URL
+        ? buildPayosCancelUrl(process.env.PAYOS_CANCEL_URL, order.code)
+        : `${baseUrl}/checkout/cancel?order=${encodeURIComponent(order.code)}`;
 
       if (!isPayosConfigured()) {
         // Dev fallback: expose pending order without redirect when PayOS missing
@@ -564,16 +597,24 @@ export function registerCommerceRoutes(app: Express) {
       }
 
       const order = await getOrderByPayosCode(verified.orderCode);
-      if (!order) {
-        return res.json({ success: false });
-      }
-
-      if (order.status === "paid") {
+      if (order) {
+        if (order.status === "paid") {
+          return res.json({ success: true });
+        }
+        await markOrderPaid(order.id);
         return res.json({ success: true });
       }
 
-      await markOrderPaid(order.id);
-      res.json({ success: true });
+      const examOrder = await getExamPackageOrderByPayosCode(verified.orderCode);
+      if (examOrder) {
+        if (examOrder.status === "paid") {
+          return res.json({ success: true });
+        }
+        await fulfillExamPackageOrder(examOrder.id);
+        return res.json({ success: true });
+      }
+
+      return res.json({ success: false });
     } catch (error) {
       console.error("PayOS webhook error:", error);
       res.status(500).json({ success: false });
@@ -611,6 +652,7 @@ export function registerCommerceRoutes(app: Express) {
             title: i.title,
             priceVnd: i.priceVnd,
             scheduleText: i.scheduleText,
+            itemType: i.itemType,
           })),
           paidAt: order.paidAt,
           createdAt: order.createdAt,

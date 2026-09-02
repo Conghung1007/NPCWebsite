@@ -31,55 +31,9 @@ import {
   Edit,
 } from "lucide-react";
 
-const STUDY_DEFAULTS: Record<string, string> = {
-  heroTitle: "Tư vấn du học",
-  heroDescription:
-    "Mở rộng chân trời tri thức với các chương trình du học tại Nhật Bản, Hàn Quốc, Mỹ, Canada và Châu Âu",
-  "services-title": "Đồng hành từ chọn trường đến nhập học",
-  "services-description":
-    "Bốn nhóm hỗ trợ trọng tâm — rõ ràng, không chồng chéo",
-  "service-0-title": "Chọn chương trình",
-  "service-0-description":
-    "Tư vấn ngành học và trường phù hợp với năng lực, ngân sách và mục tiêu nghề nghiệp",
-  "service-1-title": "Hồ sơ & nộp đơn",
-  "service-1-description":
-    "Hướng dẫn thư động cơ, thư giới thiệu, hoàn thiện và nộp hồ sơ đúng hạn",
-  "service-2-title": "Học bổng",
-  "service-2-description":
-    "Rà soát cơ hội học bổng phù hợp và hỗ trợ chuẩn bị hồ sơ xin học bổng",
-  "service-3-title": "Đồng hành nhập học",
-  "service-3-description":
-    "Visa du học, chỗ ở, bảo hiểm và hỗ trợ khi đã đến trường",
-  "countries-title": "Thị trường du học",
-  "countries-line": "Nhật Bản · Hàn Quốc · Mỹ · Canada · Anh · Úc",
-  "process-title": "Lộ trình làm việc",
-  "process-description":
-    "Bốn bước rõ ràng — cùng tinh thần quy trình N&P trên mọi dịch vụ",
-  "why-title": "Tại sao du học với N&P?",
-  "why-0-title": "Hướng dẫn cá nhân hóa",
-  "why-0-description": "Tư vấn riêng theo hồ sơ và mục tiêu của từng học sinh",
-  "why-1-title": "Mạng lưới trường đối tác",
-  "why-1-description": "Liên kết với nhiều trường đại học và cao đẳng quốc tế",
-  "why-2-title": "Hỗ trợ săn học bổng",
-  "why-2-description": "Đồng hành tìm và nộp hồ sơ học bổng phù hợp",
-  "why-3-title": "Hỗ trợ sau khi đến trường",
-  "why-3-description": "Tiếp tục đồng hành trong hành trình du học",
-  "stories-title": "Câu chuyện học viên",
-  "stories-description": "Chia sẻ từ học viên đã đồng hành cùng N&P",
-  "articles-title": "Thông tin về du học",
-  "articles-description":
-    "Thông tin hữu ích về du học và cuộc sống sinh viên tại các nước",
-  "process-0-title": "Tư vấn miễn phí",
-  "process-0-description": "Trao đổi mục tiêu, ngân sách và thị trường phù hợp",
-  "process-1-title": "Chọn trường & hồ sơ",
-  "process-1-description":
-    "Lựa chọn chương trình, hoàn thiện giấy tờ và thư ứng tuyển",
-  "process-2-title": "Nộp & theo dõi",
-  "process-2-description":
-    "Nộp hồ sơ, cập nhật tiến độ và hỗ trợ phỏng vấn nếu cần",
-  "process-3-title": "Nhập học & đồng hành",
-  "process-3-description": "Visa, chỗ ở và hỗ trợ khi đã bắt đầu hành trình",
-};
+import { STUDY_ABROAD_CONTENT_DEFAULTS } from "@shared/siteContentDefaults";
+
+const STUDY_DEFAULTS = STUDY_ABROAD_CONTENT_DEFAULTS;
 
 /** 4 nhóm dịch vụ (gộp từ 6 mục cũ) */
 const SERVICE_ICONS = [Search, FileText, Award, Handshake];

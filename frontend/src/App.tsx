@@ -9,20 +9,21 @@ import { PortalProvider } from "@/contexts/PortalContext";
 import { PortalRouteGuard } from "@/components/PortalRouteGuard";
 
 import NotFound from "@/pages/not-found";
-import PortalHome, {
-  RedirectJapaneseTrainingToHome,
-} from "@/pages/portal-home";
+import PortalHome from "@/pages/portal-home";
 import Login from "@/pages/login";
 
 const VisaServices = lazy(() => import("@/pages/visa-services"));
 const StudyAbroad = lazy(() => import("@/pages/study-abroad"));
+const RedirectToTnjs = lazy(() =>
+  import("@/pages/redirect-tnjs").then((m) => ({ default: m.RedirectToTnjs })),
+);
 const ClassesPage = lazy(() => import("@/pages/classes"));
 const ClassDetailPage = lazy(() => import("@/pages/class-detail"));
 const CartPage = lazy(() => import("@/pages/cart"));
 const CheckoutPage = lazy(() => import("@/pages/checkout"));
 const CheckoutSuccessPage = lazy(() => import("@/pages/checkout-success"));
 const CheckoutCancelPage = lazy(() => import("@/pages/checkout-cancel"));
-const OnlineExam = lazy(() => import("@/pages/online-exam"));
+const OnlineExam = lazy(() => import("@/pages/online-exam-route"));
 const ExamTaking = lazy(() => import("@/pages/exam-taking"));
 const ExamResult = lazy(() => import("@/pages/exam-result"));
 const Register = lazy(() => import("@/pages/register"));
@@ -37,7 +38,7 @@ const ManageQuestions = lazy(() => import("@/pages/manage-questions"));
 const ExamAttemptsPage = lazy(() => import("@/pages/exam-attempts"));
 const CertificatePage = lazy(() => import("@/pages/certificate"));
 const CpanelPage = lazy(() => import("@/pages/cpanel"));
-const LegacyCompanyHome = lazy(() => import("@/pages/home"));
+const CompanyRedirect = lazy(() => import("@/pages/company-redirect"));
 const PortalSectionRoute = lazy(() =>
   import("@/pages/portal-section-routes").then((m) => ({
     default: m.PortalSectionRoute,
@@ -48,6 +49,7 @@ const PortalNewsRoute = lazy(() =>
     default: m.PortalNewsRoute,
   })),
 );
+const DynamicBlockPage = lazy(() => import("@/pages/dynamic-block-page"));
 
 function PageFallback() {
   return (
@@ -77,12 +79,33 @@ function Router() {
       <Suspense fallback={<PageFallback />}>
         <Switch>
           <Route path="/" component={PortalHome} />
-          <Route path="/company" component={LegacyCompanyHome} />
+          <Route path="/company" component={CompanyRedirect} />
           <Route path="/visa-services" component={VisaServices} />
           <Route path="/study-abroad" component={StudyAbroad} />
+          <Route path="/japanese-training" component={RedirectToTnjs} />
           <Route
-            path="/japanese-training"
-            component={RedirectJapaneseTrainingToHome}
+            path="/du-hoc"
+            component={() => <PortalSectionRoute slug="du-hoc" />}
+          />
+          <Route
+            path="/di-lam"
+            component={() => <PortalSectionRoute slug="di-lam" />}
+          />
+          <Route
+            path="/dao-tao-nghe"
+            component={() => <PortalSectionRoute slug="dao-tao-nghe" />}
+          />
+          <Route
+            path="/bien-phien-dich"
+            component={() => <PortalSectionRoute slug="bien-phien-dich" />}
+          />
+          <Route
+            path="/ky-nang-mem"
+            component={() => <PortalSectionRoute slug="ky-nang-mem" />}
+          />
+          <Route
+            path="/tu-van-doanh-nghiep"
+            component={() => <PortalSectionRoute slug="tu-van-doanh-nghiep" />}
           />
           <Route path="/classes" component={ClassesPage} />
           <Route
@@ -164,6 +187,7 @@ function Router() {
             path="/cpanel/:tab"
             component={({ params }) => <CpanelPage tab={params.tab} />}
           />
+          <Route path="/:slug" component={DynamicBlockPage} />
           <Route component={NotFound} />
         </Switch>
       </Suspense>

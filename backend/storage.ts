@@ -1,5 +1,5 @@
-import { type User, type InsertUser, type ContactRequest, type InsertContactRequest, type ContactInfo, type InsertContactInfo, type Article, type InsertArticle, type UiImage, type InsertUiImage, type RegistrationRequest, type InsertRegistrationRequest, type Exam, type InsertExam, type Question, type InsertQuestion, type ExamAttempt, type InsertExamAttempt, type Testimonial, type InsertTestimonial, type SiteContent } from "@shared/schema";
-import { users, contactRequests, contactInfo, articles, uiImages, registrationRequests, exams, questions, examAttempts, testimonials, siteContents } from "@shared/schema";
+import { type User, type InsertUser, type ContactRequest, type InsertContactRequest, type ContactInfo, type InsertContactInfo, type Article, type InsertArticle, type UiImage, type InsertUiImage, type RegistrationRequest, type InsertRegistrationRequest, type Exam, type InsertExam, type Question, type InsertQuestion, type ExamAttempt, type InsertExamAttempt, type Testimonial, type InsertTestimonial, type SiteContent, type EmailVerification } from "@shared/schema";
+import { users, contactRequests, contactInfo, articles, uiImages, registrationRequests, emailVerifications, exams, questions, examAttempts, testimonials, siteContents } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, inArray, asc, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
@@ -40,6 +40,8 @@ const DEFAULT_TESTIMONIALS: InsertTestimonial[] = [
 export interface IStorage {
   getUser(id: string): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getUserByEmail(email: string): Promise<User | undefined>;
+  getUserByGoogleId(googleId: string): Promise<User | undefined>;
   createUser(user: InsertUser): Promise<User>;
   updateUser(id: string, userData: Partial<InsertUser>): Promise<User | null>;
   deleteUser(id: string): Promise<boolean>;
@@ -48,6 +50,8 @@ export interface IStorage {
   
   createContactRequest(request: InsertContactRequest): Promise<ContactRequest>;
   getContactRequests(): Promise<ContactRequest[]>;
+  markContactRequestRead(id: string): Promise<ContactRequest | null>;
+  getContactUnreadCount(portals?: string[] | null): Promise<number>;
   deleteContactRequest(id: string): Promise<boolean>;
   
   // Contact Info methods
@@ -84,6 +88,21 @@ export interface IStorage {
   checkUsernameExists(username: string): Promise<boolean>;
   checkEmailExists(email: string): Promise<boolean>;
   checkPhoneExists(phone: string): Promise<boolean>;
+
+  createEmailVerification(
+    email: string,
+    code: string,
+    type: "registration",
+    expiresAt: Date,
+  ): Promise<EmailVerification>;
+  verifyEmailCode(
+    email: string,
+    code: string,
+    type: "registration",
+    options?: { consume?: boolean; incrementAttempts?: boolean },
+  ): Promise<{ success: boolean; error?: string; verificationId?: string }>;
+  markEmailVerificationUsed(id: string): Promise<void>;
+  deleteVerificationsByEmail(email: string, type: "registration"): Promise<void>;
   
   // Exam system methods
   createExam(exam: InsertExam): Promise<Exam>;
@@ -185,6 +204,18 @@ export class MemStorage implements IStorage {
     );
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.email?.toLowerCase() === email.toLowerCase(),
+    );
+  }
+
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    return Array.from(this.users.values()).find(
+      (user) => user.googleId === googleId,
+    );
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const id = randomUUID();
     const user: User = { 
@@ -193,6 +224,8 @@ export class MemStorage implements IStorage {
       fullName: insertUser.fullName ?? null,
       email: insertUser.email ?? null,
       phone: insertUser.phone ?? null,
+      password: insertUser.password ?? null,
+      googleId: insertUser.googleId ?? null,
       role: insertUser.role || "user",
       portals: insertUser.portals ?? null,
       createdAt: new Date()
@@ -203,7 +236,7 @@ export class MemStorage implements IStorage {
 
   async authenticateUser(username: string, password: string): Promise<User | null> {
     const user = await this.getUserByUsername(username);
-    if (user && user.password === password) {
+    if (user && user.password && user.password === password) {
       return user;
     }
     return null;
@@ -257,6 +290,8 @@ export class MemStorage implements IStorage {
       id,
       service: insertRequest.service || null,
       portal: insertRequest.portal || "group",
+      isRead: false,
+      readAt: null,
       createdAt: new Date(),
     };
     this.contactRequests.set(id, request);
@@ -267,6 +302,20 @@ export class MemStorage implements IStorage {
     return Array.from(this.contactRequests.values()).sort(
       (a, b) => b.createdAt.getTime() - a.createdAt.getTime()
     );
+  }
+
+  async markContactRequestRead(id: string): Promise<ContactRequest | null> {
+    const req = this.contactRequests.get(id);
+    if (!req) return null;
+    const updated = { ...req, isRead: true, readAt: new Date() };
+    this.contactRequests.set(id, updated);
+    return updated;
+  }
+
+  async getContactUnreadCount(portals?: string[] | null): Promise<number> {
+    return Array.from(this.contactRequests.values()).filter(
+      (r) => !r.isRead && (!portals?.length || portals.includes(r.portal)),
+    ).length;
   }
 
   async deleteContactRequest(id: string): Promise<boolean> {
@@ -812,7 +861,12 @@ export class MemStorage implements IStorage {
   }
 
   async updateUiImageByType(imageType: string, updateData: Partial<InsertUiImage>): Promise<UiImage | null> {
-    const existingImage = Array.from(this.uiImages.values()).find(img => img.imageType === imageType);
+    const portal = updateData.portal;
+    const existingImage = Array.from(this.uiImages.values()).find(
+      (img) =>
+        img.imageType === imageType &&
+        (!portal || img.portal === portal),
+    );
     if (!existingImage) {
       return null;
     }
@@ -820,6 +874,7 @@ export class MemStorage implements IStorage {
     const updatedImage: UiImage = {
       ...existingImage,
       ...updateData,
+      portal: updateData.portal ?? existingImage.portal,
       updatedAt: new Date()
     };
 
@@ -1254,6 +1309,19 @@ export class DatabaseStorage implements IStorage {
     return user || undefined;
   }
 
+  async getUserByEmail(email: string): Promise<User | undefined> {
+    const [user] = await db
+      .select()
+      .from(users)
+      .where(eq(users.email, email.toLowerCase()));
+    return user || undefined;
+  }
+
+  async getUserByGoogleId(googleId: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.googleId, googleId));
+    return user || undefined;
+  }
+
   async createUser(insertUser: InsertUser): Promise<User> {
     const [user] = await db
       .insert(users)
@@ -1283,7 +1351,7 @@ export class DatabaseStorage implements IStorage {
 
   async authenticateUser(username: string, password: string): Promise<User | null> {
     const user = await this.getUserByUsername(username);
-    if (user && user.password === password) {
+    if (user && user.password && user.password === password) {
       return user;
     }
     return null;
@@ -1303,6 +1371,22 @@ export class DatabaseStorage implements IStorage {
 
   async getContactRequests(): Promise<ContactRequest[]> {
     return await db.select().from(contactRequests);
+  }
+
+  async markContactRequestRead(id: string): Promise<ContactRequest | null> {
+    const [row] = await db
+      .update(contactRequests)
+      .set({ isRead: true, readAt: new Date() })
+      .where(eq(contactRequests.id, id))
+      .returning();
+    return row ?? null;
+  }
+
+  async getContactUnreadCount(portals?: string[] | null): Promise<number> {
+    const rows = await db.select().from(contactRequests);
+    return rows.filter(
+      (r) => !r.isRead && (!portals?.length || portals.includes(r.portal)),
+    ).length;
   }
 
   async deleteContactRequest(id: string): Promise<boolean> {
@@ -1453,10 +1537,21 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateUiImageByType(imageType: string, updateData: Partial<InsertUiImage>): Promise<UiImage | null> {
+    const portal = updateData.portal;
+    const conditions = [eq(uiImages.imageType, imageType)];
+    if (portal) conditions.push(eq(uiImages.portal, portal));
+
+    const [existing] = await db
+      .select()
+      .from(uiImages)
+      .where(and(...conditions))
+      .limit(1);
+    if (!existing) return null;
+
     const [uiImage] = await db
       .update(uiImages)
       .set({ ...updateData, updatedAt: new Date() })
-      .where(eq(uiImages.imageType, imageType))
+      .where(eq(uiImages.id, existing.id))
       .returning();
     return uiImage || null;
   }
@@ -1546,6 +1641,118 @@ export class DatabaseStorage implements IStorage {
     const [existingRequest] = await db.select().from(registrationRequests)
       .where(eq(registrationRequests.phone, phone));
     return !!existingRequest;
+  }
+
+  async createEmailVerification(
+    email: string,
+    code: string,
+    type: "registration",
+    expiresAt: Date,
+  ): Promise<EmailVerification> {
+    await this.deleteVerificationsByEmail(email, type);
+    const [result] = await db
+      .insert(emailVerifications)
+      .values({
+        email: email.toLowerCase(),
+        code,
+        type,
+        expiresAt,
+      })
+      .returning();
+    return result;
+  }
+
+  async getEmailVerification(
+    email: string,
+    type: "registration",
+  ): Promise<EmailVerification | undefined> {
+    const [result] = await db
+      .select()
+      .from(emailVerifications)
+      .where(
+        and(
+          eq(emailVerifications.email, email.toLowerCase()),
+          eq(emailVerifications.type, type),
+          eq(emailVerifications.isUsed, false),
+        ),
+      );
+    return result;
+  }
+
+  async verifyEmailCode(
+    email: string,
+    code: string,
+    type: "registration",
+    options?: { consume?: boolean; incrementAttempts?: boolean },
+  ): Promise<{ success: boolean; error?: string; verificationId?: string }> {
+    const consume = options?.consume !== false;
+    const incrementOnSuccess = options?.incrementAttempts !== false;
+    const verification = await this.getEmailVerification(email, type);
+
+    if (!verification) {
+      return {
+        success: false,
+        error: "Không tìm thấy mã xác minh. Vui lòng yêu cầu mã mới.",
+      };
+    }
+
+    if (new Date() > verification.expiresAt) {
+      await this.deleteVerificationsByEmail(email, type);
+      return {
+        success: false,
+        error: "Mã xác minh đã hết hạn. Vui lòng yêu cầu mã mới.",
+      };
+    }
+
+    if ((verification.attempts || 0) >= 5) {
+      await this.deleteVerificationsByEmail(email, type);
+      return {
+        success: false,
+        error: "Quá nhiều lần thử. Vui lòng yêu cầu mã mới.",
+      };
+    }
+
+    if (verification.code !== code) {
+      await db
+        .update(emailVerifications)
+        .set({ attempts: sql`${emailVerifications.attempts} + 1` })
+        .where(eq(emailVerifications.id, verification.id));
+      return { success: false, error: "Mã xác minh không chính xác." };
+    }
+
+    if (incrementOnSuccess) {
+      await db
+        .update(emailVerifications)
+        .set({ attempts: sql`${emailVerifications.attempts} + 1` })
+        .where(eq(emailVerifications.id, verification.id));
+    }
+
+    if (consume) {
+      await this.markEmailVerificationUsed(verification.id);
+    }
+
+    return { success: true, verificationId: verification.id };
+  }
+
+  async markEmailVerificationUsed(id: string): Promise<void> {
+    await db
+      .update(emailVerifications)
+      .set({ isUsed: true })
+      .where(eq(emailVerifications.id, id));
+  }
+
+  async deleteVerificationsByEmail(
+    email: string,
+    type: "registration",
+  ): Promise<void> {
+    await db
+      .delete(emailVerifications)
+      .where(
+        and(
+          eq(emailVerifications.email, email.toLowerCase()),
+          eq(emailVerifications.type, type),
+        ),
+      );
   }
 
   // Exam system methods

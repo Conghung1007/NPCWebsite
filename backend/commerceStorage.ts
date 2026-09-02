@@ -6,6 +6,7 @@ import {
   classSessions,
   courses,
   enrollments,
+  examPackages,
   orderItems,
   orders,
   type Cart,
@@ -13,12 +14,21 @@ import {
   type ClassSession,
   type Course,
   type Enrollment,
+  type ExamPackage,
   type InsertClassSession,
   type InsertCourse,
   type Order,
   type OrderItem,
 } from "@shared/schema";
 import { randomUUID } from "crypto";
+import {
+  activateEntitlementForPackage,
+  countExamsInPackage,
+  getExamPackage,
+  listActivePackageIdsForUser,
+  resolveDisplayExamCount,
+} from "./examEntitlements";
+import { generateUniquePayosOrderCode } from "./payosOrderCode";
 
 const CART_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 const ORDER_PENDING_TTL_MS = 30 * 60 * 1000;
@@ -77,7 +87,7 @@ export async function createCourse(
       coverImageUrl: data.coverImageUrl ?? null,
       isPublished: data.isPublished ?? false,
       sortOrder: data.sortOrder ?? 0,
-      portal: data.portal ?? "tnjs",
+      portal: data.portal ?? "luyenthi",
     })
     .returning();
   return row;
@@ -205,7 +215,7 @@ export async function createClassSession(
       priceVnd: data.priceVnd ?? 0,
       capacity: data.capacity ?? 10,
       status: data.status ?? "draft",
-      portal: data.portal ?? "tnjs",
+      portal: data.portal ?? "luyenthi",
     })
     .returning();
   return row;
@@ -249,16 +259,26 @@ async function refreshSessionFullStatus(sessionId: string): Promise<void> {
 
 // --- Cart ---
 
+export type CartClassItem = CartItem & {
+  itemType: "class";
+  classSession: ClassSession & {
+    courseTitle?: string;
+    courseLevel?: string;
+  };
+};
+
+export type CartExamPackageItem = CartItem & {
+  itemType: "exam_package";
+  examPackage: ExamPackage;
+};
+
+export type CartLineItem = CartClassItem | CartExamPackageItem;
+
 export type CartWithItems = Cart & {
-  items: Array<
-    CartItem & {
-      classSession: ClassSession & {
-        courseTitle?: string;
-        courseLevel?: string;
-      };
-    }
-  >;
+  items: CartLineItem[];
   totalVnd: number;
+  hasExamPackages: boolean;
+  hasClasses: boolean;
 };
 
 export async function getOrCreateCart(opts: {
@@ -326,6 +346,26 @@ export async function mergeGuestCartIntoUser(
     .from(cartItems)
     .where(eq(cartItems.cartId, guestCart.id));
   for (const item of guestItems) {
+    if (item.itemType === "exam_package" && item.packageId) {
+      const [dup] = await db
+        .select()
+        .from(cartItems)
+        .where(
+          and(
+            eq(cartItems.cartId, userCart.id),
+            eq(cartItems.packageId, item.packageId),
+          ),
+        );
+      if (!dup) {
+        await db.insert(cartItems).values({
+          cartId: userCart.id,
+          itemType: "exam_package",
+          packageId: item.packageId,
+        });
+      }
+      continue;
+    }
+    if (!item.classSessionId) continue;
     const [dup] = await db
       .select()
       .from(cartItems)
@@ -338,6 +378,7 @@ export async function mergeGuestCartIntoUser(
     if (!dup) {
       await db.insert(cartItems).values({
         cartId: userCart.id,
+        itemType: "class",
         classSessionId: item.classSessionId,
       });
     }
@@ -350,7 +391,7 @@ export async function getCartWithItems(cartId: string): Promise<CartWithItems | 
   const [cart] = await db.select().from(carts).where(eq(carts.id, cartId));
   if (!cart) return null;
 
-  const items = await db
+  const classRows = await db
     .select({
       item: cartItems,
       session: classSessions,
@@ -360,23 +401,64 @@ export async function getCartWithItems(cartId: string): Promise<CartWithItems | 
     .from(cartItems)
     .innerJoin(classSessions, eq(cartItems.classSessionId, classSessions.id))
     .leftJoin(courses, eq(classSessions.courseId, courses.id))
-    .where(eq(cartItems.cartId, cartId));
+    .where(and(eq(cartItems.cartId, cartId), eq(cartItems.itemType, "class")));
 
-  const mapped = items.map((r) => ({
-    ...r.item,
-    classSession: {
-      ...r.session,
-      courseTitle: r.courseTitle ?? undefined,
-      courseLevel: r.courseLevel ?? undefined,
-    },
-  }));
+  const packageRows = await db
+    .select({
+      item: cartItems,
+      pkg: examPackages,
+    })
+    .from(cartItems)
+    .innerJoin(examPackages, eq(cartItems.packageId, examPackages.id))
+    .where(
+      and(eq(cartItems.cartId, cartId), eq(cartItems.itemType, "exam_package")),
+    );
 
-  const totalVnd = mapped.reduce(
-    (sum, i) => sum + (Number(i.classSession.priceVnd) || 0),
-    0,
+  const packageItems = await Promise.all(
+    packageRows.map(async (r) => {
+      const linkedExamCount = await countExamsInPackage(r.pkg.id);
+      return {
+        ...r.item,
+        itemType: "exam_package" as const,
+        examPackage: {
+          ...r.pkg,
+          linkedExamCount,
+          displayExamCount: resolveDisplayExamCount(
+            r.pkg.examCount,
+            linkedExamCount,
+          ),
+        },
+      };
+    }),
   );
 
-  return { ...cart, items: mapped, totalVnd };
+  const mapped: CartLineItem[] = [
+    ...classRows.map((r) => ({
+      ...r.item,
+      itemType: "class" as const,
+      classSession: {
+        ...r.session,
+        courseTitle: r.courseTitle ?? undefined,
+        courseLevel: r.courseLevel ?? undefined,
+      },
+    })),
+    ...packageItems,
+  ];
+
+  const totalVnd = mapped.reduce((sum, i) => {
+    if (i.itemType === "class") {
+      return sum + (Number(i.classSession.priceVnd) || 0);
+    }
+    return sum + (Number(i.examPackage.priceVnd) || 0);
+  }, 0);
+
+  return {
+    ...cart,
+    items: mapped,
+    totalVnd,
+    hasExamPackages: mapped.some((i) => i.itemType === "exam_package"),
+    hasClasses: mapped.some((i) => i.itemType === "class"),
+  };
 }
 
 export async function addCartItem(
@@ -401,7 +483,37 @@ export async function addCartItem(
 
   const [created] = await db
     .insert(cartItems)
-    .values({ cartId, classSessionId })
+    .values({ cartId, itemType: "class", classSessionId })
+    .returning();
+  return created;
+}
+
+export async function addCartExamPackage(
+  cartId: string,
+  packageId: string,
+): Promise<CartItem> {
+  const pkg = await getExamPackage(packageId);
+  if (!pkg || !pkg.isActive) {
+    throw new Error("Gói đề không tồn tại hoặc đã tắt");
+  }
+  if (pkg.priceVnd <= 0) {
+    throw new Error("Gói miễn phí — không cần thêm vào giỏ");
+  }
+
+  const [existing] = await db
+    .select()
+    .from(cartItems)
+    .where(
+      and(
+        eq(cartItems.cartId, cartId),
+        eq(cartItems.packageId, packageId),
+      ),
+    );
+  if (existing) return existing;
+
+  const [created] = await db
+    .insert(cartItems)
+    .values({ cartId, itemType: "exam_package", packageId })
     .returning();
   return created;
 }
@@ -429,11 +541,6 @@ function generateOrderCode(): string {
   return `NPC-${stamp}-${rand}`;
 }
 
-function generatePayosOrderCode(): number {
-  // PayOS requires unique positive integer; keep within safe range
-  return Math.floor(Date.now() % 1_000_000_000) * 100 + Math.floor(Math.random() * 100);
-}
-
 export async function expireStalePendingOrders(): Promise<number> {
   const now = new Date();
   const stale = await db
@@ -457,6 +564,7 @@ async function releaseOrderReservations(orderId: string): Promise<void> {
     .from(orderItems)
     .where(eq(orderItems.orderId, orderId));
   for (const item of items) {
+    if (item.itemType !== "class" || !item.classSessionId) continue;
     await db
       .update(classSessions)
       .set({
@@ -510,15 +618,31 @@ export async function createPendingOrder(
     throw new Error("Giỏ hàng trống");
   }
 
-  for (const item of cart.items) {
+  if (cart.hasExamPackages && !input.userId) {
+    throw new Error("Cần đăng nhập để mua gói đề");
+  }
+
+  const classItems = cart.items.filter((i) => i.itemType === "class");
+  const packageItems = cart.items.filter((i) => i.itemType === "exam_package");
+
+  for (const item of classItems) {
     if (!isSessionSellable(item.classSession)) {
       throw new Error(`Lớp "${item.classSession.title}" không còn mở đăng ký`);
     }
   }
 
+  if (input.userId && packageItems.length > 0) {
+    const activeIds = await listActivePackageIdsForUser(input.userId);
+    for (const item of packageItems) {
+      if (activeIds.includes(item.examPackage.id)) {
+        throw new Error(`Bạn đã có quyền gói "${item.examPackage.name}"`);
+      }
+    }
+  }
+
   const reservedIds: string[] = [];
   try {
-    for (const item of cart.items) {
+    for (const item of classItems) {
       const ok = await reserveSeat(item.classSession.id);
       if (!ok) {
         throw new Error(`Lớp "${item.classSession.title}" đã hết chỗ`);
@@ -526,19 +650,19 @@ export async function createPendingOrder(
       reservedIds.push(item.classSession.id);
     }
 
-    const totalVnd = cart.items.reduce(
-      (sum, i) => sum + (Number(i.classSession.priceVnd) || 0),
-      0,
-    );
+    const totalVnd = cart.totalVnd;
 
     const orderPortal =
-      cart.items[0]?.classSession?.portal || "tnjs";
+      classItems[0]?.classSession?.portal ||
+      (packageItems.length > 0 ? "luyenthi" : "luyenthi");
+
+    const payosOrderCode = await generateUniquePayosOrderCode();
 
     const [order] = await db
       .insert(orders)
       .values({
         code: generateOrderCode(),
-        payosOrderCode: generatePayosOrderCode(),
+        payosOrderCode,
         fullName: input.fullName.trim(),
         phone: input.phone.trim(),
         email: input.email.trim().toLowerCase(),
@@ -552,15 +676,32 @@ export async function createPendingOrder(
       .returning();
 
     const items: OrderItem[] = [];
-    for (const item of cart.items) {
+    for (const item of classItems) {
       const [oi] = await db
         .insert(orderItems)
         .values({
           orderId: order.id,
+          itemType: "class",
           classSessionId: item.classSessionId,
           title: item.classSession.title,
           scheduleText: item.classSession.scheduleText,
           priceVnd: item.classSession.priceVnd,
+        })
+        .returning();
+      items.push(oi);
+    }
+    for (const item of packageItems) {
+      const [oi] = await db
+        .insert(orderItems)
+        .values({
+          orderId: order.id,
+          itemType: "exam_package",
+          packageId: item.packageId,
+          title: item.examPackage.name,
+          scheduleText: item.examPackage.level
+            ? `JLPT ${item.examPackage.level.toUpperCase()}`
+            : null,
+          priceVnd: item.examPackage.priceVnd,
         })
         .returning();
       items.push(oi);
@@ -642,6 +783,21 @@ export async function markOrderPaid(orderId: string): Promise<Order | null> {
     .where(eq(orderItems.orderId, orderId));
 
   for (const item of items) {
+    if (item.itemType === "exam_package" && item.packageId && order.userId) {
+      try {
+        await activateEntitlementForPackage({
+          userId: order.userId,
+          packageId: item.packageId,
+          reviewedBy: "payos",
+          note: `Đơn ${order.code}`,
+        });
+      } catch {
+        // entitlement may already exist — order still paid
+      }
+      continue;
+    }
+    if (item.itemType !== "class" || !item.classSessionId) continue;
+
     await db
       .update(classSessions)
       .set({

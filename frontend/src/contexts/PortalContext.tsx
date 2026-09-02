@@ -16,9 +16,9 @@ type PortalContextValue = {
   portal: PortalId;
   meta: (typeof PORTAL_META)[PortalId];
   isGroup: boolean;
-  isTnjs: boolean;
-  isDuhoc: boolean;
-  isDaotao: boolean;
+  isHuongnghiep: boolean;
+  isDichvu: boolean;
+  isLuyenthi: boolean;
 };
 
 const PortalContext = createContext<PortalContextValue | null>(null);
@@ -43,9 +43,9 @@ export function PortalProvider({ children }: { children: ReactNode }) {
       portal,
       meta: PORTAL_META[portal],
       isGroup: portal === "group",
-      isTnjs: portal === "tnjs",
-      isDuhoc: portal === "duhoc",
-      isDaotao: portal === "daotao",
+      isHuongnghiep: portal === "huongnghiep",
+      isDichvu: portal === "dichvu",
+      isLuyenthi: portal === "luyenthi",
     }),
     [portal],
   );

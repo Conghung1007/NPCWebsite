@@ -7,6 +7,7 @@ import {
   allowedCorsOrigins,
   resolveCookieDomain,
 } from "@shared/origins";
+import { isGoogleAuthConfigured } from "./googleAuth";
 
 const app = express();
 
@@ -75,6 +76,13 @@ app.use((req, res, next) => {
       ok: true,
       publicAppUrl: process.env.PUBLIC_APP_URL || null,
       cookieDomain: cookieDomain || null,
+      portals: ["group", "huongnghiep", "dichvu", "luyenthi"],
+      external: { daoTao: "https://tnjs.vn" },
+      features: {
+        dashboard: true,
+        siteSettings: true,
+        pageAnalytics: true,
+      },
     });
   });
 
@@ -98,5 +106,17 @@ app.use((req, res, next) => {
   const port = parseInt(process.env.PORT || "5000", 10);
   server.listen({ port, host: "0.0.0.0" }, () => {
     log(`API serving on port ${port}`);
+    if (process.env.RESEND_API_KEY?.trim()) {
+      const from =
+        process.env.RESEND_FROM_EMAIL?.trim() || "TNJS <support@tnjs.vn>";
+      log(`[Email] Resend configured — sender ${from}`);
+    } else {
+      log("[Email] RESEND_API_KEY not set — registration OTP disabled.");
+    }
+    if (isGoogleAuthConfigured()) {
+      log("[Auth] Google Sign-In enabled");
+    } else {
+      log("[Auth] GOOGLE_CLIENT_ID not set — Google Sign-In disabled.");
+    }
   });
 })();
