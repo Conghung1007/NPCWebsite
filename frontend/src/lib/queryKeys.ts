@@ -15,6 +15,11 @@ export const examKeys = {
   }) => ["/api/admin/exam-attempts", params] as const,
 };
 
+export const profileKeys = {
+  exams: ["/api/profile/exams"] as const,
+  attempts: ["/api/profile/attempts"] as const,
+};
+
 export const testimonialKeys = {
   all: ["/api/testimonials"] as const,
 };

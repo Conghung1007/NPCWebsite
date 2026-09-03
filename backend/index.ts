@@ -17,6 +17,8 @@ app.set("trust proxy", 1);
 const cookieDomain = resolveCookieDomain();
 if (cookieDomain) {
   log(`Session cookie domain: ${cookieDomain}`);
+} else if (process.env.COOKIE_DOMAIN?.trim() || process.env.PUBLIC_APP_URL?.trim()) {
+  log("Session cookie: host-only (COOKIE_DOMAIN skipped for public suffix / Render)");
 }
 
 // JSON body limit: large enough for exam payloads, avoid unbounded 100MB default
@@ -82,6 +84,7 @@ app.use((req, res, next) => {
         dashboard: true,
         siteSettings: true,
         pageAnalytics: true,
+        resendEmail: Boolean(process.env.RESEND_API_KEY?.trim()),
       },
     });
   });

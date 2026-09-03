@@ -40,6 +40,7 @@ const PORTAL_PATHS: Record<PortalId, string[]> = {
     "/checkout",
     "/online-exam",
     "/exam",
+    "/exam-result",
     "/exam-attempts",
     "/certificate",
     "/news",
@@ -50,6 +51,8 @@ const PORTAL_PATHS: Record<PortalId, string[]> = {
 const SHARED_PREFIXES = [
   "/login",
   "/register",
+  "/forgot-password",
+  "/profile",
   "/company",
   "/cpanel",
   "/article",

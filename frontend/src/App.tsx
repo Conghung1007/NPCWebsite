@@ -28,6 +28,7 @@ const ExamTaking = lazy(() => import("@/pages/exam-taking"));
 const ExamResult = lazy(() => import("@/pages/exam-result"));
 const Register = lazy(() => import("@/pages/register"));
 const RegisterSuccess = lazy(() => import("@/pages/register-success"));
+const ForgotPassword = lazy(() => import("@/pages/forgot-password"));
 const Contact = lazy(() => import("@/pages/contact"));
 const ArticleDetail = lazy(() => import("@/pages/article-detail"));
 const CreateArticle = lazy(() => import("@/pages/create-article"));
@@ -37,6 +38,7 @@ const EditExam = lazy(() => import("@/pages/edit-exam"));
 const ManageQuestions = lazy(() => import("@/pages/manage-questions"));
 const ExamAttemptsPage = lazy(() => import("@/pages/exam-attempts"));
 const CertificatePage = lazy(() => import("@/pages/certificate"));
+const ProfilePage = lazy(() => import("@/pages/profile"));
 const CpanelPage = lazy(() => import("@/pages/cpanel"));
 const CompanyRedirect = lazy(() => import("@/pages/company-redirect"));
 const PortalSectionRoute = lazy(() =>
@@ -136,6 +138,12 @@ function Router() {
           <Route path="/login" component={Login} />
           <Route path="/register" component={Register} />
           <Route path="/register-success" component={RegisterSuccess} />
+          <Route path="/forgot-password" component={ForgotPassword} />
+          <Route
+            path="/profile/:tab"
+            component={({ params }) => <ProfilePage tab={params.tab} />}
+          />
+          <Route path="/profile" component={() => <ProfilePage />} />
           <Route path="/contact" component={Contact} />
           <Route path="/news" component={PortalNewsRoute} />
           <Route

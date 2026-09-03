@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { randomUUID } from "crypto";
 import { storage } from "./storage";
-import { insertContactRequestSchema, insertArticleSchema, registrationFormSchema, ContactInfo, InsertContactInfo, insertTestimonialSchema, updateTestimonialSchema, upsertSiteContentSchema, bulkUpsertSiteContentSchema } from "@shared/schema";
+import { insertContactRequestSchema, insertArticleSchema, registrationFormSchema, resetPasswordSchema, ContactInfo, InsertContactInfo, insertTestimonialSchema, updateTestimonialSchema, upsertSiteContentSchema, bulkUpsertSiteContentSchema, updateProfileSchema } from "@shared/schema";
 import { z } from "zod";
 import {
   getPageLayout,
@@ -96,6 +96,7 @@ import {
   listExamsInPackage,
   setPackageExams,
   resolveDisplayExamCount,
+  listPurchasedPackagesForUser,
 } from "./examEntitlements";
 import {
   buildPaymentDisplay,
@@ -405,17 +406,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Auth endpoint - returns current user information
   app.get("/api/auth/user", async (req, res) => {
     try {
-      // Check if user is authenticated via session
       const sessionUser = (req.session as any)?.user;
-      
-      if (!sessionUser) {
+      if (!sessionUser?.id) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-      
-      // Return sanitized user (password never in session after login fix)
-      res.json(sanitizeUser(sessionUser));
+
+      const fresh = await storage.getUser(sessionUser.id);
+      if (!fresh) {
+        return req.session.destroy(() => {
+          res.status(401).json({ message: "Unauthorized" });
+        });
+      }
+
+      const safe = sanitizeUser(fresh);
+      (req.session as any).user = safe;
+      res.json(safe);
     } catch (error) {
       console.error("Error fetching current user:", error);
+      const fallback = (req.session as any)?.user;
+      if (fallback?.id) {
+        return res.json(sanitizeUser(fallback));
+      }
       res.status(401).json({ message: "Unauthorized" });
     }
   });
@@ -707,6 +718,164 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  const GENERIC_RESET_MESSAGE =
+    "Nếu email này đã đăng ký, chúng tôi đã gửi mã đặt lại mật khẩu. Kiểm tra hộp thư (và thư rác).";
+
+  async function dispatchPasswordResetOtp(email: string) {
+    const normalized = email.toLowerCase().trim();
+    const rateKey = `reset:${normalized}`;
+
+    if (!checkRateLimit(rateKey, 3, 5)) {
+      const rateLimitInfo = getRateLimitRemaining(rateKey);
+      return {
+        status: 429 as const,
+        body: {
+          success: false,
+          message: `Vui lòng đợi ${rateLimitInfo.resetInSeconds} giây trước khi yêu cầu mã mới`,
+          retryAfter: rateLimitInfo.resetInSeconds,
+        },
+      };
+    }
+
+    if (!isEmailServiceConfigured()) {
+      return {
+        status: 503 as const,
+        body: {
+          success: false,
+          message:
+            "Hệ thống email chưa sẵn sàng. Vui lòng thử lại sau hoặc liên hệ hỗ trợ.",
+        },
+      };
+    }
+
+    const user = await storage.getUserByEmail(normalized);
+    if (!user) {
+      return {
+        status: 200 as const,
+        body: {
+          success: true,
+          emailDispatched: true,
+          message: GENERIC_RESET_MESSAGE,
+          expiresIn: 300,
+        },
+      };
+    }
+
+    const code = generateOTPCode();
+    const expiresAt = getExpirationTime(5);
+    await storage.createEmailVerification(
+      normalized,
+      code,
+      "password_reset",
+      expiresAt,
+    );
+    const emailResult = await sendVerificationEmail(
+      normalized,
+      code,
+      "password_reset",
+    );
+    if (!emailResult.success) {
+      await storage.deleteVerificationsByEmail(normalized, "password_reset");
+      return {
+        status: 500 as const,
+        body: {
+          success: false,
+          message: emailResult.error || "Không thể gửi email đặt lại mật khẩu",
+        },
+      };
+    }
+
+    return {
+      status: 200 as const,
+      body: {
+        success: true,
+        emailDispatched: true,
+        message: GENERIC_RESET_MESSAGE,
+        expiresIn: 300,
+      },
+    };
+  }
+
+  app.post("/api/auth/forgot-password", async (req, res) => {
+    try {
+      const email = String(req.body?.email || "").trim();
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        return res.status(400).json({
+          success: false,
+          message: "Định dạng email không hợp lệ",
+        });
+      }
+
+      const result = await dispatchPasswordResetOtp(email);
+      res.status(result.status).json(result.body);
+    } catch (error) {
+      console.error("Forgot password error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Có lỗi xảy ra, vui lòng thử lại sau",
+      });
+    }
+  });
+
+  app.post("/api/auth/reset-password", async (req, res) => {
+    try {
+      const parsed = resetPasswordSchema.safeParse(req.body || {});
+      if (!parsed.success) {
+        const first = parsed.error.issues[0]?.message;
+        return res.status(400).json({
+          success: false,
+          message: first || "Thông tin không hợp lệ",
+        });
+      }
+
+      const email = parsed.data.email.toLowerCase().trim();
+      const otpResult = await storage.verifyEmailCode(
+        email,
+        parsed.data.code,
+        "password_reset",
+        { consume: true },
+      );
+      if (!otpResult.success) {
+        return res.status(400).json({
+          success: false,
+          message: otpResult.error || "Mã xác minh không hợp lệ hoặc đã hết hạn",
+        });
+      }
+
+      const user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(400).json({
+          success: false,
+          message: "Không tìm thấy tài khoản với email này",
+        });
+      }
+
+      const updated = await storage.updateUser(user.id, {
+        password: parsed.data.password,
+      });
+      if (!updated) {
+        return res.status(500).json({
+          success: false,
+          message: "Không cập nhật được mật khẩu",
+        });
+      }
+
+      (req.session as any).user = sanitizeUser(updated);
+      res.json({
+        success: true,
+        message: "Đã đặt lại mật khẩu. Bạn đã được đăng nhập.",
+        user: sanitizeUser(updated),
+      });
+    } catch (error) {
+      console.error("Reset password error:", error);
+      res.status(500).json({
+        success: false,
+        message: "Có lỗi xảy ra, vui lòng thử lại sau",
+      });
+    }
+  });
+
   // Check availability endpoints
   app.post("/api/auth/check-username", async (req, res) => {
     try {
@@ -780,6 +949,197 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({ success: true, message: "Đăng xuất thành công" });
     });
   });
+
+  app.get("/api/profile/exams", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).user.id as string;
+      const groups = await listPurchasedPackagesForUser(userId);
+      res.json({
+        packages: groups.map((group) => ({
+          entitlementId: group.entitlementId,
+          packageId: group.packageId,
+          name: group.name,
+          level: group.level,
+          status: group.status,
+          exams: group.exams.map((exam) => ({
+            id: exam.id,
+            title: exam.title,
+            description: exam.description,
+            level: exam.level,
+            isDemo: exam.isDemo,
+            isLevelTrial: exam.isLevelTrial,
+            timeLimit: calculateTotalTimeLimit(exam),
+            questionCount: calculateQuestionCount(exam),
+          })),
+        })),
+      });
+    } catch (error) {
+      console.error("Error listing purchased exams:", error);
+      res.status(500).json({ message: "Không tải được đề đã mua" });
+    }
+  });
+
+  app.get("/api/profile/attempts", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).user.id as string;
+      const attempts = await storage.getUserExamAttempts(userId);
+      const exams = await storage.getAllExams();
+      const examById = new Map(exams.map((exam) => [exam.id, exam]));
+
+      const items = attempts.map((attempt) => {
+        const exam = examById.get(attempt.examId);
+        const passed = exam ? didAttemptPass(exam, attempt) : false;
+        return {
+          id: attempt.id,
+          examId: attempt.examId,
+          examTitle: exam?.title || "Đề đã xóa",
+          examLevel: exam?.level || null,
+          status: attempt.status,
+          totalScore: attempt.totalScore,
+          totalTimeSpent: attempt.totalTimeSpent,
+          completedAt: attempt.completedAt,
+          startedAt: attempt.startedAt,
+          passed: attempt.status === "completed" ? passed : null,
+        };
+      });
+      res.json({ items });
+    } catch (error) {
+      console.error("Error listing profile attempts:", error);
+      res.status(500).json({ message: "Không tải được kết quả thi" });
+    }
+  });
+
+  app.put("/api/profile", requireAuth, async (req, res) => {
+    try {
+      const userId = (req.session as any).user.id as string;
+      const parsed = updateProfileSchema.safeParse(req.body || {});
+      if (!parsed.success) {
+        const first = parsed.error.issues[0]?.message;
+        return res.status(400).json({ message: first || "Thông tin không hợp lệ" });
+      }
+
+      const current = await storage.getUser(userId);
+      if (!current) {
+        return res.status(404).json({ message: "Không tìm thấy tài khoản" });
+      }
+
+      const nextFullName =
+        parsed.data.fullName === undefined
+          ? current.fullName
+          : parsed.data.fullName?.trim() || null;
+      const nextEmail =
+        parsed.data.email === undefined
+          ? current.email
+          : parsed.data.email?.trim().toLowerCase() || null;
+      const nextPhone =
+        parsed.data.phone === undefined
+          ? current.phone
+          : parsed.data.phone?.trim() || null;
+
+      if (nextEmail && nextEmail !== (current.email || "").toLowerCase()) {
+        if (await storage.checkEmailExists(nextEmail)) {
+          return res.status(409).json({ message: "Email đã được sử dụng" });
+        }
+      }
+      if (nextPhone && nextPhone !== (current.phone || "")) {
+        if (await storage.checkPhoneExists(nextPhone)) {
+          return res.status(409).json({ message: "Số điện thoại đã được sử dụng" });
+        }
+      }
+
+      const updated = await storage.updateUser(userId, {
+        fullName: nextFullName,
+        email: nextEmail,
+        phone: nextPhone,
+      });
+      if (!updated) {
+        return res.status(404).json({ message: "Không tìm thấy tài khoản" });
+      }
+
+      const safe = sanitizeUser(updated);
+      (req.session as any).user = safe;
+      res.json(safe);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+      res.status(500).json({ message: "Không cập nhật được thông tin" });
+    }
+  });
+
+  const avatarUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
+  });
+
+  app.post(
+    "/api/profile/avatar",
+    requireAuth,
+    (req, res, next) => {
+      avatarUpload.single("avatar")(req, res, (err) => {
+        if (err) {
+          if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+            return res.status(400).json({ message: "Ảnh không được vượt quá 5MB" });
+          }
+          return res.status(400).json({ message: "Không tải được ảnh đại diện" });
+        }
+        next();
+      });
+    },
+    async (req, res) => {
+      try {
+        const userId = (req.session as any).user.id as string;
+        const file = req.file;
+        if (!file) {
+          return res.status(400).json({ message: "Chưa chọn ảnh đại diện" });
+        }
+
+        const mime = (file.mimetype || "").toLowerCase();
+        const extByMime: Record<string, string> = {
+          "image/jpeg": "jpg",
+          "image/png": "png",
+          "image/webp": "webp",
+          "image/gif": "gif",
+        };
+        const ext = extByMime[mime];
+        if (!ext) {
+          return res.status(400).json({
+            message: "Chỉ nhận ảnh JPG, PNG, GIF hoặc WebP",
+          });
+        }
+
+        const uniqueFileName = `${userId}-${Date.now()}.${ext}`;
+        const uploadConfig: MediaUploadConfig = {
+          provider: "primary",
+          folder: "avatars",
+          allowedTypes: ["image/*"],
+          maxSizeBytes: 5 * 1024 * 1024,
+        };
+        const uploadResult = await multiR2Storage.uploadFile(
+          file.buffer,
+          uniqueFileName,
+          file.mimetype,
+          uploadConfig,
+        );
+        if (!uploadResult.success) {
+          return res.status(503).json({
+            message: uploadResult.error || "Không lưu được ảnh đại diện",
+          });
+        }
+
+        const avatarUrl = `/api/proxy-image/primary/avatars/${uniqueFileName}`;
+        const updated = await storage.updateUser(userId, { avatarUrl });
+        if (!updated) {
+          return res.status(404).json({ message: "Không tìm thấy tài khoản" });
+        }
+
+        const safe = sanitizeUser(updated);
+        (req.session as any).user = safe;
+        res.json(safe);
+      } catch (error) {
+        console.error("Error uploading avatar:", error);
+        res.status(500).json({ message: "Không tải được ảnh đại diện" });
+      }
+    },
+  );
 
   // Users endpoint - for managers and admins
   app.get("/api/users", requireAdminOrManager, async (req, res) => {

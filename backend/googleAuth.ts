@@ -113,6 +113,7 @@ export async function findOrCreateGoogleUser(
     password: null,
     googleId: profile.googleId,
     role: "user",
+    avatarUrl: null,
   });
 
   return { user: newUser, isNew: true };

@@ -133,8 +133,20 @@ export function getRateLimitRemaining(email: string): {
 export async function sendVerificationEmail(
   email: string,
   code: string,
-  type: "registration",
+  type: "registration" | "password_reset",
 ): Promise<SendEmailResult> {
+  if (type === "password_reset") {
+    const subject = `Mã đặt lại mật khẩu - ${APP_NAME}`;
+    const html = buildOtpEmailHtml({
+      title: APP_NAME,
+      intro: `Bạn đang đặt lại mật khẩu tài khoản <strong>${APP_NAME}</strong>. Nhập mã bên dưới để tiếp tục:`,
+      code,
+      footer: "Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.",
+    });
+    const text = `Mã đặt lại mật khẩu ${APP_NAME}: ${code}. Mã có hiệu lực 5 phút.`;
+    return sendEmail(email, subject, html, text);
+  }
+
   const subject = `Mã xác minh đăng ký - ${APP_NAME}`;
   const html = buildOtpEmailHtml({
     title: APP_NAME,

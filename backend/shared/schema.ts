@@ -21,6 +21,7 @@ export const users = pgTable("users", {
   role: text("role").notNull().default("user"), // user, manager, admin
   /** null/[] = all portals; otherwise manager is limited to these portal ids */
   portals: text("portals").array(),
+  avatarUrl: text("avatar_url"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
@@ -85,6 +86,8 @@ export const emailVerifications = pgTable("email_verifications", {
   isUsed: boolean("is_used").default(false),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+export type EmailOtpType = "registration" | "password_reset";
 
 // Online exam system tables
 export const exams = pgTable("exams", {
@@ -341,7 +344,35 @@ export const insertUserSchema = createInsertSchema(users).pick({
   googleId: true,
   role: true,
   portals: true,
+  avatarUrl: true,
 });
+
+export const updateProfileSchema = z.object({
+  fullName: z
+    .string()
+    .trim()
+    .max(80, "Họ tên không được quá 80 ký tự")
+    .optional()
+    .nullable(),
+  email: z
+    .string()
+    .trim()
+    .email("Email không đúng định dạng")
+    .max(120)
+    .optional()
+    .nullable(),
+  phone: z
+    .string()
+    .trim()
+    .refine(
+      (v) => !v || /^[0-9]{10,11}$/.test(v),
+      "Số điện thoại phải có 10 hoặc 11 chữ số",
+    )
+    .optional()
+    .nullable(),
+});
+
+export type UpdateProfile = z.infer<typeof updateProfileSchema>;
 
 
 export const insertRegistrationRequestSchema = createInsertSchema(registrationRequests).omit({
@@ -379,6 +410,20 @@ export const registrationFormSchema = z.object({
   message: "Xác nhận mật khẩu không khớp",
   path: ["confirmPassword"],
 });
+
+export const resetPasswordSchema = z.object({
+  email: z.string().email("Email không đúng định dạng"),
+  code: z.string().regex(/^\d{6}$/, "Mã xác minh phải có 6 chữ số"),
+  password: z.string()
+    .min(PASSWORD_MIN_LENGTH, "Mật khẩu phải có ít nhất 8 ký tự")
+    .refine(isPasswordValid, PASSWORD_VALIDATION_MESSAGE),
+  confirmPassword: z.string(),
+}).refine((data) => data.password === data.confirmPassword, {
+  message: "Xác nhận mật khẩu không khớp",
+  path: ["confirmPassword"],
+});
+
+export type ResetPasswordInput = z.infer<typeof resetPasswordSchema>;
 
 export const insertContactRequestSchema = createInsertSchema(contactRequests).omit({
   id: true,

@@ -165,10 +165,10 @@ function NavLinkItem({
       ? "block w-full text-left px-4 py-3 text-[15px] rounded-xl"
       : stacked
         ? cn(
-            "inline-flex items-center py-1.5 text-sm tracking-[0.01em]",
+            "inline-flex shrink-0 items-center py-1.5 text-sm tracking-[0.01em]",
             respectHideBelowXl && item.hideBelowXl && "hidden xl:inline-flex",
             tnjsNav &&
-              "rounded-full px-3.5 font-semibold uppercase tracking-[0.04em] text-[13px]",
+              "rounded-full px-2.5 font-semibold uppercase tracking-[0.04em] text-[12px] xl:px-3.5 xl:text-[13px]",
             tnjsNav && active && "bg-[#00A651] text-white",
           )
         : cn(
@@ -380,7 +380,15 @@ function UserMenu({
           data-testid="user-menu-button"
           aria-label={`Tài khoản ${user.username}`}
         >
-          <User className="w-4 h-4 mr-1.5 opacity-70" />
+          {user.avatarUrl ? (
+            <img
+              src={user.avatarUrl}
+              alt=""
+              className="mr-1.5 h-6 w-6 rounded-full object-cover"
+            />
+          ) : (
+            <User className="w-4 h-4 mr-1.5 opacity-70" />
+          )}
           <span className="max-w-[7.5rem] truncate">{user.username}</span>
         </Button>
       </DropdownMenuTrigger>
@@ -389,6 +397,12 @@ function UserMenu({
           <span className="font-medium">{roleLabel[user.role] || user.role}</span>
         </DropdownMenuItem>
         <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link href="/profile/exams" className="flex items-center cursor-pointer">
+            <User className="w-4 h-4 mr-2" />
+            Hồ sơ
+          </Link>
+        </DropdownMenuItem>
         {isStaff && (
           <DropdownMenuItem asChild>
             <Link href="/cpanel" className="flex items-center cursor-pointer">
@@ -496,6 +510,15 @@ function MobileAuth({
             {roleLabel[user.role] || user.role}
           </span>
         </div>
+        <Link href="/profile/exams" className="block" onClick={onNavigate}>
+          <Button
+            variant="outline"
+            className="w-full justify-start h-11"
+          >
+            <User className="w-4 h-4 mr-2" />
+            Hồ sơ
+          </Button>
+        </Link>
         {isStaff && (
           <Link href="/cpanel" className="block" onClick={onNavigate}>
             <Button
@@ -662,7 +685,7 @@ export function Header() {
         <nav
           className={cn(
             "mx-auto hidden lg:grid w-full max-w-[90rem] px-5 sm:px-8 lg:px-10",
-            "grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-2 gap-x-14 xl:gap-x-16 items-center",
+            "grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-2 gap-x-8 xl:gap-x-12 items-center",
             "transition-[padding] duration-300 ease-out",
             scrolled ? "py-1.5" : "py-2.5",
           )}
@@ -693,12 +716,12 @@ export function Header() {
             </div>
           </div>
 
-          <div className="flex items-center min-h-11 pl-6 xl:pl-10">
+          <div className="flex min-h-11 min-w-0 items-center pl-6 xl:pl-10">
             <NavLinks
               location={location}
               respectHideBelowXl={false}
               stacked
-              className="flex flex-wrap gap-x-5 xl:gap-x-7 gap-y-1"
+              className="flex w-full min-w-0 flex-nowrap items-center gap-x-2.5 overflow-x-auto overscroll-x-contain xl:gap-x-4 2xl:gap-x-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             />
           </div>
         </nav>

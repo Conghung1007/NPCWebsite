@@ -291,6 +291,107 @@ export async function listEntitlementsForUser(
     .orderBy(desc(examLevelEntitlements.createdAt));
 }
 
+const purchasedExamSelect = {
+  id: exams.id,
+  title: exams.title,
+  description: exams.description,
+  level: exams.level,
+  isDemo: exams.isDemo,
+  isActive: exams.isActive,
+  isLevelTrial: exams.isLevelTrial,
+  sections: exams.sections,
+  vocabularyTimeLimit: exams.vocabularyTimeLimit,
+  grammarTimeLimit: exams.grammarTimeLimit,
+  listeningTimeLimit: exams.listeningTimeLimit,
+  readingTimeLimit: exams.readingTimeLimit,
+  vocabularyQuestions: exams.vocabularyQuestions,
+  grammarQuestions: exams.grammarQuestions,
+  listeningQuestions: exams.listeningQuestions,
+  readingQuestions: exams.readingQuestions,
+};
+
+export type PurchasedExamItem = {
+  id: string;
+  title: string;
+  description: string | null;
+  level: string | null;
+  isDemo: boolean | null;
+  isActive: boolean | null;
+  isLevelTrial: boolean | null;
+  sections: unknown;
+  vocabularyTimeLimit: number | null;
+  grammarTimeLimit: number | null;
+  listeningTimeLimit: number | null;
+  readingTimeLimit: number | null;
+  vocabularyQuestions: unknown;
+  grammarQuestions: unknown;
+  listeningQuestions: unknown;
+  readingQuestions: unknown;
+};
+
+export type PurchasedPackageGroup = {
+  entitlementId: string;
+  packageId: string | null;
+  name: string;
+  level: string | null;
+  status: string;
+  exams: PurchasedExamItem[];
+};
+
+export async function listPurchasedPackagesForUser(
+  userId: string,
+): Promise<PurchasedPackageGroup[]> {
+  const rows = await listEntitlementsForUser(userId);
+  const groups: PurchasedPackageGroup[] = [];
+  const seen = new Set<string>();
+
+  for (const row of rows) {
+    if (row.status !== "active" && row.status !== "pending") continue;
+
+    if (row.packageId) {
+      const key = `pkg:${row.packageId}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const pkg = await getExamPackage(row.packageId);
+      const examRows = await db
+        .select(purchasedExamSelect)
+        .from(exams)
+        .where(eq(exams.packageId, row.packageId))
+        .orderBy(asc(exams.title));
+      groups.push({
+        entitlementId: row.id,
+        packageId: row.packageId,
+        name: pkg?.name || "Gói đề",
+        level: pkg?.level || row.level || null,
+        status: row.status,
+        exams: examRows.filter((e) => e.isActive !== false),
+      });
+      continue;
+    }
+
+    if (row.status === "active" && isExamLevel(row.level)) {
+      const key = `lvl:${row.level}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      const examRows = await db
+        .select(purchasedExamSelect)
+        .from(exams)
+        .where(eq(exams.level, row.level))
+        .orderBy(asc(exams.title));
+      groups.push({
+        entitlementId: row.id,
+        packageId: null,
+        name: `Gói ${row.level.toUpperCase()}`,
+        level: row.level,
+        status: row.status,
+        exams: examRows.filter((e) => e.isActive !== false && !e.isDemo),
+      });
+    }
+  }
+
+  return groups;
+}
+
 export async function listActiveLevelsForUser(
   userId: string,
 ): Promise<ExamLevel[]> {

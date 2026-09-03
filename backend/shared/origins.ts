@@ -3,11 +3,35 @@
  */
 import { PORTAL_HOSTS, PORTAL_IDS, isPortalId, type PortalId } from "./portal";
 
+/** Apex domains we actually share cookies across (group + sub-portals). */
+const SHARED_COOKIE_ROOTS = ["npgroup.com", "npgroup.vn"] as const;
+
+/**
+ * Public suffixes — browsers reject `Domain=.onrender.com` (and similar).
+ * Host-only cookies must be used on Render until custom DNS is live.
+ */
+const PUBLIC_COOKIE_SUFFIXES = [
+  "onrender.com",
+  "render.com",
+  "vercel.app",
+  "netlify.app",
+  "railway.app",
+  "herokuapp.com",
+  "github.io",
+];
+
+function isPublicCookieSuffix(host: string): boolean {
+  const h = host.replace(/^\./, "").toLowerCase();
+  return PUBLIC_COOKIE_SUFFIXES.some((s) => h === s || h.endsWith(`.${s}`));
+}
+
 /** Cookie Domain shared across apex + subdomains (e.g. `.npgroup.com`) */
 export function resolveCookieDomain(): string | undefined {
   const explicit = process.env.COOKIE_DOMAIN?.trim();
   if (explicit) {
-    return explicit.startsWith(".") ? explicit : `.${explicit}`;
+    const domain = explicit.startsWith(".") ? explicit : `.${explicit}`;
+    if (isPublicCookieSuffix(domain)) return undefined;
+    return domain.toLowerCase();
   }
   if (process.env.NODE_ENV !== "production") return undefined;
 
@@ -15,15 +39,11 @@ export function resolveCookieDomain(): string | undefined {
   if (!publicUrl) return undefined;
   try {
     const host = new URL(publicUrl).hostname.toLowerCase();
-    if (host === "npgroup.com" || host.endsWith(".npgroup.com")) {
-      return ".npgroup.com";
-    }
-    if (host === "npgroup.vn" || host.endsWith(".npgroup.vn")) {
-      return ".npgroup.vn";
-    }
-    const parts = host.split(".");
-    if (parts.length >= 2) {
-      return `.${parts.slice(-2).join(".")}`;
+    if (isPublicCookieSuffix(host)) return undefined;
+    for (const root of SHARED_COOKIE_ROOTS) {
+      if (host === root || host.endsWith(`.${root}`)) {
+        return `.${root}`;
+      }
     }
   } catch {
     /* ignore */

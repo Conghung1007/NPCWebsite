@@ -150,6 +150,16 @@ export default function Login() {
           </div>
         </div>
 
+        <div className="flex justify-end">
+          <Link
+            href={authLinkWithRedirect("/forgot-password")}
+            className="text-sm font-medium hover:underline"
+            style={{ color: TNJS.green }}
+          >
+            Quên mật khẩu?
+          </Link>
+        </div>
+
         <Button
           type="submit"
           className="w-full h-11 font-bold text-white hover:opacity-95"

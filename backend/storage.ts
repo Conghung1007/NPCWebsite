@@ -1,4 +1,4 @@
-import { type User, type InsertUser, type ContactRequest, type InsertContactRequest, type ContactInfo, type InsertContactInfo, type Article, type InsertArticle, type UiImage, type InsertUiImage, type RegistrationRequest, type InsertRegistrationRequest, type Exam, type InsertExam, type Question, type InsertQuestion, type ExamAttempt, type InsertExamAttempt, type Testimonial, type InsertTestimonial, type SiteContent, type EmailVerification } from "@shared/schema";
+import { type User, type InsertUser, type ContactRequest, type InsertContactRequest, type ContactInfo, type InsertContactInfo, type Article, type InsertArticle, type UiImage, type InsertUiImage, type RegistrationRequest, type InsertRegistrationRequest, type Exam, type InsertExam, type Question, type InsertQuestion, type ExamAttempt, type InsertExamAttempt, type Testimonial, type InsertTestimonial, type SiteContent, type EmailVerification, type EmailOtpType } from "@shared/schema";
 import { users, contactRequests, contactInfo, articles, uiImages, registrationRequests, emailVerifications, exams, questions, examAttempts, testimonials, siteContents } from "@shared/schema";
 import { db } from "./db";
 import { eq, sql, inArray, asc, and } from "drizzle-orm";
@@ -92,17 +92,17 @@ export interface IStorage {
   createEmailVerification(
     email: string,
     code: string,
-    type: "registration",
+    type: EmailOtpType,
     expiresAt: Date,
   ): Promise<EmailVerification>;
   verifyEmailCode(
     email: string,
     code: string,
-    type: "registration",
+    type: EmailOtpType,
     options?: { consume?: boolean; incrementAttempts?: boolean },
   ): Promise<{ success: boolean; error?: string; verificationId?: string }>;
   markEmailVerificationUsed(id: string): Promise<void>;
-  deleteVerificationsByEmail(email: string, type: "registration"): Promise<void>;
+  deleteVerificationsByEmail(email: string, type: EmailOtpType): Promise<void>;
   
   // Exam system methods
   createExam(exam: InsertExam): Promise<Exam>;
@@ -134,6 +134,7 @@ export interface IStorage {
   getInProgressExamAttempt(examId: string, userId: string): Promise<ExamAttempt | undefined>;
   getExamAttemptCounts(): Promise<Record<string, number>>;
   getExamAttemptsByUserId(userId: string): Promise<ExamAttempt[]>;
+  getUserExamAttempts(userId: string): Promise<ExamAttempt[]>;
   getExamAttemptsByExamId(examId: string): Promise<ExamAttempt[]>;
   listCompletedExamAttempts(options?: {
     examId?: string;
@@ -228,6 +229,7 @@ export class MemStorage implements IStorage {
       googleId: insertUser.googleId ?? null,
       role: insertUser.role || "user",
       portals: insertUser.portals ?? null,
+      avatarUrl: insertUser.avatarUrl ?? null,
       createdAt: new Date()
     };
     this.users.set(id, user);
@@ -1265,6 +1267,16 @@ export class MemStorage implements IStorage {
     ).sort((a, b) => (b.completedAt?.getTime() || 0) - (a.completedAt?.getTime() || 0));
   }
 
+  async getUserExamAttempts(userId: string): Promise<ExamAttempt[]> {
+    return Array.from(this.examAttempts.values())
+      .filter((attempt) => attempt.userId === userId)
+      .sort((a, b) => {
+        const aTime = (a.completedAt || a.startedAt)?.getTime() || 0;
+        const bTime = (b.completedAt || b.startedAt)?.getTime() || 0;
+        return bTime - aTime;
+      });
+  }
+
   async getExamAttemptsByExamId(examId: string): Promise<ExamAttempt[]> {
     return Array.from(this.examAttempts.values()).filter(
       attempt => attempt.examId === examId && attempt.status === "completed"
@@ -1646,7 +1658,7 @@ export class DatabaseStorage implements IStorage {
   async createEmailVerification(
     email: string,
     code: string,
-    type: "registration",
+    type: EmailOtpType,
     expiresAt: Date,
   ): Promise<EmailVerification> {
     await this.deleteVerificationsByEmail(email, type);
@@ -1664,7 +1676,7 @@ export class DatabaseStorage implements IStorage {
 
   async getEmailVerification(
     email: string,
-    type: "registration",
+    type: EmailOtpType,
   ): Promise<EmailVerification | undefined> {
     const [result] = await db
       .select()
@@ -1682,7 +1694,7 @@ export class DatabaseStorage implements IStorage {
   async verifyEmailCode(
     email: string,
     code: string,
-    type: "registration",
+    type: EmailOtpType,
     options?: { consume?: boolean; incrementAttempts?: boolean },
   ): Promise<{ success: boolean; error?: string; verificationId?: string }> {
     const consume = options?.consume !== false;
@@ -1743,7 +1755,7 @@ export class DatabaseStorage implements IStorage {
 
   async deleteVerificationsByEmail(
     email: string,
-    type: "registration",
+    type: EmailOtpType,
   ): Promise<void> {
     await db
       .delete(emailVerifications)
@@ -2041,6 +2053,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(examAttempts)
       .where(and(eq(examAttempts.userId, userId), eq(examAttempts.status, "completed")));
+  }
+
+  async getUserExamAttempts(userId: string): Promise<ExamAttempt[]> {
+    return await db
+      .select()
+      .from(examAttempts)
+      .where(eq(examAttempts.userId, userId))
+      .orderBy(sql`COALESCE(${examAttempts.completedAt}, ${examAttempts.startedAt}) DESC`);
   }
 
   async getExamAttemptsByExamId(examId: string): Promise<ExamAttempt[]> {
