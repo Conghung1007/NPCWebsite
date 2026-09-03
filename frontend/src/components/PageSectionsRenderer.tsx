@@ -7,12 +7,18 @@ import { EditableContentImage } from "@/components/ui/editable-content-image";
 import { ContactForm } from "@/components/ui/contact-form";
 import { ArticleSection } from "@/components/ArticleSection";
 import { TestimonialCard } from "@/components/ui/testimonial-card";
+import {
+  ExamPackagesSection,
+} from "@/components/ExamPackagesSection";
+import { ExamListSection } from "@/components/ExamListSection";
 import { TnjsPillTitle } from "@/components/TnjsUi";
 import { TNJS } from "@/lib/tnjsTheme";
 import { apiFetch } from "@/lib/queryClient";
 import { resolvePortal } from "@/lib/portal";
 import { portalHref } from "@/lib/portal";
 import {
+  LAYOUT_PAGE_IMAGE_PREFIX,
+  isLayoutPageId,
   parsePortalHref,
   type PageSection,
   type SectionType,
@@ -22,12 +28,29 @@ import { cn } from "@/lib/utils";
 
 function str(props: Record<string, unknown>, key: string, fallback = ""): string {
   const v = props[key];
-  return typeof v === "string" ? v : fallback;
+  if (typeof v !== "string") return fallback;
+  return v;
+}
+
+/** Prefer non-empty trimmed string; otherwise fallback (fixes blank hero prefix). */
+function strOr(
+  props: Record<string, unknown>,
+  key: string,
+  fallback: string,
+): string {
+  const v = props[key];
+  if (typeof v === "string" && v.trim()) return v.trim();
+  return fallback;
 }
 
 function num(props: Record<string, unknown>, key: string, fallback: number): number {
   const v = props[key];
-  return typeof v === "number" && Number.isFinite(v) ? v : fallback;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && v.trim()) {
+    const n = Number(v);
+    if (Number.isFinite(n)) return n;
+  }
+  return fallback;
 }
 
 function resolveHref(href: string | undefined): {
@@ -57,7 +80,7 @@ function CtaLink({
   label?: string;
   variant?: "primary" | "outline";
 }) {
-  if (!label?.trim() || !href) return null;
+  if (!label?.trim() || !href?.trim()) return null;
   const resolved = resolveHref(href);
   const btn =
     variant === "outline" ? (
@@ -113,7 +136,11 @@ function SectionShell({
 
 function HeroSection({ section }: { section: PageSection }) {
   const p = section.props;
-  const prefix = str(p, "imageTypePrefix", "group");
+  const portal = resolvePortal();
+  const defaultPrefix = isLayoutPageId(portal)
+    ? LAYOUT_PAGE_IMAGE_PREFIX[portal]
+    : "group";
+  const prefix = strOr(p, "imageTypePrefix", defaultPrefix);
   return (
     <EditableHeroCarousel
       imageTypePrefix={prefix}
@@ -150,7 +177,7 @@ function HeroSection({ section }: { section: PageSection }) {
 
 function RichTextSection({ section }: { section: PageSection }) {
   const p = section.props;
-  const imageType = str(p, "imageType");
+  const imageType = strOr(p, "imageType", "");
   return (
     <SectionShell bg="cream">
       <TnjsPillTitle variant="onLight">{str(p, "title")}</TnjsPillTitle>
@@ -193,13 +220,22 @@ function FeatureGridSection({ section }: { section: PageSection }) {
         <div className="mb-10" />
       )}
       <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-3">
+        {items.length === 0 ? (
+          <p className="col-span-full text-center text-sm text-white/60">
+            Chưa có mục nổi bật — thêm trong Cpanel → Nội dung trang.
+          </p>
+        ) : null}
         {items.map((raw, i) => {
           const item =
             raw && typeof raw === "object"
               ? (raw as Record<string, unknown>)
               : {};
+          const key =
+            typeof item.id === "string" && item.id
+              ? item.id
+              : `feature-${i}`;
           return (
-            <div key={i} className="text-center sm:text-left">
+            <div key={key} className="text-center sm:text-left">
               <p
                 className="mb-2 text-xs font-bold tracking-[0.2em]"
                 style={{ color: TNJS.green }}
@@ -235,6 +271,11 @@ function CardsSection({ section }: { section: PageSection }) {
         <div className="mb-10" />
       )}
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {items.length === 0 ? (
+          <p className="col-span-full text-center text-sm text-white/80">
+            Chưa có thẻ — thêm trong Cpanel → Nội dung trang.
+          </p>
+        ) : null}
         {items.map((raw, i) => {
           const item =
             raw && typeof raw === "object"
@@ -243,11 +284,15 @@ function CardsSection({ section }: { section: PageSection }) {
           const title = String(item.title ?? "");
           const href = typeof item.href === "string" ? item.href : undefined;
           const imageType =
-            typeof item.imageType === "string" ? item.imageType : "";
+            typeof item.imageType === "string" ? item.imageType.trim() : "";
           const resolved = resolveHref(href);
           const description = String(item.description ?? "");
           const cta = String(item.cta ?? "Xem thêm");
           const label = item.label ? String(item.label) : "";
+          const key =
+            typeof item.id === "string" && item.id
+              ? item.id
+              : `card-${i}-${title}`;
 
           const card = (
             <article className="group flex h-full flex-col overflow-hidden rounded-xl bg-white text-left shadow-lg transition-transform duration-300 hover:-translate-y-1.5">
@@ -317,11 +362,11 @@ function CardsSection({ section }: { section: PageSection }) {
             </article>
           );
 
-          if (!href) return <div key={i}>{card}</div>;
+          if (!href?.trim()) return <div key={key}>{card}</div>;
           if (resolved.external) {
             return (
               <a
-                key={i}
+                key={key}
                 href={resolved.href}
                 rel="noopener noreferrer"
                 className="block h-full"
@@ -331,7 +376,7 @@ function CardsSection({ section }: { section: PageSection }) {
             );
           }
           return (
-            <Link key={i} href={resolved.href} className="block h-full">
+            <Link key={key} href={resolved.href} className="block h-full">
               {card}
             </Link>
           );
@@ -343,7 +388,7 @@ function CardsSection({ section }: { section: PageSection }) {
 
 function TestimonialsSection({ section }: { section: PageSection }) {
   const p = section.props;
-  const limit = num(p, "limit", 3);
+  const limit = Math.min(12, Math.max(1, Math.round(num(p, "limit", 3))));
   const portal = resolvePortal();
   const { data: testimonials = [] } = useQuery<Testimonial[]>({
     queryKey: ["/api/testimonials", portal],
@@ -356,7 +401,6 @@ function TestimonialsSection({ section }: { section: PageSection }) {
     },
   });
   const list = testimonials.filter((t) => t.isActive !== false).slice(0, limit);
-  if (list.length === 0) return null;
   return (
     <SectionShell bg="cream">
       <TnjsPillTitle variant="onLight">
@@ -369,19 +413,25 @@ function TestimonialsSection({ section }: { section: PageSection }) {
       ) : (
         <div className="mb-10" />
       )}
-      <div className="grid gap-8 md:grid-cols-3">
-        {list.map((t) => (
-          <TestimonialCard
-            key={t.id}
-            id={t.id}
-            name={t.name}
-            role={t.role || ""}
-            content={t.content}
-            avatar={t.avatarUrl}
-            rating={t.rating ?? 5}
-          />
-        ))}
-      </div>
+      {list.length === 0 ? (
+        <p className="text-center text-sm text-neutral-500">
+          Chưa có đánh giá hiển thị. Thêm trong Cpanel → Đánh giá.
+        </p>
+      ) : (
+        <div className="grid gap-8 md:grid-cols-3">
+          {list.map((t) => (
+            <TestimonialCard
+              key={t.id}
+              id={t.id}
+              name={t.name}
+              role={t.role || ""}
+              content={t.content}
+              avatar={t.avatarUrl}
+              rating={t.rating ?? 5}
+            />
+          ))}
+        </div>
+      )}
     </SectionShell>
   );
 }
@@ -401,7 +451,7 @@ function ArticlesBlock({ section }: { section: PageSection }) {
         <div className="mb-8" />
       )}
       <ArticleSection
-        category={str(p, "category", "general")}
+        category={strOr(p, "category", "japanese-training")}
         title={str(p, "title", "Tin tức")}
         description={undefined}
         hideHeader
@@ -432,6 +482,53 @@ function CtaFormSection({ section }: { section: PageSection }) {
   );
 }
 
+function ExamPackagesBlock({ section }: { section: PageSection }) {
+  const p = section.props;
+  const alignRaw = str(p, "align", "center");
+  const align =
+    alignRaw === "left" || alignRaw === "right" ? alignRaw : "center";
+  return (
+    <section
+      id="exam-packages"
+      className="py-16 sm:py-20"
+      style={{ backgroundColor: TNJS.green }}
+    >
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <ExamPackagesSection
+          title={str(p, "title", "Gói đề luyện thi")}
+          description={str(p, "description") || undefined}
+          showAccessGuide={p.showAccessGuide !== false}
+          align={align}
+        />
+      </div>
+    </section>
+  );
+}
+
+function ExamListBlock({ section }: { section: PageSection }) {
+  const p = section.props;
+  const alignRaw = str(p, "align", "center");
+  const align =
+    alignRaw === "left" || alignRaw === "right" ? alignRaw : "center";
+  return (
+    <section id="exam-list" className="py-16 sm:py-20 bg-white">
+      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+        <ExamListSection
+          title={str(p, "title", "Danh sách đề thi")}
+          description={
+            str(
+              p,
+              "description",
+              "Chọn đề miễn phí hoặc đề chính thức theo trình độ của bạn.",
+            ) || undefined
+          }
+          align={align}
+        />
+      </div>
+    </section>
+  );
+}
+
 const SECTION_RENDERERS: Record<
   SectionType,
   (props: { section: PageSection }) => ReactElement | null
@@ -443,6 +540,8 @@ const SECTION_RENDERERS: Record<
   testimonials: TestimonialsSection,
   articles: ArticlesBlock,
   cta_form: CtaFormSection,
+  exam_packages: ExamPackagesBlock,
+  exam_list: ExamListBlock,
 };
 
 export function PageSectionsRenderer({

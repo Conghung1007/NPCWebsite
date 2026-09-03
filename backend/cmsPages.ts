@@ -8,7 +8,7 @@ import {
   validateCmsSlug,
   type CmsPageRow,
 } from "@shared/cmsPages";
-import { createSection, defaultLayoutForPage, collectImageTypesFromSections } from "@shared/pageSections";
+import { defaultCustomPageLayout, collectImageTypesFromSections } from "@shared/pageSections";
 import { getPageLayout, savePageLayout, deletePageLayout } from "./pageLayouts";
 import { purgeUiImageSlots, type UiImagePurgeResult } from "./uiImageCleanup";
 import type { PortalId } from "@shared/portal";
@@ -116,39 +116,22 @@ export async function createCmsPage(input: unknown): Promise<CmsPageRow> {
 
   const page = rowToCmsPage(row);
   const template = PORTAL_BLOCK_TEMPLATE[data.portal];
-  const seed = defaultLayoutForPage(template);
-  const sections =
-    seed.length > 0
-      ? seed.map((s, i) => ({
-          ...s,
-          id: `${s.type}-${page.id.slice(0, 8)}-${i}`,
-          sortOrder: i,
-          props:
-            s.type === "hero"
-              ? {
-                  ...s.props,
-                  imageTypePrefix: imagePrefix,
-                  title: data.label,
-                }
-              : s.props,
-        }))
-      : [
-          createSection(
-            "hero",
-            {
-              brandName: "N&P",
-              title: data.label,
-              description: data.description || "",
-              imageTypePrefix: imagePrefix,
-              ctaPrimaryLabel: "Liên hệ",
-              ctaPrimaryHref: "/contact",
-            },
-            0,
-            template,
-          ),
-        ];
+  const sections = defaultCustomPageLayout(template, {
+    title: data.label.trim(),
+    description: (data.description ?? "").trim(),
+    imagePrefix,
+  }).map((s, i) => ({
+    ...s,
+    id: `${s.type}-${page.id.slice(0, 8)}-${i}`,
+    sortOrder: i,
+  }));
 
-  await savePageLayout(page.id, data.portal, sections);
+  try {
+    await savePageLayout(page.id, data.portal, sections);
+  } catch (err) {
+    await db.delete(cmsPages).where(eq(cmsPages.id, page.id));
+    throw err;
+  }
 
   return page;
 }

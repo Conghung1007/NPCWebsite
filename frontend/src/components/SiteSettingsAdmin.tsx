@@ -55,7 +55,7 @@ export function SiteSettingsAdmin() {
     <div className="space-y-8 max-w-3xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
-          Portal: <strong>{PORTAL_META[portal]?.label || portal}</strong>
+          Portal: <strong>{PORTAL_META[portal]?.label || PORTAL_META[portal]?.brand || portal}</strong>
         </p>
         <Button
           size="sm"

@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Layout } from "@/components/layout/layout";
 import { PortalProvider } from "@/contexts/PortalContext";
 import { PortalRouteGuard } from "@/components/PortalRouteGuard";
+import { DeployChunkErrorBoundary } from "@/components/DeployChunkErrorBoundary";
 
 import NotFound from "@/pages/not-found";
 import PortalHome from "@/pages/portal-home";
@@ -209,9 +210,11 @@ function App() {
       <TooltipProvider>
         <PortalProvider>
           <Toaster />
-          <PortalRouteGuard>
-            <Router />
-          </PortalRouteGuard>
+          <DeployChunkErrorBoundary fallback={<PageFallback />}>
+            <PortalRouteGuard>
+              <Router />
+            </PortalRouteGuard>
+          </DeployChunkErrorBoundary>
         </PortalProvider>
       </TooltipProvider>
     </QueryClientProvider>

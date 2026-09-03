@@ -9,6 +9,15 @@ export const cmsPageKeys = {
     ["/api/cms-pages", portal] as const,
 };
 
+function appendCmsPage(
+  old: PageContentEntry[] | undefined,
+  created: PageContentEntry,
+): PageContentEntry[] {
+  if (!old) return [created];
+  if (old.some((p) => p.id === created.id)) return old;
+  return [...old, created];
+}
+
 export function useCmsPages(portal?: PortalId | "all") {
   return useQuery<PageContentEntry[]>({
     queryKey: cmsPageKeys.portal(portal ?? "all"),
@@ -37,7 +46,11 @@ export function useCreateCmsPage() {
       const res = await apiRequest("POST", "/api/cms-pages", body);
       return res.json() as Promise<PageContentEntry>;
     },
-    onSuccess: () => {
+    onSuccess: (created) => {
+      queryClient.setQueriesData<PageContentEntry[]>(
+        { queryKey: ["/api/cms-pages"] },
+        (old) => appendCmsPage(old, created),
+      );
       queryClient.invalidateQueries({ queryKey: cmsPageKeys.all });
     },
   });

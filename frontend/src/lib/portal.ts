@@ -33,6 +33,132 @@ export type NavItem = {
 
 const STORAGE_KEY = "npc_portal";
 
+/** Path prefixes allowed per portal (plus always-shared paths). */
+export const PORTAL_PATHS: Record<PortalId, string[]> = {
+  group: ["/", "/contact", "/japanese-training"],
+  huongnghiep: [
+    "/",
+    "/du-hoc",
+    "/di-lam",
+    "/dao-tao-nghe",
+    "/countries",
+    "/schools",
+    "/costs",
+    "/documents",
+    "/faq",
+    "/visa-services",
+    "/study-abroad",
+    "/news",
+    "/contact",
+  ],
+  dichvu: [
+    "/",
+    "/bien-phien-dich",
+    "/ky-nang-mem",
+    "/tu-van-doanh-nghiep",
+    "/courses",
+    "/schedule",
+    "/enterprise",
+    "/news",
+    "/contact",
+  ],
+  luyenthi: [
+    "/",
+    "/classes",
+    "/cart",
+    "/checkout",
+    "/online-exam",
+    "/exam",
+    "/exam-result",
+    "/exam-attempts",
+    "/certificate",
+    "/news",
+    "/contact",
+  ],
+};
+
+export const SHARED_PATH_PREFIXES = [
+  "/login",
+  "/register",
+  "/forgot-password",
+  "/profile",
+  "/company",
+  "/cpanel",
+  "/article",
+  "/create-article",
+  "/edit-article",
+  "/create-exam",
+  "/edit-exam",
+  "/manage",
+];
+
+/** Exclusive route owners — longer prefixes first (`/exam-result` before `/exam`). */
+const PATH_OWNING_PORTAL: Array<{ prefix: string; portal: PortalId }> = [
+  { prefix: "/online-exam", portal: "luyenthi" },
+  { prefix: "/exam-result", portal: "luyenthi" },
+  { prefix: "/exam-attempts", portal: "luyenthi" },
+  { prefix: "/exam", portal: "luyenthi" },
+  { prefix: "/certificate", portal: "luyenthi" },
+  { prefix: "/classes", portal: "luyenthi" },
+  { prefix: "/cart", portal: "luyenthi" },
+  { prefix: "/checkout", portal: "luyenthi" },
+  { prefix: "/du-hoc", portal: "huongnghiep" },
+  { prefix: "/di-lam", portal: "huongnghiep" },
+  { prefix: "/dao-tao-nghe", portal: "huongnghiep" },
+  { prefix: "/visa-services", portal: "huongnghiep" },
+  { prefix: "/study-abroad", portal: "huongnghiep" },
+  { prefix: "/countries", portal: "huongnghiep" },
+  { prefix: "/schools", portal: "huongnghiep" },
+  { prefix: "/costs", portal: "huongnghiep" },
+  { prefix: "/documents", portal: "huongnghiep" },
+  { prefix: "/faq", portal: "huongnghiep" },
+  { prefix: "/bien-phien-dich", portal: "dichvu" },
+  { prefix: "/ky-nang-mem", portal: "dichvu" },
+  { prefix: "/tu-van-doanh-nghiep", portal: "dichvu" },
+  { prefix: "/courses", portal: "dichvu" },
+  { prefix: "/schedule", portal: "dichvu" },
+  { prefix: "/enterprise", portal: "dichvu" },
+  { prefix: "/japanese-training", portal: "group" },
+];
+
+function pathMatchesPrefix(pathname: string, prefix: string): boolean {
+  return pathname === prefix || (prefix !== "/" && pathname.startsWith(`${prefix}/`));
+}
+
+export function isPathAllowedForPortal(portal: PortalId, pathname: string): boolean {
+  if (SHARED_PATH_PREFIXES.some((p) => pathMatchesPrefix(pathname, p))) {
+    return true;
+  }
+  const allowed = PORTAL_PATHS[portal] || [];
+  if (allowed.some((p) => pathMatchesPrefix(pathname, p))) {
+    return true;
+  }
+
+  // Custom CMS pages (`/:slug`) — allow unless the path is owned by another portal.
+  if (/^\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(pathname)) {
+    const inferred = inferPortalForPath(pathname);
+    if (!inferred || inferred === portal) return true;
+  }
+
+  return false;
+}
+
+/** Infer portal from a deep link (e.g. /exam/:id → luyenthi) when soft-lock would 404. */
+export function inferPortalForPath(pathname: string): PortalId | null {
+  for (const { prefix, portal } of PATH_OWNING_PORTAL) {
+    if (pathMatchesPrefix(pathname, prefix)) return portal;
+  }
+  return null;
+}
+
+function persistPortal(portal: PortalId) {
+  try {
+    localStorage.setItem(STORAGE_KEY, portal);
+  } catch {
+    /* ignore */
+  }
+}
+
 function readQueryPortal(): PortalId | null {
   if (typeof window === "undefined") return null;
   const q = new URLSearchParams(window.location.search).get("portal");
@@ -53,11 +179,7 @@ function readStoredPortal(): PortalId | null {
 export function resolvePortal(): PortalId {
   const fromQuery = readQueryPortal();
   if (fromQuery) {
-    try {
-      localStorage.setItem(STORAGE_KEY, fromQuery);
-    } catch {
-      /* ignore */
-    }
+    persistPortal(fromQuery);
     return fromQuery;
   }
 
@@ -74,6 +196,21 @@ export function resolvePortal(): PortalId {
   if (fromEnv) return fromEnv;
 
   return "group";
+}
+
+/**
+ * Like resolvePortal, but if the current path belongs to another portal
+ * (common after F5 / deploy on /exam/... without ?portal=), switch to it.
+ */
+export function resolvePortalForPath(pathname: string): PortalId {
+  const base = resolvePortal();
+  if (isPathAllowedForPortal(base, pathname)) return base;
+  const inferred = inferPortalForPath(pathname);
+  if (inferred) {
+    persistPortal(inferred);
+    return inferred;
+  }
+  return base;
 }
 
 const ORIGIN_ENV: Record<PortalId, string | undefined> = {
@@ -147,25 +284,29 @@ export function groupOrigin(): string {
 
 export const PORTAL_META: Record<
   PortalId,
-  { brand: string; tagline: string; documentTitle: string }
+  { brand: string; label: string; tagline: string; documentTitle: string }
 > = {
   group: {
     brand: "N&P Group",
+    label: "N&P Group",
     tagline: "Hệ sinh thái giáo dục & quốc tế",
     documentTitle: "N&P Group",
   },
   huongnghiep: {
     brand: "Hướng nghiệp N&P",
+    label: "Hướng nghiệp",
     tagline: "Du học · Đi làm · Đào tạo nghề",
     documentTitle: "Hướng nghiệp — N&P Group",
   },
   dichvu: {
     brand: "Dịch vụ N&P",
+    label: "Dịch vụ",
     tagline: "Biên phiên dịch · Kỹ năng mềm · Tư vấn DN",
     documentTitle: "Dịch vụ — N&P Group",
   },
   luyenthi: {
     brand: "Luyện thi N&P",
+    label: "Luyện thi",
     tagline: "Thi thử & luyện đề",
     documentTitle: "Luyện thi — N&P Group",
   },

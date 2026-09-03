@@ -80,6 +80,9 @@ const SERVICES_BY_PORTAL: Record<PortalId, { value: string; label: string }[]> =
   ],
 };
 
+/** Exported for CMS block editor (cta_form defaultService select). */
+export { SERVICES_BY_PORTAL as CONTACT_SERVICES_BY_PORTAL };
+
 const DEFAULT_SERVICE: Record<PortalId, string> = {
   group: "",
   huongnghiep: "study-abroad",

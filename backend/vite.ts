@@ -30,9 +30,18 @@ export function serveStatic(app: Express) {
     );
   }
 
-  app.use(express.static(distPath));
+  app.use(express.static(distPath, { index: false }));
 
-  app.use("*", (_req, res) => {
+  // SPA fallback for client routes. Do NOT fall back for hashed /assets/*
+  // (after deploy, stale chunk URLs must 404 so the client can reload).
+  app.use("*", (req, res) => {
+    if (req.method !== "GET" && req.method !== "HEAD") {
+      return res.sendStatus(404);
+    }
+    const urlPath = (req.originalUrl || req.url || "").split("?")[0];
+    if (urlPath.startsWith("/assets/")) {
+      return res.sendStatus(404);
+    }
     res.sendFile(path.resolve(distPath, "index.html"));
   });
 }

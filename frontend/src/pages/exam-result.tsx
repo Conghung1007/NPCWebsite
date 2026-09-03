@@ -10,6 +10,7 @@ import { type ExamAttempt, type Exam, type Question } from "@shared/schema";
 import { examKeys } from "@/lib/queryKeys";
 import { ExamProtectedContent, ProtectedExamImage } from "@/components/ExamProtectedContent";
 import { useAuth } from "@/hooks/useAuth";
+import { portalPath } from "@/lib/portal";
 
 interface ExamResultPageProps {
   attemptId: string;
@@ -798,7 +799,7 @@ export function ExamResultPage({ attemptId }: ExamResultPageProps) {
             </Button>
           </Link>
           
-          <Link href={`/exam/${exam.id}`}>
+          <Link href={portalPath("luyenthi", `/exam/${exam.id}`)}>
             <Button className="w-full sm:w-auto">
               <RotateCcw className="w-4 h-4 mr-2" />
               Thi lại

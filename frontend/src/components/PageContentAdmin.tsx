@@ -12,6 +12,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -39,28 +49,23 @@ import {
   getPagesForPortal,
   type PageContentEntry,
 } from "@shared/pageContentRegistry";
-import { normalizeCmsSlug } from "@shared/cmsPages";
-import { PORTAL_META, PORTAL_IDS, portalOrigin, type PortalId } from "@/lib/portal";
+import { normalizeCmsSlug, validateCmsSlug } from "@shared/cmsPages";
+import { PORTAL_META, PORTAL_IDS, portalHref, type PortalId } from "@/lib/portal";
+
+function portalLabel(id: PortalId): string {
+  return PORTAL_META[id]?.label || PORTAL_META[id]?.brand || id;
+}
 
 function buildPreviewUrl(page: PageContentEntry): string {
-  const portal = page.portal;
+  const portal = page.portal as PortalId;
   const path = page.publicPath;
   if (typeof window === "undefined") return path;
 
-  const host = window.location.hostname;
-  const isLocal = host === "localhost" || host === "127.0.0.1";
-
-  if (isLocal) {
+  try {
+    return portalHref(portal, path);
+  } catch {
     return `${path}?portal=${encodeURIComponent(portal)}`;
   }
-
-  try {
-    const origin = portalOrigin(portal as PortalId);
-    if (origin) return `${origin}${path}`;
-  } catch {
-    /* fall through */
-  }
-  return path;
 }
 
 function mergePages(
@@ -74,9 +79,142 @@ function mergePages(
   });
 }
 
+type CreatePageFormProps = {
+  portalOptions: PortalId[];
+  newPortal: PortalId;
+  setNewPortal: (v: PortalId) => void;
+  newLabel: string;
+  setNewLabel: (v: string) => void;
+  newSlug: string;
+  setNewSlug: (v: string) => void;
+  setSlugTouched: (v: boolean) => void;
+  newDescription: string;
+  setNewDescription: (v: string) => void;
+  slugError: string | null;
+  previewPath: string;
+  pending: boolean;
+  canSubmit: boolean;
+  onCancel: () => void;
+  onSubmit: () => void;
+};
+
+function CreatePageForm({
+  portalOptions,
+  newPortal,
+  setNewPortal,
+  newLabel,
+  setNewLabel,
+  newSlug,
+  setNewSlug,
+  setSlugTouched,
+  newDescription,
+  setNewDescription,
+  slugError,
+  previewPath,
+  pending,
+  canSubmit,
+  onCancel,
+  onSubmit,
+}: CreatePageFormProps) {
+  return (
+    <>
+      <div className="space-y-4 py-2">
+        <div className="space-y-1.5">
+          <Label>Portal</Label>
+          <Select
+            value={newPortal}
+            onValueChange={(v) => setNewPortal(v as PortalId)}
+            disabled={pending}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {portalOptions.map((id) => (
+                <SelectItem key={id} value={id}>
+                  {portalLabel(id)}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="cms-page-label">Tên trang</Label>
+          <Input
+            id="cms-page-label"
+            value={newLabel}
+            onChange={(e) => setNewLabel(e.target.value)}
+            placeholder="vd. Hướng dẫn thi thử"
+            disabled={pending}
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && canSubmit && !pending) {
+                e.preventDefault();
+                onSubmit();
+              }
+            }}
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="cms-page-slug">URL slug</Label>
+          <div className="flex items-center gap-1 text-sm">
+            <span className="text-muted-foreground shrink-0">/</span>
+            <Input
+              id="cms-page-slug"
+              value={newSlug}
+              onChange={(e) => {
+                setSlugTouched(true);
+                setNewSlug(e.target.value);
+              }}
+              placeholder="huong-dan-thi-thu"
+              disabled={pending}
+              aria-invalid={!!slugError}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && canSubmit && !pending) {
+                  e.preventDefault();
+                  onSubmit();
+                }
+              }}
+            />
+          </div>
+          {slugError ? (
+            <p className="text-xs text-destructive">{slugError}</p>
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              Trang sẽ mở tại{" "}
+              <code className="rounded bg-muted px-1">{previewPath}</code>
+              {newPortal !== "group" ? ` · portal=${newPortal}` : ""}. Không
+              trùng route hệ thống hay trang tùy chỉnh khác.
+            </p>
+          )}
+        </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="cms-page-desc">Mô tả (tùy chọn)</Label>
+          <Textarea
+            id="cms-page-desc"
+            value={newDescription}
+            onChange={(e) => setNewDescription(e.target.value)}
+            rows={2}
+            disabled={pending}
+            maxLength={500}
+          />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button variant="outline" onClick={onCancel} disabled={pending}>
+          Hủy
+        </Button>
+        <Button onClick={onSubmit} disabled={!canSubmit || pending}>
+          {pending ? "Đang tạo…" : "Tạo trang"}
+        </Button>
+      </DialogFooter>
+    </>
+  );
+}
+
 export function PageContentAdmin() {
   const { toast } = useToast();
-  const { filter } = useAdminPortal();
+  const { filter, allowedPortals } = useAdminPortal();
   const staticPages = useMemo(() => getPagesForPortal(filter), [filter]);
   const { data: customPages = [], isLoading: customLoading } = useCmsPages(
     filter === "all" ? "all" : filter,
@@ -89,21 +227,84 @@ export function PageContentAdmin() {
     [staticPages, customPages],
   );
 
+  const createPortalOptions = useMemo(
+    () => (allowedPortals ? allowedPortals : [...PORTAL_IDS]),
+    [allowedPortals],
+  );
+
   const [selectedId, setSelectedId] = useState<string>("");
+  const [selectedCache, setSelectedCache] = useState<PageContentEntry | null>(
+    null,
+  );
   const [activeTab, setActiveTab] = useState<"blocks" | "text" | "images">(
     "blocks",
   );
   const [blocksDirty, setBlocksDirty] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newSlug, setNewSlug] = useState("");
   const [newPortal, setNewPortal] = useState<PortalId>("group");
   const [newDescription, setNewDescription] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
 
+  const normalizedSlug = useMemo(
+    () => normalizeCmsSlug(newSlug || newLabel),
+    [newSlug, newLabel],
+  );
+
+  const slugError = useMemo(() => {
+    if (!newLabel.trim() && !newSlug.trim()) return null;
+    const base = validateCmsSlug(normalizedSlug);
+    if (base) return base;
+    const clash = customPages.some(
+      (p) =>
+        p.portal === newPortal &&
+        p.publicPath.replace(/^\//, "") === normalizedSlug,
+    );
+    if (clash) return "Slug đã tồn tại trong portal này";
+    const staticClash = staticPages.some(
+      (p) =>
+        p.portal === newPortal &&
+        p.publicPath.replace(/^\//, "") === normalizedSlug,
+    );
+    if (staticClash) return "Slug trùng trang hệ thống của portal này";
+    return null;
+  }, [newLabel, newSlug, normalizedSlug, customPages, newPortal, staticPages]);
+
+  const canCreate =
+    !!newLabel.trim() && !!normalizedSlug && !slugError && !createPage.isPending;
+
+  const resetCreateForm = () => {
+    setNewLabel("");
+    setNewSlug("");
+    setNewDescription("");
+    setSlugTouched(false);
+    if (filter !== "all") setNewPortal(filter);
+    else if (!createPortalOptions.includes(newPortal)) {
+      setNewPortal(createPortalOptions[0] || "group");
+    }
+  };
+
+  const openCreateDialog = () => {
+    if (
+      blocksDirty &&
+      !confirm(
+        "Bạn có khối chưa lưu trên trang hiện tại. Mở form tạo trang mới? (Chỉnh sửa khối chưa lưu vẫn giữ đến khi đổi trang.)",
+      )
+    ) {
+      return;
+    }
+    resetCreateForm();
+    setAddOpen(true);
+  };
+
   useEffect(() => {
     if (pages.length === 0) {
-      setSelectedId("");
+      if (!blocksDirty) {
+        setSelectedId("");
+        setSelectedCache(null);
+      }
       return;
     }
     if (!selectedId) {
@@ -111,23 +312,23 @@ export function PageContentAdmin() {
       return;
     }
     if (!pages.some((p) => p.id === selectedId)) {
-      const nextId = pages[0].id;
-      if (
-        blocksDirty &&
-        !confirm(
-          "Bạn có khối nội dung chưa lưu. Chuyển sang trang khác sẽ mất các chỉnh sửa. Tiếp tục?",
-        )
-      ) {
+      // Keep editing current page when dirty / just-created (list chưa kịp có id)
+      if (blocksDirty || selectedCache?.id === selectedId) {
         return;
       }
-      setBlocksDirty(false);
-      setSelectedId(nextId);
+      setSelectedId(pages[0].id);
     }
-  }, [pages, selectedId, blocksDirty]);
+  }, [pages, selectedId, blocksDirty, selectedCache?.id]);
 
   useEffect(() => {
-    if (filter !== "all") setNewPortal(filter);
-  }, [filter]);
+    if (filter !== "all") {
+      setNewPortal(filter);
+      return;
+    }
+    if (!createPortalOptions.includes(newPortal)) {
+      setNewPortal(createPortalOptions[0] || "group");
+    }
+  }, [filter, createPortalOptions, newPortal]);
 
   useEffect(() => {
     if (!slugTouched && newLabel) {
@@ -135,7 +336,14 @@ export function PageContentAdmin() {
     }
   }, [newLabel, slugTouched]);
 
-  const selected = pages.find((p) => p.id === selectedId);
+  const selectedFromList = pages.find((p) => p.id === selectedId);
+  const selected =
+    selectedFromList ||
+    (selectedCache?.id === selectedId ? selectedCache : undefined);
+
+  useEffect(() => {
+    if (selectedFromList) setSelectedCache(selectedFromList);
+  }, [selectedFromList]);
 
   const selectedOutOfFilter =
     !!selectedId && !pages.some((p) => p.id === selectedId);
@@ -150,6 +358,7 @@ export function PageContentAdmin() {
     ) {
       return;
     }
+    setBlocksDirty(false);
     setSelectedId(id);
   };
 
@@ -187,9 +396,18 @@ export function PageContentAdmin() {
 
   const handleCreatePage = async () => {
     const label = newLabel.trim();
-    const slug = normalizeCmsSlug(newSlug || newLabel);
+    const slug = normalizedSlug;
     if (!label) {
       toast({ title: "Nhập tên trang", variant: "destructive" });
+      return;
+    }
+    const err = validateCmsSlug(slug);
+    if (err) {
+      toast({ title: "Slug không hợp lệ", description: err, variant: "destructive" });
+      return;
+    }
+    if (slugError) {
+      toast({ title: "Không tạo được trang", description: slugError, variant: "destructive" });
       return;
     }
     try {
@@ -201,14 +419,14 @@ export function PageContentAdmin() {
       });
       toast({
         title: "Đã tạo trang",
-        description: `Truy cập tại ${created.publicPath}`,
+        description: `Mở tại ${created.publicPath} — đang chuyển tới chỉnh khối.`,
       });
       setAddOpen(false);
-      setNewLabel("");
-      setNewSlug("");
-      setNewDescription("");
-      setSlugTouched(false);
+      resetCreateForm();
+      setBlocksDirty(false);
+      setSelectedCache(created);
       setSelectedId(created.id);
+      setActiveTab("blocks");
     } catch (err) {
       toast({
         title: "Không tạo được trang",
@@ -220,31 +438,17 @@ export function PageContentAdmin() {
 
   const handleDeletePage = async () => {
     if (!selected?.isCustom) return;
-    if (
-      blocksDirty &&
-      !confirm(
-        "Bạn có khối nội dung chưa lưu trên trang này. Xóa trang sẽ mất các chỉnh sửa. Tiếp tục?",
-      )
-    ) {
-      return;
-    }
-    const slug = selected.publicPath.replace(/^\//, "");
-    const remaining = pages.filter((p) => p.id !== selected.id);
-    const samePortal = remaining.filter((p) => p.portal === selected.portal);
+    const deleting = selected;
+    const slug = deleting.publicPath.replace(/^\//, "");
+    const remaining = pages.filter((p) => p.id !== deleting.id);
+    const samePortal = remaining.filter((p) => p.portal === deleting.portal);
     const nextId = (samePortal[0] ?? remaining[0])?.id ?? "";
 
-    if (
-      !confirm(
-        `Xóa trang "${selected.label}"?\n\nURL /${slug} → 404. Khối nội dung bị xóa. Ảnh CMS/R2 gắn slot của trang này cũng sẽ bị dọn (nếu có).`,
-      )
-    ) {
-      return;
-    }
     try {
       const result = await deletePage.mutateAsync({
-        id: selected.id,
+        id: deleting.id,
         slug,
-        portal: selected.portal,
+        portal: deleting.portal,
       });
       const img = result.images;
       const imgNote =
@@ -252,7 +456,9 @@ export function PageContentAdmin() {
           ? ` · ${img.dbRemoved} slot ảnh, ${img.r2Removed} file R2`
           : "";
       toast({ title: `Đã xóa trang${imgNote}` });
+      setDeleteOpen(false);
       setBlocksDirty(false);
+      setSelectedCache(null);
       setSelectedId(nextId);
     } catch (err) {
       toast({
@@ -263,11 +469,66 @@ export function PageContentAdmin() {
     }
   };
 
+  const requestDeletePage = () => {
+    if (!selected?.isCustom || deletePage.isPending) return;
+    if (
+      blocksDirty &&
+      !confirm(
+        "Bạn có khối nội dung chưa lưu trên trang này. Xóa trang sẽ mất các chỉnh sửa. Tiếp tục?",
+      )
+    ) {
+      return;
+    }
+    setDeleteOpen(true);
+  };
+
+  const createFormProps: CreatePageFormProps = {
+    portalOptions: createPortalOptions,
+    newPortal,
+    setNewPortal,
+    newLabel,
+    setNewLabel,
+    newSlug,
+    setNewSlug,
+    setSlugTouched,
+    newDescription,
+    setNewDescription,
+    slugError,
+    previewPath: `/${normalizedSlug || "…"}`,
+    pending: createPage.isPending,
+    canSubmit: canCreate,
+    onCancel: () => {
+      setAddOpen(false);
+      resetCreateForm();
+    },
+    onSubmit: () => void handleCreatePage(),
+  };
+
   if (!customLoading && pages.length === 0) {
     return (
-      <p className="text-sm text-muted-foreground py-8 text-center">
-        Không có trang nào trong phạm vi portal đã chọn.
-      </p>
+      <div className="py-8 text-center space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Không có trang nào trong phạm vi portal đã chọn.
+        </p>
+        <Button type="button" size="sm" onClick={openCreateDialog}>
+          <Plus className="h-4 w-4 mr-1.5" />
+          Thêm trang
+        </Button>
+        <Dialog
+          open={addOpen}
+          onOpenChange={(open) => {
+            setAddOpen(open);
+            if (!open) resetCreateForm();
+          }}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Thêm trang khối mới</DialogTitle>
+            </DialogHeader>
+            <CreatePageForm {...createFormProps} />
+          </DialogContent>
+        </Dialog>
+      </div>
     );
   }
 
@@ -282,17 +543,20 @@ export function PageContentAdmin() {
             type="button"
             size="sm"
             variant="outline"
-            className="h-8 px-2"
-            onClick={() => setAddOpen(true)}
+            className="h-8 gap-1 px-2"
+            onClick={openCreateDialog}
+            title="Thêm trang khối mới"
+            disabled={createPage.isPending}
           >
             <Plus className="h-4 w-4" />
+            <span className="text-xs">Thêm</span>
           </Button>
         </div>
         <nav className="space-y-3">
           {Array.from(grouped.entries()).map(([portalId, portalPages]) => (
             <div key={portalId}>
               <p className="text-[11px] font-medium text-neutral-400 px-2 mb-1">
-                {PORTAL_META[portalId]?.label || portalId}
+                {portalLabel(portalId)}
               </p>
               <ul className="space-y-0.5">
                 {portalPages.map((p) => (
@@ -321,8 +585,9 @@ export function PageContentAdmin() {
           ))}
         </nav>
         <p className="text-[11px] text-muted-foreground px-1">
-          Trang hệ thống không thể xóa. Xóa trang tùy chỉnh sẽ dọn slot ảnh CMS +
-          file R2 của trang đó. Xóa khối trong editor không xóa ảnh R2.
+          Trang hệ thống (vd. Trang Luyện thi) không thể xóa. Bấm{" "}
+          <strong>Thêm</strong> để tạo trang khối mới — sau đó mới có nút{" "}
+          <strong>Xóa trang</strong>.
         </p>
       </aside>
 
@@ -361,11 +626,11 @@ export function PageContentAdmin() {
                     variant="outline"
                     size="sm"
                     className="text-destructive hover:text-destructive"
-                    onClick={handleDeletePage}
+                    onClick={requestDeletePage}
                     disabled={deletePage.isPending}
                   >
                     <Trash2 className="h-4 w-4 mr-1.5" />
-                    Xóa trang
+                    {deletePage.isPending ? "Đang xóa…" : "Xóa trang"}
                   </Button>
                 ) : null}
                 <Button variant="outline" size="sm" asChild>
@@ -383,8 +648,9 @@ export function PageContentAdmin() {
 
             {selectedOutOfFilter ? (
               <p className="text-sm text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                Trang này ngoài phạm vi portal đang lọc — vẫn có thể chỉnh sửa, hoặc
-                chọn lại portal &quot;Tất cả&quot; để thấy trong danh sách.
+                Trang này ngoài phạm vi portal đang lọc — vẫn có thể chỉnh sửa.
+                Chọn lại portal &quot;Tất cả&quot; hoặc đúng cổng để thấy trong danh
+                sách bên trái.
               </p>
             ) : null}
 
@@ -415,9 +681,16 @@ export function PageContentAdmin() {
                 ) : null}
               </TabsList>
 
+              {selected.editor === "blocks" ? (
+                <p className="mt-2 text-xs text-muted-foreground">
+                  Đổi ảnh trong từng khối (Hero, Thẻ…). Thêm / sắp xếp / ẩn khối rồi
+                  bấm <strong>Lưu</strong>.
+                </p>
+              ) : null}
+
               {selected.editor === "blocks" &&
               (selected.layoutPageId || selected.layoutKey) ? (
-                <TabsContent value="blocks" className="mt-4" forceMount>
+                <TabsContent value="blocks" className="mt-4">
                   <PageLayoutAdmin
                     key={selected.id}
                     pageId={selected.layoutPageId}
@@ -464,75 +737,67 @@ export function PageContentAdmin() {
         )}
       </div>
 
-      <Dialog open={addOpen} onOpenChange={setAddOpen}>
+      <Dialog
+        open={addOpen}
+        onOpenChange={(open) => {
+          if (createPage.isPending) return;
+          setAddOpen(open);
+          if (!open) resetCreateForm();
+        }}
+      >
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Thêm trang khối mới</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div className="space-y-1.5">
-              <Label>Portal</Label>
-              <Select
-                value={newPortal}
-                onValueChange={(v) => setNewPortal(v as PortalId)}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {PORTAL_IDS.map((id) => (
-                    <SelectItem key={id} value={id}>
-                      {PORTAL_META[id].label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Tên trang</Label>
-              <Input
-                value={newLabel}
-                onChange={(e) => setNewLabel(e.target.value)}
-                placeholder="vd. Giới thiệu dịch vụ mới"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label>URL slug</Label>
-              <div className="flex items-center gap-1 text-sm">
-                <span className="text-muted-foreground">/</span>
-                <Input
-                  value={newSlug}
-                  onChange={(e) => {
-                    setSlugTouched(true);
-                    setNewSlug(e.target.value);
-                  }}
-                  placeholder="gioi-thieu-dich-vu"
-                />
-              </div>
-              <p className="text-xs text-muted-foreground">
-                Không trùng route hệ thống (login, contact, du-hoc…). Không thay
-                thế trang chủ `/`.
-              </p>
-            </div>
-            <div className="space-y-1.5">
-              <Label>Mô tả (tùy chọn)</Label>
-              <Textarea
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                rows={2}
-              />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddOpen(false)}>
-              Hủy
-            </Button>
-            <Button onClick={handleCreatePage} disabled={createPage.isPending}>
-              Tạo trang
-            </Button>
-          </DialogFooter>
+          <CreatePageForm {...createFormProps} />
         </DialogContent>
       </Dialog>
+
+      <AlertDialog
+        open={deleteOpen}
+        onOpenChange={(open) => {
+          if (deletePage.isPending) return;
+          setDeleteOpen(open);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              Xóa trang &quot;{selected?.label}&quot;?
+            </AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>
+                  URL{" "}
+                  <code className="rounded bg-muted px-1">
+                    {selected?.publicPath}
+                  </code>{" "}
+                  sẽ trả 404. Toàn bộ khối nội dung của trang bị xóa.
+                </p>
+                <p>
+                  Slot ảnh CMS / file R2 gắn trang này cũng sẽ được dọn (nếu có).
+                  Thao tác không hoàn tác.
+                </p>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deletePage.isPending}>
+              Hủy
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              disabled={deletePage.isPending}
+              onClick={(e) => {
+                e.preventDefault();
+                void handleDeletePage();
+              }}
+            >
+              {deletePage.isPending ? "Đang xóa…" : "Xóa trang"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

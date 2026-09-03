@@ -13,6 +13,10 @@ export const PORTAL_BLOCK_TEMPLATE: Record<PortalId, LayoutPageId> = {
 
 /** URL slugs reserved by static app routes — custom pages cannot use these. */
 export const RESERVED_CMS_SLUGS = new Set([
+  "api",
+  "assets",
+  "static",
+  "objects",
   "company",
   "visa-services",
   "study-abroad",
@@ -30,6 +34,8 @@ export const RESERVED_CMS_SLUGS = new Set([
   "login",
   "register",
   "register-success",
+  "forgot-password",
+  "profile",
   "contact",
   "news",
   "countries",
@@ -48,6 +54,8 @@ export const RESERVED_CMS_SLUGS = new Set([
   "manage",
   "cpanel",
   "exam",
+  "exam-result",
+  "exam-attempts",
   "certificate",
 ]);
 

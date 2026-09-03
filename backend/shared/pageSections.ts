@@ -10,6 +10,8 @@ export const SECTION_TYPES = [
   "testimonials",
   "articles",
   "cta_form",
+  "exam_packages",
+  "exam_list",
 ] as const;
 
 export type SectionType = (typeof SECTION_TYPES)[number];
@@ -23,35 +25,53 @@ export function isSectionType(value: unknown): value is SectionType {
 
 export const SECTION_META: Record<
   SectionType,
-  { label: string; description: string }
+  { label: string; description: string; settings: string }
 > = {
   hero: {
     label: "Hero",
-    description: "Ảnh nền / carousel + thương hiệu, tiêu đề, CTA",
+    description: "Banner / carousel đầu trang với thương hiệu và nút CTA",
+    settings:
+      "Thương hiệu, tiêu đề, mô tả, prefix ảnh, CTA chính/phụ (chữ + link)",
   },
   rich_text: {
     label: "Nội dung chữ",
-    description: "Tiêu đề + đoạn văn + ảnh tùy chọn",
+    description: "Khối văn bản giới thiệu, có thể kèm ảnh minh họa",
+    settings: "Tiêu đề, nội dung, mã ảnh CMS (tùy chọn)",
   },
   feature_grid: {
     label: "Nổi bật",
-    description: "Lưới lý do / điểm nổi bật",
+    description: "Lưới các điểm nổi bật / lý do chọn (nền tối)",
+    settings: "Tiêu đề, mô tả, danh sách mục (tiêu đề + mô tả), sắp xếp ↑↓",
   },
   cards: {
     label: "Thẻ liên kết",
-    description: "Các thẻ dịch vụ / hướng với ảnh và CTA",
+    description: "Các thẻ dịch vụ / hướng đi kèm ảnh và nút",
+    settings: "Tiêu đề, mô tả, thẻ (nhãn, tiêu đề, mô tả, CTA, link, ảnh)",
   },
   testimonials: {
     label: "Phản hồi",
-    description: "Lấy từ danh sách đánh giá đã có",
+    description: "Lấy đánh giá đang bật từ Cpanel theo portal",
+    settings: "Tiêu đề, mô tả, số lượng hiển thị (1–12)",
   },
   articles: {
     label: "Tin bài",
-    description: "Danh sách bài theo chuyên mục",
+    description: "Danh sách bài viết theo chuyên mục",
+    settings: "Tiêu đề, mô tả, chuyên mục bài viết",
   },
   cta_form: {
     label: "Form tư vấn",
-    description: "Khối đăng ký / liên hệ",
+    description: "Form đăng ký / liên hệ trên trang",
+    settings: "Tiêu đề, mô tả, dịch vụ mặc định (theo portal)",
+  },
+  exam_packages: {
+    label: "Gói đề thi",
+    description: "Danh sách gói đề bán trên cổng Luyện thi (dữ liệu Cpanel)",
+    settings: "Tiêu đề, mô tả, căn lề, hiện/ẩn quy trình quyền thi",
+  },
+  exam_list: {
+    label: "Danh sách đề thi",
+    description: "Lưới đề thi + lọc / tìm kiếm (dữ liệu Cpanel)",
+    settings: "Tiêu đề, mô tả, căn lề",
   },
 };
 
@@ -77,7 +97,7 @@ export const LAYOUT_PAGE_LABELS: Record<LayoutPageId, string> = {
   group: "N&P Group (trang chủ)",
   huongnghiep: "Hướng nghiệp",
   dichvu: "Dịch vụ",
-  luyenthi: "Luyện thi (intro)",
+  luyenthi: "Luyện thi",
   japanese: "Đào tạo TNJS",
 };
 
@@ -132,6 +152,8 @@ export const PAGE_SECTION_WHITELIST: Record<LayoutPageId, SectionType[]> = {
     "rich_text",
     "feature_grid",
     "cards",
+    "exam_packages",
+    "exam_list",
     "articles",
     "cta_form",
   ],
@@ -205,6 +227,22 @@ export function defaultPropsForType(
 ): Record<string, unknown> {
   const prefix = page ? LAYOUT_PAGE_IMAGE_PREFIX[page] : "group";
   const cardImage = page ? LAYOUT_PAGE_CARD_IMAGE[page] : "group-pillar-0";
+  const articleCategory =
+    page === "huongnghiep"
+      ? "study-abroad"
+      : page === "dichvu"
+        ? "soft-skills"
+        : "japanese-training";
+  const defaultService =
+    page === "huongnghiep"
+      ? "study-abroad"
+      : page === "dichvu"
+        ? "interpreting"
+        : page === "luyenthi"
+          ? "online-exam"
+          : page === "japanese"
+            ? "japanese"
+            : "";
   switch (type) {
     case "hero":
       return {
@@ -228,9 +266,9 @@ export function defaultPropsForType(
         title: "Điểm nổi bật",
         description: "",
         items: [
-          { title: "Điểm 1", body: "Mô tả ngắn." },
-          { title: "Điểm 2", body: "Mô tả ngắn." },
-          { title: "Điểm 3", body: "Mô tả ngắn." },
+          { id: nid("fg"), title: "Điểm 1", body: "Mô tả ngắn." },
+          { id: nid("fg"), title: "Điểm 2", body: "Mô tả ngắn." },
+          { id: nid("fg"), title: "Điểm 3", body: "Mô tả ngắn." },
         ],
       };
     case "cards":
@@ -239,6 +277,7 @@ export function defaultPropsForType(
         description: "",
         items: [
           {
+            id: nid("card"),
             label: "Mục 1",
             title: "Tiêu đề thẻ",
             description: "Mô tả.",
@@ -258,17 +297,65 @@ export function defaultPropsForType(
       return {
         title: "Tin tức",
         description: "",
-        category: "general",
+        category: articleCategory,
       };
     case "cta_form":
       return {
         title: "Đăng ký tư vấn",
         description: "Để lại thông tin — chúng tôi sẽ liên hệ sớm.",
-        defaultService: "",
+        defaultService,
+      };
+    case "exam_packages":
+      return {
+        title: "Gói đề luyện thi",
+        description: "",
+        showAccessGuide: true,
+        align: "center",
+      };
+    case "exam_list":
+      return {
+        title: "Danh sách đề thi",
+        description: "Chọn đề miễn phí hoặc đề chính thức theo trình độ của bạn.",
+        align: "center",
       };
     default:
       return {};
   }
+}
+
+/** Minimal blocks for admin-created CMS pages (not full portal homepage). */
+export function defaultCustomPageLayout(
+  template: LayoutPageId,
+  opts: { title: string; description?: string; imagePrefix: string },
+): PageSection[] {
+  const prefix = opts.imagePrefix.replace(/[^a-z0-9-]/g, "-") || "page";
+  return [
+    createSection(
+      "hero",
+      {
+        brandName: "N&P",
+        title: opts.title,
+        description: opts.description || "",
+        imageTypePrefix: prefix,
+        ctaPrimaryLabel: "Liên hệ",
+        ctaPrimaryHref: "/contact",
+        ctaSecondaryLabel: "",
+        ctaSecondaryHref: "",
+      },
+      0,
+      template,
+    ),
+    createSection(
+      "rich_text",
+      {
+        title: opts.title,
+        body: opts.description || "Thêm nội dung trang tại đây.",
+        imageType: "",
+      },
+      1,
+      template,
+    ),
+  ];
 }
 
 /** Default layouts seed — mirrors current portal homes. */
@@ -528,12 +615,32 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
           1,
         ),
         createSection(
+          "exam_packages",
+          {
+            title: "Gói đề luyện thi",
+            description: "",
+            showAccessGuide: true,
+            align: "center",
+          },
+          2,
+        ),
+        createSection(
+          "exam_list",
+          {
+            title: "Danh sách đề thi",
+            description:
+              "Chọn đề miễn phí hoặc đề chính thức theo trình độ của bạn.",
+            align: "center",
+          },
+          3,
+        ),
+        createSection(
           "articles",
           {
             title: "Tin luyện thi & đào tạo",
             category: "japanese-training",
           },
-          2,
+          4,
         ),
         createSection(
           "cta_form",
@@ -543,7 +650,7 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
               "Để lại SĐT — chúng tôi gợi ý lộ trình ôn phù hợp trình độ của bạn.",
             defaultService: "online-exam",
           },
-          3,
+          5,
         ),
       ];
     case "japanese":

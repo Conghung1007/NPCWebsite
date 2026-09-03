@@ -133,7 +133,7 @@ export const PAGE_CONTENT_REGISTRY: PageContentEntry[] = [
     id: "luyenthi-home",
     portal: "luyenthi",
     label: "Trang Luyện thi",
-    description: "Hero, giới thiệu, gói đề & danh sách thi — bố cục khối",
+    description: "Hero, giới thiệu, gói đề, danh sách đề — bố cục khối",
     publicPath: "/",
     editor: "blocks",
     layoutPageId: "luyenthi",

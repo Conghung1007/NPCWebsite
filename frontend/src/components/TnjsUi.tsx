@@ -6,6 +6,8 @@ type TnjsPillTitleProps = {
   id?: string;
   children: ReactNode;
   variant?: TnjsPillVariant;
+  /** Header alignment — default center (tnjs.vn style) */
+  align?: "left" | "center" | "right";
   className?: string;
 };
 
@@ -14,12 +16,21 @@ export function TnjsPillTitle({
   id,
   children,
   variant = "onLight",
+  align = "center",
   className,
 }: TnjsPillTitleProps) {
   const onGreen = variant === "onGreen";
 
   return (
-    <div className={cn("mb-3 flex justify-center", className)}>
+    <div
+      className={cn(
+        "mb-3 flex",
+        align === "left" && "justify-start",
+        align === "center" && "justify-center",
+        align === "right" && "justify-end",
+        className,
+      )}
+    >
       <h2
         id={id}
         className={cn(

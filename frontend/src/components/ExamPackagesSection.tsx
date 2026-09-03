@@ -126,7 +126,17 @@ function PackageCardSkeleton() {
   );
 }
 
-export function ExamPackagesSection() {
+export function ExamPackagesSection({
+  title = "Gói đề luyện thi",
+  description,
+  showAccessGuide = false,
+  align = "center",
+}: {
+  title?: string;
+  description?: string;
+  showAccessGuide?: boolean;
+  align?: "left" | "center" | "right";
+} = {}) {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const { addPackage } = useCart();
@@ -186,10 +196,30 @@ export function ExamPackagesSection() {
   };
 
   return (
+    <>
     <section aria-labelledby="exam-packages-heading">
-      <TnjsPillTitle id="exam-packages-heading" variant="onGreen" className="mb-10">
-        Gói đề luyện thi
+      <TnjsPillTitle
+        id="exam-packages-heading"
+        variant="onGreen"
+        align={align}
+        className="mb-4"
+      >
+        {title}
       </TnjsPillTitle>
+      {description ? (
+        <p
+          className={cn(
+            "mb-10 max-w-2xl text-sm text-white/85 sm:text-base",
+            align === "center" && "mx-auto text-center",
+            align === "left" && "mr-auto text-left",
+            align === "right" && "ml-auto text-right",
+          )}
+        >
+          {description}
+        </p>
+      ) : (
+        <div className="mb-10" />
+      )}
 
       {isLoading ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
@@ -354,6 +384,8 @@ export function ExamPackagesSection() {
         </p>
       ) : null}
     </section>
+    {showAccessGuide ? <ExamAccessGuide /> : null}
+    </>
   );
 }
 

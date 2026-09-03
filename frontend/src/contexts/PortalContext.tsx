@@ -6,9 +6,10 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { useLocation } from "wouter";
 import {
   PORTAL_META,
-  resolvePortal,
+  resolvePortalForPath,
   type PortalId,
 } from "@/lib/portal";
 
@@ -23,15 +24,21 @@ type PortalContextValue = {
 
 const PortalContext = createContext<PortalContextValue | null>(null);
 
+function currentPathname(location: string): string {
+  return location.split("?")[0] || "/";
+}
+
 export function PortalProvider({ children }: { children: ReactNode }) {
-  const [portal, setPortal] = useState<PortalId>(() => resolvePortal());
+  const [location] = useLocation();
+  const [portal, setPortal] = useState<PortalId>(() =>
+    resolvePortalForPath(
+      typeof window !== "undefined" ? window.location.pathname : "/",
+    ),
+  );
 
   useEffect(() => {
-    const sync = () => setPortal(resolvePortal());
-    sync();
-    window.addEventListener("popstate", sync);
-    return () => window.removeEventListener("popstate", sync);
-  }, []);
+    setPortal(resolvePortalForPath(currentPathname(location)));
+  }, [location]);
 
   useEffect(() => {
     document.title = PORTAL_META[portal].documentTitle;
