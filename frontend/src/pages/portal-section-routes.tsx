@@ -40,7 +40,7 @@ export function PortalNewsRoute() {
       <PortalNewsPage
         category="soft-skills"
         title="Tin tức dịch vụ"
-        description="Tin tức kỹ năng mềm và dịch vụ doanh nghiệp N&P."
+        description="Tin tức kỹ năng mềm và dịch vụ doanh nghiệp Trí Nhân Academy."
       />
     );
   }

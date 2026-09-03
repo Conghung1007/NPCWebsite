@@ -39,10 +39,10 @@ export default function Contact() {
   }, [getImageByType]);
 
   useEffect(() => {
-    document.title = "Liên Hệ - N&P Company";
+    document.title = "Liên Hệ - Trí Nhân Academy";
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'Liên hệ với N&P để được tư vấn miễn phí về visa, du học, tiếng Nhật và vé máy bay. Hỗ trợ 24/7 qua hotline 1900 1234.');
+      metaDescription.setAttribute('content', 'Liên hệ với Trí Nhân Academy để được tư vấn miễn phí về visa, du học, tiếng Nhật và vé máy bay. Hỗ trợ 24/7 qua hotline 1900 1234.');
     }
   }, []);
 

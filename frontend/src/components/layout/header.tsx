@@ -18,6 +18,8 @@ import type { User as AppUser } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { usePortal } from "@/contexts/PortalContext";
 import { getNavigation, portalHref, portalPath, type NavItem } from "@/lib/portal";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { TriNhanBrand, BRAND_FULL_NAME } from "@/components/TriNhanBrand";
 
 function getHeaderCta(portal: ReturnType<typeof usePortal>["portal"]) {
   if (portal === "luyenthi") {
@@ -62,7 +64,7 @@ function isActivePath(location: string, href: string) {
 function Brand({
   compact = false,
   showTagline = true,
-  /** Sub-portal header: smaller mark so two-row layout feels balanced */
+  /** Sub-portal header: slightly tighter lockup */
   portal = false,
 }: {
   compact?: boolean;
@@ -70,59 +72,30 @@ function Brand({
   portal?: boolean;
 }) {
   const { portal: portalId, meta } = usePortal();
+  const { data: settings } = useSiteSettings(portalId);
+  const logoUrl = settings?.logoUrl?.trim() || "";
+  const brandName = settings?.siteName?.trim() || BRAND_FULL_NAME;
 
   return (
     <Link
       href="/"
-      className={cn(
-        "flex items-center shrink-0 group",
-        portal ? "gap-3" : "gap-3 sm:gap-3.5",
-      )}
+      className="flex items-center shrink-0 group"
       data-testid="header-logo"
-      aria-label={`${meta.brand} — Trang chủ`}
+      aria-label={`${brandName} — Trang chủ`}
     >
-      <span
-        className={cn(
-          "flex items-center justify-center rounded-xl bg-primary text-primary-foreground font-bold transition-all duration-200",
-          portal
-            ? compact
-              ? "h-9 w-9 text-xs"
-              : "h-12 w-12 text-sm"
-            : compact
-              ? "h-9 w-9 text-xs"
-              : "h-11 w-11 sm:h-12 sm:w-12 text-sm sm:text-base",
-        )}
-        aria-hidden
-      >
-        {portalId === "huongnghiep"
-          ? "HN"
-          : portalId === "dichvu"
-            ? "DV"
-            : portalId === "luyenthi"
-              ? "LT"
-              : "N&P"}
-      </span>
-      <span className="flex flex-col justify-center min-w-0 gap-0.5">
-        <span
-          className={cn(
-            "font-display font-bold text-foreground tracking-tight transition-all duration-200 leading-none",
-            portal
-              ? compact
-                ? "text-base sm:text-lg"
-                : "text-xl"
-              : compact
-                ? "text-base sm:text-lg"
-                : "text-lg sm:text-xl lg:text-[1.35rem]",
-          )}
-        >
-          {meta.brand}
-        </span>
-        {showTagline && !compact && (
-          <span className="hidden sm:block text-[11px] sm:text-xs text-muted-foreground/90 tracking-wide leading-snug">
-            {meta.tagline}
-          </span>
-        )}
-      </span>
+      <TriNhanBrand
+        size={compact ? "sm" : portal ? "md" : "md"}
+        imageUrl={logoUrl || undefined}
+        imageAlt={brandName}
+        preferDefaultImage={false}
+        subtitle={
+          showTagline && !compact
+            ? portalId === "group"
+              ? meta.tagline
+              : meta.label
+            : undefined
+        }
+      />
     </Link>
   );
 }
@@ -136,7 +109,7 @@ function GroupHomeLink({ className }: { className?: string }) {
         className,
       )}
     >
-      N&P Group
+      {BRAND_FULL_NAME}
     </a>
   );
 }

@@ -287,9 +287,9 @@ export function OnlineExamPage({ embed = false }: { embed?: boolean }) {
   }, [currentPage, totalPages]);
 
   useEffect(() => {
-    document.title = "Luyện thi — N&P Group";
+    document.title = "Luyện thi — Trí Nhân Academy";
     const content =
-      "Luyện thi tiếng Nhật online tại N&P: đề miễn phí không cần đăng nhập, đề chính thức lưu kết quả. Luyện JLPT và kiểm tra trình độ.";
+      "Luyện thi tiếng Nhật online tại Trí Nhân Academy: đề miễn phí không cần đăng nhập, đề chính thức lưu kết quả. Luyện JLPT và kiểm tra trình độ.";
     let meta = document.querySelector('meta[name="description"]');
     if (!meta) {
       meta = document.createElement("meta");
@@ -399,7 +399,7 @@ export function OnlineExamPage({ embed = false }: { embed?: boolean }) {
       {/* Stats — khối than như “Vì sao chọn chúng tôi” */}
       <section className="py-14 sm:py-16" style={{ backgroundColor: TNJS.charcoal }}>
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <TnjsPillTitle variant="onDark">Vì sao luyện thi tại N&P</TnjsPillTitle>
+          <TnjsPillTitle variant="onDark">Vì sao luyện thi tại Trí Nhân</TnjsPillTitle>
           <p className="mx-auto mb-10 max-w-xl text-center text-sm text-white/70">
             Số liệu đề đang mở trên hệ thống — cập nhật theo danh sách thi hiện tại.
           </p>

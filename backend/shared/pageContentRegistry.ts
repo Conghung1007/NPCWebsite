@@ -33,7 +33,7 @@ export const PAGE_CONTENT_REGISTRY: PageContentEntry[] = [
   {
     id: "group-home",
     portal: "group",
-    label: "Trang chủ N&P Group",
+    label: "Trang chủ Trí Nhân Academy",
     description: "Hero, 4 trụ cột, form tư vấn — bố cục khối",
     publicPath: "/",
     editor: "blocks",

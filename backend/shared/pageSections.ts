@@ -94,7 +94,7 @@ export function isLayoutPageId(value: unknown): value is LayoutPageId {
 }
 
 export const LAYOUT_PAGE_LABELS: Record<LayoutPageId, string> = {
-  group: "N&P Group (trang chủ)",
+  group: "Trí Nhân Academy (trang chủ)",
   huongnghiep: "Hướng nghiệp",
   dichvu: "Dịch vụ",
   luyenthi: "Luyện thi",
@@ -246,7 +246,7 @@ export function defaultPropsForType(
   switch (type) {
     case "hero":
       return {
-        brandName: "N&P",
+        brandName: "Trí Nhân",
         title: "Tiêu đề hero",
         description: "Mô tả ngắn hỗ trợ tiêu đề.",
         imageTypePrefix: prefix,
@@ -333,7 +333,7 @@ export function defaultCustomPageLayout(
     createSection(
       "hero",
       {
-        brandName: "N&P",
+        brandName: "Trí Nhân",
         title: opts.title,
         description: opts.description || "",
         imageTypePrefix: prefix,
@@ -366,10 +366,10 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
         createSection(
           "hero",
           {
-            brandName: "N&P Group",
+            brandName: "Trí Nhân Academy",
             title: "Một thương hiệu. Bốn hướng chuyên môn.",
             description:
-              "Đào tạo tiếng Nhật (TNJS), hướng nghiệp, dịch vụ và luyện thi — cùng tiêu chuẩn hỗ trợ của N&P Group.",
+              "Đào tạo tiếng Nhật (TNJS), hướng nghiệp, dịch vụ và luyện thi — cùng tiêu chuẩn hỗ trợ của Trí Nhân Academy.",
             imageTypePrefix: "group",
             ctaPrimaryLabel: "Đào tạo tiếng Nhật",
             ctaPrimaryHref: "https://tnjs.vn/",
@@ -383,13 +383,13 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
           {
             title: "Chọn hướng phù hợp",
             description:
-              "Mỗi cổng là một mặt tiền chuyên sâu — quản trị chung bởi N&P.",
+              "Mỗi cổng là một mặt tiền chuyên sâu — quản trị chung bởi Trí Nhân Academy.",
             items: [
               {
                 label: "Đào tạo",
                 title: "Tiếng Nhật — TNJS",
                 description:
-                  "Khóa học tiếng Nhật N5–N1, lộ trình JLPT và đăng ký tư vấn ngay trên site N&P.",
+                  "Khóa học tiếng Nhật N5–N1, lộ trình JLPT và đăng ký tư vấn ngay tại Trí Nhân Academy.",
                 cta: "Xem đào tạo",
                 href: "https://tnjs.vn/",
                 imageType: "group-pillar-0",
@@ -409,7 +409,7 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
                 label: "Dịch vụ",
                 title: "Biên phiên dịch · Kỹ năng · Doanh nghiệp",
                 description:
-                  "Biên phiên dịch, kỹ năng mềm và tư vấn doanh nghiệp — liên hệ đội ngũ N&P.",
+                  "Biên phiên dịch, kỹ năng mềm và tư vấn doanh nghiệp — liên hệ đội ngũ Trí Nhân Academy.",
                 cta: "Vào Dịch vụ",
                 href: "portal:dichvu:/",
                 imageType: "group-pillar-2",
@@ -419,7 +419,7 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
                 label: "Luyện thi",
                 title: "Thi thử & luyện đề",
                 description:
-                  "Luyện thi trực tuyến, theo dõi tiến độ và chuẩn bị kỳ thi cùng N&P.",
+                  "Luyện thi trực tuyến, theo dõi tiến độ và chuẩn bị kỳ thi cùng Trí Nhân Academy.",
                 cta: "Vào Luyện thi",
                 href: "portal:luyenthi:/",
                 imageType: "group-pillar-3",
@@ -433,7 +433,7 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
           "cta_form",
           {
             title: "Tư vấn miễn phí",
-            description: "Để lại thông tin — đội ngũ N&P sẽ liên hệ trong giờ hành chính.",
+            description: "Để lại thông tin — đội ngũ Trí Nhân Academy sẽ liên hệ trong giờ hành chính.",
             defaultService: "",
           },
           2,
@@ -444,7 +444,7 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
         createSection(
           "hero",
           {
-            brandName: "Hướng nghiệp N&P",
+            brandName: "Hướng nghiệp Trí Nhân",
             title: "Du học · Đi làm · Đào tạo nghề",
             description:
               "Đồng hành chọn hướng đi phù hợp năng lực, ngân sách và mục tiêu dài hạn.",
@@ -518,10 +518,10 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
         createSection(
           "hero",
           {
-            brandName: "Dịch vụ N&P",
+            brandName: "Dịch vụ Trí Nhân",
             title: "Biên phiên dịch · Kỹ năng mềm · Tư vấn DN",
             description:
-              "Ba nhóm dịch vụ — mỗi mục dẫn thẳng tới form liên hệ để đội ngũ N&P hỗ trợ nhanh.",
+              "Ba nhóm dịch vụ — mỗi mục dẫn thẳng tới form liên hệ để đội ngũ Trí Nhân Academy hỗ trợ nhanh.",
             imageTypePrefix: "dichvu",
             ctaPrimaryLabel: "Liên hệ ngay",
             ctaPrimaryHref: "/contact",
@@ -580,10 +580,10 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
         createSection(
           "hero",
           {
-            brandName: "Luyện thi N&P",
+            brandName: "Luyện thi Trí Nhân",
             title: "Thi thử & luyện đề trực tuyến",
             description:
-              "Luyện đề, theo dõi kết quả và chuẩn bị kỳ thi cùng N&P.",
+              "Luyện đề, theo dõi kết quả và chuẩn bị kỳ thi cùng Trí Nhân Academy.",
             imageTypePrefix: "exam",
             ctaPrimaryLabel: "Vào thi trực tuyến",
             ctaPrimaryHref: "#exam-list",
@@ -595,7 +595,7 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
         createSection(
           "feature_grid",
           {
-            title: "Vì sao luyện thi tại N&P",
+            title: "Vì sao luyện thi tại Trí Nhân",
             description: "",
             items: [
               {

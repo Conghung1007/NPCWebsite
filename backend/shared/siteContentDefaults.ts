@@ -1,11 +1,11 @@
 /** Default copy for legacy site_contents pages — shared by public pages and admin editor. */
 
 export const ONLINE_EXAM_CONTENT_DEFAULTS: Record<string, string> = {
-  brandName: "Luyện thi N&P",
+  brandName: "Luyện thi Trí Nhân",
   heroTitle: "Thi thử & luyện đề trực tuyến",
   heroDescription:
-    "Luyện đề miễn phí ngay, hoặc đăng nhập để làm đề chính thức và lưu kết quả — đồng hành cùng lộ trình tiếng Nhật N&P.",
-  "process-title": "Cách luyện thi tại N&P",
+    "Luyện đề miễn phí ngay, hoặc đăng nhập để làm đề chính thức và lưu kết quả — đồng hành cùng lộ trình tiếng Nhật Trí Nhân Academy.",
+  "process-title": "Cách luyện thi tại Trí Nhân",
   "process-description":
     "Ba bước rõ ràng — đề thử không cần tài khoản; đề chính thức lưu kết quả sau khi đăng nhập",
   "process-0-title": "Chọn đề",
@@ -21,7 +21,7 @@ export const ONLINE_EXAM_CONTENT_DEFAULTS: Record<string, string> = {
     "Đề chính thức cần tài khoản để lưu kết quả. Đăng nhập rồi quay lại trang này hoặc vào thẳng đề bạn chọn.",
   "eco-title": "Luyện thi gắn với khóa tiếng Nhật",
   "eco-description":
-    "Đề online giúp đo trình độ; lớp N&P đồng hành từ sơ cấp đến JLPT với sensei bản ngữ và lớp nhỏ.",
+    "Đề online giúp đo trình độ; lớp Trí Nhân Academy đồng hành từ sơ cấp đến JLPT với sensei bản ngữ và lớp nhỏ.",
 };
 
 export const JAPANESE_CONTENT_DEFAULTS: Record<string, string> = {
@@ -133,7 +133,7 @@ export const HOME_CONTENT_DEFAULTS: Record<string, string> = {
   "services-title": "Dịch vụ chuyên nghiệp",
   "services-description":
     "Giải pháp toàn diện cho du lịch, học tập và phát triển sự nghiệp quốc tế",
-  "why-choose-title": "Tại sao chọn N&P?",
+  "why-choose-title": "Tại sao chọn Trí Nhân Academy?",
   "why-choose-description":
     "Với hơn 10 năm kinh nghiệm, chúng tôi tự hào là đối tác đáng tin cậy giúp hàng nghìn khách hàng thực hiện ước mơ toàn cầu",
   "why-reason-title-0": "Chuyên gia giàu kinh nghiệm",
@@ -150,7 +150,7 @@ export const HOME_CONTENT_DEFAULTS: Record<string, string> = {
     "98% hồ sơ được chấp thuận, cam kết hoàn phí nếu không thành công",
   "testimonials-title": "Khách hàng nói gì về chúng tôi",
   "testimonials-description":
-    "Câu chuyện thật từ khách hàng đã đồng hành cùng N&P",
+    "Câu chuyện thật từ khách hàng đã đồng hành cùng Trí Nhân Academy",
 };
 
 export const STUDY_ABROAD_CONTENT_DEFAULTS: Record<string, string> = {
@@ -174,8 +174,8 @@ export const STUDY_ABROAD_CONTENT_DEFAULTS: Record<string, string> = {
   "countries-line": "Nhật Bản · Hàn Quốc · Mỹ · Canada · Anh · Úc",
   "process-title": "Lộ trình làm việc",
   "process-description":
-    "Bốn bước rõ ràng — cùng tinh thần quy trình N&P trên mọi dịch vụ",
-  "why-title": "Tại sao du học với N&P?",
+    "Bốn bước rõ ràng — cùng tinh thần quy trình Trí Nhân Academy trên mọi dịch vụ",
+  "why-title": "Tại sao du học với Trí Nhân Academy?",
   "why-0-title": "Hướng dẫn cá nhân hóa",
   "why-0-description": "Tư vấn riêng theo hồ sơ và mục tiêu của từng học sinh",
   "why-1-title": "Mạng lưới trường đối tác",
@@ -185,7 +185,7 @@ export const STUDY_ABROAD_CONTENT_DEFAULTS: Record<string, string> = {
   "why-3-title": "Hỗ trợ sau khi đến trường",
   "why-3-description": "Tiếp tục đồng hành trong hành trình du học",
   "stories-title": "Câu chuyện học viên",
-  "stories-description": "Chia sẻ từ học viên đã đồng hành cùng N&P",
+  "stories-description": "Chia sẻ từ học viên đã đồng hành cùng Trí Nhân Academy",
   "articles-title": "Thông tin về du học",
   "articles-description":
     "Thông tin hữu ích về du học và cuộc sống sinh viên tại các nước",
@@ -219,7 +219,7 @@ export const VISA_CONTENT_DEFAULTS: Record<string, string> = {
     "Nhật Bản · Hàn Quốc · Mỹ · Canada · Úc · Anh · Đức · và hơn 40 quốc gia khác",
   "process-title": "Quy trình xin thị thực",
   "process-description":
-    "Bốn bước rõ ràng — cùng lộ trình với mọi dịch vụ tại N&P",
+    "Bốn bước rõ ràng — cùng lộ trình với mọi dịch vụ tại Trí Nhân Academy",
   "documents-title": "Hồ sơ theo loại visa",
   "documents-note":
     "Danh sách mang tính tham khảo. Checklist chi tiết theo quốc gia sẽ được gửi sau buổi tư vấn.",
@@ -275,9 +275,9 @@ export const VISA_CONTENT_DEFAULTS: Record<string, string> = {
         "Lệ phí lãnh sự không hoàn lại theo quy định quốc tế. Chi phí dịch vụ có chính sách hoàn tiền theo cam kết trong hợp đồng.",
     },
     {
-      question: "Tỷ lệ thành công của N&P như thế nào?",
+      question: "Tỷ lệ thành công của Trí Nhân Academy như thế nào?",
       answer:
-        "N&P có tỷ lệ thành công 98% nhờ quy trình chuyên nghiệp và kinh nghiệm nhiều năm. Chúng tôi cam kết hỗ trợ tối đa để hồ sơ của bạn được chấp thuận.",
+        "Trí Nhân Academy có tỷ lệ thành công 98% nhờ quy trình chuyên nghiệp và kinh nghiệm nhiều năm. Chúng tôi cam kết hỗ trợ tối đa để hồ sơ của bạn được chấp thuận.",
     },
   ]),
 };

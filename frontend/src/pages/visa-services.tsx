@@ -212,7 +212,7 @@ export default function VisaServices() {
   }, [hasEditPermission, contentsLoading, remoteContents, bulkUpsertContent]);
 
   useEffect(() => {
-    document.title = "Dịch Vụ Xin Thị Thực - N&P Company";
+    document.title = "Dịch Vụ Xin Thị Thực - Trí Nhân Academy";
     const content =
       "Dịch vụ xin thị thực chuyên nghiệp với tỷ lệ thành công 98% cho hơn 50 quốc gia. Hỗ trợ visa du lịch, công tác, sinh viên, định cư.";
     let meta = document.querySelector('meta[name="description"]');
@@ -325,7 +325,7 @@ export default function VisaServices() {
         <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
           <div className="max-w-3xl mx-auto text-center">
             <p className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mb-3">
-              N&P
+              Trí Nhân Academy
             </p>
             <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-semibold text-white/95 mb-3 leading-snug">
               <EditableText
@@ -405,7 +405,7 @@ export default function VisaServices() {
             <div className="relative mb-10 max-w-3xl mx-auto">
               <img
                 src={consultationImage}
-                alt="Tư vấn và hồ sơ thị thực tại N&P"
+                alt="Tư vấn và hồ sơ thị thực tại Trí Nhân Academy"
                 loading="lazy"
                 className="rounded-xl w-full h-auto object-cover aspect-[16/9]"
                 onError={(e) => {

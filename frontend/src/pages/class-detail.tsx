@@ -117,7 +117,7 @@ export default function ClassDetailPage({ id }: ClassDetailPageProps) {
 
         {(session.courseDescription || true) && (
           <div className="prose prose-sm max-w-none mb-10 text-gray-600">
-            <p>{session.courseDescription || "Đăng ký lớp để nhận lịch học chi tiết và tài liệu từ N&P."}</p>
+            <p>{session.courseDescription || "Đăng ký lớp để nhận lịch học chi tiết và tài liệu từ Trí Nhân Academy."}</p>
           </div>
         )}
 

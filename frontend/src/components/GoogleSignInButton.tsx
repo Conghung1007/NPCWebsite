@@ -113,7 +113,7 @@ export function GoogleSignInButton({
           toast({
             title: data.isNew ? "Đăng ký thành công" : "Đăng nhập thành công",
             description: data.isNew
-              ? "Chào mừng bạn đến với Ngoại ngữ Trí Nhân!"
+              ? "Chào mừng bạn đến với Trí Nhân Academy!"
               : `Chào mừng ${data.user?.username || "bạn"}!`,
           });
           const redirect = authRedirectParam();

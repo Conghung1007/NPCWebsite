@@ -46,7 +46,7 @@ export const DUHOC_SECTIONS: PortalSectionDef[] = [
     title: "Quốc gia du học",
     shortTitle: "Quốc gia",
     description:
-      "N&P đồng hành các thị trường chủ lực — chọn quốc gia phù hợp hồ sơ, ngân sách và mục tiêu nghề nghiệp.",
+      "Trí Nhân Academy đồng hành các thị trường chủ lực — chọn quốc gia phù hợp hồ sơ, ngân sách và mục tiêu nghề nghiệp.",
     lead: "Mỗi thị trường có yêu cầu ngôn ngữ, kỳ nhập học và chiến lược visa riêng. Chúng tôi tư vấn lộ trình rõ ràng trước khi bạn nộp hồ sơ.",
     cards: [
       {
@@ -156,7 +156,7 @@ export const DUHOC_SECTIONS: PortalSectionDef[] = [
         value: "Biên độ rộng theo trường công/tư — lập ngân sách trước",
       },
       {
-        label: "Phí dịch vụ N&P",
+        label: "Phí dịch vụ Trí Nhân",
         value: "Theo gói hồ sơ — báo trước khi ký, không phát sinh ẩn",
       },
     ],
@@ -178,7 +178,7 @@ export const DUHOC_SECTIONS: PortalSectionDef[] = [
     shortTitle: "Hồ sơ",
     description:
       "Checklist và quy trình hoàn thiện hồ sơ đúng hạn — từ giấy tờ cá nhân đến thư mời và visa.",
-    lead: "Hồ sơ thiếu hoặc sai format là lý do trễ phổ biến. N&P checklist theo quốc gia và theo dõi từng mốc.",
+    lead: "Hồ sơ thiếu hoặc sai format là lý do trễ phổ biến. Trí Nhân Academy checklist theo quốc gia và theo dõi từng mốc.",
     cards: [
       {
         title: "Giấy tờ cá nhân",
@@ -241,7 +241,7 @@ export const DUHOC_SECTIONS: PortalSectionDef[] = [
       {
         question: "Có hỗ trợ visa không?",
         answer:
-          "Có — visa du học nằm trong cổng Du học (trang Visa). N&P đồng hành từ hồ sơ trường đến nộp visa.",
+          "Có — visa du học nằm trong cổng Du học (trang Visa). Trí Nhân Academy đồng hành từ hồ sơ trường đến nộp visa.",
       },
       {
         question: "Phí dịch vụ tính thế nào?",
@@ -755,7 +755,7 @@ export function PortalSectionPage({
         <ArticleSection
           category={section.articleCategory}
           title="Tin liên quan"
-          description="Cập nhật mới từ N&P"
+          description="Cập nhật mới từ Trí Nhân Academy"
         />
       )}
 
@@ -776,7 +776,7 @@ export function PortalSectionPage({
           href={portalHref("group", "/")}
           className="text-primary font-medium hover:underline"
         >
-          ← Về N&P Group
+          ← Về Trí Nhân Academy
         </a>
       </p>
     </div>
@@ -811,7 +811,7 @@ export function PortalNewsPage({
       <ArticleSection
         category={category}
         title="Bài viết mới"
-        description="Cập nhật từ N&P"
+        description="Cập nhật từ Trí Nhân Academy"
       />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 pb-12 flex flex-wrap gap-3 justify-center">
@@ -819,7 +819,7 @@ export function PortalNewsPage({
           <Button variant="outline">Về trang chủ cổng</Button>
         </a>
         <a href={portalHref("group", "/")}>
-          <Button variant="ghost">N&P Group</Button>
+          <Button variant="ghost">Trí Nhân Academy</Button>
         </a>
       </div>
     </div>

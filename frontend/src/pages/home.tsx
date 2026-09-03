@@ -237,9 +237,9 @@ export default function Home() {
   const whyChooseImage = whyChooseOverride ?? getImageByType("why-choose-us");
 
   useEffect(() => {
-    document.title = "N&P Company - Đối Tác Tin Cậy Cho Giấc Mơ Toàn Cầu";
+    document.title = "Trí Nhân Academy - Đối Tác Tin Cậy Cho Giấc Mơ Toàn Cầu";
     const content =
-      "N&P - Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và hệ thống thi trực tuyến với hơn 10 năm kinh nghiệm";
+      "Trí Nhân Academy - Chuyên gia hàng đầu về dịch vụ thị thực, tư vấn du học, đào tạo tiếng Nhật và hệ thống thi trực tuyến với hơn 10 năm kinh nghiệm";
     let meta = document.querySelector('meta[name="description"]');
     if (!meta) {
       meta = document.createElement("meta");
@@ -365,7 +365,7 @@ export default function Home() {
         <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
           <div className="max-w-3xl mx-auto text-center">
             <p className="font-display text-4xl sm:text-5xl lg:text-6xl font-bold tracking-tight text-white mb-4">
-              N&P
+              Trí Nhân Academy
             </p>
 
             <h1 className="font-display text-2xl sm:text-3xl lg:text-[2.5rem] font-semibold text-white/95 mb-3 leading-snug">
@@ -711,7 +711,7 @@ export default function Home() {
               {whyChooseImage ? (
                 <img
                   src={whyChooseImage}
-                  alt="Đội ngũ N&P"
+                  alt="Đội ngũ Trí Nhân Academy"
                   loading="lazy"
                   className="rounded-xl shadow-lg w-full h-auto"
                   onError={(e) => {
@@ -730,7 +730,7 @@ export default function Home() {
                     : "rounded-xl w-full aspect-[4/3] bg-gradient-to-br from-primary/15 via-accent/20 to-primary/5 flex items-center justify-center text-primary/40 text-sm"
                 }
               >
-                Ảnh giới thiệu N&P
+                Ảnh giới thiệu Trí Nhân Academy
               </div>
               {hasImageEditPermission && (
                 <>
@@ -751,7 +751,7 @@ export default function Home() {
                       invalidateCache();
                     }}
                     imageType="why-choose-us"
-                    altText="Why choose N&P"
+                    altText="Why choose Trí Nhân Academy"
                   />
                 </>
               )}

@@ -131,15 +131,22 @@ export function ExamPackagesSection({
   description,
   showAccessGuide = false,
   align = "center",
+  /** When true, stay on current page after add (e.g. cart suggestions). */
+  stayOnPage = false,
+  hideCartLink = false,
+  titleVariant = "onGreen",
 }: {
   title?: string;
   description?: string;
   showAccessGuide?: boolean;
   align?: "left" | "center" | "right";
+  stayOnPage?: boolean;
+  hideCartLink?: boolean;
+  titleVariant?: "onGreen" | "onLight" | "onDark";
 } = {}) {
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
-  const { addPackage } = useCart();
+  const { addPackage, cart } = useCart();
 
   const { data: packages = [], isLoading } = useQuery<StorePackage[]>({
     queryKey: ["/api/exam-packages"],
@@ -162,13 +169,29 @@ export function ExamPackagesSection({
     return map;
   }, [me]);
 
-  const sorted = useMemo(() => sortPackages(packages), [packages]);
+  const cartPackageIds = useMemo(() => {
+    const ids = new Set<string>();
+    for (const item of cart?.items || []) {
+      if (item.itemType === "exam_package" && item.packageId) {
+        ids.add(item.packageId);
+      }
+    }
+    return ids;
+  }, [cart?.items]);
+
+  const sorted = useMemo(() => {
+    const list = sortPackages(packages);
+    if (cartPackageIds.size === 0) return list;
+    return list.filter((pkg) => !cartPackageIds.has(pkg.id));
+  }, [packages, cartPackageIds]);
 
   const handleAddToCart = (pkg: StorePackage) => {
     addPackage.mutate(pkg.id, {
       onSuccess: () => {
         toast({ title: "Đã thêm vào giỏ", description: pkg.name });
-        window.location.href = "/cart";
+        if (!stayOnPage) {
+          window.location.href = "/cart";
+        }
       },
       onError: (err: Error) => {
         toast({
@@ -195,12 +218,19 @@ export function ExamPackagesSection({
     handleAddToCart(pkg);
   };
 
+  const descTone =
+    titleVariant === "onLight"
+      ? "text-neutral-600"
+      : titleVariant === "onDark"
+        ? "text-white/70"
+        : "text-white/85";
+
   return (
     <>
     <section aria-labelledby="exam-packages-heading">
       <TnjsPillTitle
         id="exam-packages-heading"
-        variant="onGreen"
+        variant={titleVariant}
         align={align}
         className="mb-4"
       >
@@ -209,7 +239,8 @@ export function ExamPackagesSection({
       {description ? (
         <p
           className={cn(
-            "mb-10 max-w-2xl text-sm text-white/85 sm:text-base",
+            "mb-10 max-w-2xl text-sm sm:text-base",
+            descTone,
             align === "center" && "mx-auto text-center",
             align === "left" && "mr-auto text-left",
             align === "right" && "ml-auto text-right",
@@ -228,10 +259,19 @@ export function ExamPackagesSection({
           ))}
         </div>
       ) : sorted.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-white/40 bg-white/10 px-6 py-14 text-center text-white">
+        <div
+          className={cn(
+            "rounded-xl border-2 border-dashed px-6 py-14 text-center",
+            titleVariant === "onLight"
+              ? "border-neutral-300 bg-neutral-50 text-neutral-600"
+              : "border-white/40 bg-white/10 text-white",
+          )}
+        >
           <BookOpen className="mx-auto mb-3 h-10 w-10 opacity-70" />
           <p className="text-sm opacity-90">
-            Chưa có gói đề đang bán. Admin tạo gói trong Cpanel → Quản lý gói đề.
+            {cartPackageIds.size > 0 && packages.length > 0
+              ? "Các gói đang bán đã có trong giỏ hoặc bạn đã sở hữu quyền thi."
+              : "Chưa có gói đề đang bán. Admin tạo gói trong Cpanel → Quản lý gói đề."}
           </p>
         </div>
       ) : (
@@ -259,7 +299,10 @@ export function ExamPackagesSection({
                 className={cn(
                   "group flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-lg",
                   "transition-transform duration-300 hover:-translate-y-1.5 focus:outline-none",
-                  "focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--tnjs-green)]",
+                  "focus-visible:ring-2 focus-visible:ring-offset-2",
+                  titleVariant === "onLight"
+                    ? "focus-visible:ring-emerald-600 focus-visible:ring-offset-white"
+                    : "focus-visible:ring-white focus-visible:ring-offset-[color:var(--tnjs-green)]",
                 )}
                 style={{ ["--tnjs-green" as string]: TNJS.green }}
               >
@@ -373,11 +416,21 @@ export function ExamPackagesSection({
         </div>
       )}
 
-      {sorted.length > 0 ? (
-        <p className="mt-8 text-center text-sm text-white/80">
+      {!hideCartLink && sorted.length > 0 ? (
+        <p
+          className={cn(
+            "mt-8 text-center text-sm",
+            titleVariant === "onLight" ? "text-neutral-600" : "text-white/80",
+          )}
+        >
           <Link
             href="/cart"
-            className="font-semibold underline underline-offset-2 hover:text-white"
+            className={cn(
+              "font-semibold underline underline-offset-2",
+              titleVariant === "onLight"
+                ? "hover:text-neutral-900"
+                : "hover:text-white",
+            )}
           >
             Xem giỏ hàng
           </Link>

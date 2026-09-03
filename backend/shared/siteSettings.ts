@@ -29,7 +29,7 @@ export type SiteSettingsInput = z.infer<typeof siteSettingsInputSchema>;
 export type PublicSiteSettings = SiteSettingsInput & { portal: PortalId };
 
 export const DEFAULT_SITE_SETTINGS: SiteSettingsInput = {
-  siteName: "N&P Group",
+  siteName: "Trí Nhân Academy",
   hotline: "",
   email: "",
   address: "",

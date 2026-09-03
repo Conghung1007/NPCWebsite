@@ -119,6 +119,10 @@ export function SiteSettingsAdmin() {
 
       <section className="space-y-4">
         <h3 className="text-sm font-semibold border-b pb-2">Logo & liên kết pháp lý</h3>
+        <p className="text-xs text-muted-foreground -mt-2">
+          Nên upload logo lockup «Trí Nhân Academy» (nền trong suốt). Nếu để trống,
+          site dùng biểu tượng sách + chữ Trí Nhân / Academy.
+        </p>
         <div className="grid gap-4 sm:grid-cols-2">
           {(
             [

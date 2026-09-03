@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Trí Nhân Academy">
+  <rect x="2" y="2" width="60" height="60" rx="16" fill="#00A651"/>
+  <path d="M14 42.5V24.2c0-1.1.7-2.1 1.7-2.5 5.2-2 10.1-2.1 14.3.2v22.3c-4.6-2.1-9.7-2-14.5-.1-.9.3-1.5 1.2-1.5 2.1Z" fill="#FFFFFF"/>
+  <path d="M50 42.5V24.2c0-1.1-.7-2.1-1.7-2.5-5.2-2-10.1-2.1-14.3.2v22.3c4.6-2.1 9.7-2 14.5-.1.9.3 1.5 1.2 1.5 2.1Z" fill="rgba(255,255,255,0.88)"/>
+  <path d="M22 38c4.5-3.5 8.2-8.2 10-14.5 1.8 6.3 5.5 11 10 14.5" stroke="#F5C518" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  <circle cx="32" cy="21" r="3.2" fill="#F5C518"/>
+</svg>

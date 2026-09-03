@@ -144,13 +144,13 @@ function HeroSection({ section }: { section: PageSection }) {
   return (
     <EditableHeroCarousel
       imageTypePrefix={prefix}
-      altPrefix={`${str(p, "brandName", "N&P")} hero`}
+      altPrefix={`${str(p, "brandName", "Trí Nhân Academy")} hero`}
       minHeightClassName="min-h-[calc(70svh-var(--header-height))]"
     >
       <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
         <div className="max-w-3xl">
           <p className="mb-4 font-display text-4xl font-bold tracking-tight text-white drop-shadow-sm sm:text-5xl lg:text-6xl">
-            {str(p, "brandName", "N&P")}
+            {str(p, "brandName", "Trí Nhân Academy")}
           </p>
           <h1 className="mb-4 font-display text-2xl font-semibold leading-snug text-white/95 sm:text-3xl lg:text-4xl">
             {str(p, "title")}
@@ -311,7 +311,7 @@ function CardsSection({ section }: { section: PageSection }) {
                   }}
                 >
                   <span className="text-xs font-bold uppercase tracking-[0.2em] opacity-80">
-                    {label || "N&P"}
+                    {label || "Trí Nhân"}
                   </span>
                 </div>
               )}

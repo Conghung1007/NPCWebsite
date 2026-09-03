@@ -804,7 +804,7 @@ function SectionPropsForm({
           <Input
             value={String(p.brandName ?? "")}
             onChange={(e) => set("brandName", e.target.value)}
-            placeholder="N&P"
+            placeholder="Trí Nhân Academy"
           />
           <p className="text-xs text-muted-foreground">
             Chữ lớn nhất trên banner (thương hiệu / tên sản phẩm).

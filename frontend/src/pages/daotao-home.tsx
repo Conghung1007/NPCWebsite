@@ -31,7 +31,7 @@ export default function DaotaoHome() {
         <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
           <div className="max-w-2xl">
             <p className="font-display text-5xl sm:text-6xl font-bold tracking-tight text-white mb-4 home-fade-up">
-              Đào tạo N&P
+              Đào tạo Trí Nhân
             </p>
             <h1 className="font-display text-xl sm:text-2xl font-semibold text-white/95 mb-3 home-fade-up">
               Kỹ năng mềm
@@ -66,7 +66,7 @@ export default function DaotaoHome() {
 
       <section className="max-w-5xl mx-auto px-4 sm:px-6 py-16 sm:py-20">
         <h2 className="font-display text-2xl sm:text-3xl font-bold text-foreground mb-3">
-          Vì sao chọn Đào tạo N&P
+          Vì sao chọn Đào tạo Trí Nhân
         </h2>
         <p className="text-muted-foreground mb-10 max-w-2xl">
           Tập trung kỹ năng dùng được ngay — trong học tập và công việc.
@@ -189,7 +189,7 @@ export default function DaotaoHome() {
           href={portalHref("group", "/")}
           className="text-primary font-medium hover:underline"
         >
-          ← Về N&P Group
+          ← Về Trí Nhân Academy
         </a>
       </p>
     </div>

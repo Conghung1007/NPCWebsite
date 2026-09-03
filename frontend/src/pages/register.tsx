@@ -391,7 +391,7 @@ export default function Register() {
   return (
     <AuthShell
       title="Tạo tài khoản mới"
-      subtitle="Tham gia cộng đồng luyện thi Ngoại ngữ Trí Nhân — hoàn toàn miễn phí."
+      subtitle="Tham gia cộng đồng luyện thi Trí Nhân Academy — hoàn toàn miễn phí."
       showHints
       steps={steps}
       footer={authFooter}
@@ -613,7 +613,7 @@ export default function Register() {
             htmlFor="agreeToTerms"
             className="cursor-pointer text-xs leading-snug font-normal text-neutral-600"
           >
-            Tôi đồng ý với điều khoản dịch vụ và chính sách bảo mật của Ngoại ngữ Trí Nhân *
+            Tôi đồng ý với điều khoản dịch vụ và chính sách bảo mật của Trí Nhân Academy *
           </Label>
         </div>
         {form.formState.errors.agreeToTerms ? (

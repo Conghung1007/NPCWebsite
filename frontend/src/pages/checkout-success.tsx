@@ -65,7 +65,7 @@ export default function CheckoutSuccessPage() {
       ? "Thanh toán thành công. Quyền thi gói đề đã mở và đăng ký lớp học đã được ghi nhận."
       : hasExamInOrder
         ? "Quyền thi gói đề đã được mở. Bạn có thể làm đầy đủ các đề trong gói."
-        : "Cảm ơn bạn đã đăng ký. N&P sẽ liên hệ xác nhận lịch học.";
+        : "Cảm ơn bạn đã đăng ký. Trí Nhân Academy sẽ liên hệ xác nhận lịch học.";
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/60 to-white">

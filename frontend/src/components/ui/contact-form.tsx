@@ -264,7 +264,7 @@ export function ContactForm({
                   </FormControl>
                   <div className="space-y-1 leading-none">
                     <FormLabel className="text-sm text-white">
-                      Tôi đồng ý với điều khoản sử dụng và chính sách bảo mật của N&P
+                      Tôi đồng ý với điều khoản sử dụng và chính sách bảo mật của Trí Nhân Academy
                     </FormLabel>
                     <FormMessage />
                   </div>
@@ -390,7 +390,7 @@ export function ContactForm({
                 </FormControl>
                 <div className="space-y-1 leading-none">
                   <FormLabel className="text-sm text-muted-foreground">
-                    Tôi đồng ý với điều khoản sử dụng và chính sách bảo mật của N&P
+                    Tôi đồng ý với điều khoản sử dụng và chính sách bảo mật của Trí Nhân Academy
                   </FormLabel>
                   <FormMessage />
                 </div>

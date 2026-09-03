@@ -6,7 +6,13 @@ import {
   isClassCartItem,
   isExamPackageCartItem,
 } from "@/hooks/useCart";
-import { getEffectiveExamCount, formatExamCountShort, getPackageSaleInfo, formatVnd } from "@/lib/examPackageDisplay";
+import {
+  getEffectiveExamCount,
+  formatExamCountShort,
+  getPackageSaleInfo,
+} from "@/lib/examPackageDisplay";
+import { ExamPackagesSection } from "@/components/ExamPackagesSection";
+import { TNJS } from "@/lib/tnjsTheme";
 import { Trash2, ShoppingBag, ArrowRight, BookOpen } from "lucide-react";
 
 export default function CartPage() {
@@ -24,19 +30,22 @@ export default function CartPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-emerald-50/60 to-white">
-      <div className="max-w-3xl mx-auto px-4 py-12">
-        <h1 className="font-serif text-3xl font-bold mb-8">Giỏ hàng</h1>
+      <div className="mx-auto max-w-3xl px-4 py-12">
+        <h1 className="mb-8 font-serif text-3xl font-bold">Giỏ hàng</h1>
 
         {items.length === 0 ? (
-          <div className="text-center py-16 border border-dashed border-emerald-200 bg-white/80">
-            <ShoppingBag className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-            <p className="text-lg font-medium mb-2">Giỏ hàng trống</p>
-            <div className="flex flex-wrap gap-3 justify-center mt-4">
+          <div className="border border-dashed border-emerald-200 bg-white/80 px-4 py-12 text-center sm:py-16">
+            <ShoppingBag className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
+            <p className="mb-2 text-lg font-medium">Giỏ hàng trống</p>
+            <p className="mx-auto max-w-md text-sm text-muted-foreground">
+              Chọn gói đề bên dưới để thêm vào giỏ, hoặc xem lớp đang mở.
+            </p>
+            <div className="mt-6 flex flex-wrap justify-center gap-3">
+              <a href="#cart-package-suggestions">
+                <Button>Chọn gói đề</Button>
+              </a>
               <Link href="/classes">
-                <Button>Xem lớp đang mở</Button>
-              </Link>
-              <Link href="/">
-                <Button variant="outline">Xem gói đề</Button>
+                <Button variant="outline">Xem lớp đang mở</Button>
               </Link>
             </div>
           </div>
@@ -45,7 +54,7 @@ export default function CartPage() {
             {items.map((item) => (
               <div
                 key={item.id}
-                className="flex gap-4 items-start justify-between border border-emerald-100 bg-white p-4"
+                className="flex items-start justify-between gap-4 border border-emerald-100 bg-white p-4"
               >
                 <div className="min-w-0">
                   {isClassCartItem(item) ? (
@@ -57,32 +66,34 @@ export default function CartPage() {
                         {item.classSession.title}
                       </Link>
                       {item.classSession.scheduleText && (
-                        <p className="text-sm text-muted-foreground mt-1">
+                        <p className="mt-1 text-sm text-muted-foreground">
                           {item.classSession.scheduleText}
                         </p>
                       )}
-                      <p className="text-primary font-bold mt-2">
+                      <p className="mt-2 font-bold text-primary">
                         {formatVnd(item.classSession.priceVnd)}
                       </p>
                     </>
                   ) : isExamPackageCartItem(item) ? (
                     <>
                       <div className="flex items-center gap-2 font-semibold">
-                        <BookOpen className="w-4 h-4 text-primary shrink-0" />
+                        <BookOpen className="h-4 w-4 shrink-0 text-primary" />
                         <span>{item.examPackage.name}</span>
                       </div>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        {formatExamCountShort(getEffectiveExamCount(item.examPackage))}
+                      <p className="mt-1 text-sm text-muted-foreground">
+                        {formatExamCountShort(
+                          getEffectiveExamCount(item.examPackage),
+                        )}
                         {item.examPackage.level
                           ? ` · JLPT ${item.examPackage.level.toUpperCase()}`
                           : ""}
                       </p>
-                      <p className="text-primary font-bold mt-2">
+                      <p className="mt-2 font-bold text-primary">
                         {(() => {
                           const sale = getPackageSaleInfo(item.examPackage);
                           return sale.onSale ? (
                             <>
-                              <span className="text-sm font-normal text-muted-foreground line-through mr-2">
+                              <span className="mr-2 text-sm font-normal text-muted-foreground line-through">
                                 {formatVnd(sale.compareAtPriceVnd!)}
                               </span>
                               {formatVnd(sale.salePriceVnd)}
@@ -101,19 +112,19 @@ export default function CartPage() {
                   onClick={() => removeItem.mutate(item.id)}
                   disabled={removeItem.isPending}
                 >
-                  <Trash2 className="w-4 h-4 text-red-600" />
+                  <Trash2 className="h-4 w-4 text-red-600" />
                 </Button>
               </div>
             ))}
 
             {cart?.hasExamPackages ? (
-              <p className="text-sm text-emerald-800 bg-emerald-50 border border-emerald-200 px-3 py-2 rounded">
+              <p className="rounded border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm text-emerald-800">
                 Gói đề trong giỏ — bấm Thanh toán, đăng ký hoặc đăng nhập nhanh
                 rồi trả qua PayOS để mở quyền thi.
               </p>
             ) : null}
 
-            <div className="flex items-center justify-between pt-4 border-t">
+            <div className="flex items-center justify-between border-t pt-4">
               <div>
                 <p className="text-sm text-muted-foreground">Tổng cộng</p>
                 <p className="text-2xl font-bold text-primary">
@@ -122,12 +133,33 @@ export default function CartPage() {
               </div>
               <Button size="lg" onClick={() => setLocation("/checkout")}>
                 Thanh toán
-                <ArrowRight className="w-4 h-4 ml-2" />
+                <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
           </div>
         )}
       </div>
+
+      <section
+        id="cart-package-suggestions"
+        className="py-14 sm:py-16"
+        style={{ backgroundColor: TNJS.green }}
+      >
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <ExamPackagesSection
+            title={
+              items.length === 0 ? "Gợi ý gói đề cho bạn" : "Thêm gói đề khác"
+            }
+            description={
+              items.length === 0
+                ? "Chọn gói theo trình độ JLPT — thêm vào giỏ rồi thanh toán để mở quyền thi."
+                : "Bổ sung gói đề khác vào giỏ nếu cần luyện thêm cấp độ."
+            }
+            stayOnPage
+            hideCartLink
+          />
+        </div>
+      </section>
     </div>
   );
 }

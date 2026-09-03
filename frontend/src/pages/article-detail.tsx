@@ -171,7 +171,7 @@ export default function ArticleDetail() {
                 Cần tư vấn thêm?
               </h3>
               <p className="text-muted-foreground mb-4">
-                Đội ngũ chuyên gia của N&P sẵn sàng hỗ trợ bạn với dịch vụ{" "}
+                Đội ngũ chuyên gia của Trí Nhân Academy sẵn sàng hỗ trợ bạn với dịch vụ{" "}
                 {getServiceName(article.category).toLowerCase()}.
               </p>
               <Button onClick={() => setLocation("/contact")}>

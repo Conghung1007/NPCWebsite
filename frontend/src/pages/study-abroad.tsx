@@ -148,7 +148,7 @@ export default function StudyAbroad() {
   }, [hasEditPermission, contentsLoading, remoteContents, bulkUpsertContent]);
 
   useEffect(() => {
-    document.title = "Tư Vấn Du Học - N&P Company";
+    document.title = "Tư Vấn Du Học - Trí Nhân Academy";
     const content =
       "Tư vấn du học tại Nhật Bản, Hàn Quốc, Mỹ, Canada và Châu Âu. Hỗ trợ chọn trường, hồ sơ, học bổng và đồng hành nhập học.";
     let meta = document.querySelector('meta[name="description"]');
@@ -228,7 +228,7 @@ export default function StudyAbroad() {
         <div className="relative w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
           <div className="max-w-3xl mx-auto text-center">
             <p className="font-display text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight text-white mb-3">
-              N&P
+              Trí Nhân Academy
             </p>
             <h1 className="font-display text-2xl sm:text-3xl lg:text-4xl font-semibold text-white/95 mb-3 leading-snug">
               <EditableText
@@ -397,7 +397,7 @@ export default function StudyAbroad() {
               {studentsImage ? (
                 <img
                   src={studentsImage}
-                  alt="Sinh viên du học với N&P"
+                  alt="Sinh viên du học với Trí Nhân Academy"
                   loading="lazy"
                   className="rounded-xl w-full h-auto"
                   onError={(e) => {

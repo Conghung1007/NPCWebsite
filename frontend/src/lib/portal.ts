@@ -287,28 +287,28 @@ export const PORTAL_META: Record<
   { brand: string; label: string; tagline: string; documentTitle: string }
 > = {
   group: {
-    brand: "N&P Group",
-    label: "N&P Group",
+    brand: "Trí Nhân Academy",
+    label: "Trí Nhân Academy",
     tagline: "Hệ sinh thái giáo dục & quốc tế",
-    documentTitle: "N&P Group",
+    documentTitle: "Trí Nhân Academy",
   },
   huongnghiep: {
-    brand: "Hướng nghiệp N&P",
+    brand: "Hướng nghiệp Trí Nhân",
     label: "Hướng nghiệp",
     tagline: "Du học · Đi làm · Đào tạo nghề",
-    documentTitle: "Hướng nghiệp — N&P Group",
+    documentTitle: "Hướng nghiệp — Trí Nhân Academy",
   },
   dichvu: {
-    brand: "Dịch vụ N&P",
+    brand: "Dịch vụ Trí Nhân",
     label: "Dịch vụ",
     tagline: "Biên phiên dịch · Kỹ năng mềm · Tư vấn DN",
-    documentTitle: "Dịch vụ — N&P Group",
+    documentTitle: "Dịch vụ — Trí Nhân Academy",
   },
   luyenthi: {
-    brand: "Luyện thi N&P",
+    brand: "Luyện thi Trí Nhân",
     label: "Luyện thi",
     tagline: "Thi thử & luyện đề",
-    documentTitle: "Luyện thi — N&P Group",
+    documentTitle: "Luyện thi — Trí Nhân Academy",
   },
 };
 
@@ -471,7 +471,7 @@ export function getFooterServices(portal: PortalId): NavItem[] {
         shortName: "Visa",
       },
       {
-        name: "N&P Group",
+        name: "Trí Nhân Academy",
         href: portalHref("group", "/"),
         shortName: "Group",
         external: true,
@@ -499,7 +499,7 @@ export function getFooterServices(portal: PortalId): NavItem[] {
         external: true,
       },
       {
-        name: "N&P Group",
+        name: "Trí Nhân Academy",
         href: portalHref("group", "/"),
         shortName: "Group",
         external: true,
@@ -525,7 +525,7 @@ export function getFooterServices(portal: PortalId): NavItem[] {
         external: true,
       },
       {
-        name: "N&P Group",
+        name: "Trí Nhân Academy",
         href: portalHref("group", "/"),
         shortName: "Group",
         external: true,

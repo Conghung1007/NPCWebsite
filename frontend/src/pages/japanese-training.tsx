@@ -259,7 +259,7 @@ export default function JapaneseTraining() {
   }, [hasEditPermission, contentsLoading, remoteContents, bulkUpsertContent]);
 
   useEffect(() => {
-    document.title = "TNJS | Đào tạo tiếng Nhật — N&P Group";
+    document.title = "TNJS | Đào tạo tiếng Nhật — Trí Nhân Academy";
     const content =
       "TNJS — khóa học tiếng Nhật N5–N1 và luyện thi JLPT. Sensei bản ngữ, lớp tối đa 10 học viên, đăng ký học miễn phí.";
     let meta = document.querySelector('meta[name="description"]');

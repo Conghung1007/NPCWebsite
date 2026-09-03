@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { TNJS } from "@/lib/tnjsTheme";
+import { TriNhanBrand, BRAND_FULL_NAME } from "@/components/TriNhanBrand";
 import type { ReactNode } from "react";
 
 type AuthShellProps = {
@@ -32,14 +33,13 @@ export function AuthShell({
         }}
       >
         <div className="relative z-10">
-          <Link href="/" className="inline-flex items-center gap-3 text-white group">
-            <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 text-sm font-black backdrop-blur-sm">
-              TNJS
-            </span>
-            <span className="flex flex-col">
-              <span className="text-lg font-bold leading-tight">Ngoại ngữ Trí Nhân</span>
-              <span className="text-xs text-white/75">Luyện thi · Đào tạo tiếng Nhật</span>
-            </span>
+          <Link href="/" className="inline-flex items-center group">
+            <TriNhanBrand
+              size="md"
+              tone="onGreen"
+              preferDefaultImage={false}
+              subtitle="Luyện thi · Đào tạo tiếng Nhật"
+            />
           </Link>
         </div>
 
@@ -73,7 +73,7 @@ export function AuthShell({
         </div>
 
         <p className="relative z-10 mt-10 lg:mt-0 text-xs text-white/60">
-          © {new Date().getFullYear()} TNJS · N&P Group
+          © {new Date().getFullYear()} {BRAND_FULL_NAME}
         </p>
 
         <div

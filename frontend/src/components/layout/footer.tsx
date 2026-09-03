@@ -6,6 +6,7 @@ import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { usePortal } from "@/contexts/PortalContext";
 import { getFooterServices } from "@/lib/portal";
 import { TNJS } from "@/lib/tnjsTheme";
+import { TriNhanBrand, BRAND_FULL_NAME } from "@/components/TriNhanBrand";
 
 function SocialIcon({ href, label, children }: { href: string; label: string; children: ReactNode }) {
   if (!href || href === "#") return null;
@@ -49,22 +50,25 @@ export function Footer() {
       <div className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="mx-auto mb-8 grid w-4/5 max-w-4/5 grid-cols-1 gap-6 sm:grid-cols-2 lg:mb-12 lg:grid-cols-3 lg:gap-8">
           <div className="sm:col-span-2 lg:col-span-1">
-            <div className="mb-4 flex items-center lg:mb-6">
-              <span
-                className="mr-2 text-2xl font-bold sm:text-3xl"
-                style={{ color: TNJS.green }}
-              >
-                {portal === "huongnghiep"
-                  ? "HN"
-                  : portal === "dichvu"
-                    ? "DV"
-                    : portal === "luyenthi"
-                      ? "LT"
-                      : "N&P"}
-              </span>
-              <span className="text-sm text-white/50">
-                {portal === "group" ? "Group" : "N&P Group"}
-              </span>
+            <div className="mb-4 lg:mb-6">
+              {settings?.logoFooterUrl?.trim() || settings?.logoUrl?.trim() ? (
+                <img
+                  src={
+                    settings.logoFooterUrl?.trim() ||
+                    settings.logoUrl?.trim() ||
+                    ""
+                  }
+                  alt={settings?.siteName || BRAND_FULL_NAME}
+                  className="h-10 w-auto max-w-[14rem] object-contain object-left sm:h-12"
+                />
+              ) : (
+                <TriNhanBrand
+                  size="md"
+                  tone="onDark"
+                  preferDefaultImage={false}
+                  subtitle={portal === "group" ? undefined : meta.label}
+                />
+              )}
             </div>
             <p className="mb-4 text-sm text-white/60 sm:text-base lg:mb-6">
               {meta.tagline}.
@@ -152,7 +156,7 @@ export function Footer() {
                   </div>
                   <div className="flex items-center justify-center sm:justify-start">
                     <Mail className="mr-3 h-5 w-5 flex-shrink-0" />
-                    <span className="text-sm">info@npgroup.vn</span>
+                    <span className="text-sm">info@trinhan.academy</span>
                   </div>
                 </>
               )}
@@ -167,7 +171,8 @@ export function Footer() {
       >
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between md:flex-row">
           <div className="mb-4 text-sm font-medium text-white md:mb-0">
-            © {new Date().getFullYear()} N&P Group. Tất cả quyền được bảo lưu.
+            © {new Date().getFullYear()} {BRAND_FULL_NAME}. Tất cả quyền được
+            bảo lưu.
           </div>
           <div className="flex space-x-6 text-sm text-white/90">
             {settings?.privacyUrl ? (
