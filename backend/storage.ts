@@ -3,6 +3,7 @@ import { users, contactRequests, contactInfo, articles, uiImages, registrationRe
 import { db } from "./db";
 import { eq, sql, inArray, asc, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
+import { allocateUniqueSlug, looksLikeUuid } from "@shared/contentSlug";
 
 const DEFAULT_TESTIMONIALS: InsertTestimonial[] = [
   {
@@ -56,7 +57,7 @@ export interface IStorage {
   
   // Contact Info methods
   createContactInfo(contactInfo: InsertContactInfo): Promise<ContactInfo>;
-  getContactInfo(): Promise<ContactInfo[]>;
+  getContactInfo(opts?: { includeInactive?: boolean }): Promise<ContactInfo[]>;
   getContactInfoById(id: string): Promise<ContactInfo | undefined>;
   updateContactInfo(id: string, updateData: Partial<InsertContactInfo>): Promise<ContactInfo | null>;
   deleteContactInfo(id: string): Promise<boolean>;
@@ -66,7 +67,9 @@ export interface IStorage {
   getAllArticles(portal?: string): Promise<Article[]>;
   getArticles(portal?: string): Promise<Article[]>;
   getArticle(id: string): Promise<Article | undefined>;
-  updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number; portal?: string }): Promise<Article | null>;
+  getArticleBySlug(portal: string, slug: string): Promise<Article | undefined>;
+  getArticleByIdOrSlug(idOrSlug: string, portal?: string): Promise<Article | undefined>;
+  updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number; portal?: string; slug?: string | null }): Promise<Article | null>;
   deleteArticle(id: string): Promise<boolean>;
   moveArticleOrder(id: string, direction: 'up' | 'down'): Promise<boolean>;
   
@@ -107,6 +110,8 @@ export interface IStorage {
   // Exam system methods
   createExam(exam: InsertExam): Promise<Exam>;
   getExam(id: string): Promise<Exam | undefined>;
+  getExamBySlug(slug: string): Promise<Exam | undefined>;
+  getExamByIdOrSlug(idOrSlug: string): Promise<Exam | undefined>;
   getExamMetadata(id: string): Promise<{ id: string; isDemo: boolean } | undefined>;
   getAllExams(): Promise<Exam[]>;
   getActiveExams(): Promise<Exam[]>;
@@ -453,10 +458,12 @@ export class MemStorage implements IStorage {
     return contactInfo;
   }
 
-  async getContactInfo(): Promise<ContactInfo[]> {
-    return Array.from(this.contactInfos.values())
-      .filter(info => info.isActive)
-      .sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+  async getContactInfo(opts?: { includeInactive?: boolean }): Promise<ContactInfo[]> {
+    const rows = Array.from(this.contactInfos.values()).sort(
+      (a, b) => (a.displayOrder || 0) - (b.displayOrder || 0),
+    );
+    if (opts?.includeInactive) return rows;
+    return rows.filter((info) => info.isActive !== false);
   }
 
   async getContactInfoById(id: string): Promise<ContactInfo | undefined> {
@@ -486,12 +493,21 @@ export class MemStorage implements IStorage {
 
   async createArticle(insertArticle: InsertArticle): Promise<Article> {
     const id = randomUUID();
+    const portal = insertArticle.portal || "group";
+    const slug =
+      insertArticle.slug ||
+      (await allocateUniqueSlug(insertArticle.title, async (s) =>
+        Array.from(this.articles.values()).some(
+          (a) => a.portal === portal && a.slug === s,
+        ),
+      ));
     const article: Article = {
       ...insertArticle,
       id,
+      slug,
       imageUrl: insertArticle.imageUrl || null,
       videoUrl: insertArticle.videoUrl ?? null,
-      portal: insertArticle.portal || "group",
+      portal,
       sortOrder: insertArticle.sortOrder || 0,
       createdAt: new Date(),
     };
@@ -519,16 +535,51 @@ export class MemStorage implements IStorage {
     return this.articles.get(id);
   }
 
-  async getArticles(portal?: string): Promise<Article[]> {
-    return this.getAllArticles();
+  async getArticleBySlug(portal: string, slug: string): Promise<Article | undefined> {
+    return Array.from(this.articles.values()).find(
+      (a) => a.portal === portal && a.slug === slug,
+    );
   }
 
-  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number; portal?: string }): Promise<Article | null> {
+  async getArticleByIdOrSlug(
+    idOrSlug: string,
+    portal?: string,
+  ): Promise<Article | undefined> {
+    if (looksLikeUuid(idOrSlug)) {
+      return this.getArticle(idOrSlug);
+    }
+    if (portal) {
+      const byPortal = await this.getArticleBySlug(portal, idOrSlug);
+      if (byPortal) return byPortal;
+    }
+    return Array.from(this.articles.values()).find((a) => a.slug === idOrSlug);
+  }
+
+  async getArticles(portal?: string): Promise<Article[]> {
+    return this.getAllArticles(portal);
+  }
+
+  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number; portal?: string; slug?: string | null }): Promise<Article | null> {
     const existingArticle = this.articles.get(id);
     if (!existingArticle) {
       return null;
     }
-    
+
+    const portal =
+      updateData.portal !== undefined ? updateData.portal : existingArticle.portal;
+    let slug =
+      updateData.slug !== undefined ? updateData.slug : existingArticle.slug;
+    if (
+      updateData.title !== existingArticle.title &&
+      updateData.slug === undefined
+    ) {
+      slug = await allocateUniqueSlug(updateData.title, async (s) =>
+        Array.from(this.articles.values()).some(
+          (a) => a.id !== id && a.portal === portal && a.slug === s,
+        ),
+      );
+    }
+
     const updatedArticle = {
       ...existingArticle,
       title: updateData.title,
@@ -536,7 +587,8 @@ export class MemStorage implements IStorage {
       category: updateData.category,
       imageUrl: updateData.imageUrl !== undefined ? updateData.imageUrl : existingArticle.imageUrl,
       sortOrder: updateData.sortOrder !== undefined ? updateData.sortOrder : existingArticle.sortOrder,
-      portal: updateData.portal !== undefined ? updateData.portal : existingArticle.portal,
+      portal,
+      slug,
     };
     
     this.articles.set(id, updatedArticle);
@@ -977,9 +1029,15 @@ export class MemStorage implements IStorage {
   // Exam system methods
   async createExam(insertExam: InsertExam): Promise<Exam> {
     const id = randomUUID();
+    const slug =
+      insertExam.slug ||
+      (await allocateUniqueSlug(insertExam.title, async (s) =>
+        Array.from(this.exams.values()).some((e) => e.slug === s),
+      ));
     const exam: Exam = {
       ...insertExam,
       id,
+      slug,
       description: insertExam.description ?? null,
       isDemo: insertExam.isDemo ?? null,
       isActive: insertExam.isActive ?? null,
@@ -991,6 +1049,17 @@ export class MemStorage implements IStorage {
 
   async getExam(id: string): Promise<Exam | undefined> {
     return this.exams.get(id);
+  }
+
+  async getExamBySlug(slug: string): Promise<Exam | undefined> {
+    return Array.from(this.exams.values()).find((e) => e.slug === slug);
+  }
+
+  async getExamByIdOrSlug(idOrSlug: string): Promise<Exam | undefined> {
+    if (looksLikeUuid(idOrSlug)) {
+      return this.getExam(idOrSlug);
+    }
+    return (await this.getExamBySlug(idOrSlug)) ?? this.getExam(idOrSlug);
   }
 
   async getExamMetadata(id: string): Promise<{ id: string; isDemo: boolean } | undefined> {
@@ -1015,9 +1084,21 @@ export class MemStorage implements IStorage {
       return null;
     }
 
+    let slug = updateData.slug !== undefined ? updateData.slug : existingExam.slug;
+    if (
+      updateData.title &&
+      updateData.title !== existingExam.title &&
+      updateData.slug === undefined
+    ) {
+      slug = await allocateUniqueSlug(updateData.title, async (s) =>
+        Array.from(this.exams.values()).some((e) => e.id !== id && e.slug === s),
+      );
+    }
+
     const updatedExam: Exam = {
       ...existingExam,
       ...updateData,
+      slug,
       id,
       createdAt: existingExam.createdAt,
     };
@@ -1407,13 +1488,25 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createArticle(insertArticle: InsertArticle): Promise<Article> {
-    const articleData = {
-      ...insertArticle,
-      sortOrder: insertArticle.sortOrder || 0
-    };
+    const portal = insertArticle.portal || "group";
+    const slug =
+      insertArticle.slug ||
+      (await allocateUniqueSlug(insertArticle.title, async (s) => {
+        const [hit] = await db
+          .select({ id: articles.id })
+          .from(articles)
+          .where(and(eq(articles.portal, portal), eq(articles.slug, s)))
+          .limit(1);
+        return !!hit;
+      }));
     const [article] = await db
       .insert(articles)
-      .values(articleData)
+      .values({
+        ...insertArticle,
+        portal,
+        slug,
+        sortOrder: insertArticle.sortOrder || 0,
+      })
       .returning();
     return article;
   }
@@ -1436,14 +1529,56 @@ export class DatabaseStorage implements IStorage {
     return article || undefined;
   }
 
+  async getArticleBySlug(portal: string, slug: string): Promise<Article | undefined> {
+    const [article] = await db
+      .select()
+      .from(articles)
+      .where(and(eq(articles.portal, portal), eq(articles.slug, slug)))
+      .limit(1);
+    return article || undefined;
+  }
+
+  async getArticleByIdOrSlug(
+    idOrSlug: string,
+    portal?: string,
+  ): Promise<Article | undefined> {
+    if (looksLikeUuid(idOrSlug)) {
+      return this.getArticle(idOrSlug);
+    }
+    if (portal) {
+      const byPortal = await this.getArticleBySlug(portal, idOrSlug);
+      if (byPortal) return byPortal;
+    }
+    const [article] = await db
+      .select()
+      .from(articles)
+      .where(eq(articles.slug, idOrSlug))
+      .limit(1);
+    return article || undefined;
+  }
+
   async getArticles(portal?: string): Promise<Article[]> {
     return this.getAllArticles(portal);
   }
 
-  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number; portal?: string }): Promise<Article | null> {
+  async updateArticle(id: string, updateData: { title: string; content: string; category: string; imageUrl?: string | null; sortOrder?: number; portal?: string; slug?: string | null }): Promise<Article | null> {
+    const existing = await this.getArticle(id);
+    if (!existing) return null;
+    const portal = updateData.portal ?? existing.portal;
+    let slug = updateData.slug !== undefined ? updateData.slug : existing.slug;
+    if (updateData.title !== existing.title && updateData.slug === undefined) {
+      slug = await allocateUniqueSlug(updateData.title, async (s) => {
+        const [hit] = await db
+          .select({ id: articles.id })
+          .from(articles)
+          .where(and(eq(articles.portal, portal), eq(articles.slug, s)))
+          .limit(1);
+        return !!hit && hit.id !== id;
+      });
+    }
     const [updatedArticle] = await db
       .update(articles)
-      .set(updateData)
+      .set({ ...updateData, portal, slug })
       .where(eq(articles.id, id))
       .returning();
     return updatedArticle || null;
@@ -1769,10 +1904,21 @@ export class DatabaseStorage implements IStorage {
 
   // Exam system methods
   async createExam(examData: InsertExam): Promise<Exam> {
+    const slug =
+      examData.slug ||
+      (await allocateUniqueSlug(examData.title, async (s) => {
+        const [hit] = await db
+          .select({ id: exams.id })
+          .from(exams)
+          .where(eq(exams.slug, s))
+          .limit(1);
+        return !!hit;
+      }));
     const [exam] = await db
       .insert(exams)
       .values({
         ...examData,
+        slug,
         id: randomUUID(),
         createdAt: new Date(),
       })
@@ -1783,6 +1929,22 @@ export class DatabaseStorage implements IStorage {
   async getExam(id: string): Promise<Exam | undefined> {
     const [exam] = await db.select().from(exams).where(eq(exams.id, id));
     return exam;
+  }
+
+  async getExamBySlug(slug: string): Promise<Exam | undefined> {
+    const [exam] = await db
+      .select()
+      .from(exams)
+      .where(eq(exams.slug, slug))
+      .limit(1);
+    return exam;
+  }
+
+  async getExamByIdOrSlug(idOrSlug: string): Promise<Exam | undefined> {
+    if (looksLikeUuid(idOrSlug)) {
+      return this.getExam(idOrSlug);
+    }
+    return (await this.getExamBySlug(idOrSlug)) ?? this.getExam(idOrSlug);
   }
 
   async getExamMetadata(id: string): Promise<{ id: string; isDemo: boolean } | undefined> {
@@ -1804,9 +1966,26 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateExam(id: string, updateData: Partial<InsertExam>): Promise<Exam | null> {
+    const existing = await this.getExam(id);
+    if (!existing) return null;
+    let slug = updateData.slug !== undefined ? updateData.slug : existing.slug;
+    if (
+      updateData.title &&
+      updateData.title !== existing.title &&
+      updateData.slug === undefined
+    ) {
+      slug = await allocateUniqueSlug(updateData.title, async (s) => {
+        const [hit] = await db
+          .select({ id: exams.id })
+          .from(exams)
+          .where(eq(exams.slug, s))
+          .limit(1);
+        return !!hit && hit.id !== id;
+      });
+    }
     const [exam] = await db
       .update(exams)
-      .set(updateData)
+      .set({ ...updateData, slug })
       .where(eq(exams.id, id))
       .returning();
     return exam || null;
@@ -2110,8 +2289,16 @@ export class DatabaseStorage implements IStorage {
     return newContactInfo;
   }
 
-  async getContactInfo(): Promise<ContactInfo[]> {
-    return await db.select().from(contactInfo)
+  async getContactInfo(opts?: { includeInactive?: boolean }): Promise<ContactInfo[]> {
+    if (opts?.includeInactive) {
+      return await db
+        .select()
+        .from(contactInfo)
+        .orderBy(contactInfo.displayOrder);
+    }
+    return await db
+      .select()
+      .from(contactInfo)
       .where(eq(contactInfo.isActive, true))
       .orderBy(contactInfo.displayOrder);
   }

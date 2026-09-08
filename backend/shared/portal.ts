@@ -1,4 +1,4 @@
-/** Shared portal IDs — N&P Group hub + 3 product portals (+ external TNJS) */
+/** Shared portal IDs — hub + 3 product portals (+ external TNJS) */
 
 export const PORTAL_IDS = [
   "group",
@@ -8,12 +8,25 @@ export const PORTAL_IDS = [
 ] as const;
 export type PortalId = (typeof PORTAL_IDS)[number];
 
-/** Production hostnames (npgroup.com + subdomains). TNJS is external tnjs.vn */
+/** Path prefix for each product portal (group uses apex `/`). */
+export const PORTAL_BASE_PATH: Record<Exclude<PortalId, "group">, string> = {
+  huongnghiep: "/huong-nghiep",
+  dichvu: "/dich-vu",
+  luyenthi: "/luyen-thi",
+};
+
+/** Home segment under a portal prefix (maps to internal `/`). */
+export const PORTAL_HOME_SEGMENT = "gioi-thieu";
+
+/** Group hub contact path (internal `/contact`). */
+export const GROUP_CONTACT_PATH = "/lien-he";
+
+/** Single apex host (path-based portals; no subdomains). */
 export const PORTAL_HOSTS = {
-  group: "npgroup.com",
-  huongnghiep: "huongnghiep.npgroup.com",
-  dichvu: "dichvu.npgroup.com",
-  luyenthi: "luyenthi.npgroup.com",
+  group: "trinhanacademy.com",
+  huongnghiep: "trinhanacademy.com",
+  dichvu: "trinhanacademy.com",
+  luyenthi: "trinhanacademy.com",
 } as const;
 
 /** External Japanese training product site */
@@ -97,60 +110,166 @@ export function portalFromArticleCategory(category: string): PortalId {
   }
 }
 
-export function resolvePortalFromHost(hostname: string): PortalId | null {
-  const host = hostname.toLowerCase().split(":")[0];
+function normalizePathname(pathname: string): string {
+  const raw = (pathname.split("?")[0] || "/").split("#")[0] || "/";
+  if (raw.length > 1 && raw.endsWith("/")) return raw.slice(0, -1) || "/";
+  return raw.startsWith("/") ? raw : `/${raw}`;
+}
 
-  if (
-    host.startsWith("huongnghiep.") ||
-    host === "huongnghiep.localhost" ||
-    host.startsWith("duhoc.")
-  ) {
-    return "huongnghiep";
+/** Portal implied by public URL prefix (`/huong-nghiep/...`). */
+export function resolvePortalFromPath(pathname: string): PortalId | null {
+  const path = normalizePathname(pathname);
+  for (const id of ["huongnghiep", "dichvu", "luyenthi"] as const) {
+    const base = PORTAL_BASE_PATH[id];
+    if (path === base || path.startsWith(`${base}/`)) return id;
   }
-  if (
-    host.startsWith("dichvu.") ||
-    host === "dichvu.localhost" ||
-    host.startsWith("daotao.")
-  ) {
-    return "dichvu";
+  return null;
+}
+
+/**
+ * Strip portal prefix for internal routing.
+ * `/huong-nghiep/gioi-thieu` → `{ portal: huongnghiep, internalPath: "/" }`
+ * `/huong-nghiep/du-hoc` → `{ portal: huongnghiep, internalPath: "/du-hoc" }`
+ * `/lien-he` → `{ portal: group, internalPath: "/contact" }`
+ */
+export function stripPortalPrefix(pathname: string): {
+  portal: PortalId;
+  internalPath: string;
+} {
+  const path = normalizePathname(pathname);
+
+  for (const id of ["huongnghiep", "dichvu", "luyenthi"] as const) {
+    const base = PORTAL_BASE_PATH[id];
+    if (path === base) {
+      return { portal: id, internalPath: "/" };
+    }
+    if (path.startsWith(`${base}/`)) {
+      const rest = path.slice(base.length) || "/";
+      if (rest === `/${PORTAL_HOME_SEGMENT}`) {
+        return { portal: id, internalPath: "/" };
+      }
+      return { portal: id, internalPath: rest };
+    }
   }
-  if (
-    host.startsWith("luyenthi.") ||
-    host === "luyenthi.localhost" ||
-    host.startsWith("tnjs.")
-  ) {
-    return "luyenthi";
+
+  if (path === GROUP_CONTACT_PATH) {
+    return { portal: "group", internalPath: "/contact" };
   }
-  if (
-    host === "npgroup.com" ||
-    host === "www.npgroup.com" ||
-    host === "npgroup.vn" ||
-    host === "www.npgroup.vn" ||
-    host === "npgroup.localhost"
-  ) {
-    return "group";
+
+  return { portal: "group", internalPath: path || "/" };
+}
+
+/**
+ * Build public URL from portal + internal path.
+ * `huongnghiep` + `/` → `/huong-nghiep/gioi-thieu`
+ * `group` + `/contact` → `/lien-he`
+ */
+export function toPublicPortalPath(portal: PortalId, internalPath = "/"): string {
+  const raw = internalPath.startsWith("/") ? internalPath : `/${internalPath}`;
+  const [pathname, hash = ""] = raw.split("#");
+  const hashPart = raw.includes("#") ? `#${hash}` : "";
+  let p = normalizePathname(pathname || "/");
+
+  if (portal === "group") {
+    if (p === "/contact") return `${GROUP_CONTACT_PATH}${hashPart}`;
+    return `${p}${hashPart}`;
   }
-  if (host.includes("npcwebsite")) return "group";
+
+  const base = PORTAL_BASE_PATH[portal];
+  if (p === "/") {
+    return `${base}/${PORTAL_HOME_SEGMENT}${hashPart}`;
+  }
+  return `${base}${p}${hashPart}`;
+}
+
+/** Exclusive flat-route owners (for legacy redirects). Longer prefixes first. */
+export const FLAT_PATH_OWNING_PORTAL: Array<{ prefix: string; portal: PortalId }> =
+  [
+    { prefix: "/online-exam", portal: "luyenthi" },
+    { prefix: "/exam-result", portal: "luyenthi" },
+    { prefix: "/exam-attempts", portal: "luyenthi" },
+    { prefix: "/exam", portal: "luyenthi" },
+    { prefix: "/certificate", portal: "luyenthi" },
+    { prefix: "/classes", portal: "luyenthi" },
+    { prefix: "/cart", portal: "luyenthi" },
+    { prefix: "/checkout", portal: "luyenthi" },
+    { prefix: "/du-hoc", portal: "huongnghiep" },
+    { prefix: "/di-lam", portal: "huongnghiep" },
+    { prefix: "/dao-tao-nghe", portal: "huongnghiep" },
+    { prefix: "/visa-services", portal: "huongnghiep" },
+    { prefix: "/study-abroad", portal: "huongnghiep" },
+    { prefix: "/countries", portal: "huongnghiep" },
+    { prefix: "/schools", portal: "huongnghiep" },
+    { prefix: "/costs", portal: "huongnghiep" },
+    { prefix: "/documents", portal: "huongnghiep" },
+    { prefix: "/faq", portal: "huongnghiep" },
+    { prefix: "/bien-phien-dich", portal: "dichvu" },
+    { prefix: "/ky-nang-mem", portal: "dichvu" },
+    { prefix: "/tu-van-doanh-nghiep", portal: "dichvu" },
+    { prefix: "/courses", portal: "dichvu" },
+    { prefix: "/schedule", portal: "dichvu" },
+    { prefix: "/enterprise", portal: "dichvu" },
+  ];
+
+export function inferPortalForFlatPath(pathname: string): PortalId | null {
+  const path = normalizePathname(pathname);
+  if (resolvePortalFromPath(path)) return null;
+  for (const { prefix, portal } of FLAT_PATH_OWNING_PORTAL) {
+    if (path === prefix || path.startsWith(`${prefix}/`)) return portal;
+  }
+  return null;
+}
+
+/**
+ * If the public URL should redirect (bare prefix, or legacy flat path), return target.
+ */
+export function legacyPublicRedirect(pathname: string): string | null {
+  const path = normalizePathname(pathname);
+
+  for (const id of ["huongnghiep", "dichvu", "luyenthi"] as const) {
+    const base = PORTAL_BASE_PATH[id];
+    if (path === base) {
+      return `${base}/${PORTAL_HOME_SEGMENT}`;
+    }
+  }
+
+  if (path === "/contact") {
+    return GROUP_CONTACT_PATH;
+  }
+
+  const owner = inferPortalForFlatPath(path);
+  if (owner && owner !== "group") {
+    return toPublicPortalPath(owner, path);
+  }
+
+  return null;
+}
+
+/**
+ * Host no longer selects portal (path-based). Kept for API compat → always null.
+ */
+export function resolvePortalFromHost(_hostname: string): PortalId | null {
   return null;
 }
 
 /**
  * Resolve portal from Express-like request bits.
- * Priority: ?portal= > X-Portal header > Host > PORTAL env > group
+ * Priority: X-Portal > ?portal= > path (if provided) > PORTAL env > group
  */
 export function resolvePortalFromRequest(input: {
   queryPortal?: unknown;
   headerPortal?: unknown;
+  pathname?: string;
   hostname?: string;
   envPortal?: string | undefined;
 }): PortalId {
-  const fromQuery = normalizePortalAlias(input.queryPortal);
-  if (fromQuery) return fromQuery;
   const fromHeader = normalizePortalAlias(input.headerPortal);
   if (fromHeader) return fromHeader;
-  if (input.hostname) {
-    const fromHost = resolvePortalFromHost(input.hostname);
-    if (fromHost) return fromHost;
+  const fromQuery = normalizePortalAlias(input.queryPortal);
+  if (fromQuery) return fromQuery;
+  if (input.pathname) {
+    const fromPath = resolvePortalFromPath(input.pathname);
+    if (fromPath) return fromPath;
   }
   const fromEnv = normalizePortalAlias(input.envPortal);
   if (fromEnv) return fromEnv;

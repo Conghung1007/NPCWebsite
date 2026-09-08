@@ -1,28 +1,61 @@
-import { useEffect, useState } from "react";
-import { HeroSection } from "@/components/ui/hero-section";
-import { ContactForm } from "@/components/ui/contact-form";
-import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { useUiImages } from "@/hooks/useUiImages";
-import { useAuth } from "@/hooks/useAuth";
-import { useContactInfo } from "@/hooks/useContactInfo";
-import { MapDisplay } from "@/components/MapDisplay";
-import { 
-  MapPin, 
-  Phone, 
-  Mail, 
+import { useEffect, useMemo, useState } from "react";
+import {
+  MapPin,
+  Phone,
+  Mail,
   Clock,
   Facebook,
   Youtube,
   MessageCircle,
-  Send
+  Linkedin,
+  ExternalLink,
 } from "lucide-react";
+import { HeroSection } from "@/components/ui/hero-section";
+import { ContactForm } from "@/components/ui/contact-form";
+import { Card, CardContent } from "@/components/ui/card";
+import { useUiImages } from "@/hooks/useUiImages";
+import { useAuth } from "@/hooks/useAuth";
+import { useContactInfo } from "@/hooks/useContactInfo";
+import { MapDisplay } from "@/components/MapDisplay";
+import { useSiteContents } from "@/hooks/useSiteContents";
+import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { getSiteContentDefaults } from "@shared/siteContentDefaults";
+import { resolvePortal } from "@/lib/portal";
+import { normalizeContactContent } from "@/lib/googleMapsEmbed";
+
+function lineHref(type: string, line: string): string | null {
+  const t = line.trim();
+  if (!t) return null;
+  if (type === "email" || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(t)) {
+    return `mailto:${t}`;
+  }
+  if (type === "hotline") {
+    const digits = t.replace(/[^\d+]/g, "");
+    if (digits.length >= 8) return `tel:${digits}`;
+  }
+  if (type === "main_office") {
+    return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(t)}`;
+  }
+  return null;
+}
 
 export default function Contact() {
+  const portal = resolvePortal();
   const { getImageByType, invalidateCache } = useUiImages();
   const { hasImageEditPermission } = useAuth();
   const { data: contactInfos = [] } = useContactInfo();
-  const [heroImage, setHeroImage] = useState("https://images.unsplash.com/photo-1423666639041-f56000c27a9a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080");
+  const { data: settings } = useSiteSettings(portal);
+  const defaults = useMemo(
+    () => getSiteContentDefaults("contact", portal) || {},
+    [portal],
+  );
+  const { data: remoteContents = {} } = useSiteContents("contact", portal);
+  const getContent = (key: string, fallback = "") =>
+    remoteContents[key] ?? defaults[key] ?? fallback;
+
+  const [heroImage, setHeroImage] = useState(
+    "https://images.unsplash.com/photo-1423666639041-f56000c27a9a?ixlib=rb-4.0.3&auto=format&fit=crop&w=1920&h=1080",
+  );
   const [serviceFromQuery, setServiceFromQuery] = useState("");
 
   useEffect(() => {
@@ -30,105 +63,130 @@ export default function Contact() {
     if (q) setServiceFromQuery(q);
   }, []);
 
-  // Update hero image from database when available
   useEffect(() => {
-    const dbHeroImage = getImageByType('contact-hero');
-    if (dbHeroImage) {
-      setHeroImage(dbHeroImage);
-    }
+    const dbHeroImage = getImageByType("contact-hero");
+    if (dbHeroImage) setHeroImage(dbHeroImage);
   }, [getImageByType]);
 
   useEffect(() => {
-    document.title = "Liên Hệ - Trí Nhân Academy";
+    document.title = `${getContent("heroTitle", "Liên hệ")} - Trí Nhân Academy`;
     const metaDescription = document.querySelector('meta[name="description"]');
     if (metaDescription) {
-      metaDescription.setAttribute('content', 'Liên hệ với Trí Nhân Academy để được tư vấn miễn phí về visa, du học, tiếng Nhật và vé máy bay. Hỗ trợ 24/7 qua hotline 1900 1234.');
+      metaDescription.setAttribute(
+        "content",
+        getContent(
+          "metaDescription",
+          "Liên hệ với Trí Nhân Academy để được tư vấn miễn phí về visa, du học, tiếng Nhật và luyện thi.",
+        ),
+      );
     }
-  }, []);
+  }, [remoteContents, defaults]);
 
-  // Helper function to get contact icon based on type
   const getContactIcon = (type: string) => {
-    const iconClass = "h-6 w-6";
+    const iconClass = "h-5 w-5";
     switch (type) {
       case "main_office":
         return <MapPin className={`${iconClass} text-primary`} />;
       case "hotline":
-        return <Phone className={`${iconClass} text-secondary`} />;
+        return <Phone className={`${iconClass} text-primary`} />;
       case "email":
-        return <Mail className={`${iconClass} text-accent`} />;
+        return <Mail className={`${iconClass} text-primary`} />;
       case "business_hours":
-        return <Clock className={`${iconClass} text-red-600`} />;
+        return <Clock className={`${iconClass} text-primary`} />;
       default:
         return <MapPin className={`${iconClass} text-primary`} />;
     }
   };
 
-  // Fallback contact info if database is empty
-  const fallbackContactInfo = [
-    {
-      icon: <MapPin className="h-6 w-6 text-primary" />,
-      title: "Văn phòng chính",
-      content: ["123 Nguyễn Huệ, Quận 1, TP.HCM"]
-    },
-    {
-      icon: <Phone className="h-6 w-6 text-secondary" />,
-      title: "Hotline",
-      content: ["1900 1234 (24/7)", "028 3822 5678"]
-    },
-    {
-      icon: <Mail className="h-6 w-6 text-accent" />,
-      title: "Email", 
-      content: ["info@npcompany.vn", "support@npcompany.vn"]
-    },
-    {
-      icon: <Clock className="h-6 w-6 text-red-600" />,
-      title: "Giờ hoạt động",
-      content: ["T2-T6: 8:00 - 18:00", "T7-CN: 8:00 - 17:00"]
+  const fallbackRows = useMemo(() => {
+    const rows: Array<{ type: string; title: string; content: string[] }> = [];
+    if (settings?.address?.trim()) {
+      rows.push({
+        type: "main_office",
+        title: "Địa chỉ",
+        content: [settings.address.trim()],
+      });
     }
-  ];
+    if (settings?.hotline?.trim()) {
+      rows.push({
+        type: "hotline",
+        title: "Hotline",
+        content: [settings.hotline.trim()],
+      });
+    }
+    if (settings?.email?.trim()) {
+      rows.push({
+        type: "email",
+        title: "Email",
+        content: [settings.email.trim()],
+      });
+    }
+    if (rows.length === 0) {
+      rows.push(
+        {
+          type: "main_office",
+          title: "Văn phòng",
+          content: ["TP. Hồ Chí Minh"],
+        },
+        {
+          type: "email",
+          title: "Email",
+          content: ["info@trinhan.academy"],
+        },
+      );
+    }
+    return rows;
+  }, [settings]);
 
-  // Use dynamic contact info if available, otherwise use fallback
-  const displayContactInfo = contactInfos.length > 0 
-    ? contactInfos.map(info => ({
-        icon: getContactIcon(info.type),
-        title: info.title,
-        content: info.content
-      }))
-    : fallbackContactInfo;
+  const displayContactInfo =
+    contactInfos.length > 0
+      ? contactInfos.map((info) => ({
+          type: info.type,
+          title: info.title,
+          content: normalizeContactContent(info.content),
+          icon: getContactIcon(info.type),
+        }))
+      : fallbackRows.map((row) => ({
+          ...row,
+          icon: getContactIcon(row.type),
+        }));
 
   const socialLinks = [
     {
       name: "Facebook",
       icon: <Facebook className="h-5 w-5" />,
-      href: "#",
-      color: "bg-blue-600 hover:bg-blue-700"
+      href: settings?.facebookUrl || "",
+      color: "bg-[#1877F2] hover:bg-[#166fe5]",
     },
     {
-      name: "YouTube", 
+      name: "YouTube",
       icon: <Youtube className="h-5 w-5" />,
-      href: "#",
-      color: "bg-red-600 hover:bg-red-700"
+      href: settings?.youtubeUrl || "",
+      color: "bg-[#FF0000] hover:bg-[#e60000]",
     },
     {
       name: "Zalo",
       icon: <MessageCircle className="h-5 w-5" />,
-      href: "#",
-      color: "bg-blue-400 hover:bg-blue-500"
+      href: settings?.zaloUrl || "",
+      color: "bg-[#0068FF] hover:bg-[#0058d6]",
     },
     {
-      name: "WhatsApp",
-      icon: <Send className="h-5 w-5" />,
-      href: "#", 
-      color: "bg-green-600 hover:bg-green-700"
-    }
-  ];
+      name: "LinkedIn",
+      icon: <Linkedin className="h-5 w-5" />,
+      href: settings?.linkedinUrl || "",
+      color: "bg-[#0A66C2] hover:bg-[#0958a8]",
+    },
+  ].filter((s) => s.href && s.href !== "#");
 
   return (
     <div className="w-full max-w-full">
       <HeroSection
-        title="Liên hệ với chúng tôi"
+        title={getContent("heroTitle", "Liên hệ với chúng tôi")}
         subtitle=""
-        description="Sẵn sàng hỗ trợ bạn 24/7. Hãy liên hệ ngay để nhận tư vấn miễn phí!"
+        description={getContent(
+          "heroDescription",
+          "Sẵn sàng hỗ trợ bạn. Hãy để lại thông tin để nhận tư vấn miễn phí!",
+        )}
         backgroundImage={heroImage}
         allowImageEdit={hasImageEditPermission}
         imageType="contact-hero"
@@ -138,31 +196,58 @@ export default function Contact() {
         }}
       />
 
-      {/* Contact Section */}
-      <section className="py-12 sm:py-16 lg:py-20 bg-neutral">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 lg:gap-8">
-            {/* Contact Form */}
+      <section className="bg-neutral py-12 sm:py-16 lg:py-20">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-1 gap-6 lg:grid-cols-3 lg:gap-8">
             <div className="order-2 lg:order-1 lg:col-span-2">
               <ContactForm variant="page" defaultService={serviceFromQuery} />
             </div>
 
-            {/* Contact Information */}
-            <div className="order-1 lg:order-2 space-y-4 lg:space-y-6">
-              <Card>
-                <CardContent className="p-6">
-                  <h4 className="font-semibold text-foreground mb-4">Thông tin liên hệ</h4>
+            <div className="order-1 space-y-4 lg:order-2 lg:space-y-6">
+              <Card className="border-border/70 shadow-sm">
+                <CardContent className="p-5 sm:p-6">
+                  <h4 className="mb-4 font-semibold text-foreground">
+                    Thông tin liên hệ
+                  </h4>
                   <div className="space-y-4">
                     {displayContactInfo.map((info, index) => (
-                      <div key={index} className="flex items-start">
-                        <div className="flex-shrink-0 mr-4 mt-1">
+                      <div key={`${info.title}-${index}`} className="flex items-start gap-3">
+                        <div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary/10">
                           {info.icon}
                         </div>
-                        <div>
-                          <div className="font-medium text-foreground mb-1">{info.title}</div>
-                          {info.content.map((item, i) => (
-                            <div key={i} className="text-muted-foreground text-sm">{item}</div>
-                          ))}
+                        <div className="min-w-0">
+                          <div className="mb-1 font-medium text-foreground">
+                            {info.title}
+                          </div>
+                          {info.content.map((item, i) => {
+                            const href = lineHref(info.type, item);
+                            return href ? (
+                              <a
+                                key={i}
+                                href={href}
+                                target={
+                                  info.type === "main_office"
+                                    ? "_blank"
+                                    : undefined
+                                }
+                                rel={
+                                  info.type === "main_office"
+                                    ? "noopener noreferrer"
+                                    : undefined
+                                }
+                                className="block text-sm text-muted-foreground transition-colors hover:text-primary"
+                              >
+                                {item}
+                              </a>
+                            ) : (
+                              <div
+                                key={i}
+                                className="text-sm text-muted-foreground"
+                              >
+                                {item}
+                              </div>
+                            );
+                          })}
                         </div>
                       </div>
                     ))}
@@ -170,40 +255,49 @@ export default function Contact() {
                 </CardContent>
               </Card>
 
-              {/* Map Display */}
-              <Card>
-                <CardContent className="p-4 sm:p-6">
-                  <h4 className="font-semibold text-foreground mb-4">Bản đồ văn phòng</h4>
-                  <MapDisplay />
-                </CardContent>
-              </Card>
-
-              {/* Social Media */}
-              <Card>
-                <CardContent className="p-4 sm:p-6">
-                  <h4 className="font-semibold text-foreground mb-4">Kết nối với chúng tôi</h4>
-                  <div className="flex flex-wrap gap-3 justify-center sm:justify-start">
-                    {socialLinks.map((social, index) => (
-                      <a
-                        key={index}
-                        href={social.href}
-                        className={`w-10 h-10 sm:w-12 sm:h-12 ${social.color} text-white rounded-full flex items-center justify-center transition-colors`}
-                        title={social.name}
-                      >
-                        {social.icon}
-                      </a>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
+              {socialLinks.length > 0 ? (
+                <Card className="border-border/70 shadow-sm">
+                  <CardContent className="p-5 sm:p-6">
+                    <h4 className="mb-4 font-semibold text-foreground">
+                      Kết nối với chúng tôi
+                    </h4>
+                    <div className="flex flex-wrap gap-3">
+                      {socialLinks.map((social) => (
+                        <a
+                          key={social.name}
+                          href={social.href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className={`flex h-11 w-11 items-center justify-center rounded-full text-white transition-colors ${social.color}`}
+                          title={social.name}
+                          aria-label={social.name}
+                        >
+                          {social.icon}
+                        </a>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              ) : null}
             </div>
           </div>
+
+          <Card className="mt-6 border-border/70 shadow-sm sm:mt-8">
+            <CardContent className="p-5 sm:p-6">
+              <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+                <h4 className="font-semibold text-foreground">
+                  Bản đồ văn phòng
+                </h4>
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <ExternalLink className="h-3 w-3" />
+                  Có thể mở rộng trên Google Maps
+                </span>
+              </div>
+              <MapDisplay height={360} />
+            </CardContent>
+          </Card>
         </div>
       </section>
-
-      
-
-      
     </div>
   );
 }

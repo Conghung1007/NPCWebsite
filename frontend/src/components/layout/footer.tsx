@@ -4,9 +4,11 @@ import { MapPin, Phone, Mail, Facebook, Youtube, Linkedin } from "lucide-react";
 import { useContactInfo } from "@/hooks/useContactInfo";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { usePortal } from "@/contexts/PortalContext";
-import { getFooterServices } from "@/lib/portal";
+import { getFooterServices, filterNavByHiddenPaths, hiddenPathsForPortal } from "@/lib/portal";
 import { TNJS } from "@/lib/tnjsTheme";
 import { TriNhanBrand, BRAND_FULL_NAME } from "@/components/TriNhanBrand";
+import { useHiddenCmsPages } from "@/hooks/useCmsPages";
+import { normalizeContactContent } from "@/lib/googleMapsEmbed";
 
 function SocialIcon({ href, label, children }: { href: string; label: string; children: ReactNode }) {
   if (!href || href === "#") return null;
@@ -27,7 +29,11 @@ export function Footer() {
   const { data: contactInfos = [] } = useContactInfo();
   const { portal, meta } = usePortal();
   const { data: settings } = useSiteSettings(portal);
-  const services = getFooterServices(portal);
+  const { data: hidden } = useHiddenCmsPages();
+  const services = filterNavByHiddenPaths(
+    getFooterServices(portal),
+    hiddenPathsForPortal(hidden?.entries, portal),
+  );
 
   const getContactIcon = (type: string) => {
     switch (type) {
@@ -125,7 +131,11 @@ export function Footer() {
             <div className="space-y-4 text-white/60">
               {contactInfos.length > 0 ? (
                 contactInfos
-                  .filter((info) => info.isActive !== false)
+                  .filter(
+                    (info) =>
+                      info.isActive !== false &&
+                      info.type !== "business_hours",
+                  )
                   .map((info) => (
                     <div
                       key={info.id}
@@ -136,7 +146,7 @@ export function Footer() {
                         <div className="mb-0.5 text-sm font-medium text-white/85">
                           {info.title}
                         </div>
-                        {(info.content || []).map((line, i) => (
+                        {normalizeContactContent(info.content).map((line, i) => (
                           <div key={i} className="text-sm">
                             {line}
                           </div>
@@ -148,15 +158,21 @@ export function Footer() {
                 <>
                   <div className="flex items-center justify-center sm:justify-start">
                     <MapPin className="mr-3 h-5 w-5 flex-shrink-0" />
-                    <span className="text-sm">TP. Hồ Chí Minh</span>
+                    <span className="text-sm">
+                      {settings?.address?.trim() || "TP. Hồ Chí Minh"}
+                    </span>
                   </div>
                   <div className="flex items-center justify-center sm:justify-start">
                     <Phone className="mr-3 h-5 w-5 flex-shrink-0" />
-                    <span className="text-sm">Hotline</span>
+                    <span className="text-sm">
+                      {settings?.hotline?.trim() || "Hotline"}
+                    </span>
                   </div>
                   <div className="flex items-center justify-center sm:justify-start">
                     <Mail className="mr-3 h-5 w-5 flex-shrink-0" />
-                    <span className="text-sm">info@trinhan.academy</span>
+                    <span className="text-sm">
+                      {settings?.email?.trim() || "info@trinhan.academy"}
+                    </span>
                   </div>
                 </>
               )}

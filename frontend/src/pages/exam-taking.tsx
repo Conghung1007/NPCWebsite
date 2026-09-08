@@ -18,6 +18,8 @@ import { ExamAudioPlayer } from "@/components/ExamAudioPlayer";
 import { ExamProtectedContent, ProtectedExamImage } from "@/components/ExamProtectedContent";
 import { examKeys } from "@/lib/queryKeys";
 import { resolveExamMediaUrl } from "@/lib/examMediaUrl";
+import { examPublicPath } from "@/lib/contentPaths";
+import { looksLikeUuid } from "@shared/contentSlug";
 import {
   EXAM_PACKAGE_PRICE_VND,
   EXAM_TRIAL_QUESTION_LIMIT,
@@ -154,6 +156,16 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     queryKey: examKeys.detail(examId),
     retry: false,
   });
+
+  // Prefer title slug URL: /luyen-thi/de-thi-n5 instead of /luyen-thi/exam/<uuid>
+  useEffect(() => {
+    if (!exam?.slug) return;
+    if (typeof window === "undefined") return;
+    const path = window.location.pathname;
+    if (path.includes("/exam/") && (looksLikeUuid(examId) || path.includes(exam.id))) {
+      setLocation(examPublicPath(exam), { replace: true });
+    }
+  }, [exam, examId, setLocation]);
 
   const { data: examAccess, isFetched: examAccessFetched, isError: examAccessError } = useQuery<{
     mode: ExamAccessMode;

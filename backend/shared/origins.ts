@@ -1,10 +1,18 @@
 /**
- * Production origins / cookie domain for multi-portal hosts on npgroup.com
+ * Production origins / cookie domain for single-host path-based portals.
  */
-import { PORTAL_HOSTS, PORTAL_IDS, isPortalId, type PortalId } from "./portal";
+import { isPortalId, type PortalId } from "./portal";
 
-/** Apex domains we actually share cookies across (group + sub-portals). */
-const SHARED_COOKIE_ROOTS = ["npgroup.com", "npgroup.vn"] as const;
+/** Safe env read (shared module is typechecked from frontend without @types/node). */
+function env(name: string): string | undefined {
+  try {
+    const p = (globalThis as { process?: { env?: Record<string, string | undefined> } })
+      .process;
+    return typeof p?.env?.[name] === "string" ? p.env[name] : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Public suffixes — browsers reject `Domain=.onrender.com` (and similar).
@@ -25,51 +33,48 @@ function isPublicCookieSuffix(host: string): boolean {
   return PUBLIC_COOKIE_SUFFIXES.some((s) => h === s || h.endsWith(`.${s}`));
 }
 
-/** Cookie Domain shared across apex + subdomains (e.g. `.npgroup.com`) */
+/**
+ * Cookie Domain for the apex host (optional).
+ * Path-based portals share one origin — host-only cookies are enough;
+ * COOKIE_DOMAIN is only useful if you still need a parent domain.
+ */
 export function resolveCookieDomain(): string | undefined {
-  const explicit = process.env.COOKIE_DOMAIN?.trim();
+  const explicit = env("COOKIE_DOMAIN")?.trim();
   if (explicit) {
     const domain = explicit.startsWith(".") ? explicit : `.${explicit}`;
     if (isPublicCookieSuffix(domain)) return undefined;
     return domain.toLowerCase();
   }
-  if (process.env.NODE_ENV !== "production") return undefined;
+  if (env("NODE_ENV") !== "production") return undefined;
 
-  const publicUrl = process.env.PUBLIC_APP_URL?.trim();
+  const publicUrl = env("PUBLIC_APP_URL")?.trim();
   if (!publicUrl) return undefined;
   try {
     const host = new URL(publicUrl).hostname.toLowerCase();
     if (isPublicCookieSuffix(host)) return undefined;
-    for (const root of SHARED_COOKIE_ROOTS) {
-      if (host === root || host.endsWith(`.${root}`)) {
-        return `.${root}`;
-      }
-    }
+    // Single host — prefer host-only cookies; only set Domain for bare apex
+    // when COOKIE_DOMAIN is explicit.
   } catch {
     /* ignore */
   }
   return undefined;
 }
 
-const PORTAL_ORIGIN_ENV: Record<PortalId, string | undefined> = {
-  group: process.env.VITE_GROUP_ORIGIN || process.env.GROUP_ORIGIN,
-  huongnghiep:
-    process.env.VITE_HUONGNGHIEP_ORIGIN || process.env.HUONGNGHIEP_ORIGIN,
-  dichvu: process.env.VITE_DICHVU_ORIGIN || process.env.DICHVU_ORIGIN,
-  luyenthi: process.env.VITE_LUYENTHI_ORIGIN || process.env.LUYENTHI_ORIGIN,
-};
+/** Canonical public origin from PUBLIC_APP_URL (all portals share this). */
+export function portalPublicOrigin(_portal?: PortalId): string | undefined {
+  const publicUrl = env("PUBLIC_APP_URL")?.replace(/\/$/, "");
+  if (publicUrl) return publicUrl;
 
-export function portalPublicOrigin(portal: PortalId): string | undefined {
-  const fromEnv = PORTAL_ORIGIN_ENV[portal]?.replace(/\/$/, "");
-  if (fromEnv) return fromEnv;
-  const host = PORTAL_HOSTS[portal];
-  if (process.env.NODE_ENV === "production" && host) {
-    return `https://${host}`;
-  }
-  return undefined;
+  // Legacy per-portal envs (same value expected) — use group/first set
+  const legacy =
+    env("VITE_GROUP_ORIGIN") ||
+    env("GROUP_ORIGIN") ||
+    env("VITE_HUONGNGHIEP_ORIGIN") ||
+    env("HUONGNGHIEP_ORIGIN");
+  return legacy?.replace(/\/$/, "") || undefined;
 }
 
-/** Prefer request Host (user's current portal), then portal env, then PUBLIC_APP_URL */
+/** Prefer request Host, then PUBLIC_APP_URL */
 export function resolvePublicBaseUrl(input: {
   host?: string | string[] | undefined;
   forwardedProto?: string | string[] | undefined;
@@ -84,7 +89,7 @@ export function resolvePublicBaseUrl(input: {
   const proto =
     protoHeader?.split(",")[0]?.trim() ||
     input.protocol ||
-    (process.env.NODE_ENV === "production" ? "https" : "http");
+    (env("NODE_ENV") === "production" ? "https" : "http");
 
   if (host && !host.endsWith(".onrender.com")) {
     return `${proto}://${hostHeader?.split(",")[0]?.trim()}`;
@@ -95,37 +100,41 @@ export function resolvePublicBaseUrl(input: {
     if (origin) return origin;
   }
 
-  const publicUrl = process.env.PUBLIC_APP_URL?.replace(/\/$/, "");
+  const publicUrl = portalPublicOrigin();
   if (publicUrl) return publicUrl;
 
   if (host) return `${proto}://${host}`;
   return "http://localhost:5000";
 }
 
-/** Origins allowed for credentialed CORS (subdomain portals + PUBLIC_APP_URL) */
+/** Origins allowed for credentialed CORS (single app host + PUBLIC_APP_URL) */
 export function allowedCorsOrigins(): string[] {
   const set = new Set<string>();
-  const publicUrl = process.env.PUBLIC_APP_URL?.replace(/\/$/, "");
+  const publicUrl = portalPublicOrigin();
   if (publicUrl) set.add(publicUrl);
 
-  for (const id of PORTAL_IDS) {
-    const o = portalPublicOrigin(id);
-    if (o) set.add(o);
+  // www variants of PUBLIC_APP_URL
+  if (publicUrl) {
+    try {
+      const u = new URL(publicUrl);
+      if (u.hostname.startsWith("www.")) {
+        set.add(`${u.protocol}//${u.hostname.slice(4)}`);
+      } else {
+        set.add(`${u.protocol}//www.${u.hostname}`);
+      }
+    } catch {
+      /* ignore */
+    }
   }
 
-  for (const host of Object.values(PORTAL_HOSTS)) {
-    set.add(`https://${host}`);
-  }
-  set.add("https://www.npgroup.com");
-  set.add("https://www.npgroup.vn");
   set.add("https://tnjs.vn");
   set.add("https://www.tnjs.vn");
 
-  const extra = process.env.ALLOWED_ORIGINS?.split(",") || [];
+  const extra = env("ALLOWED_ORIGINS")?.split(",") || [];
   for (const o of extra) {
     const t = o.trim().replace(/\/$/, "");
     if (t) set.add(t);
   }
 
-  return [...set];
+  return Array.from(set);
 }

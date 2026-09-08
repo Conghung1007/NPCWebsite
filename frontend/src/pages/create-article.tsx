@@ -15,6 +15,7 @@ import { RichTextEditor } from "@/components/RichTextEditor";
 import { extractTempImageUrlsFromHtml, cleanupTempMediaUrls } from "@/lib/tempMediaCleanup";
 import { apiFetch } from "@/lib/queryClient";
 import { PORTAL_IDS, PORTAL_META, type PortalId } from "@/lib/portal";
+import { articlePublicPath } from "@/lib/contentPaths";
 
 const createArticleSchema = z.object({
   title: z.string().min(1, "Tiêu đề không được để trống"),
@@ -81,7 +82,7 @@ export default function CreateArticle() {
       });
       // Navigate to the created article
       if (data.article && data.article.id) {
-        setLocation(`/article/${data.article.id}`);
+        setLocation(articlePublicPath(data.article));
       } else {
         setLocation("/");
       }

@@ -1,5 +1,5 @@
 import type { LayoutPageId } from "./pageSections";
-import type { PortalId } from "./portal";
+import { toPublicPortalPath, type PortalId } from "./portal";
 import { getSiteContentDefaults } from "./siteContentDefaults";
 import {
   PORTAL_SECTION_CATALOG,
@@ -14,6 +14,8 @@ export type PageContentEntry = {
   label: string;
   description: string;
   publicPath: string;
+  /** URL slug (custom CMS pages); omit for static registry entries */
+  slug?: string;
   editor: PageEditorMode;
   layoutPageId?: LayoutPageId;
   /** DB key in page_layouts for custom block pages (cms_pages.id) */
@@ -28,6 +30,28 @@ export type PageContentEntry = {
   imageSlots: Array<{ type: string; label: string }>;
 };
 
+function pub(portal: PortalId, path: string): string {
+  return toPublicPortalPath(portal, path);
+}
+
+/** Portal homepage — never deletable from Cpanel. */
+export function isPortalHomePage(entry: PageContentEntry): boolean {
+  if (!entry.layoutPageId || entry.editor !== "blocks" || entry.isCustom) {
+    return false;
+  }
+  const home = pub(entry.portal, "/");
+  return entry.publicPath === home || entry.publicPath === "/";
+}
+
+/**
+ * Child pages (legacy / portal-section / custom) may be removed from Cpanel.
+ * Portal homes stay — “một trang cho một cổng”.
+ */
+export function canDeletePageContent(entry: PageContentEntry): boolean {
+  if (isPortalHomePage(entry)) return false;
+  return true;
+}
+
 /** Single registry — maps public pages to their admin editor (TNJS-style CMS hub). */
 export const PAGE_CONTENT_REGISTRY: PageContentEntry[] = [
   {
@@ -35,7 +59,7 @@ export const PAGE_CONTENT_REGISTRY: PageContentEntry[] = [
     portal: "group",
     label: "Trang chủ Trí Nhân Academy",
     description: "Hero, 4 trụ cột, form tư vấn — bố cục khối",
-    publicPath: "/",
+    publicPath: pub("group", "/"),
     editor: "blocks",
     layoutPageId: "group",
     imageSlots: [
@@ -52,7 +76,7 @@ export const PAGE_CONTENT_REGISTRY: PageContentEntry[] = [
     portal: "group",
     label: "Đào tạo TNJS",
     description: "Trang khóa học tiếng Nhật — văn bản & ảnh",
-    publicPath: "/japanese-training",
+    publicPath: pub("group", "/japanese-training"),
     editor: "legacy",
     siteContentsPage: "japanese",
     imageSlots: [
@@ -75,7 +99,7 @@ export const PAGE_CONTENT_REGISTRY: PageContentEntry[] = [
     portal: "huongnghiep",
     label: "Trang chủ Hướng nghiệp",
     description: "Hero, lộ trình, phản hồi, tin bài — bố cục khối",
-    publicPath: "/",
+    publicPath: pub("huongnghiep", "/"),
     editor: "blocks",
     layoutPageId: "huongnghiep",
     imageSlots: [
@@ -91,7 +115,7 @@ export const PAGE_CONTENT_REGISTRY: PageContentEntry[] = [
     portal: "huongnghiep",
     label: "Du học",
     description: "Trang dịch vụ du học — văn bản & ảnh",
-    publicPath: "/study-abroad",
+    publicPath: pub("huongnghiep", "/study-abroad"),
     editor: "legacy",
     siteContentsPage: "study-abroad",
     imageSlots: [
@@ -104,7 +128,7 @@ export const PAGE_CONTENT_REGISTRY: PageContentEntry[] = [
     portal: "huongnghiep",
     label: "Dịch vụ visa",
     description: "Trang dịch vụ visa — văn bản & ảnh",
-    publicPath: "/visa-services",
+    publicPath: pub("huongnghiep", "/visa-services"),
     editor: "legacy",
     siteContentsPage: "visa",
     imageSlots: [
@@ -118,7 +142,7 @@ export const PAGE_CONTENT_REGISTRY: PageContentEntry[] = [
     portal: "dichvu",
     label: "Trang chủ Dịch vụ",
     description: "Hero, dịch vụ, form — bố cục khối",
-    publicPath: "/",
+    publicPath: pub("dichvu", "/"),
     editor: "blocks",
     layoutPageId: "dichvu",
     imageSlots: [
@@ -134,7 +158,7 @@ export const PAGE_CONTENT_REGISTRY: PageContentEntry[] = [
     portal: "luyenthi",
     label: "Trang Luyện thi",
     description: "Hero, giới thiệu, gói đề, danh sách đề — bố cục khối",
-    publicPath: "/",
+    publicPath: pub("luyenthi", "/"),
     editor: "blocks",
     layoutPageId: "luyenthi",
     imageSlots: [
@@ -144,6 +168,86 @@ export const PAGE_CONTENT_REGISTRY: PageContentEntry[] = [
       { type: "exam-feature-1", label: "Tính năng 2" },
       { type: "exam-feature-2", label: "Tính năng 3" },
     ],
+  },
+  {
+    id: "luyenthi-classes",
+    portal: "luyenthi",
+    label: "Khóa học / Lớp đang tuyển",
+    description: "Tiêu đề & mô tả trang danh sách lớp — văn bản",
+    publicPath: pub("luyenthi", "/classes"),
+    editor: "legacy",
+    siteContentsPage: "classes",
+    imageSlots: [],
+  },
+  {
+    id: "luyenthi-news",
+    portal: "luyenthi",
+    label: "Tin tức luyện thi",
+    description: "Tiêu đề & mô tả trang tin tức cổng Luyện thi",
+    publicPath: pub("luyenthi", "/news"),
+    editor: "legacy",
+    siteContentsPage: "news",
+    imageSlots: [],
+  },
+  {
+    id: "luyenthi-contact",
+    portal: "luyenthi",
+    label: "Liên hệ (Luyện thi)",
+    description: "Hero liên hệ cổng Luyện thi — văn bản & ảnh",
+    publicPath: pub("luyenthi", "/contact"),
+    editor: "legacy",
+    siteContentsPage: "contact",
+    imageSlots: [{ type: "contact-hero", label: "Banner hero" }],
+  },
+  {
+    id: "huongnghiep-news",
+    portal: "huongnghiep",
+    label: "Tin tức hướng nghiệp",
+    description: "Tiêu đề & mô tả trang tin tức cổng Hướng nghiệp",
+    publicPath: pub("huongnghiep", "/news"),
+    editor: "legacy",
+    siteContentsPage: "news",
+    imageSlots: [],
+  },
+  {
+    id: "huongnghiep-contact",
+    portal: "huongnghiep",
+    label: "Liên hệ (Hướng nghiệp)",
+    description: "Hero liên hệ cổng Hướng nghiệp — văn bản & ảnh",
+    publicPath: pub("huongnghiep", "/contact"),
+    editor: "legacy",
+    siteContentsPage: "contact",
+    imageSlots: [{ type: "contact-hero", label: "Banner hero" }],
+  },
+  {
+    id: "dichvu-news",
+    portal: "dichvu",
+    label: "Tin tức dịch vụ",
+    description: "Tiêu đề & mô tả trang tin tức cổng Dịch vụ",
+    publicPath: pub("dichvu", "/news"),
+    editor: "legacy",
+    siteContentsPage: "news",
+    imageSlots: [],
+  },
+  {
+    id: "dichvu-contact",
+    portal: "dichvu",
+    label: "Liên hệ (Dịch vụ)",
+    description: "Hero liên hệ cổng Dịch vụ — văn bản & ảnh",
+    publicPath: pub("dichvu", "/contact"),
+    editor: "legacy",
+    siteContentsPage: "contact",
+    imageSlots: [{ type: "contact-hero", label: "Banner hero" }],
+  },
+  {
+    id: "group-contact",
+    portal: "group",
+    label: "Liên hệ (Trí Nhân Academy)",
+    description: "Hero liên hệ trang tổng — văn bản & ảnh",
+    publicPath: pub("group", "/contact"),
+    editor: "legacy",
+    siteContentsPage: "contact",
+    imageSlots: [{ type: "contact-hero", label: "Banner hero" }],
   },
   ...PORTAL_SECTION_CATALOG.map(
     (s): PageContentEntry => ({
@@ -207,7 +311,7 @@ export function getPageContentDefaults(
   entry: PageContentEntry,
 ): Record<string, string> {
   if (!entry.siteContentsPage) return {};
-  return getSiteContentDefaults(entry.siteContentsPage) || {};
+  return getSiteContentDefaults(entry.siteContentsPage, entry.portal) || {};
 }
 
 export const GROUP_LABELS: Record<string, string> = {
@@ -226,4 +330,7 @@ export const GROUP_LABELS: Record<string, string> = {
   cta: "Kêu gọi hành động",
   faqs: "FAQ (JSON)",
   documents: "Hồ sơ / tài liệu",
+  empty: "Trạng thái trống",
+  meta: "SEO / Meta",
+  eyebrow: "Nhãn phụ",
 };

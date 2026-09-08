@@ -6,14 +6,20 @@ import { ArrowLeft, Calendar, Tag } from "lucide-react";
 import { ArticleCard } from "@/components/ArticleCard";
 import type { Article } from "@shared/schema";
 import { useEffect, useMemo } from "react";
-import {
-  articleContentToHtml,
+import { articleContentToHtml,
   getArticleCoverUrl,
   isHtmlContent,
 } from "@/lib/articleContent";
+import { articlePublicPath } from "@/lib/contentPaths";
+import { looksLikeUuid } from "@shared/contentSlug";
 
-export default function ArticleDetail() {
-  const { id } = useParams();
+export default function ArticleDetail({
+  id: idProp,
+}: {
+  id?: string;
+} = {}) {
+  const params = useParams();
+  const id = idProp || params.id;
   const [, setLocation] = useLocation();
 
   // Scroll to top when component mounts or id changes
@@ -29,6 +35,19 @@ export default function ArticleDetail() {
     queryKey: ["/api/articles", id],
     enabled: !!id,
   });
+
+  // Canonical public path from title slug
+  useEffect(() => {
+    if (!article?.slug) return;
+    if (typeof window === "undefined") return;
+    const path = window.location.pathname;
+    if (path.startsWith("/article/") || looksLikeUuid(id || "")) {
+      const canonical = articlePublicPath(article);
+      if (!path.endsWith(`/${article.slug}`)) {
+        setLocation(canonical, { replace: true });
+      }
+    }
+  }, [article, id, setLocation]);
 
   // Fetch all articles for related articles section
   const { data: allArticles } = useQuery<Article[]>({

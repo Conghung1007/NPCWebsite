@@ -6,6 +6,7 @@ import {
   getArticleCoverUrl,
   getArticlePlainPreview,
 } from "@/lib/articleContent";
+import { articlePublicPath } from "@/lib/contentPaths";
 
 interface ArticleCardProps {
   article: Article;
@@ -27,7 +28,7 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
     if (onClick) {
       onClick();
     } else {
-      setLocation(`/article/${article.id}`);
+      setLocation(articlePublicPath(article));
     }
   };
 

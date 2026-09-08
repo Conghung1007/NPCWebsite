@@ -878,7 +878,7 @@ function SectionPropsForm({
           <Input
             value={primaryHref}
             onChange={(e) => set("ctaPrimaryHref", e.target.value)}
-            placeholder="/contact hoặc https://…"
+            placeholder="#exam-list · /contact · https://…"
           />
           <CtaPairHint label={primaryLabel} href={primaryHref} />
         </Field>

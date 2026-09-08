@@ -3,6 +3,7 @@ import { db, pool } from "./db";
 import { cmsPages } from "@shared/schema";
 import {
   createCmsPageSchema,
+  updateCmsPageSchema,
   normalizeCmsSlug,
   PORTAL_BLOCK_TEMPLATE,
   validateCmsSlug,
@@ -134,6 +135,59 @@ export async function createCmsPage(input: unknown): Promise<CmsPageRow> {
   }
 
   return page;
+}
+
+export async function updateCmsPage(
+  id: string,
+  input: unknown,
+): Promise<CmsPageRow> {
+  await ensureCmsPagesTable();
+  const existing = await getCmsPageById(id);
+  if (!existing) throw new Error("Không tìm thấy trang");
+
+  const data = updateCmsPageSchema.parse(input);
+  if (
+    data.label === undefined &&
+    data.description === undefined &&
+    data.slug === undefined
+  ) {
+    throw new Error("Không có thay đổi");
+  }
+
+  let nextSlug = existing.slug;
+  if (data.slug !== undefined) {
+    nextSlug = normalizeCmsSlug(data.slug);
+    if (nextSlug !== existing.slug) {
+      const slugError = validateCmsSlug(nextSlug);
+      if (slugError) throw new Error(slugError);
+      const clash = await getCmsPageBySlug(existing.portal, nextSlug);
+      if (clash && clash.id !== id) {
+        throw new Error("Slug đã tồn tại trong portal này");
+      }
+    }
+  }
+
+  const nextLabel =
+    data.label !== undefined ? data.label.trim() : existing.label;
+  if (!nextLabel) throw new Error("Tên trang không được để trống");
+
+  const nextDescription =
+    data.description !== undefined
+      ? data.description.trim()
+      : existing.description;
+
+  const [row] = await db
+    .update(cmsPages)
+    .set({
+      label: nextLabel,
+      description: nextDescription,
+      slug: nextSlug,
+      updatedAt: new Date(),
+    })
+    .where(eq(cmsPages.id, id))
+    .returning();
+
+  return rowToCmsPage(row);
 }
 
 export async function deleteCmsPage(id: string): Promise<{

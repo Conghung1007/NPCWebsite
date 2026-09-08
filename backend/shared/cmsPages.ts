@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { PORTAL_IDS, type PortalId } from "./portal";
+import { PORTAL_IDS, toPublicPortalPath, type PortalId } from "./portal";
 import type { LayoutPageId } from "./pageSections";
 import type { PageContentEntry } from "./pageContentRegistry";
 
@@ -37,6 +37,7 @@ export const RESERVED_CMS_SLUGS = new Set([
   "forgot-password",
   "profile",
   "contact",
+  "lien-he",
   "news",
   "countries",
   "schools",
@@ -57,12 +58,17 @@ export const RESERVED_CMS_SLUGS = new Set([
   "exam-result",
   "exam-attempts",
   "certificate",
+  "huong-nghiep",
+  "dich-vu",
+  "luyen-thi",
+  "gioi-thieu",
 ]);
 
 export function normalizeCmsSlug(raw: string): string {
   return raw
     .trim()
     .toLowerCase()
+    .replace(/đ/g, "d")
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .replace(/[^a-z0-9]+/g, "-")
@@ -89,6 +95,15 @@ export const createCmsPageSchema = z.object({
 
 export type CreateCmsPageInput = z.infer<typeof createCmsPageSchema>;
 
+/** Update label / description (and optional slug) for an existing custom page. */
+export const updateCmsPageSchema = z.object({
+  label: z.string().min(1).max(120).optional(),
+  description: z.string().max(500).optional(),
+  slug: z.string().min(1).max(64).optional(),
+});
+
+export type UpdateCmsPageInput = z.infer<typeof updateCmsPageSchema>;
+
 export type CmsPageRow = {
   id: string;
   portal: PortalId;
@@ -107,7 +122,8 @@ export function cmsPageToContentEntry(row: CmsPageRow): PageContentEntry {
     portal: row.portal,
     label: row.label,
     description: row.description || "Trang khối tùy chỉnh",
-    publicPath: `/${row.slug}`,
+    publicPath: toPublicPortalPath(row.portal, `/${row.slug}`),
+    slug: row.slug,
     editor: "blocks",
     layoutKey: row.id,
     sectionTemplate: PORTAL_BLOCK_TEMPLATE[row.portal],

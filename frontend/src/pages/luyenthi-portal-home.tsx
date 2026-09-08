@@ -9,12 +9,10 @@ const OnlineExamPage = lazy(() =>
 /** Portal luyenthi `/` — bố cục khối (gồm gói đề + danh sách đề khi đã thêm). */
 export default function LuyenthiPortalHome() {
   const { data } = usePageLayout("luyenthi", "luyenthi");
-  const hasExamBlocks = useMemo(
+  const hasExamList = useMemo(
     () =>
       (data?.sections ?? []).some(
-        (s) =>
-          (s.type === "exam_packages" || s.type === "exam_list") &&
-          s.enabled !== false,
+        (s) => s.type === "exam_list" && s.enabled !== false,
       ),
     [data?.sections],
   );
@@ -22,8 +20,8 @@ export default function LuyenthiPortalHome() {
   return (
     <>
       <LuyenthiHome />
-      {/* Layout cũ chưa có 2 khối mới → fallback danh sách cứng để không mất nội dung */}
-      {!hasExamBlocks ? (
+      {/* Chưa có khối danh sách đề → fallback để neo #exam-list vẫn hoạt động */}
+      {!hasExamList ? (
         <Suspense
           fallback={
             <div

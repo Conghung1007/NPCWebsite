@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link, useLocation } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -23,10 +23,11 @@ import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiFetch, apiRequest } from "@/lib/queryClient";
 import { formatScore } from "@/lib/examPass";
+import { cn } from "@/lib/utils";
 import { profileKeys } from "@/lib/queryKeys";
 import { TNJS } from "@/lib/tnjsTheme";
-import { cn } from "@/lib/utils";
 import { portalHref } from "@/lib/portal";
+import { examPublicPath } from "@/lib/contentPaths";
 
 type ProfileTab = "exams" | "results" | "info";
 
@@ -81,6 +82,15 @@ function initialsOf(user: AppUser) {
   }
   return source.slice(0, 2).toUpperCase();
 }
+
+const AVATAR_MAX_BYTES = 5 * 1024 * 1024;
+const AVATAR_ALLOWED_MIME = new Set([
+  "image/jpeg",
+  "image/jpg",
+  "image/png",
+  "image/webp",
+  "image/gif",
+]);
 
 function formatDateTime(value: string | Date | null | undefined) {
   if (!value) return "—";
@@ -192,7 +202,7 @@ function ExamsTab() {
                         Chưa mở
                       </Button>
                     ) : (
-                      <Link href={portalHref("luyenthi", `/exam/${exam.id}`)}>
+                      <Link href={examPublicPath(exam)}>
                         <Button
                           className="w-full sm:w-auto"
                           style={{ backgroundColor: TNJS.orange }}
@@ -326,6 +336,7 @@ function InfoTab({ user }: { user: AppUser }) {
   const [phone, setPhone] = useState(user.phone || "");
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setFullName(user.fullName || "");
@@ -338,6 +349,13 @@ function InfoTab({ user }: { user: AppUser }) {
       if (avatarPreview?.startsWith("blob:")) URL.revokeObjectURL(avatarPreview);
     };
   }, [avatarPreview]);
+
+  const clearAvatarPick = () => {
+    if (avatarPreview?.startsWith("blob:")) URL.revokeObjectURL(avatarPreview);
+    setAvatarFile(null);
+    setAvatarPreview(null);
+    if (avatarInputRef.current) avatarInputRef.current.value = "";
+  };
 
   const saveMutation = useMutation({
     mutationFn: async (payload: UpdateProfile) => {
@@ -366,13 +384,11 @@ function InfoTab({ user }: { user: AppUser }) {
         const json = await res.json().catch(() => null);
         throw new Error(json?.message || "Không tải được ảnh đại diện");
       }
-      return res.json();
+      return res.json() as Promise<AppUser>;
     },
     onSuccess: (data) => {
       queryClient.setQueryData(["/api/auth/user"], data);
-      if (avatarPreview?.startsWith("blob:")) URL.revokeObjectURL(avatarPreview);
-      setAvatarFile(null);
-      setAvatarPreview(null);
+      clearAvatarPick();
       toast({ title: "Đã cập nhật ảnh đại diện" });
     },
     onError: (error: Error) => {
@@ -384,8 +400,51 @@ function InfoTab({ user }: { user: AppUser }) {
     },
   });
 
-  const onPickAvatar = (file: File | undefined) => {
+  const removeAvatarMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiFetch("/api/profile/avatar", { method: "DELETE" });
+      if (!res.ok) {
+        const json = await res.json().catch(() => null);
+        throw new Error(json?.message || "Không xóa được ảnh đại diện");
+      }
+      return res.json() as Promise<AppUser>;
+    },
+    onSuccess: (data) => {
+      queryClient.setQueryData(["/api/auth/user"], data);
+      clearAvatarPick();
+      toast({ title: "Đã xóa ảnh đại diện" });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Không xóa được ảnh",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const avatarBusy = avatarMutation.isPending || removeAvatarMutation.isPending;
+
+  const onPickAvatar = (file: File | undefined, input?: HTMLInputElement | null) => {
     if (!file) return;
+    if (!AVATAR_ALLOWED_MIME.has(file.type)) {
+      toast({
+        title: "Định dạng không hỗ trợ",
+        description: "Chỉ nhận ảnh JPG, PNG, GIF hoặc WebP.",
+        variant: "destructive",
+      });
+      if (input) input.value = "";
+      return;
+    }
+    if (file.size > AVATAR_MAX_BYTES) {
+      toast({
+        title: "Ảnh quá lớn",
+        description: "Ảnh đại diện không được vượt quá 5MB.",
+        variant: "destructive",
+      });
+      if (input) input.value = "";
+      return;
+    }
     if (avatarPreview?.startsWith("blob:")) URL.revokeObjectURL(avatarPreview);
     setAvatarFile(file);
     setAvatarPreview(URL.createObjectURL(file));
@@ -397,41 +456,48 @@ function InfoTab({ user }: { user: AppUser }) {
         <div className="relative">
           <Avatar className="h-32 w-32 ring-4 ring-muted">
             <AvatarImage
-              src={avatarPreview || user.avatarUrl || ""}
+              src={avatarPreview || user.avatarUrl || undefined}
               alt={user.username}
             />
             <AvatarFallback className="text-3xl font-bold text-primary">
               {initialsOf(user)}
             </AvatarFallback>
           </Avatar>
-          {avatarMutation.isPending ? (
+          {avatarBusy ? (
             <div className="absolute inset-0 flex items-center justify-center rounded-full bg-black/40">
               <Loader2 className="h-7 w-7 animate-spin text-white" />
             </div>
           ) : null}
           <Label
             htmlFor="avatar-upload"
-            className="absolute bottom-1 right-1 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-white text-white"
+            className={cn(
+              "absolute bottom-1 right-1 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border-2 border-white text-white",
+              avatarBusy && "pointer-events-none opacity-60",
+            )}
             style={{ backgroundColor: TNJS.green }}
             title="Đổi ảnh đại diện"
           >
             <Camera className="h-4 w-4" />
           </Label>
           <input
+            ref={avatarInputRef}
             id="avatar-upload"
             type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
+            accept="image/jpeg,image/jpg,image/png,image/webp,image/gif"
             className="sr-only"
-            onChange={(e) => onPickAvatar(e.target.files?.[0])}
+            disabled={avatarBusy}
+            onChange={(e) => onPickAvatar(e.target.files?.[0], e.target)}
           />
         </div>
-        <p className="mt-3 text-xs text-muted-foreground">JPG, PNG, GIF, WebP — tối đa 5MB</p>
+        <p className="mt-3 text-xs text-muted-foreground">
+          JPG, PNG, GIF, WebP — tối đa 5MB (tự cắt vuông & nén)
+        </p>
         {avatarFile ? (
           <div className="mt-3 flex gap-2">
             <Button
               size="sm"
               onClick={() => avatarMutation.mutate(avatarFile)}
-              disabled={avatarMutation.isPending}
+              disabled={avatarBusy}
               style={{ backgroundColor: TNJS.green }}
             >
               Lưu ảnh
@@ -439,15 +505,22 @@ function InfoTab({ user }: { user: AppUser }) {
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => {
-                if (avatarPreview?.startsWith("blob:")) URL.revokeObjectURL(avatarPreview);
-                setAvatarFile(null);
-                setAvatarPreview(null);
-              }}
+              disabled={avatarBusy}
+              onClick={clearAvatarPick}
             >
               Hủy
             </Button>
           </div>
+        ) : user.avatarUrl ? (
+          <Button
+            size="sm"
+            variant="ghost"
+            className="mt-3 text-muted-foreground"
+            disabled={avatarBusy}
+            onClick={() => removeAvatarMutation.mutate()}
+          >
+            Xóa ảnh đại diện
+          </Button>
         ) : null}
       </div>
 

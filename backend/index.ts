@@ -25,7 +25,7 @@ if (cookieDomain) {
 app.use(express.json({ limit: "10mb" }));
 app.use(express.urlencoded({ extended: false, limit: "10mb" }));
 
-// Credentialed CORS for portal subdomains (same app, shared cookie Domain)
+// Credentialed CORS for the single app origin (+ ALLOWED_ORIGINS)
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin && allowedCorsOrigins().includes(origin)) {

@@ -403,7 +403,7 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
                 cta: "Vào Hướng nghiệp",
                 href: "portal:huongnghiep:/",
                 imageType: "group-pillar-1",
-                external: true,
+                external: false,
               },
               {
                 label: "Dịch vụ",
@@ -413,7 +413,7 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
                 cta: "Vào Dịch vụ",
                 href: "portal:dichvu:/",
                 imageType: "group-pillar-2",
-                external: true,
+                external: false,
               },
               {
                 label: "Luyện thi",
@@ -423,7 +423,7 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
                 cta: "Vào Luyện thi",
                 href: "portal:luyenthi:/",
                 imageType: "group-pillar-3",
-                external: true,
+                external: false,
               },
             ],
           },

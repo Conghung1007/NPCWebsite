@@ -1,4 +1,4 @@
-import { Switch, Route } from "wouter";
+import { Switch, Route, Router as WouterRouter } from "wouter";
 import { lazy, Suspense } from "react";
 import { queryClient } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -8,6 +8,7 @@ import { Layout } from "@/components/layout/layout";
 import { PortalProvider } from "@/contexts/PortalContext";
 import { PortalRouteGuard } from "@/components/PortalRouteGuard";
 import { DeployChunkErrorBoundary } from "@/components/DeployChunkErrorBoundary";
+import { usePortalLocation } from "@/lib/usePortalLocation";
 
 import NotFound from "@/pages/not-found";
 import PortalHome from "@/pages/portal-home";
@@ -208,14 +209,16 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
-        <PortalProvider>
-          <Toaster />
-          <DeployChunkErrorBoundary fallback={<PageFallback />}>
-            <PortalRouteGuard>
-              <Router />
-            </PortalRouteGuard>
-          </DeployChunkErrorBoundary>
-        </PortalProvider>
+        <WouterRouter hook={usePortalLocation}>
+          <PortalProvider>
+            <Toaster />
+            <DeployChunkErrorBoundary fallback={<PageFallback />}>
+              <PortalRouteGuard>
+                <Router />
+              </PortalRouteGuard>
+            </DeployChunkErrorBoundary>
+          </PortalProvider>
+        </WouterRouter>
       </TooltipProvider>
     </QueryClientProvider>
   );

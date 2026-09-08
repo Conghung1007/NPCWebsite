@@ -17,27 +17,22 @@ import { apiRequest } from "@/lib/queryClient";
 import type { User as AppUser } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { usePortal } from "@/contexts/PortalContext";
-import { getNavigation, portalHref, portalPath, type NavItem } from "@/lib/portal";
+import {
+  getNavigation,
+  portalHref,
+  portalPath,
+  filterNavByHiddenPaths,
+  hiddenPathsForPortal,
+  stripPortalPrefix,
+  resolvePortalFromPath,
+  GROUP_CONTACT_PATH,
+  type NavItem,
+  type PortalId,
+} from "@/lib/portal";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useHiddenCmsPages } from "@/hooks/useCmsPages";
 import { TriNhanBrand, BRAND_FULL_NAME } from "@/components/TriNhanBrand";
-
-function getHeaderCta(portal: ReturnType<typeof usePortal>["portal"]) {
-  if (portal === "luyenthi") {
-    return null;
-  }
-  if (portal === "dichvu") {
-    return {
-      name: "Liên hệ dịch vụ",
-      shortName: "Liên hệ",
-      href: portalPath("dichvu", "/contact"),
-    };
-  }
-  return {
-    name: "Tư vấn miễn phí",
-    shortName: "Tư vấn",
-    href: "/contact",
-  };
-}
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
 const roleLabel: Record<string, string> = {
   admin: "Quản trị viên",
@@ -45,26 +40,59 @@ const roleLabel: Record<string, string> = {
   user: "Người dùng",
 };
 
+function userInitials(user: AppUser) {
+  const source = user.fullName?.trim() || user.username;
+  const parts = source.split(/\s+/).filter(Boolean);
+  if (parts.length >= 2) {
+    return `${parts[0][0]}${parts[parts.length - 1][0]}`.toUpperCase();
+  }
+  return source.slice(0, 2).toUpperCase();
+}
+
 function isActivePath(location: string, href: string) {
   if (href.startsWith("http://") || href.startsWith("https://")) return false;
   try {
     const url = new URL(href, "http://local.invalid");
-    const pathOnly = url.pathname || "/";
+    const pathOnly = stripPortalPrefix(url.pathname || "/").internalPath;
     if (pathOnly === "/") {
       return location === "/" || location === "";
     }
     return location === pathOnly || location.startsWith(`${pathOnly}/`);
   } catch {
-    const pathOnly = href.split("#")[0]?.split("?")[0] || "/";
+    const raw = href.split("#")[0]?.split("?")[0] || "/";
+    const pathOnly = stripPortalPrefix(raw).internalPath;
     if (pathOnly === "/") return location === "/" || location === "";
     return location === pathOnly || location.startsWith(`${pathOnly}/`);
   }
 }
 
+/** Which hub portal a top-row link represents (null = external / contact-only). */
+function hubItemPortal(item: NavItem): PortalId | "contact" | null {
+  if (item.external || /^https?:\/\//i.test(item.href)) return null;
+  const path = item.href.split("?")[0]?.split("#")[0] || "/";
+  if (path === GROUP_CONTACT_PATH || path === "/contact") return "contact";
+  return resolvePortalFromPath(path);
+}
+
+function isHubItemActive(
+  item: NavItem,
+  portal: PortalId,
+  location: string,
+): boolean {
+  const kind = hubItemPortal(item);
+  if (kind === "contact") {
+    return (
+      portal === "group" &&
+      (location === "/contact" || location === GROUP_CONTACT_PATH)
+    );
+  }
+  if (!kind) return false;
+  return portal === kind;
+}
+
 function Brand({
   compact = false,
   showTagline = true,
-  /** Sub-portal header: slightly tighter lockup */
   portal = false,
 }: {
   compact?: boolean;
@@ -100,20 +128,6 @@ function Brand({
   );
 }
 
-function GroupHomeLink({ className }: { className?: string }) {
-  return (
-    <a
-      href={portalHref("group", "/")}
-      className={cn(
-        "text-sm font-medium text-muted-foreground hover:text-primary transition-colors tracking-wide",
-        className,
-      )}
-    >
-      {BRAND_FULL_NAME}
-    </a>
-  );
-}
-
 function NavLinkItem({
   item,
   location,
@@ -121,17 +135,20 @@ function NavLinkItem({
   onNavigate,
   respectHideBelowXl = true,
   stacked = false,
+  forceActive,
 }: {
   item: NavItem;
   location: string;
   mobile?: boolean;
   onNavigate?: () => void;
   respectHideBelowXl?: boolean;
-  /** Bottom row of sub-portal header: larger type, no side padding (align with N&P Group) */
   stacked?: boolean;
+  /** Override path-based active (used for hub portal pills). */
+  forceActive?: boolean;
 }) {
-  const active = !item.external && isActivePath(location, item.href);
-  const tnjsNav = !mobile;
+  const active =
+    forceActive ?? (!item.external && isActivePath(location, item.href));
+  const pill = !mobile;
   const className = cn(
     "relative font-medium transition-colors duration-200 whitespace-nowrap",
     mobile
@@ -140,20 +157,20 @@ function NavLinkItem({
         ? cn(
             "inline-flex shrink-0 items-center py-1.5 text-sm tracking-[0.01em]",
             respectHideBelowXl && item.hideBelowXl && "hidden xl:inline-flex",
-            tnjsNav &&
+            pill &&
               "rounded-full px-2.5 font-semibold uppercase tracking-[0.04em] text-[12px] xl:px-3.5 xl:text-[13px]",
-            tnjsNav && active && "bg-[#00A651] text-white",
+            pill && active && "bg-[#00A651] text-white",
           )
         : cn(
             "inline-flex items-center px-3.5 py-2 text-sm tracking-[0.01em]",
             respectHideBelowXl && item.hideBelowXl && "hidden xl:inline-flex",
-            tnjsNav && active && "rounded-full bg-[#00A651] px-3.5 text-white font-semibold",
+            pill && active && "rounded-full bg-[#00A651] px-3.5 text-white font-semibold",
           ),
     mobile
       ? active
         ? "text-primary bg-primary/8"
         : "text-foreground/85 hover:bg-muted/70 hover:text-foreground"
-      : active && !tnjsNav
+      : active && !pill
         ? "text-foreground"
         : !active
           ? "text-muted-foreground hover:text-foreground"
@@ -218,7 +235,12 @@ function NavLinkItem({
 
   const inner = <>{label}</>;
 
-  if (item.external || /^https?:\/\//i.test(item.href) || item.href.includes("?") || item.href.includes("#")) {
+  if (
+    item.external ||
+    /^https?:\/\//i.test(item.href) ||
+    item.href.includes("?") ||
+    item.href.includes("#")
+  ) {
     return (
       <a
         href={item.href}
@@ -226,6 +248,7 @@ function NavLinkItem({
         data-testid={`nav-link-${item.shortName}`}
         className={className}
         aria-current={active ? "page" : undefined}
+        rel={item.external ? "noopener noreferrer" : undefined}
       >
         {inner}
       </a>
@@ -245,23 +268,75 @@ function NavLinkItem({
   );
 }
 
-function NavLinks({
+/** Top row — always hub portals (Đào tạo → tnjs.vn). */
+function HubNavLinks({
   location,
   className,
   onNavigate,
   mobile = false,
   respectHideBelowXl = true,
-  stacked = false,
 }: {
   location: string;
   className?: string;
   onNavigate?: () => void;
   mobile?: boolean;
   respectHideBelowXl?: boolean;
-  stacked?: boolean;
 }) {
   const { portal } = usePortal();
-  const navigation = getNavigation(portal);
+  const { data: hidden } = useHiddenCmsPages();
+  const navigation = filterNavByHiddenPaths(
+    getNavigation("group"),
+    hiddenPathsForPortal(hidden?.entries, "group"),
+  );
+
+  if (mobile) {
+    return (
+      <div className={cn("flex flex-col", className)}>
+        {navigation.map((item) => {
+          const kind = hubItemPortal(item);
+          const active = isHubItemActive(item, portal, location);
+          const showChildren =
+            kind &&
+            kind !== "contact" &&
+            portal === kind &&
+            portal !== "group";
+          const children = showChildren
+            ? filterNavByHiddenPaths(
+                getNavigation(portal),
+                hiddenPathsForPortal(hidden?.entries, portal),
+              )
+            : [];
+
+          return (
+            <div key={`${item.href}-${item.shortName}`} className="w-full">
+              <NavLinkItem
+                item={item}
+                location={location}
+                mobile
+                onNavigate={onNavigate}
+                respectHideBelowXl={false}
+                forceActive={active}
+              />
+              {children.length > 0 && (
+                <div className="ml-3 border-l border-border/60 pl-2 space-y-0.5 mb-1">
+                  {children.map((child) => (
+                    <NavLinkItem
+                      key={`${child.href}-${child.shortName}`}
+                      item={child}
+                      location={location}
+                      mobile
+                      onNavigate={onNavigate}
+                      respectHideBelowXl={false}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    );
+  }
 
   return (
     <div className={cn("flex items-center", className)}>
@@ -270,62 +345,46 @@ function NavLinks({
           key={`${item.href}-${item.shortName}`}
           item={item}
           location={location}
-          mobile={mobile}
           onNavigate={onNavigate}
           respectHideBelowXl={respectHideBelowXl}
-          stacked={stacked}
+          forceActive={isHubItemActive(item, portal, location)}
         />
       ))}
     </div>
   );
 }
 
-function ContactCta({
+/** Second row — child pages of the active product portal. */
+function PortalChildNavLinks({
   location,
-  size = "default",
   className,
-  onNavigate,
+  stacked = true,
 }: {
   location: string;
-  size?: "default" | "sm";
   className?: string;
-  onNavigate?: () => void;
+  stacked?: boolean;
 }) {
   const { portal } = usePortal();
-  const cta = getHeaderCta(portal);
-  if (!cta) return null;
-  const active = isActivePath(location, cta.href);
-  const classNames = cn(
-    "font-semibold shadow-none whitespace-nowrap",
-    size === "default" && "h-10 px-5",
-    size === "sm" && "h-8 px-3.5 text-xs",
-    "bg-[#FF8800] hover:bg-[#E67700] text-white uppercase tracking-wide font-bold",
-    className,
-  );
-  const usesAnchor = cta.href.includes("?") || cta.href.includes("#");
+  const { data: hidden } = useHiddenCmsPages();
+  if (portal === "group") return null;
 
-  if (usesAnchor) {
-    return (
-      <a href={cta.href} onClick={onNavigate} data-testid={`nav-link-${cta.name}`}>
-        <Button size={size} className={classNames}>
-          <span className="sm:hidden">{cta.shortName}</span>
-          <span className="hidden sm:inline">{cta.name}</span>
-        </Button>
-      </a>
-    );
-  }
+  const navigation = filterNavByHiddenPaths(
+    getNavigation(portal),
+    hiddenPathsForPortal(hidden?.entries, portal),
+  );
 
   return (
-    <Link href={cta.href} onClick={onNavigate} data-testid={`nav-link-${cta.href}`}>
-      <Button
-        size={size}
-        aria-current={active ? "page" : undefined}
-        className={classNames}
-      >
-        <span className="sm:hidden">{cta.shortName}</span>
-        <span className="hidden sm:inline">{cta.name}</span>
-      </Button>
-    </Link>
+    <div className={cn("flex items-center", className)} aria-label="Trang trong cổng">
+      {navigation.map((item) => (
+        <NavLinkItem
+          key={`${item.href}-${item.shortName}`}
+          item={item}
+          location={location}
+          respectHideBelowXl={false}
+          stacked={stacked}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -353,15 +412,12 @@ function UserMenu({
           data-testid="user-menu-button"
           aria-label={`Tài khoản ${user.username}`}
         >
-          {user.avatarUrl ? (
-            <img
-              src={user.avatarUrl}
-              alt=""
-              className="mr-1.5 h-6 w-6 rounded-full object-cover"
-            />
-          ) : (
-            <User className="w-4 h-4 mr-1.5 opacity-70" />
-          )}
+          <Avatar className="mr-1.5 h-6 w-6">
+            <AvatarImage src={user.avatarUrl || undefined} alt="" />
+            <AvatarFallback className="text-[10px] font-semibold text-primary">
+              {userInitials(user)}
+            </AvatarFallback>
+          </Avatar>
           <span className="max-w-[7.5rem] truncate">{user.username}</span>
         </Button>
       </DropdownMenuTrigger>
@@ -396,7 +452,7 @@ function UserMenu({
 function CartButton({ size = "default" }: { size?: "default" | "sm" }) {
   const { itemCount } = useCart();
   return (
-    <Link href="/cart" data-testid="nav-cart" className="shrink-0">
+    <Link href={portalPath("luyenthi", "/cart")} data-testid="nav-cart" className="shrink-0">
       <Button
         variant="outline"
         size={size}
@@ -484,10 +540,7 @@ function MobileAuth({
           </span>
         </div>
         <Link href="/profile/exams" className="block" onClick={onNavigate}>
-          <Button
-            variant="outline"
-            className="w-full justify-start h-11"
-          >
+          <Button variant="outline" className="w-full justify-start h-11">
             <User className="w-4 h-4 mr-2" />
             Hồ sơ
           </Button>
@@ -583,7 +636,6 @@ export function Header() {
       {isLuyenthi && <CartButton size="sm" />}
       <div className="hidden md:flex items-center gap-1.5">
         <AuthActions user={user} onLogout={handleLogout} size="sm" />
-        {!isSubPortal && <ContactCta location={location} size="sm" />}
       </div>
 
       <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -608,21 +660,21 @@ export function Header() {
           <div className="mt-6 mb-4 pb-4 border-b border-border/70 space-y-3">
             <Brand />
             {isSubPortal && (
-              <GroupHomeLink className="inline-flex" />
+              <a
+                href={portalHref("group", "/")}
+                className="inline-flex text-sm font-medium text-muted-foreground hover:text-primary transition-colors tracking-wide"
+              >
+                {BRAND_FULL_NAME}
+              </a>
             )}
           </div>
-          <NavLinks
+          <HubNavLinks
             location={location}
             mobile
             onNavigate={closeMobile}
             className="flex-col items-stretch gap-0.5"
           />
           <div className="border-t border-border/70 mt-auto pt-5 space-y-3 pb-2">
-            <ContactCta
-              location={location}
-              className="w-full md:hidden"
-              onNavigate={closeMobile}
-            />
             <div className="md:hidden">
               <MobileAuth
                 user={user}
@@ -653,7 +705,7 @@ export function Header() {
         Bỏ qua điều hướng
       </a>
 
-      {/* Desktop: stacked layout for TNJS / Du học / Đào tạo */}
+      {/* Desktop: hub portals always; child row when inside a product portal */}
       {isSubPortal ? (
         <nav
           className={cn(
@@ -665,34 +717,29 @@ export function Header() {
           aria-label="Điều hướng chính"
         >
           <div className="row-span-2 self-center">
-            <Brand
-              portal
-              compact={scrolled}
-              showTagline={!scrolled}
+            <Brand portal compact={scrolled} showTagline={!scrolled} />
+          </div>
+
+          <div className="flex min-h-10 min-w-0 items-center pl-6 xl:pl-10">
+            <HubNavLinks
+              location={location}
+              respectHideBelowXl={false}
+              className="flex w-full min-w-0 flex-nowrap items-center gap-x-1 overflow-x-auto overscroll-x-contain xl:gap-x-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             />
           </div>
 
-          <div className="flex items-center min-h-10 pl-6 xl:pl-10">
-            <GroupHomeLink />
-          </div>
-
-          {/* Hàng trên: giỏ + auth; hàng dưới: CTA (ẩn trên cổng luyện thi — đã có trong nav) */}
-          <div className="row-span-2 self-center flex items-start gap-3 shrink-0">
+          <div className="row-span-2 self-center flex items-center gap-3 shrink-0">
             {portal === "luyenthi" && (
               <div className="flex h-10 items-center">
                 <CartButton />
               </div>
             )}
-            <div className="flex flex-col items-center gap-1.5">
-              <AuthActions user={user} onLogout={handleLogout} />
-              <ContactCta location={location} size="sm" />
-            </div>
+            <AuthActions user={user} onLogout={handleLogout} />
           </div>
 
-          <div className="flex min-h-11 min-w-0 items-center pl-6 xl:pl-10">
-            <NavLinks
+          <div className="flex min-h-11 min-w-0 items-center border-t border-border/40 pl-6 xl:pl-10">
+            <PortalChildNavLinks
               location={location}
-              respectHideBelowXl={false}
               stacked
               className="flex w-full min-w-0 flex-nowrap items-center gap-x-2.5 overflow-x-auto overscroll-x-contain xl:gap-x-4 2xl:gap-x-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             />
@@ -709,13 +756,12 @@ export function Header() {
           aria-label="Điều hướng chính"
         >
           <Brand compact={scrolled} />
-          <NavLinks
+          <HubNavLinks
             location={location}
             className="flex flex-1 justify-center gap-1 xl:gap-1.5"
           />
           <div className="flex items-center gap-4 shrink-0">
             <AuthActions user={user} onLogout={handleLogout} />
-            <ContactCta location={location} />
           </div>
         </nav>
       )}

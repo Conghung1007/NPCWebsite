@@ -41,6 +41,8 @@ export const contactRequests = pgTable("contact_requests", {
 export const articles = pgTable("articles", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
+  /** Public URL segment under the portal prefix (from title). */
+  slug: text("slug"),
   content: text("content").notNull(),
   imageUrl: text("image_url"),
   videoUrl: text("video_url"), // Add video URL field
@@ -93,6 +95,8 @@ export type EmailOtpType = "registration" | "password_reset";
 export const exams = pgTable("exams", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   title: text("title").notNull(),
+  /** Public URL segment under /luyen-thi (from title), e.g. de-thi-n5 */
+  slug: text("slug"),
   description: text("description"),
   isDemo: boolean("is_demo").default(false), // Free — no login required
   isActive: boolean("is_active").default(true),

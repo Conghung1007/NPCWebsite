@@ -282,8 +282,82 @@ export const VISA_CONTENT_DEFAULTS: Record<string, string> = {
   ]),
 };
 
+export const CLASSES_CONTENT_DEFAULTS: Record<string, string> = {
+  eyebrow: "Đào tạo tiếng Nhật",
+  heroTitle: "Lớp đang tuyển sinh",
+  heroDescription:
+    "Chọn lớp phù hợp lịch và cấp độ — thanh toán online qua PayOS.",
+  "empty-title": "Chưa có lớp đang mở",
+  "empty-description": "Vui lòng quay lại sau hoặc liên hệ tư vấn.",
+  "empty-cta": "Tư vấn miễn phí",
+};
+
+export const NEWS_CONTENT_DEFAULTS_BY_PORTAL: Record<
+  string,
+  Record<string, string>
+> = {
+  luyenthi: {
+    eyebrow: "Tin tức",
+    heroTitle: "Tin tức luyện thi",
+    heroDescription: "Cập nhật đề thi, lịch thi và hoạt động luyện thi.",
+    "list-title": "Bài viết mới",
+    "list-description": "Cập nhật từ Trí Nhân Academy",
+  },
+  huongnghiep: {
+    eyebrow: "Tin tức",
+    heroTitle: "Tin tức hướng nghiệp",
+    heroDescription:
+      "Thông tin du học, nghề nghiệp và cập nhật từ thị trường.",
+    "list-title": "Bài viết mới",
+    "list-description": "Cập nhật từ Trí Nhân Academy",
+  },
+  dichvu: {
+    eyebrow: "Tin tức",
+    heroTitle: "Tin tức dịch vụ",
+    heroDescription:
+      "Tin tức kỹ năng mềm và dịch vụ doanh nghiệp Trí Nhân Academy.",
+    "list-title": "Bài viết mới",
+    "list-description": "Cập nhật từ Trí Nhân Academy",
+  },
+};
+
+export const CONTACT_CONTENT_DEFAULTS_BY_PORTAL: Record<
+  string,
+  Record<string, string>
+> = {
+  group: {
+    heroTitle: "Liên hệ với chúng tôi",
+    heroDescription:
+      "Sẵn sàng hỗ trợ bạn 24/7. Hãy liên hệ ngay để nhận tư vấn miễn phí!",
+    metaDescription:
+      "Liên hệ với Trí Nhân Academy để được tư vấn miễn phí về visa, du học, tiếng Nhật và luyện thi.",
+  },
+  huongnghiep: {
+    heroTitle: "Liên hệ hướng nghiệp",
+    heroDescription:
+      "Tư vấn du học, nghề nghiệp và lộ trình định hướng — phản hồi nhanh trong giờ hành chính.",
+    metaDescription:
+      "Liên hệ cổng Hướng nghiệp Trí Nhân Academy — tư vấn du học và nghề nghiệp.",
+  },
+  dichvu: {
+    heroTitle: "Liên hệ dịch vụ",
+    heroDescription:
+      "Biên phiên dịch, kỹ năng mềm và tư vấn doanh nghiệp — để lại thông tin để được hỗ trợ.",
+    metaDescription:
+      "Liên hệ cổng Dịch vụ Trí Nhân Academy — biên phiên dịch, kỹ năng mềm, doanh nghiệp.",
+  },
+  luyenthi: {
+    heroTitle: "Liên hệ luyện thi",
+    heroDescription:
+      "Hỗ trợ lớp học, gói đề và lịch luyện thi — để lại thông tin hoặc gọi hotline.",
+    metaDescription:
+      "Liên hệ cổng Luyện thi Trí Nhân Academy — lớp học và luyện đề tiếng Nhật.",
+  },
+};
+
 export function getSiteContentDefaults(
   page: string,
+  portal?: string,
 ): Record<string, string> | undefined {
   switch (page) {
     case "online-exam":
@@ -296,6 +370,18 @@ export function getSiteContentDefaults(
       return STUDY_ABROAD_CONTENT_DEFAULTS;
     case "visa":
       return VISA_CONTENT_DEFAULTS;
+    case "classes":
+      return CLASSES_CONTENT_DEFAULTS;
+    case "news":
+      return (
+        (portal && NEWS_CONTENT_DEFAULTS_BY_PORTAL[portal]) ||
+        NEWS_CONTENT_DEFAULTS_BY_PORTAL.luyenthi
+      );
+    case "contact":
+      return (
+        (portal && CONTACT_CONTENT_DEFAULTS_BY_PORTAL[portal]) ||
+        CONTACT_CONTENT_DEFAULTS_BY_PORTAL.group
+      );
     default:
       return undefined;
   }

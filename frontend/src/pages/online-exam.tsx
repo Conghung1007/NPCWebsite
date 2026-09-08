@@ -33,7 +33,8 @@ import {
 import { type Exam } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { resolveExamAccess } from "@shared/examAccess";
-import { portalHref, portalPath, tnjsTrainingHref } from "@/lib/portal";
+import { portalHref, tnjsTrainingHref } from "@/lib/portal";
+import { examPublicPath } from "@/lib/contentPaths";
 
 type ExamListItem = Exam & {
   timeLimit?: number;
@@ -88,7 +89,7 @@ function ExamCard({
     activeLevels,
     activePackageIds,
   });
-  const loginHref = `/login?redirect=${encodeURIComponent(portalPath("luyenthi", `/exam/${exam.id}`))}`;
+  const loginHref = `/login?redirect=${encodeURIComponent(examPublicPath(exam))}`;
 
   let badge = isDemo ? "Miễn phí" : exam.level || "Chính thức";
   if (access.mode === "trial") badge = `Thi thử ${exam.level || ""}`.trim();
@@ -191,7 +192,7 @@ function ExamCard({
         ) : access.mode === "denied" && access.requiresPurchase ? (
           <a href="#exam-packages">{ctaInner}</a>
         ) : (
-          <Link href={portalPath("luyenthi", `/exam/${exam.id}`)}>{ctaInner}</Link>
+          <Link href={examPublicPath(exam)}>{ctaInner}</Link>
         )}
       </div>
     </article>

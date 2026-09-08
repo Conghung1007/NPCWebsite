@@ -7,6 +7,7 @@ export const cmsPageKeys = {
   all: ["/api/cms-pages"] as const,
   portal: (portal: PortalId | "all") =>
     ["/api/cms-pages", portal] as const,
+  hidden: ["/api/cms-pages/hidden"] as const,
 };
 
 function appendCmsPage(
@@ -16,6 +17,18 @@ function appendCmsPage(
   if (!old) return [created];
   if (old.some((p) => p.id === created.id)) return old;
   return [...old, created];
+}
+
+function replaceCmsPage(
+  old: PageContentEntry[] | undefined,
+  updated: PageContentEntry,
+): PageContentEntry[] {
+  if (!old) return [updated];
+  const idx = old.findIndex((p) => p.id === updated.id);
+  if (idx < 0) return [...old, updated];
+  const next = old.slice();
+  next[idx] = updated;
+  return next;
 }
 
 export function useCmsPages(portal?: PortalId | "all") {
@@ -28,6 +41,25 @@ export function useCmsPages(portal?: PortalId | "all") {
           : "?all=1";
       const res = await apiFetch(`/api/cms-pages${qs}`);
       if (!res.ok) throw new Error("Không tải được trang tùy chỉnh");
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+}
+
+export type HiddenCmsPages = {
+  ids: string[];
+  paths: string[];
+  /** Portal-scoped hidden routes (preferred over flat `paths`). */
+  entries?: Array<{ portal: string; path: string }>;
+};
+
+export function useHiddenCmsPages() {
+  return useQuery<HiddenCmsPages>({
+    queryKey: cmsPageKeys.hidden,
+    queryFn: async () => {
+      const res = await apiFetch("/api/cms-pages/hidden");
+      if (!res.ok) throw new Error("Không tải được trang đã ẩn");
       return res.json();
     },
     staleTime: 30_000,
@@ -56,6 +88,41 @@ export function useCreateCmsPage() {
   });
 }
 
+export function useUpdateCmsPage() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: {
+      id: string;
+      label?: string;
+      description?: string;
+      slug?: string;
+      previousSlug?: string;
+      portal?: PortalId;
+    }) => {
+      const res = await apiRequest("PATCH", `/api/cms-pages/${payload.id}`, {
+        label: payload.label,
+        description: payload.description,
+        slug: payload.slug,
+      });
+      const updated = (await res.json()) as PageContentEntry;
+      return { ...payload, updated };
+    },
+    onSuccess: ({ updated, previousSlug, portal }) => {
+      queryClient.setQueriesData<PageContentEntry[]>(
+        { queryKey: ["/api/cms-pages"] },
+        (old) => replaceCmsPage(old, updated),
+      );
+      queryClient.invalidateQueries({ queryKey: cmsPageKeys.all });
+      queryClient.invalidateQueries({ queryKey: ["/api/cms-pages/by-slug"] });
+      if (previousSlug && portal && previousSlug !== updated.slug) {
+        queryClient.removeQueries({
+          queryKey: ["/api/cms-pages/by-slug", previousSlug, portal],
+        });
+      }
+    },
+  });
+}
+
 export function useDeleteCmsPage() {
   const queryClient = useQueryClient();
   return useMutation({
@@ -63,33 +130,56 @@ export function useDeleteCmsPage() {
       id: string;
       slug?: string;
       portal?: PortalId;
+      publicPath?: string;
     }) => {
       const res = await apiRequest("DELETE", `/api/cms-pages/${payload.id}`);
       const body = (await res.json()) as {
         ok?: boolean;
+        mode?: "custom" | "hidden";
         images?: {
           dbRemoved: number;
           r2Removed: number;
           r2Skipped: number;
         };
       };
-      return { ...payload, images: body.images };
+      return { ...payload, mode: body.mode, images: body.images };
     },
     onSuccess: (payload) => {
       queryClient.setQueriesData<PageContentEntry[]>(
         { queryKey: ["/api/cms-pages"] },
         (old) => (old ? old.filter((p) => p.id !== payload.id) : old),
       );
+      queryClient.setQueryData<HiddenCmsPages>(cmsPageKeys.hidden, (old) => {
+        if (!old) return old;
+        if (old.ids.includes(payload.id)) return old;
+        const paths = payload.publicPath
+          ? [
+              ...old.paths.filter((p) => p !== payload.publicPath),
+              payload.publicPath,
+            ]
+          : old.paths;
+        const entries = [
+          ...(old.entries ?? []).filter((e) => e.path !== payload.publicPath),
+          ...(payload.publicPath && payload.portal
+            ? [{ portal: payload.portal, path: payload.publicPath }]
+            : []),
+        ];
+        return {
+          ids: [...old.ids, payload.id],
+          paths,
+          entries,
+        };
+      });
+      queryClient.invalidateQueries({
+        queryKey: ["/api/cms-pages/by-slug"],
+      });
       if (payload.slug && payload.portal) {
         queryClient.removeQueries({
           queryKey: ["/api/cms-pages/by-slug", payload.slug, payload.portal],
         });
-      } else {
-        queryClient.invalidateQueries({
-          queryKey: ["/api/cms-pages/by-slug"],
-        });
       }
       queryClient.invalidateQueries({ queryKey: cmsPageKeys.all });
+      queryClient.invalidateQueries({ queryKey: cmsPageKeys.hidden });
       queryClient.invalidateQueries({ queryKey: ["/api/page-layouts"] });
       queryClient.invalidateQueries({ queryKey: ["/api/ui-images"] });
     },

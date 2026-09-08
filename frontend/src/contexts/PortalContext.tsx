@@ -9,7 +9,8 @@ import {
 import { useLocation } from "wouter";
 import {
   PORTAL_META,
-  resolvePortalForPath,
+  resolvePortalFromPath,
+  stripPortalPrefix,
   type PortalId,
 } from "@/lib/portal";
 
@@ -24,20 +25,21 @@ type PortalContextValue = {
 
 const PortalContext = createContext<PortalContextValue | null>(null);
 
-function currentPathname(location: string): string {
-  return location.split("?")[0] || "/";
+function portalFromBrowser(): PortalId {
+  if (typeof window === "undefined") return "group";
+  return (
+    resolvePortalFromPath(window.location.pathname) ??
+    stripPortalPrefix(window.location.pathname).portal
+  );
 }
 
 export function PortalProvider({ children }: { children: ReactNode }) {
+  // useLocation triggers re-render on nav; portal always from public URL
   const [location] = useLocation();
-  const [portal, setPortal] = useState<PortalId>(() =>
-    resolvePortalForPath(
-      typeof window !== "undefined" ? window.location.pathname : "/",
-    ),
-  );
+  const [portal, setPortal] = useState<PortalId>(() => portalFromBrowser());
 
   useEffect(() => {
-    setPortal(resolvePortalForPath(currentPathname(location)));
+    setPortal(portalFromBrowser());
   }, [location]);
 
   useEffect(() => {

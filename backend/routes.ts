@@ -11,10 +11,15 @@ import {
 } from "./pageLayouts";
 import {
   createCmsPage,
-  deleteCmsPage,
   getCmsPageBySlug,
   listCmsPages,
+  updateCmsPage,
 } from "./cmsPages";
+import {
+  deleteOrHidePageContent,
+  listHiddenPageIds,
+  listHiddenPublicPathEntries,
+} from "./cmsHiddenPages";
 import { cmsPageToContentEntry } from "@shared/cmsPages";
 import { getSiteSettings, upsertSiteSettings } from "./siteSettings";
 import {
@@ -71,7 +76,13 @@ import { filterAnswersToTrialIds } from "./examScoring";
 import multer from "multer";
 import { registerCommerceRoutes } from "./commerceRoutes";
 import { portalMiddleware } from "./portalMiddleware";
+import { ensureContentSlugs } from "./ensureContentSlugs";
 import { portalFromArticleCategory, normalizeAllowedPortals, normalizePortalAlias, canAccessPortal, sanitizePortalsInput } from "@shared/portal";
+import { rateLimit } from "./rateLimit";
+import {
+  parseStoredAvatarRef,
+  processAvatarImage,
+} from "./avatarImage";
 import {
   EXAM_PACKAGE_PRICE_VND,
   EXAM_TRIAL_QUESTION_LIMIT,
@@ -381,6 +392,11 @@ function buildTrialClientState(
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(portalMiddleware);
+  try {
+    await ensureContentSlugs();
+  } catch (err) {
+    console.error("ensureContentSlugs failed:", err);
+  }
   registerCommerceRoutes(app);
 
   // Serve static files from frontend/public directory
@@ -1069,10 +1085,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     storage: multer.memoryStorage(),
     limits: { fileSize: 5 * 1024 * 1024 },
   });
+  const avatarRateLimit = rateLimit(10, 60);
 
   app.post(
     "/api/profile/avatar",
     requireAuth,
+    avatarRateLimit,
     (req, res, next) => {
       avatarUpload.single("avatar")(req, res, (err) => {
         if (err) {
@@ -1092,21 +1110,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(400).json({ message: "Chưa chọn ảnh đại diện" });
         }
 
-        const mime = (file.mimetype || "").toLowerCase();
-        const extByMime: Record<string, string> = {
-          "image/jpeg": "jpg",
-          "image/png": "png",
-          "image/webp": "webp",
-          "image/gif": "gif",
-        };
-        const ext = extByMime[mime];
-        if (!ext) {
+        if (file.size > 5 * 1024 * 1024) {
+          return res.status(400).json({ message: "Ảnh không được vượt quá 5MB" });
+        }
+
+        let processed;
+        try {
+          processed = await processAvatarImage(file.buffer);
+        } catch (err) {
+          if (err instanceof Error && err.message === "INVALID_IMAGE") {
+            return res.status(400).json({
+              message: "File không phải ảnh hợp lệ (JPG, PNG, GIF hoặc WebP)",
+            });
+          }
+          console.error("Avatar image processing failed:", err);
           return res.status(400).json({
-            message: "Chỉ nhận ảnh JPG, PNG, GIF hoặc WebP",
+            message: "Không xử lý được ảnh. Thử ảnh khác hoặc định dạng khác.",
           });
         }
 
-        const uniqueFileName = `${userId}-${Date.now()}.${ext}`;
+        const current = await storage.getUser(userId);
+        if (!current) {
+          return res.status(404).json({ message: "Không tìm thấy tài khoản" });
+        }
+        const oldAvatarUrl = current.avatarUrl;
+
+        const uniqueFileName = `${userId}-${Date.now()}.${processed.ext}`;
+        const objectKey = `avatars/${uniqueFileName}`;
         const uploadConfig: MediaUploadConfig = {
           provider: "primary",
           folder: "avatars",
@@ -1114,9 +1144,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
           maxSizeBytes: 5 * 1024 * 1024,
         };
         const uploadResult = await multiR2Storage.uploadFile(
-          file.buffer,
+          processed.buffer,
           uniqueFileName,
-          file.mimetype,
+          processed.contentType,
           uploadConfig,
         );
         if (!uploadResult.success) {
@@ -1125,10 +1155,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           });
         }
 
-        const avatarUrl = `/api/proxy-image/primary/avatars/${uniqueFileName}`;
+        const avatarUrl = `/api/proxy-image/primary/${objectKey}`;
         const updated = await storage.updateUser(userId, { avatarUrl });
         if (!updated) {
+          await multiR2Storage.deleteFile("primary", objectKey);
           return res.status(404).json({ message: "Không tìm thấy tài khoản" });
+        }
+
+        const oldRef = parseStoredAvatarRef(oldAvatarUrl);
+        if (oldRef && oldRef.key !== objectKey) {
+          await multiR2Storage.deleteFile(oldRef.provider, oldRef.key);
         }
 
         const safe = sanitizeUser(updated);
@@ -1137,6 +1173,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } catch (error) {
         console.error("Error uploading avatar:", error);
         res.status(500).json({ message: "Không tải được ảnh đại diện" });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/profile/avatar",
+    requireAuth,
+    avatarRateLimit,
+    async (req, res) => {
+      try {
+        const userId = (req.session as any).user.id as string;
+        const current = await storage.getUser(userId);
+        if (!current) {
+          return res.status(404).json({ message: "Không tìm thấy tài khoản" });
+        }
+
+        if (!current.avatarUrl) {
+          const safe = sanitizeUser(current);
+          (req.session as any).user = safe;
+          return res.json(safe);
+        }
+
+        const updated = await storage.updateUser(userId, { avatarUrl: null });
+        if (!updated) {
+          return res.status(404).json({ message: "Không tìm thấy tài khoản" });
+        }
+
+        const oldRef = parseStoredAvatarRef(current.avatarUrl);
+        if (oldRef) {
+          await multiR2Storage.deleteFile(oldRef.provider, oldRef.key);
+        }
+
+        const safe = sanitizeUser(updated);
+        (req.session as any).user = safe;
+        res.json(safe);
+      } catch (error) {
+        console.error("Error deleting avatar:", error);
+        res.status(500).json({ message: "Không xóa được ảnh đại diện" });
       }
     },
   );
@@ -1355,7 +1429,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/exams/:id", async (req, res) => {
     try {
       const { id } = req.params;
-      const exam = await storage.getExam(id);
+      const exam = await storage.getExamByIdOrSlug(id);
       if (!exam) {
         return res.status(404).json({ message: "Không tìm thấy đề thi" });
       }
@@ -1380,10 +1454,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/exams/:id/questions", async (req, res) => {
     try {
       const { id } = req.params;
-      const exam = await storage.getExam(id);
+      const exam = await storage.getExamByIdOrSlug(id);
       if (!exam) {
         return res.status(404).json({ message: "Exam not found" });
       }
+      const examId = exam.id;
 
       const sessionUser = (req.session as any)?.user;
       if (exam.isActive === false && !isAdminOrManager(sessionUser)) {
@@ -1397,13 +1472,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const questionsById = await loadQuestionsByIdForExam(id);
+      const questionsById = await loadQuestionsByIdForExam(examId);
       let allQuestions = [...questionsById.values()];
 
       if (access.mode === "trial") {
         let allowedIds: Set<string> | null = null;
         if (sessionUser?.id) {
-          const existing = await storage.getInProgressExamAttempt(id, sessionUser.id);
+          const existing = await storage.getInProgressExamAttempt(examId, sessionUser.id);
           if (existing?.clientState) {
             const attemptTrial = readTrialAttemptState(existing.clientState);
             if (attemptTrial.trialQuestionIds.size > 0) {
@@ -1905,7 +1980,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/exams/:id/access", async (req, res) => {
     try {
-      const exam = await storage.getExam(req.params.id);
+      const exam = await storage.getExamByIdOrSlug(req.params.id);
       if (!exam) {
         return res.status(404).json({ message: "Không tìm thấy đề thi" });
       }
@@ -3180,6 +3255,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /** Registry child pages hidden from Cpanel / public (portal homes never listed). */
+  app.get("/api/cms-pages/hidden", async (_req, res) => {
+    try {
+      const ids = await listHiddenPageIds();
+      const entries = await listHiddenPublicPathEntries();
+      const paths = [...new Set(entries.map((e) => e.path))];
+      res.json({ ids, paths, entries });
+    } catch (error) {
+      console.error("Error fetching hidden cms pages:", error);
+      res.status(500).json({ message: "Không thể tải danh sách trang ẩn" });
+    }
+  });
+
   app.get("/api/cms-pages/by-slug/:slug", async (req, res) => {
     try {
       const portal = normalizePortalAlias(req.query.portal as string) || req.portal;
@@ -3203,7 +3291,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(201).json(cmsPageToContentEntry(created));
     } catch (error) {
       const msg = error instanceof Error ? error.message : "Không thể tạo trang";
-      if (msg.includes("Slug") || msg.includes("slug")) {
+      if (msg.includes("Slug") || msg.includes("slug") || msg.includes("Tên trang")) {
         return res.status(400).json({ message: msg });
       }
       console.error("Error creating cms page:", error);
@@ -3211,16 +3299,44 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/cms-pages/:id", requireAdminOrManager, async (req, res) => {
+    try {
+      const updated = await updateCmsPage(req.params.id, req.body);
+      res.json(cmsPageToContentEntry(updated));
+    } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "Không thể cập nhật trang";
+      if (msg.includes("Không tìm thấy")) {
+        return res.status(404).json({ message: msg });
+      }
+      if (
+        msg.includes("Slug") ||
+        msg.includes("slug") ||
+        msg.includes("Tên trang") ||
+        msg.includes("Không có thay đổi")
+      ) {
+        return res.status(400).json({ message: msg });
+      }
+      console.error("Error updating cms page:", error);
+      res.status(500).json({ message: msg });
+    }
+  });
+
   app.delete("/api/cms-pages/:id", requireAdminOrManager, async (req, res) => {
     try {
-      const result = await deleteCmsPage(req.params.id);
+      const result = await deleteOrHidePageContent(req.params.id);
       if (!result.deleted) {
         return res.status(404).json({ message: "Không tìm thấy trang" });
       }
-      res.json({ ok: true, images: result.images });
+      res.json({ ok: true, mode: result.mode, images: result.images });
     } catch (error) {
+      const msg =
+        error instanceof Error ? error.message : "Không thể xóa trang";
+      if (msg.includes("Không thể xóa")) {
+        return res.status(403).json({ message: msg });
+      }
       console.error("Error deleting cms page:", error);
-      res.status(500).json({ message: "Không thể xóa trang" });
+      res.status(500).json({ message: msg });
     }
   });
 
@@ -3496,7 +3612,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/articles/:id", async (req, res) => {
     try {
-      const article = await storage.getArticle(req.params.id);
+      const article = await storage.getArticleByIdOrSlug(
+        req.params.id,
+        req.portal,
+      );
       if (!article) {
         return res.status(404).json({ 
           success: false, 
@@ -3509,6 +3628,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         success: false, 
         message: "Không thể lấy thông tin" 
       });
+    }
+  });
+
+  /** Resolve public slug under a portal (exam → article → cms handled on FE via separate APIs). */
+  app.get("/api/content-by-slug/:slug", async (req, res) => {
+    try {
+      const slug = String(req.params.slug || "").trim().toLowerCase();
+      if (!slug) {
+        return res.status(400).json({ message: "Thiếu slug" });
+      }
+      const portal =
+        normalizePortalAlias(req.query.portal as string) || req.portal || "group";
+
+      if (portal === "luyenthi") {
+        const exam = await storage.getExamBySlug(slug);
+        if (exam && exam.isActive !== false) {
+          return res.json({ type: "exam", exam });
+        }
+      }
+
+      const article = await storage.getArticleBySlug(portal, slug);
+      if (article) {
+        return res.json({ type: "article", article });
+      }
+
+      return res.status(404).json({ message: "Không tìm thấy" });
+    } catch (error) {
+      console.error("content-by-slug:", error);
+      res.status(500).json({ message: "Không thể tra cứu nội dung" });
     }
   });
 
@@ -6888,9 +7036,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   });
 
   // Contact Info endpoints
-  // Get all contact info (public)
+  // Get contact info (public = active only; ?all=1 for admin/manager)
   app.get("/api/contact-info", async (req, res) => {
     try {
+      const wantAll = req.query.all === "1" || req.query.all === "true";
+      if (wantAll) {
+        const sessionUser = (req.session as any)?.user;
+        if (
+          !sessionUser ||
+          (sessionUser.role !== "admin" && sessionUser.role !== "manager")
+        ) {
+          return res.status(403).json({ message: "Không có quyền" });
+        }
+        const contactInfos = await storage.getContactInfo({
+          includeInactive: true,
+        });
+        return res.json(contactInfos);
+      }
       const contactInfos = await storage.getContactInfo();
       res.json(contactInfos);
     } catch (error) {
@@ -6902,7 +7064,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Create contact info (admin/manager only)
   app.post("/api/contact-info", requireImageEditPermission, async (req, res) => {
     try {
-      const contactInfoData: InsertContactInfo = req.body;
+      const contactInfoData: InsertContactInfo = { ...req.body };
+      if (typeof contactInfoData.mapUrl === "string") {
+        contactInfoData.mapUrl = contactInfoData.mapUrl.trim() || null;
+      }
       const newContactInfo = await storage.createContactInfo(contactInfoData);
       res.status(201).json(newContactInfo);
     } catch (error) {
@@ -6915,7 +7080,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/contact-info/:id", requireImageEditPermission, async (req, res) => {
     try {
       const { id } = req.params;
-      const contactInfoData: Partial<InsertContactInfo> = req.body;
+      const contactInfoData: Partial<InsertContactInfo> = { ...req.body };
+      if (typeof contactInfoData.mapUrl === "string") {
+        contactInfoData.mapUrl = contactInfoData.mapUrl.trim() || null;
+      }
       contactInfoData.updatedAt = new Date();
       
       const updatedContactInfo = await storage.updateContactInfo(id, contactInfoData);
@@ -6947,7 +7115,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Seed default contact info if none exists
   app.post("/api/contact-info/seed", requireImageEditPermission, async (req, res) => {
     try {
-      const existingContactInfo = await storage.getContactInfo();
+      const existingContactInfo = await storage.getContactInfo({
+        includeInactive: true,
+      });
       if (existingContactInfo.length > 0) {
         return res.status(400).json({ message: "Contact info already exists" });
       }
@@ -6956,31 +7126,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         {
           type: "main_office",
           title: "Văn phòng chính",
-          content: ["123 Nguyễn Huệ, Quận 1, TP.HCM"],
+          content: ["TP. Hồ Chí Minh, Việt Nam"],
+          // Embed theo địa chỉ — admin có thể thay bằng link Embed chuẩn từ Google Maps
+          mapUrl:
+            "https://www.google.com/maps?q=Th%C3%A0nh%20ph%E1%BB%91%20H%E1%BB%93%20Ch%C3%AD%20Minh&output=embed",
           displayOrder: 1,
-          isActive: true
+          isActive: true,
         },
         {
           type: "hotline",
           title: "Hotline",
-          content: ["1900 1234 (24/7)", "028 3822 5678"],
+          content: ["Liên hệ tư vấn"],
           displayOrder: 2,
-          isActive: true
+          isActive: true,
         },
         {
           type: "email",
           title: "Email",
-          content: ["info@npcompany.vn", "support@npcompany.vn"],
+          content: ["info@trinhan.academy"],
           displayOrder: 3,
-          isActive: true
+          isActive: true,
         },
         {
           type: "business_hours",
           title: "Giờ hoạt động",
-          content: ["T2-T6: 8:00 - 18:00", "T7-CN: 8:00 - 17:00"],
+          content: ["T2–T6: 8:00 – 18:00", "T7–CN: 8:00 – 17:00"],
           displayOrder: 4,
-          isActive: true
-        }
+          isActive: true,
+        },
       ];
 
       const createdContactInfo = await Promise.all(

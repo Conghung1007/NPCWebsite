@@ -12,7 +12,28 @@ declare global {
   }
 }
 
-/** Attach req.portal from query / X-Portal / Host / PORTAL env */
+function pathnameFromRequest(req: Request): string | undefined {
+  try {
+    const raw = req.originalUrl || req.url || "";
+    const path = raw.split("?")[0] || "";
+    if (path && path !== "/" && !path.startsWith("/api")) {
+      return path;
+    }
+  } catch {
+    /* ignore */
+  }
+  const referer = req.headers.referer || req.headers.referrer;
+  if (typeof referer === "string" && referer) {
+    try {
+      return new URL(referer).pathname;
+    } catch {
+      /* ignore */
+    }
+  }
+  return undefined;
+}
+
+/** Attach req.portal from X-Portal / ?portal= / path / PORTAL env */
 export function portalMiddleware(
   req: Request,
   _res: Response,
@@ -24,6 +45,7 @@ export function portalMiddleware(
   req.portal = resolvePortalFromRequest({
     queryPortal: req.query.portal,
     headerPortal: req.headers["x-portal"],
+    pathname: pathnameFromRequest(req),
     hostname,
     envPortal: process.env.PORTAL,
   });

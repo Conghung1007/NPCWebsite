@@ -1,12 +1,21 @@
 import {
   PORTAL_HOSTS,
   PORTAL_IDS,
+  PORTAL_BASE_PATH,
+  PORTAL_HOME_SEGMENT,
+  GROUP_CONTACT_PATH,
   TNJS_EXTERNAL_URL,
   tnjsTrainingHref,
   isPortalId,
   normalizeAllowedPortals,
   normalizePortalAlias,
   resolvePortalFromHost,
+  resolvePortalFromPath,
+  stripPortalPrefix,
+  toPublicPortalPath,
+  legacyPublicRedirect,
+  inferPortalForFlatPath,
+  FLAT_PATH_OWNING_PORTAL,
   type PortalId,
 } from "@shared/portal";
 
@@ -14,11 +23,21 @@ export type { PortalId };
 export {
   PORTAL_HOSTS,
   PORTAL_IDS,
+  PORTAL_BASE_PATH,
+  PORTAL_HOME_SEGMENT,
+  GROUP_CONTACT_PATH,
   TNJS_EXTERNAL_URL,
   tnjsTrainingHref,
   isPortalId,
   normalizeAllowedPortals,
   normalizePortalAlias,
+  resolvePortalFromHost,
+  resolvePortalFromPath,
+  stripPortalPrefix,
+  toPublicPortalPath,
+  legacyPublicRedirect,
+  inferPortalForFlatPath,
+  FLAT_PATH_OWNING_PORTAL,
 };
 
 export type NavItem = {
@@ -31,11 +50,77 @@ export type NavItem = {
   children?: NavItem[];
 };
 
-const STORAGE_KEY = "npc_portal";
+/** Pathname only (strip origin / query / hash) for comparing with hidden CMS paths. */
+export function navItemPathname(href: string): string {
+  try {
+    if (/^https?:\/\//i.test(href)) {
+      return new URL(href).pathname || "/";
+    }
+  } catch {
+    /* ignore */
+  }
+  const path = href.split("?")[0]?.split("#")[0] || "/";
+  return path.startsWith("/") ? path : `/${path}`;
+}
 
-/** Path prefixes allowed per portal (plus always-shared paths). */
+/**
+ * Drop nav links whose path matches a child page removed in Cpanel for this portal.
+ * Portal homes are never hidden.
+ */
+export function filterNavByHiddenPaths(
+  items: NavItem[],
+  hiddenPaths: readonly string[] | null | undefined,
+): NavItem[] {
+  if (!hiddenPaths?.length) return items;
+  const hidden = new Set(
+    hiddenPaths
+      .filter((p) => p && p !== "/")
+      .map((p) => (p.startsWith("/") ? p : `/${p}`)),
+  );
+  if (hidden.size === 0) return items;
+
+  const isHiddenPath = (pathname: string) => {
+    if (pathname === "/" || pathname.endsWith(`/${PORTAL_HOME_SEGMENT}`)) {
+      return false;
+    }
+    if (hidden.has(pathname)) return true;
+    for (const h of Array.from(hidden)) {
+      if (pathname === h || pathname.startsWith(`${h}/`)) return true;
+    }
+    return false;
+  };
+
+  return items
+    .filter((item) => !isHiddenPath(navItemPathname(item.href)))
+    .map((item) =>
+      item.children?.length
+        ? {
+            ...item,
+            children: filterNavByHiddenPaths(item.children, hiddenPaths),
+          }
+        : item,
+    );
+}
+
+/** Paths hidden for a specific portal (from /api/cms-pages/hidden entries). */
+export function hiddenPathsForPortal(
+  entries: readonly { portal: string; path: string }[] | null | undefined,
+  portal: string,
+): string[] {
+  if (!entries?.length) return [];
+  return entries
+    .filter((e) => e.portal === portal && e.path && e.path !== "/")
+    .map((e) => {
+      const p = e.path.startsWith("/") ? e.path : `/${e.path}`;
+      // Entries may already be public paths or internal — normalize to public
+      if (resolvePortalFromPath(p)) return p;
+      return toPublicPortalPath(portal as PortalId, p);
+    });
+}
+
+/** Internal path prefixes allowed per portal (after strip). */
 export const PORTAL_PATHS: Record<PortalId, string[]> = {
-  group: ["/", "/contact", "/japanese-training"],
+  group: ["/", "/contact", "/japanese-training", "/lien-he"],
   huongnghiep: [
     "/",
     "/du-hoc",
@@ -92,104 +177,58 @@ export const SHARED_PATH_PREFIXES = [
   "/manage",
 ];
 
-/** Exclusive route owners — longer prefixes first (`/exam-result` before `/exam`). */
-const PATH_OWNING_PORTAL: Array<{ prefix: string; portal: PortalId }> = [
-  { prefix: "/online-exam", portal: "luyenthi" },
-  { prefix: "/exam-result", portal: "luyenthi" },
-  { prefix: "/exam-attempts", portal: "luyenthi" },
-  { prefix: "/exam", portal: "luyenthi" },
-  { prefix: "/certificate", portal: "luyenthi" },
-  { prefix: "/classes", portal: "luyenthi" },
-  { prefix: "/cart", portal: "luyenthi" },
-  { prefix: "/checkout", portal: "luyenthi" },
-  { prefix: "/du-hoc", portal: "huongnghiep" },
-  { prefix: "/di-lam", portal: "huongnghiep" },
-  { prefix: "/dao-tao-nghe", portal: "huongnghiep" },
-  { prefix: "/visa-services", portal: "huongnghiep" },
-  { prefix: "/study-abroad", portal: "huongnghiep" },
-  { prefix: "/countries", portal: "huongnghiep" },
-  { prefix: "/schools", portal: "huongnghiep" },
-  { prefix: "/costs", portal: "huongnghiep" },
-  { prefix: "/documents", portal: "huongnghiep" },
-  { prefix: "/faq", portal: "huongnghiep" },
-  { prefix: "/bien-phien-dich", portal: "dichvu" },
-  { prefix: "/ky-nang-mem", portal: "dichvu" },
-  { prefix: "/tu-van-doanh-nghiep", portal: "dichvu" },
-  { prefix: "/courses", portal: "dichvu" },
-  { prefix: "/schedule", portal: "dichvu" },
-  { prefix: "/enterprise", portal: "dichvu" },
-  { prefix: "/japanese-training", portal: "group" },
-];
-
 function pathMatchesPrefix(pathname: string, prefix: string): boolean {
-  return pathname === prefix || (prefix !== "/" && pathname.startsWith(`${prefix}/`));
+  return (
+    pathname === prefix ||
+    (prefix !== "/" && pathname.startsWith(`${prefix}/`))
+  );
 }
 
-export function isPathAllowedForPortal(portal: PortalId, pathname: string): boolean {
-  if (SHARED_PATH_PREFIXES.some((p) => pathMatchesPrefix(pathname, p))) {
+export function isPathAllowedForPortal(
+  portal: PortalId,
+  pathname: string,
+): boolean {
+  const { internalPath } = stripPortalPrefix(pathname);
+  const path = internalPath;
+
+  if (SHARED_PATH_PREFIXES.some((p) => pathMatchesPrefix(path, p))) {
     return true;
   }
   const allowed = PORTAL_PATHS[portal] || [];
-  if (allowed.some((p) => pathMatchesPrefix(pathname, p))) {
+  if (allowed.some((p) => pathMatchesPrefix(path, p))) {
     return true;
   }
 
-  // Custom CMS pages (`/:slug`) — allow unless the path is owned by another portal.
-  if (/^\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(pathname)) {
-    const inferred = inferPortalForPath(pathname);
+  // Custom CMS pages (`/:slug`) — allow unless owned by another portal.
+  if (/^\/[a-z0-9]+(?:-[a-z0-9]+)*$/.test(path)) {
+    const inferred = inferPortalForPath(path);
     if (!inferred || inferred === portal) return true;
   }
 
   return false;
 }
 
-/** Infer portal from a deep link (e.g. /exam/:id → luyenthi) when soft-lock would 404. */
+/** Infer portal from an internal flat path (e.g. /exam/:id → luyenthi). */
 export function inferPortalForPath(pathname: string): PortalId | null {
-  for (const { prefix, portal } of PATH_OWNING_PORTAL) {
-    if (pathMatchesPrefix(pathname, prefix)) return portal;
-  }
-  return null;
+  return inferPortalForFlatPath(pathname);
 }
 
-function persistPortal(portal: PortalId) {
-  try {
-    localStorage.setItem(STORAGE_KEY, portal);
-  } catch {
-    /* ignore */
-  }
-}
-
-function readQueryPortal(): PortalId | null {
-  if (typeof window === "undefined") return null;
-  const q = new URLSearchParams(window.location.search).get("portal");
-  return normalizePortalAlias(q);
-}
-
-function readStoredPortal(): PortalId | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const v = localStorage.getItem(STORAGE_KEY);
-    return normalizePortalAlias(v);
-  } catch {
-    return null;
-  }
-}
-
-/** Resolve active portal: ?portal= > host > localStorage > env > group */
+/**
+ * Resolve active portal from the public browser pathname.
+ * Priority: path prefix > ?portal= (one-shot) > env > group
+ */
 export function resolvePortal(): PortalId {
-  const fromQuery = readQueryPortal();
-  if (fromQuery) {
-    persistPortal(fromQuery);
-    return fromQuery;
-  }
-
   if (typeof window !== "undefined") {
-    const fromHost = resolvePortalFromHost(window.location.hostname);
-    if (fromHost) return fromHost;
-  }
+    const fromPath = resolvePortalFromPath(window.location.pathname);
+    if (fromPath) return fromPath;
 
-  const stored = readStoredPortal();
-  if (stored) return stored;
+    const { portal } = stripPortalPrefix(window.location.pathname);
+    if (portal) return portal;
+
+    const q = new URLSearchParams(window.location.search).get("portal");
+    const fromQuery = normalizePortalAlias(q);
+    if (fromQuery) return fromQuery;
+  }
 
   const env = import.meta.env.VITE_PORTAL as string | undefined;
   const fromEnv = normalizePortalAlias(env);
@@ -198,75 +237,40 @@ export function resolvePortal(): PortalId {
   return "group";
 }
 
-/**
- * Like resolvePortal, but if the current path belongs to another portal
- * (common after F5 / deploy on /exam/... without ?portal=), switch to it.
- */
+/** Resolve portal for a given public or internal pathname. */
 export function resolvePortalForPath(pathname: string): PortalId {
-  const base = resolvePortal();
-  if (isPathAllowedForPortal(base, pathname)) return base;
-  const inferred = inferPortalForPath(pathname);
-  if (inferred) {
-    persistPortal(inferred);
-    return inferred;
-  }
-  return base;
-}
+  const fromPrefix = resolvePortalFromPath(pathname);
+  if (fromPrefix) return fromPrefix;
 
-const ORIGIN_ENV: Record<PortalId, string | undefined> = {
-  group: import.meta.env.VITE_GROUP_ORIGIN as string | undefined,
-  huongnghiep: import.meta.env.VITE_HUONGNGHIEP_ORIGIN as string | undefined,
-  dichvu: import.meta.env.VITE_DICHVU_ORIGIN as string | undefined,
-  luyenthi: import.meta.env.VITE_LUYENTHI_ORIGIN as string | undefined,
-};
-
-export function portalOrigin(portal: PortalId): string {
-  const configured = ORIGIN_ENV[portal]?.replace(/\/$/, "");
-  if (configured) return configured;
-  if (typeof window === "undefined") return "";
-
-  const host = window.location.hostname.toLowerCase();
-  if (
-    host === "npgroup.com" ||
-    host.endsWith(".npgroup.com") ||
-    host === "npgroup.vn" ||
-    host.endsWith(".npgroup.vn")
-  ) {
-    return `https://${PORTAL_HOSTS[portal]}`;
+  const { portal, internalPath } = stripPortalPrefix(pathname);
+  if (resolvePortalFromPath(pathname) || pathname.startsWith("/huong-nghiep") || pathname.startsWith("/dich-vu") || pathname.startsWith("/luyen-thi") || pathname === GROUP_CONTACT_PATH) {
+    return portal;
   }
 
-  return window.location.origin;
+  if (SHARED_PATH_PREFIXES.some((p) => pathMatchesPrefix(internalPath, p))) {
+    return resolvePortal();
+  }
+
+  const inferred = inferPortalForFlatPath(internalPath);
+  if (inferred) return inferred;
+
+  return portal;
 }
 
-/** Same-origin path that keeps ?portal= when origins aren't configured yet */
+/** Same-origin public path for a portal page (path-based, no ?portal=). */
 export function portalPath(portal: PortalId, path = "/"): string {
-  const p = path.startsWith("/") ? path : `/${path}`;
-  const [pathname, hash = ""] = p.split("#");
-  const hashPart = p.includes("#") ? `#${hash}` : "";
-  const envKey = ORIGIN_ENV[portal];
-  const sameOrigin =
-    typeof window !== "undefined" &&
-    portalOrigin(portal) === window.location.origin;
-  if (sameOrigin && !envKey) {
-    const url = new URL(pathname || "/", window.location.origin);
-    url.searchParams.set("portal", portal);
-    return url.pathname + url.search + hashPart;
-  }
-  return (pathname || "/") + hashPart;
+  return toPublicPortalPath(portal, path);
 }
 
+/** Href for a portal page — always same-origin path now. */
 export function portalHref(portal: PortalId, path = "/"): string {
-  const p = path.startsWith("/") ? path : `/${path}`;
-  const origin = portalOrigin(portal);
-  const envKey = ORIGIN_ENV[portal];
-  const sameOrigin =
-    typeof window !== "undefined" && origin === window.location.origin;
-  if (sameOrigin && !envKey) {
-    return portalPath(portal, p);
-  }
-  const [pathname, hash = ""] = p.split("#");
-  const hashPart = p.includes("#") ? `#${hash}` : "";
-  return `${origin}${pathname || "/"}${hashPart}`;
+  return toPublicPortalPath(portal, path);
+}
+
+/** @deprecated single-origin site */
+export function portalOrigin(_portal?: PortalId): string {
+  if (typeof window !== "undefined") return window.location.origin;
+  return "";
 }
 
 /** Contact URL on a portal, optional service prefills */
@@ -277,7 +281,7 @@ export function portalContactHref(portal: PortalId, service?: string): string {
   return `${base}${sep}service=${encodeURIComponent(service)}`;
 }
 
-/** @deprecated use portalOrigin('group') */
+/** @deprecated use portalOrigin() */
 export function groupOrigin(): string {
   return portalOrigin("group");
 }
@@ -347,9 +351,9 @@ export function getNavigation(portal: PortalId): NavItem[] {
         shortName: "Tin tức",
       },
       {
-        name: "Liên hệ",
+        name: "Tư vấn miễn phí",
         href: portalPath("huongnghiep", "/contact"),
-        shortName: "Liên hệ",
+        shortName: "Tư vấn",
       },
     ];
   }
@@ -363,26 +367,24 @@ export function getNavigation(portal: PortalId): NavItem[] {
       },
       {
         name: "Biên phiên dịch",
-        href: portalContactHref("dichvu", "interpreting"),
+        href: portalPath("dichvu", "/bien-phien-dich"),
         shortName: "Biên phiên dịch",
-        external: true,
       },
       {
         name: "Kỹ năng mềm",
-        href: portalContactHref("dichvu", "soft-skills"),
+        href: portalPath("dichvu", "/ky-nang-mem"),
         shortName: "Kỹ năng mềm",
-        external: true,
       },
       {
         name: "Tư vấn doanh nghiệp",
-        href: portalContactHref("dichvu", "enterprise"),
+        href: portalPath("dichvu", "/tu-van-doanh-nghiep"),
         shortName: "Tư vấn DN",
-        external: true,
+        hideBelowXl: true,
       },
       {
-        name: "Liên hệ",
+        name: "Tư vấn miễn phí",
         href: portalPath("dichvu", "/contact"),
-        shortName: "Liên hệ",
+        shortName: "Tư vấn",
       },
     ];
   }
@@ -406,14 +408,14 @@ export function getNavigation(portal: PortalId): NavItem[] {
         shortName: "Tin tức",
       },
       {
-        name: "Liên hệ",
+        name: "Tư vấn miễn phí",
         href: portalPath("luyenthi", "/contact"),
-        shortName: "Liên hệ",
+        shortName: "Tư vấn",
       },
     ];
   }
 
-  // NP Group hub
+  // Hub — same-origin path links (not external subdomains)
   return [
     {
       name: "Đào tạo",
@@ -425,24 +427,21 @@ export function getNavigation(portal: PortalId): NavItem[] {
       name: "Hướng nghiệp",
       href: portalHref("huongnghiep", "/"),
       shortName: "Hướng nghiệp",
-      external: true,
     },
     {
       name: "Dịch vụ",
       href: portalHref("dichvu", "/"),
       shortName: "Dịch vụ",
-      external: true,
     },
     {
       name: "Luyện thi",
       href: portalHref("luyenthi", "/"),
       shortName: "Luyện thi",
-      external: true,
     },
     {
-      name: "Liên hệ",
+      name: "Tư vấn miễn phí",
       href: portalPath("group", "/contact"),
-      shortName: "Liên hệ",
+      shortName: "Tư vấn",
     },
   ];
 }
@@ -474,7 +473,6 @@ export function getFooterServices(portal: PortalId): NavItem[] {
         name: "Trí Nhân Academy",
         href: portalHref("group", "/"),
         shortName: "Group",
-        external: true,
       },
     ];
   }
@@ -482,27 +480,23 @@ export function getFooterServices(portal: PortalId): NavItem[] {
     return [
       {
         name: "Biên phiên dịch",
-        href: portalContactHref("dichvu", "interpreting"),
+        href: portalPath("dichvu", "/bien-phien-dich"),
         shortName: "Biên phiên dịch",
-        external: true,
       },
       {
         name: "Kỹ năng mềm",
-        href: portalContactHref("dichvu", "soft-skills"),
+        href: portalPath("dichvu", "/ky-nang-mem"),
         shortName: "Kỹ năng mềm",
-        external: true,
       },
       {
         name: "Tư vấn doanh nghiệp",
-        href: portalContactHref("dichvu", "enterprise"),
+        href: portalPath("dichvu", "/tu-van-doanh-nghiep"),
         shortName: "Tư vấn DN",
-        external: true,
       },
       {
         name: "Trí Nhân Academy",
         href: portalHref("group", "/"),
         shortName: "Group",
-        external: true,
       },
     ];
   }
@@ -528,7 +522,6 @@ export function getFooterServices(portal: PortalId): NavItem[] {
         name: "Trí Nhân Academy",
         href: portalHref("group", "/"),
         shortName: "Group",
-        external: true,
       },
     ];
   }
@@ -543,19 +536,16 @@ export function getFooterServices(portal: PortalId): NavItem[] {
       name: "Hướng nghiệp",
       href: portalHref("huongnghiep", "/"),
       shortName: "Hướng nghiệp",
-      external: true,
     },
     {
       name: "Dịch vụ",
       href: portalHref("dichvu", "/"),
       shortName: "Dịch vụ",
-      external: true,
     },
     {
       name: "Luyện thi",
       href: portalHref("luyenthi", "/"),
       shortName: "Luyện thi",
-      external: true,
     },
   ];
 }

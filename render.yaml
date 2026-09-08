@@ -1,4 +1,4 @@
-# Render Blueprint — NPC Website (1 service; portal domains later)
+# Render Blueprint — NPC Website (1 service; path-based portals)
 
 # Docs: https://render.com/docs/blueprint-spec
 
@@ -6,21 +6,13 @@
 
 # When DNS is ready, uncomment `domains` below and set env then redeploy:
 
-#   PUBLIC_APP_URL=https://npgroup.com
+#   PUBLIC_APP_URL=https://trinhanacademy.com
 
-#   COOKIE_DOMAIN=.npgroup.com
-
-#   VITE_GROUP_ORIGIN=https://npgroup.com
-
-#   VITE_HUONGNGHIEP_ORIGIN=https://huongnghiep.npgroup.com
-
-#   VITE_DICHVU_ORIGIN=https://dichvu.npgroup.com
-
-#   VITE_LUYENTHI_ORIGIN=https://luyenthi.npgroup.com
+# Path portals: /huong-nghiep/..., /dich-vu/..., /luyen-thi/...
 
 # Đào tạo tiếng Nhật: external https://tnjs.vn (not this service)
 
-# Until DNS: https://<service>.onrender.com/?portal=group|huongnghiep|dichvu|luyenthi
+# Until DNS: https://<service>.onrender.com/huong-nghiep/gioi-thieu
 
 services:
 
@@ -47,13 +39,9 @@ services:
 
     # domains:
 
-    #   - npgroup.com
+    #   - trinhanacademy.com
 
-    #   - huongnghiep.npgroup.com
-
-    #   - dichvu.npgroup.com
-
-    #   - luyenthi.npgroup.com
+    #   - www.trinhanacademy.com
 
     envVars:
 
@@ -126,22 +114,6 @@ services:
         sync: false
 
       - key: R2_PRIMARY_ENDPOINT
-
-        sync: false
-
-      - key: VITE_GROUP_ORIGIN
-
-        sync: false
-
-      - key: VITE_TNJS_ORIGIN
-
-        sync: false
-
-      - key: VITE_DUHOC_ORIGIN
-
-        sync: false
-
-      - key: VITE_DAOTAO_ORIGIN
 
         sync: false
 

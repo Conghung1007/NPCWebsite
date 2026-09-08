@@ -1,12 +1,12 @@
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
+import { useCallback, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useCart, formatVnd } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
 import { Calendar, MapPin, ShoppingCart, ArrowRight } from "lucide-react";
 import type { ClassSession } from "@shared/schema";
-import { useState } from "react";
 import { resolvePortal } from "@/lib/portal";
 import { apiFetch } from "@/lib/queryClient";
 import {
@@ -16,16 +16,55 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { EditableText } from "@/components/ui/editable-text";
+import {
+  useSiteContents,
+  useUpsertSiteContent,
+} from "@/hooks/useSiteContents";
+import { CLASSES_CONTENT_DEFAULTS } from "@shared/siteContentDefaults";
 
 type SessionRow = ClassSession & { courseTitle?: string; courseLevel?: string };
+
+const CLASSES_DEFAULTS = CLASSES_CONTENT_DEFAULTS;
 
 export default function ClassesPage() {
   const { toast } = useToast();
   const { addItem } = useCart();
   const [level, setLevel] = useState("all");
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
+
+  const portal = resolvePortal();
+  const { data: remoteContents = {} } = useSiteContents("classes", portal);
+  const upsertContent = useUpsertSiteContent("classes", portal);
+
+  const getContent = useCallback(
+    (key: string) => remoteContents[key] ?? CLASSES_DEFAULTS[key] ?? "",
+    [remoteContents],
+  );
+
+  const handleEditStart = (fieldName: string, value: string) => {
+    setEditingField(fieldName);
+    setEditValues((prev) => ({ ...prev, [fieldName]: value }));
+  };
+
+  const handleEditSave = async (fieldName: string, value: string) => {
+    try {
+      await upsertContent.mutateAsync({ key: fieldName, value });
+      setEditingField(null);
+    } catch {
+      toast({
+        title: "Không lưu được",
+        description: "Thử lại sau",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditCancel = () => setEditingField(null);
 
   const { data: sessions = [], isLoading } = useQuery<SessionRow[]>({
-    queryKey: ["/api/class-sessions", resolvePortal()],
+    queryKey: ["/api/class-sessions", portal],
     queryFn: async () => {
       const res = await apiFetch("/api/class-sessions");
       if (!res.ok) throw new Error("Không tải lớp học");
@@ -60,13 +99,37 @@ export default function ClassesPage() {
       <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
         <div className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4 mb-10">
           <div>
-            <p className="text-sm font-medium text-primary mb-2">Đào tạo tiếng Nhật</p>
-            <h1 className="font-serif text-3xl sm:text-4xl font-bold text-gray-900">
-              Lớp đang tuyển sinh
-            </h1>
-            <p className="mt-2 text-muted-foreground max-w-xl">
-              Chọn lớp phù hợp lịch và cấp độ — thanh toán online qua PayOS.
-            </p>
+            <EditableText
+              fieldName="eyebrow"
+              text={getContent("eyebrow")}
+              className="text-sm font-medium text-primary mb-2"
+              editingField={editingField}
+              editValues={editValues}
+              onEditStart={handleEditStart}
+              onEditSave={handleEditSave}
+              onEditCancel={handleEditCancel}
+            />
+            <EditableText
+              fieldName="heroTitle"
+              text={getContent("heroTitle")}
+              className="font-serif text-3xl sm:text-4xl font-bold text-gray-900"
+              editingField={editingField}
+              editValues={editValues}
+              onEditStart={handleEditStart}
+              onEditSave={handleEditSave}
+              onEditCancel={handleEditCancel}
+            />
+            <EditableText
+              fieldName="heroDescription"
+              text={getContent("heroDescription")}
+              className="mt-2 text-muted-foreground max-w-xl"
+              multiline
+              editingField={editingField}
+              editValues={editValues}
+              onEditStart={handleEditStart}
+              onEditSave={handleEditSave}
+              onEditCancel={handleEditCancel}
+            />
           </div>
           <div className="flex items-center gap-3">
             <Select value={level} onValueChange={setLevel}>
@@ -97,10 +160,28 @@ export default function ClassesPage() {
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
-            <p className="text-lg font-medium">Chưa có lớp đang mở</p>
-            <p className="text-sm mt-1">Vui lòng quay lại sau hoặc liên hệ tư vấn.</p>
+            <EditableText
+              fieldName="empty-title"
+              text={getContent("empty-title")}
+              className="text-lg font-medium"
+              editingField={editingField}
+              editValues={editValues}
+              onEditStart={handleEditStart}
+              onEditSave={handleEditSave}
+              onEditCancel={handleEditCancel}
+            />
+            <EditableText
+              fieldName="empty-description"
+              text={getContent("empty-description")}
+              className="text-sm mt-1"
+              editingField={editingField}
+              editValues={editValues}
+              onEditStart={handleEditStart}
+              onEditSave={handleEditSave}
+              onEditCancel={handleEditCancel}
+            />
             <Link href="/contact">
-              <Button className="mt-6">Tư vấn miễn phí</Button>
+              <Button className="mt-6">{getContent("empty-cta")}</Button>
             </Link>
           </div>
         ) : (

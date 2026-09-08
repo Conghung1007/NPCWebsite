@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ExternalLink, FileText, Image, LayoutTemplate, Plus, Trash2 } from "lucide-react";
+import { ExternalLink, FileText, Image, LayoutTemplate, Pencil, Plus, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -41,31 +41,42 @@ import {
   useCmsPages,
   useCreateCmsPage,
   useDeleteCmsPage,
+  useHiddenCmsPages,
+  useUpdateCmsPage,
 } from "@/hooks/useCmsPages";
 import {
+  canDeletePageContent,
   getPageContentDefaults,
   getLayoutPortal,
   getLayoutPageKey,
   getPagesForPortal,
+  isPortalHomePage,
   type PageContentEntry,
 } from "@shared/pageContentRegistry";
 import { normalizeCmsSlug, validateCmsSlug } from "@shared/cmsPages";
-import { PORTAL_META, PORTAL_IDS, portalHref, type PortalId } from "@/lib/portal";
+import {
+  PORTAL_META,
+  PORTAL_IDS,
+  portalHref,
+  stripPortalPrefix,
+  toPublicPortalPath,
+  type PortalId,
+} from "@/lib/portal";
 
 function portalLabel(id: PortalId): string {
   return PORTAL_META[id]?.label || PORTAL_META[id]?.brand || id;
 }
 
 function buildPreviewUrl(page: PageContentEntry): string {
-  const portal = page.portal as PortalId;
-  const path = page.publicPath;
-  if (typeof window === "undefined") return path;
+  return page.publicPath || portalHref(page.portal as PortalId, "/");
+}
 
-  try {
-    return portalHref(portal, path);
-  } catch {
-    return `${path}?portal=${encodeURIComponent(portal)}`;
-  }
+/** Internal URL slug for clash checks / cache keys (path-prefix aware). */
+function pageEntrySlug(entry: PageContentEntry): string {
+  if (entry.slug) return entry.slug;
+  const internal = stripPortalPrefix(entry.publicPath).internalPath;
+  if (!internal || internal === "/") return "";
+  return internal.replace(/^\//, "");
 }
 
 function mergePages(
@@ -182,9 +193,8 @@ function CreatePageForm({
           ) : (
             <p className="text-xs text-muted-foreground">
               Trang sẽ mở tại{" "}
-              <code className="rounded bg-muted px-1">{previewPath}</code>
-              {newPortal !== "group" ? ` · portal=${newPortal}` : ""}. Không
-              trùng route hệ thống hay trang tùy chỉnh khác.
+              <code className="rounded bg-muted px-1">{previewPath}</code>.
+              Không trùng route hệ thống hay trang tùy chỉnh khác.
             </p>
           )}
         </div>
@@ -219,13 +229,20 @@ export function PageContentAdmin() {
   const { data: customPages = [], isLoading: customLoading } = useCmsPages(
     filter === "all" ? "all" : filter,
   );
+  const { data: hiddenPages } = useHiddenCmsPages();
   const createPage = useCreateCmsPage();
+  const updatePage = useUpdateCmsPage();
   const deletePage = useDeleteCmsPage();
 
-  const pages = useMemo(
-    () => mergePages(staticPages, customPages),
-    [staticPages, customPages],
+  const hiddenIdSet = useMemo(
+    () => new Set(hiddenPages?.ids ?? []),
+    [hiddenPages?.ids],
   );
+
+  const pages = useMemo(() => {
+    const visibleStatic = staticPages.filter((p) => !hiddenIdSet.has(p.id));
+    return mergePages(visibleStatic, customPages);
+  }, [staticPages, customPages, hiddenIdSet]);
 
   const createPortalOptions = useMemo(
     () => (allowedPortals ? allowedPortals : [...PORTAL_IDS]),
@@ -241,12 +258,16 @@ export function PageContentAdmin() {
   );
   const [blocksDirty, setBlocksDirty] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [newLabel, setNewLabel] = useState("");
   const [newSlug, setNewSlug] = useState("");
   const [newPortal, setNewPortal] = useState<PortalId>("group");
   const [newDescription, setNewDescription] = useState("");
   const [slugTouched, setSlugTouched] = useState(false);
+  const [editLabel, setEditLabel] = useState("");
+  const [editSlug, setEditSlug] = useState("");
+  const [editDescription, setEditDescription] = useState("");
 
   const normalizedSlug = useMemo(
     () => normalizeCmsSlug(newSlug || newLabel),
@@ -259,14 +280,12 @@ export function PageContentAdmin() {
     if (base) return base;
     const clash = customPages.some(
       (p) =>
-        p.portal === newPortal &&
-        p.publicPath.replace(/^\//, "") === normalizedSlug,
+        p.portal === newPortal && pageEntrySlug(p) === normalizedSlug,
     );
     if (clash) return "Slug đã tồn tại trong portal này";
     const staticClash = staticPages.some(
       (p) =>
-        p.portal === newPortal &&
-        p.publicPath.replace(/^\//, "") === normalizedSlug,
+        p.portal === newPortal && pageEntrySlug(p) === normalizedSlug,
     );
     if (staticClash) return "Slug trùng trang hệ thống của portal này";
     return null;
@@ -437,9 +456,9 @@ export function PageContentAdmin() {
   };
 
   const handleDeletePage = async () => {
-    if (!selected?.isCustom) return;
+    if (!selected || !canDeletePageContent(selected)) return;
     const deleting = selected;
-    const slug = deleting.publicPath.replace(/^\//, "");
+    const slug = pageEntrySlug(deleting) || undefined;
     const remaining = pages.filter((p) => p.id !== deleting.id);
     const samePortal = remaining.filter((p) => p.portal === deleting.portal);
     const nextId = (samePortal[0] ?? remaining[0])?.id ?? "";
@@ -447,15 +466,25 @@ export function PageContentAdmin() {
     try {
       const result = await deletePage.mutateAsync({
         id: deleting.id,
-        slug,
+        slug: deleting.isCustom ? slug : undefined,
         portal: deleting.portal,
+        publicPath: deleting.publicPath,
       });
       const img = result.images;
       const imgNote =
         img && img.dbRemoved > 0
           ? ` · ${img.dbRemoved} slot ảnh, ${img.r2Removed} file R2`
           : "";
-      toast({ title: `Đã xóa trang${imgNote}` });
+      toast({
+        title:
+          result.mode === "hidden"
+            ? `Đã gỡ trang con khỏi cổng${imgNote}`
+            : `Đã xóa trang${imgNote}`,
+        description:
+          result.mode === "hidden"
+            ? "Trang không còn hiện trong Cpanel và trả 404 trên web."
+            : undefined,
+      });
       setDeleteOpen(false);
       setBlocksDirty(false);
       setSelectedCache(null);
@@ -470,7 +499,9 @@ export function PageContentAdmin() {
   };
 
   const requestDeletePage = () => {
-    if (!selected?.isCustom || deletePage.isPending) return;
+    if (!selected || !canDeletePageContent(selected) || deletePage.isPending) {
+      return;
+    }
     if (
       blocksDirty &&
       !confirm(
@@ -480,6 +511,95 @@ export function PageContentAdmin() {
       return;
     }
     setDeleteOpen(true);
+  };
+
+  const openEditDialog = () => {
+    if (!selected?.isCustom) return;
+    setEditLabel(selected.label);
+    setEditSlug(pageEntrySlug(selected));
+    setEditDescription(
+      selected.description === "Trang khối tùy chỉnh"
+        ? ""
+        : selected.description,
+    );
+    setEditOpen(true);
+  };
+
+  const normalizedEditSlug = useMemo(
+    () => normalizeCmsSlug(editSlug || editLabel),
+    [editSlug, editLabel],
+  );
+
+  const editSlugError = useMemo(() => {
+    if (!selected?.isCustom) return null;
+    if (!editLabel.trim() && !editSlug.trim()) return null;
+    const currentSlug = pageEntrySlug(selected);
+    if (normalizedEditSlug !== currentSlug) {
+      const base = validateCmsSlug(normalizedEditSlug);
+      if (base) return base;
+      const clash = customPages.some(
+        (p) =>
+          p.id !== selected.id &&
+          p.portal === selected.portal &&
+          pageEntrySlug(p) === normalizedEditSlug,
+      );
+      if (clash) return "Slug đã tồn tại trong portal này";
+      const staticClash = staticPages.some(
+        (p) =>
+          p.portal === selected.portal &&
+          pageEntrySlug(p) === normalizedEditSlug,
+      );
+      if (staticClash) return "Slug trùng trang hệ thống của portal này";
+    }
+    if (!editLabel.trim()) return "Nhập tên trang";
+    return null;
+  }, [
+    selected,
+    editLabel,
+    editSlug,
+    normalizedEditSlug,
+    customPages,
+    staticPages,
+  ]);
+
+  const canSaveEdit =
+    !!selected?.isCustom &&
+    !!editLabel.trim() &&
+    !!normalizedEditSlug &&
+    !editSlugError &&
+    !updatePage.isPending &&
+    (editLabel.trim() !== selected.label ||
+      normalizedEditSlug !== pageEntrySlug(selected) ||
+      (editDescription.trim() || "") !==
+        (selected.description === "Trang khối tùy chỉnh"
+          ? ""
+          : selected.description));
+
+  const handleUpdatePage = async () => {
+    if (!selected?.isCustom || !canSaveEdit) return;
+    try {
+      const { updated } = await updatePage.mutateAsync({
+        id: selected.id,
+        label: editLabel.trim(),
+        description: editDescription.trim(),
+        slug: normalizedEditSlug,
+        previousSlug: pageEntrySlug(selected),
+        portal: selected.portal,
+      });
+      toast({
+        title: "Đã cập nhật trang",
+        description: `Mở tại ${updated.publicPath}`,
+      });
+      setEditOpen(false);
+      setSelectedCache(updated);
+      setSelectedId(updated.id);
+    } catch (err) {
+      toast({
+        title: "Không cập nhật được trang",
+        description: err instanceof Error ? err.message : "Thử lại",
+        variant: "destructive",
+      });
+    }
   };
 
   const createFormProps: CreatePageFormProps = {
@@ -494,7 +614,9 @@ export function PageContentAdmin() {
     newDescription,
     setNewDescription,
     slugError,
-    previewPath: `/${normalizedSlug || "…"}`,
+    previewPath: normalizedSlug
+      ? toPublicPortalPath(newPortal, `/${normalizedSlug}`)
+      : "…",
     pending: createPage.isPending,
     canSubmit: canCreate,
     onCancel: () => {
@@ -572,11 +694,19 @@ export function PageContentAdmin() {
                       )}
                     >
                       <span className="line-clamp-2">{p.label}</span>
-                      {p.isCustom ? (
+                      {isPortalHomePage(p) ? (
+                        <span className="block text-[10px] font-normal text-neutral-400 mt-0.5">
+                          Trang chủ cổng · không xóa
+                        </span>
+                      ) : p.isCustom ? (
                         <span className="block text-[10px] font-normal text-neutral-400 mt-0.5">
                           Tùy chỉnh · {p.publicPath}
                         </span>
-                      ) : null}
+                      ) : (
+                        <span className="block text-[10px] font-normal text-neutral-400 mt-0.5">
+                          Trang con · {p.publicPath}
+                        </span>
+                      )}
                     </button>
                   </li>
                 ))}
@@ -585,9 +715,9 @@ export function PageContentAdmin() {
           ))}
         </nav>
         <p className="text-[11px] text-muted-foreground px-1">
-          Trang hệ thống (vd. Trang Luyện thi) không thể xóa. Bấm{" "}
-          <strong>Thêm</strong> để tạo trang khối mới — sau đó mới có nút{" "}
-          <strong>Xóa trang</strong>.
+          Mỗi cổng giữ <strong>một trang chủ</strong> (không xóa). Các trang con
+          có thể xóa. Bấm <strong>Thêm</strong> để tạo trang khối mới; trang tùy
+          chỉnh có nút <strong>Đổi tên</strong>.
         </p>
       </aside>
 
@@ -602,7 +732,15 @@ export function PageContentAdmin() {
                     <span className="text-xs font-normal rounded-full bg-blue-50 text-blue-700 px-2 py-0.5">
                       Tùy chỉnh
                     </span>
-                  ) : null}
+                  ) : isPortalHomePage(selected) ? (
+                    <span className="text-xs font-normal rounded-full bg-emerald-50 text-emerald-800 px-2 py-0.5">
+                      Trang chủ cổng
+                    </span>
+                  ) : (
+                    <span className="text-xs font-normal rounded-full bg-amber-50 text-amber-800 px-2 py-0.5">
+                      Trang con
+                    </span>
+                  )}
                 </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {selected.description}
@@ -622,6 +760,17 @@ export function PageContentAdmin() {
               </div>
               <div className="flex flex-wrap gap-2">
                 {selected.isCustom ? (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={openEditDialog}
+                    disabled={updatePage.isPending}
+                  >
+                    <Pencil className="h-4 w-4 mr-1.5" />
+                    Đổi tên
+                  </Button>
+                ) : null}
+                {canDeletePageContent(selected) ? (
                   <Button
                     variant="outline"
                     size="sm"
@@ -753,6 +902,93 @@ export function PageContentAdmin() {
         </DialogContent>
       </Dialog>
 
+      <Dialog
+        open={editOpen}
+        onOpenChange={(open) => {
+          if (updatePage.isPending) return;
+          setEditOpen(open);
+        }}
+      >
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Đổi tên trang</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="cms-edit-label">Tên trang</Label>
+              <Input
+                id="cms-edit-label"
+                value={editLabel}
+                onChange={(e) => setEditLabel(e.target.value)}
+                disabled={updatePage.isPending}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && canSaveEdit) {
+                    e.preventDefault();
+                    void handleUpdatePage();
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cms-edit-slug">URL slug</Label>
+              <div className="flex items-center gap-1 text-sm">
+                <span className="text-muted-foreground shrink-0">/</span>
+                <Input
+                  id="cms-edit-slug"
+                  value={editSlug}
+                  onChange={(e) => setEditSlug(e.target.value)}
+                  disabled={updatePage.isPending}
+                  aria-invalid={!!editSlugError}
+                />
+              </div>
+              {editSlugError ? (
+                <p className="text-xs text-destructive">{editSlugError}</p>
+              ) : selected ? (
+                <p className="text-xs text-muted-foreground">
+                  URL công khai:{" "}
+                  <code className="rounded bg-muted px-1">
+                    {toPublicPortalPath(
+                      selected.portal,
+                      `/${normalizedEditSlug || "…"}`,
+                    )}
+                  </code>
+                  {normalizedEditSlug !== pageEntrySlug(selected)
+                    ? " · Đổi slug sẽ đổi địa chỉ trang"
+                    : ""}
+                </p>
+              ) : null}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="cms-edit-desc">Mô tả (tùy chọn)</Label>
+              <Textarea
+                id="cms-edit-desc"
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                rows={2}
+                disabled={updatePage.isPending}
+                maxLength={500}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditOpen(false)}
+              disabled={updatePage.isPending}
+            >
+              Hủy
+            </Button>
+            <Button
+              onClick={() => void handleUpdatePage()}
+              disabled={!canSaveEdit}
+            >
+              {updatePage.isPending ? "Đang lưu…" : "Lưu"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog
         open={deleteOpen}
         onOpenChange={(open) => {
@@ -772,12 +1008,19 @@ export function PageContentAdmin() {
                   <code className="rounded bg-muted px-1">
                     {selected?.publicPath}
                   </code>{" "}
-                  sẽ trả 404. Toàn bộ khối nội dung của trang bị xóa.
+                  sẽ trả 404 trên web và biến mất khỏi danh sách Cpanel.
                 </p>
-                <p>
-                  Slot ảnh CMS / file R2 gắn trang này cũng sẽ được dọn (nếu có).
-                  Thao tác không hoàn tác.
-                </p>
+                {selected?.isCustom ? (
+                  <p>
+                    Toàn bộ khối nội dung và slot ảnh CMS của trang tùy chỉnh sẽ
+                    bị xóa. Thao tác không hoàn tác.
+                  </p>
+                ) : (
+                  <p>
+                    Đây là trang con của cổng — gỡ khỏi danh sách quản trị. Trang
+                    chủ cổng vẫn giữ nguyên.
+                  </p>
+                )}
               </div>
             </AlertDialogDescription>
           </AlertDialogHeader>

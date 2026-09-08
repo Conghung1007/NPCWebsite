@@ -1,6 +1,6 @@
 import { Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
-import type { ReactElement, ReactNode } from "react";
+import { useEffect, type ReactElement, type ReactNode } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { EditableHeroCarousel } from "@/components/ui/editable-hero-carousel";
 import { EditableContentImage } from "@/components/ui/editable-content-image";
@@ -62,13 +62,41 @@ function resolveHref(href: string | undefined): {
   if (portalLink) {
     return {
       href: portalHref(portalLink.portal, portalLink.path),
-      external: true,
+      external: false,
     };
   }
   if (/^https?:\/\//i.test(href)) {
     return { href, external: true };
   }
   return { href, external: false };
+}
+
+function scrollToPageHash(hash: string) {
+  const id = hash.replace(/^#/, "").trim();
+  if (!id) return;
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
+  try {
+    window.history.replaceState(null, "", `#${id}`);
+  } catch {
+    /* ignore */
+  }
+}
+
+/** True when href is an in-page hash (or current path + hash). */
+function inPageHashTarget(href: string): string | null {
+  const raw = href.trim();
+  if (raw.startsWith("#") && raw.length > 1) return raw;
+  const hashIdx = raw.indexOf("#");
+  if (hashIdx < 0) return null;
+  const path = raw.slice(0, hashIdx) || "/";
+  const hash = raw.slice(hashIdx);
+  if (hash.length <= 1) return null;
+  const here =
+    typeof window !== "undefined" ? window.location.pathname || "/" : "/";
+  if (path === "/" || path === here || path === "") return hash;
+  return null;
 }
 
 function CtaLink({
@@ -96,6 +124,21 @@ function CtaLink({
         <ArrowRight className="h-4 w-4" />
       </span>
     );
+
+  const hashTarget = inPageHashTarget(resolved.href);
+  if (hashTarget) {
+    return (
+      <a
+        href={hashTarget}
+        onClick={(e) => {
+          e.preventDefault();
+          scrollToPageHash(hashTarget);
+        }}
+      >
+        {btn}
+      </a>
+    );
+  }
 
   if (resolved.external) {
     return (
@@ -363,6 +406,22 @@ function CardsSection({ section }: { section: PageSection }) {
           );
 
           if (!href?.trim()) return <div key={key}>{card}</div>;
+          const cardHash = inPageHashTarget(resolved.href);
+          if (cardHash) {
+            return (
+              <a
+                key={key}
+                href={cardHash}
+                className="block h-full"
+                onClick={(e) => {
+                  e.preventDefault();
+                  scrollToPageHash(cardHash);
+                }}
+              >
+                {card}
+              </a>
+            );
+          }
           if (resolved.external) {
             return (
               <a
@@ -552,6 +611,13 @@ export function PageSectionsRenderer({
   const ordered = [...sections]
     .filter((s) => s.enabled !== false)
     .sort((a, b) => a.sortOrder - b.sortOrder);
+
+  useEffect(() => {
+    const hash = typeof window !== "undefined" ? window.location.hash : "";
+    if (!hash || hash.length <= 1) return;
+    const t = window.setTimeout(() => scrollToPageHash(hash), 80);
+    return () => window.clearTimeout(t);
+  }, [ordered.map((s) => s.id).join(",")]);
 
   return (
     <div className="bg-white">

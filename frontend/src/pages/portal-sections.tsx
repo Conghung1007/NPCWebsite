@@ -1,5 +1,5 @@
 import { Link } from "wouter";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,7 +11,12 @@ import {
 import { portalHref, portalPath, resolvePortal, type PortalId } from "@/lib/portal";
 import { ArticleSection } from "@/components/ArticleSection";
 import { ContactForm } from "@/components/ui/contact-form";
-import { useSiteContents } from "@/hooks/useSiteContents";
+import { EditableText } from "@/components/ui/editable-text";
+import {
+  useSiteContents,
+  useUpsertSiteContent,
+} from "@/hooks/useSiteContents";
+import { getSiteContentDefaults } from "@shared/siteContentDefaults";
 import {
   mergePortalSectionContent,
   portalSectionPageId,
@@ -793,25 +798,70 @@ export function PortalNewsPage({
   description: string;
 }) {
   const portal = resolvePortal();
+  const defaults = getSiteContentDefaults("news", portal) || {};
+  const { data: remoteContents = {} } = useSiteContents("news", portal);
+  const upsertContent = useUpsertSiteContent("news", portal);
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editValues, setEditValues] = useState<Record<string, string>>({});
+
+  const getContent = useCallback(
+    (key: string, fallback = "") =>
+      remoteContents[key] ?? defaults[key] ?? fallback,
+    [remoteContents, defaults],
+  );
+
+  const handleEditStart = (fieldName: string, value: string) => {
+    setEditingField(fieldName);
+    setEditValues((prev) => ({ ...prev, [fieldName]: value }));
+  };
+
+  const handleEditSave = async (fieldName: string, value: string) => {
+    await upsertContent.mutateAsync({ key: fieldName, value });
+    setEditingField(null);
+  };
+
+  const handleEditCancel = () => setEditingField(null);
 
   return (
     <div className="bg-[linear-gradient(180deg,#f8faf9_0%,#eef5f1_40%,#ffffff_100%)]">
       <section className="max-w-4xl mx-auto px-4 sm:px-6 pt-12 sm:pt-16 pb-2">
-        <p className="text-xs font-semibold tracking-[0.2em] uppercase text-primary mb-3">
-          Tin tức
-        </p>
-        <h1 className="font-display text-3xl sm:text-4xl font-bold text-foreground tracking-tight">
-          {title}
-        </h1>
-        <p className="mt-3 text-muted-foreground text-base sm:text-lg max-w-2xl">
-          {description}
-        </p>
+        <EditableText
+          fieldName="eyebrow"
+          text={getContent("eyebrow", "Tin tức")}
+          className="text-xs font-semibold tracking-[0.2em] uppercase text-primary mb-3"
+          editingField={editingField}
+          editValues={editValues}
+          onEditStart={handleEditStart}
+          onEditSave={handleEditSave}
+          onEditCancel={handleEditCancel}
+        />
+        <EditableText
+          fieldName="heroTitle"
+          text={getContent("heroTitle", title)}
+          className="font-display text-3xl sm:text-4xl font-bold text-foreground tracking-tight"
+          editingField={editingField}
+          editValues={editValues}
+          onEditStart={handleEditStart}
+          onEditSave={handleEditSave}
+          onEditCancel={handleEditCancel}
+        />
+        <EditableText
+          fieldName="heroDescription"
+          text={getContent("heroDescription", description)}
+          className="mt-3 text-muted-foreground text-base sm:text-lg max-w-2xl"
+          multiline
+          editingField={editingField}
+          editValues={editValues}
+          onEditStart={handleEditStart}
+          onEditSave={handleEditSave}
+          onEditCancel={handleEditCancel}
+        />
       </section>
 
       <ArticleSection
         category={category}
-        title="Bài viết mới"
-        description="Cập nhật từ Trí Nhân Academy"
+        title={getContent("list-title", "Bài viết mới")}
+        description={getContent("list-description", "Cập nhật từ Trí Nhân Academy")}
       />
 
       <div className="max-w-4xl mx-auto px-4 sm:px-6 pb-12 flex flex-wrap gap-3 justify-center">
