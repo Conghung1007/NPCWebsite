@@ -1,4 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="Tri Nhan Academy">
+  <!-- Rounded square mark for browser favicon -->
   <rect x="2" y="2" width="60" height="60" rx="18" ry="18" fill="#00A651"/>
   <path d="M14 42.5V24.2c0-1.1.7-2.1 1.7-2.5 5.2-2 10.1-2.1 14.3.2v22.3c-4.6-2.1-9.7-2-14.5-.1-.9.3-1.5 1.2-1.5 2.1Z" fill="#FFFFFF"/>
   <path d="M50 42.5V24.2c0-1.1-.7-2.1-1.7-2.5-5.2-2-10.1-2.1-14.3.2v22.3c4.6-2.1 9.7-2 14.5-.1.9.3 1.5 1.2 1.5 2.1Z" fill="rgba(255,255,255,0.88)"/>

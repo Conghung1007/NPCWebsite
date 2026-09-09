@@ -105,7 +105,11 @@ export function usePortalLocation(opts?: {
       const portal = currentPortalFromBrowserPath(pathname);
 
       let publicPath: string;
-      if (
+      // Bare `/` is always the group hub home (logo, logout) — never re-prefix
+      // into the active product portal.
+      if (path === "/" || path === "") {
+        publicPath = "/";
+      } else if (
         isPublicPortalPath(path) ||
         isSharedAppPath(path) ||
         path === "/japanese-training"

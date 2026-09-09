@@ -81,7 +81,8 @@ export function TriNhanMark({
         y="2"
         width="60"
         height="60"
-        rx="16"
+        rx="18"
+        ry="18"
         fill={tone === "default" ? TNJS.green : "rgba(255,255,255,0.18)"}
       />
       <path

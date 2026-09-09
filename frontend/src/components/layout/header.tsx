@@ -106,7 +106,7 @@ function Brand({
 
   return (
     <Link
-      href="/"
+      href={portalHref("group", "/")}
       className="flex items-center shrink-0 group"
       data-testid="header-logo"
       aria-label={`${brandName} — Trang chủ`}
@@ -612,7 +612,7 @@ export function Header() {
 
   useEffect(() => {
     setIsOpen(false);
-  }, [location]);
+  }, [location, portal]);
 
   const logoutMutation = useMutation({
     mutationFn: async () => {

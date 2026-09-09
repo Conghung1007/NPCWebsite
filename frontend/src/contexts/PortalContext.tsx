@@ -3,10 +3,9 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
-import { useLocation } from "wouter";
 import {
   PORTAL_META,
   resolvePortalFromPath,
@@ -25,22 +24,72 @@ type PortalContextValue = {
 
 const PortalContext = createContext<PortalContextValue | null>(null);
 
-function portalFromBrowser(): PortalId {
-  if (typeof window === "undefined") return "group";
+/**
+ * Wouter's location is the *internal* path (prefix stripped), so
+ * `/luyen-thi/gioi-thieu` and `/huong-nghiep/gioi-thieu` both look like `/`.
+ * Portal must follow the real browser pathname instead.
+ */
+const pathnameListeners = new Set<() => void>();
+let historyPatched = false;
+
+function notifyPathnameListeners() {
+  pathnameListeners.forEach((listener) => listener());
+}
+
+function ensureHistoryPatch() {
+  if (historyPatched || typeof window === "undefined") return;
+  historyPatched = true;
+
+  const push = history.pushState.bind(history);
+  const replace = history.replaceState.bind(history);
+
+  history.pushState = ((...args: Parameters<History["pushState"]>) => {
+    const ret = push(...args);
+    notifyPathnameListeners();
+    return ret;
+  }) as History["pushState"];
+
+  history.replaceState = ((...args: Parameters<History["replaceState"]>) => {
+    const ret = replace(...args);
+    notifyPathnameListeners();
+    return ret;
+  }) as History["replaceState"];
+
+  window.addEventListener("popstate", notifyPathnameListeners);
+}
+
+function subscribeBrowserPathname(onChange: () => void) {
+  ensureHistoryPatch();
+  pathnameListeners.add(onChange);
+  return () => {
+    pathnameListeners.delete(onChange);
+  };
+}
+
+function getBrowserPathname(): string {
+  return window.location.pathname || "/";
+}
+
+function getServerPathname(): string {
+  return "/";
+}
+
+function portalFromPathname(pathname: string): PortalId {
   return (
-    resolvePortalFromPath(window.location.pathname) ??
-    stripPortalPrefix(window.location.pathname).portal
+    resolvePortalFromPath(pathname) ?? stripPortalPrefix(pathname).portal
   );
 }
 
 export function PortalProvider({ children }: { children: ReactNode }) {
-  // useLocation triggers re-render on nav; portal always from public URL
-  const [location] = useLocation();
-  const [portal, setPortal] = useState<PortalId>(() => portalFromBrowser());
-
-  useEffect(() => {
-    setPortal(portalFromBrowser());
-  }, [location]);
+  const publicPath = useSyncExternalStore(
+    subscribeBrowserPathname,
+    getBrowserPathname,
+    getServerPathname,
+  );
+  const portal = useMemo(
+    () => portalFromPathname(publicPath),
+    [publicPath],
+  );
 
   useEffect(() => {
     document.title = PORTAL_META[portal].documentTitle;
