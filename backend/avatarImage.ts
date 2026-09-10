@@ -78,6 +78,30 @@ export async function processAvatarImage(
   return { buffer, contentType: "image/webp", ext: "webp" };
 }
 
+/**
+ * Site logo mark: keep full artwork (contain), pad to square — do not crop like avatars.
+ */
+export async function processSiteLogoImage(
+  input: Buffer,
+): Promise<ProcessedAvatar> {
+  const detected = detectImageMime(input);
+  if (!detected) {
+    throw new Error("INVALID_IMAGE");
+  }
+
+  const buffer = await sharp(input, { animated: false, failOn: "truncated" })
+    .rotate()
+    .resize(AVATAR_MAX_EDGE, AVATAR_MAX_EDGE, {
+      fit: "contain",
+      background: { r: 255, g: 255, b: 255, alpha: 1 },
+      withoutEnlargement: false,
+    })
+    .webp({ quality: AVATAR_WEBP_QUALITY })
+    .toBuffer();
+
+  return { buffer, contentType: "image/webp", ext: "webp" };
+}
+
 /** Parse `/api/proxy-image/{provider}/avatars/...` into R2 delete args. */
 export function parseStoredAvatarRef(
   avatarUrl: string | null | undefined,

@@ -90,6 +90,7 @@ import { rateLimit } from "./rateLimit";
 import {
   parseStoredAvatarRef,
   processAvatarImage,
+  processSiteLogoImage,
 } from "./avatarImage";
 import {
   EXAM_PACKAGE_PRICE_VND,
@@ -4282,10 +4283,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let uploadMime = file.mimetype;
       let fileExtension = file.originalname.split(".").pop() || "bin";
 
-      // Logo mark: resize/compress so upload + header decode stay light
+      // Logo mark: contain+pad (not avatar crop) so artwork stays intact
       if (imageType === "site-logo" || imageType === "site-logo-footer") {
         try {
-          const processed = await processAvatarImage(file.buffer);
+          const processed = await processSiteLogoImage(file.buffer);
           uploadBuffer = processed.buffer;
           uploadMime = processed.contentType;
           fileExtension = processed.ext;
