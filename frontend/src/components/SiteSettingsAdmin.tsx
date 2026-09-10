@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Save, Upload, Trash2 } from "lucide-react";
+import { Save, Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -20,11 +20,8 @@ export function SiteSettingsAdmin() {
   const saveMutation = useSaveSiteSettings(portal);
 
   const [form, setForm] = useState<SiteSettingsInput | null>(null);
-  const [imgTarget, setImgTarget] = useState<
-    "logoUrl" | "popupImageUrl" | null
-  >(null);
+  const [popupImgOpen, setPopupImgOpen] = useState(false);
 
-  // Reload form when portal filter changes — do not clobber in-progress edits on refetch
   useEffect(() => {
     setForm(null);
   }, [portal]);
@@ -55,22 +52,7 @@ export function SiteSettingsAdmin() {
     const payload = override ?? form;
     try {
       const saved = await saveMutation.mutateAsync(payload);
-      setForm((prev) =>
-        prev
-          ? {
-              ...prev,
-              ...saved,
-              // Keep portal-scoped contact fields from the portal we edited
-              siteName: saved.siteName,
-              hotline: saved.hotline,
-              email: saved.email,
-              address: saved.address,
-              logoUrl: saved.logoUrl,
-              logoFooterUrl: saved.logoFooterUrl,
-              faviconUrl: saved.faviconUrl,
-            }
-          : { ...saved },
-      );
+      setForm({ ...saved });
       toast({ title: "Đã lưu cấu hình" });
     } catch {
       toast({
@@ -81,14 +63,6 @@ export function SiteSettingsAdmin() {
     }
   };
 
-  const applyLogoUrl = (url: string) => {
-    if (!form) return;
-    const next = { ...form, logoUrl: url };
-    setForm(next);
-    setImgTarget(null);
-    void handleSave(next);
-  };
-
   return (
     <div className="space-y-8 max-w-3xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -97,9 +71,6 @@ export function SiteSettingsAdmin() {
           <strong>
             {PORTAL_META[portal]?.label || PORTAL_META[portal]?.brand || portal}
           </strong>
-          <span className="block sm:inline sm:before:content-['·_'] mt-0.5 sm:mt-0 text-xs">
-            Logo header/footer dùng chung toàn site
-          </span>
         </p>
         <Button
           size="sm"
@@ -162,50 +133,8 @@ export function SiteSettingsAdmin() {
       </section>
 
       <section className="space-y-4">
-        <h3 className="text-sm font-semibold border-b pb-2">Logo & liên kết pháp lý</h3>
-        <p className="text-xs text-muted-foreground -mt-2">
-          Upload ảnh biểu tượng (mark) — dùng chung header/footer mọi portal.
-          Chữ «Trí Nhân Academy» luôn giữ nguyên. Favicon tab trình duyệt đổi
-          bằng file trong /public (không qua Cpanel).
-        </p>
+        <h3 className="text-sm font-semibold border-b pb-2">Liên kết pháp lý</h3>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2 rounded-lg border p-3">
-            <Label>Logo</Label>
-            {form.logoUrl ? (
-              <img src={form.logoUrl} alt="" className="h-12 object-contain" />
-            ) : (
-              <p className="text-xs text-muted-foreground">Chưa có logo — dùng mark mặc định</p>
-            )}
-            <div className="flex flex-wrap gap-2">
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setImgTarget("logoUrl")}
-              >
-                <Upload className="h-4 w-4 mr-1" /> Chọn ảnh
-              </Button>
-              {form.logoUrl ? (
-                <Button
-                  type="button"
-                  size="sm"
-                  variant="ghost"
-                  disabled={saveMutation.isPending}
-                  onClick={() => applyLogoUrl("")}
-                >
-                  <Trash2 className="h-4 w-4 mr-1" /> Gỡ logo
-                </Button>
-              ) : null}
-            </div>
-            <ImageManager
-              isOpen={imgTarget === "logoUrl"}
-              onClose={() => setImgTarget(null)}
-              onImageUpdate={applyLogoUrl}
-              imageType="site-logo"
-              altText="Logo"
-              portal="group"
-            />
-          </div>
           <div className="space-y-1.5">
             <Label>Link chính sách bảo mật</Label>
             <Input
@@ -277,16 +206,16 @@ export function SiteSettingsAdmin() {
               type="button"
               size="sm"
               variant="outline"
-              onClick={() => setImgTarget("popupImageUrl")}
+              onClick={() => setPopupImgOpen(true)}
             >
               <Upload className="h-4 w-4 mr-1" /> Chọn ảnh popup
             </Button>
             <ImageManager
-              isOpen={imgTarget === "popupImageUrl"}
-              onClose={() => setImgTarget(null)}
+              isOpen={popupImgOpen}
+              onClose={() => setPopupImgOpen(false)}
               onImageUpdate={(url) => {
                 set("popupImageUrl", url);
-                setImgTarget(null);
+                setPopupImgOpen(false);
               }}
               imageType="site-popup"
               altText="Popup"

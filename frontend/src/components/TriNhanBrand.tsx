@@ -3,8 +3,8 @@ import { TNJS } from "@/lib/tnjsTheme";
 
 export const BRAND_FULL_NAME = "Trí Nhân Academy";
 export const BRAND_SHORT_NAME = "Trí Nhân";
-/** Default raster lockup (fallback when CMS logo empty) */
-export const BRAND_DEFAULT_LOGO = "/brand/trinhan-academy-logo.png";
+/** Static site mark — replace file under /public/brand to change logo (not Cpanel). */
+export const BRAND_DEFAULT_LOGO = "/brand/trinhan-academy-logo.png?v=tn-2026";
 
 type BrandTone = "default" | "onDark" | "onGreen";
 
@@ -14,12 +14,10 @@ type TriNhanBrandProps = {
   tone?: BrandTone;
   /** Portal / tagline dưới hàng logo + tên */
   subtitle?: string;
-  /** Custom mark/icon only — chữ «Trí Nhân / Academy» luôn giữ nguyên */
+  /** @deprecated Ignored — brand mark is always BRAND_DEFAULT_LOGO */
   imageUrl?: string | null;
   imageAlt?: string;
-  /**
-   * @deprecated Kept for call-site compat. CMS logo never replaces brand text.
-   */
+  /** @deprecated Kept for call-site compat. */
   preferDefaultImage?: boolean;
 };
 
@@ -47,7 +45,7 @@ const sizeMap = {
   },
 } as const;
 
-/** Emblem: open book + rising path — no letter monogram */
+/** Emblem fallback if needed elsewhere */
 export function TriNhanMark({
   size = 44,
   className,
@@ -103,17 +101,16 @@ export function TriNhanMark({
 }
 
 /**
- * Lockup: [mark]  Trí Nhân     ← chữ luôn cố định
- *                ACADEMY
+ * Lockup: [static mark]  Trí Nhân
+ *                        ACADEMY
  *         tagline…
- * Đổi logo ở Cpanel chỉ thay file ảnh mark, không thay chữ.
+ * Change logo by replacing frontend/public/brand/trinhan-academy-logo.png
  */
 export function TriNhanBrand({
   className,
   size = "md",
   tone = "default",
   subtitle,
-  imageUrl,
   imageAlt = BRAND_FULL_NAME,
 }: TriNhanBrandProps) {
   const s = sizeMap[size];
@@ -123,23 +120,18 @@ export function TriNhanBrand({
   const subtitleColor =
     tone === "default" ? "text-muted-foreground/90" : "text-white/70";
 
-  const markUrl = imageUrl?.trim() || "";
-
   return (
     <span className={cn("inline-flex flex-col items-start min-w-0", className)}>
       <span className={cn("inline-flex items-center min-w-0", s.gap)}>
-        {markUrl ? (
-          <img
-            src={markUrl}
-            alt={imageAlt}
-            width={s.mark}
-            height={s.mark}
-            className="shrink-0 rounded-[22%] object-cover"
-            style={{ width: s.mark, height: s.mark }}
-          />
-        ) : (
-          <TriNhanMark size={s.mark} tone={tone} />
-        )}
+        <img
+          src={BRAND_DEFAULT_LOGO}
+          alt={imageAlt}
+          width={s.mark}
+          height={s.mark}
+          className="shrink-0 rounded-[22%] object-contain bg-white"
+          style={{ width: s.mark, height: s.mark }}
+          decoding="async"
+        />
         <span
           className="flex min-w-0 flex-col justify-center gap-0"
           style={{ height: s.mark }}

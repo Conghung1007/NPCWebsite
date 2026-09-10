@@ -29,10 +29,10 @@ export function useSaveSiteSettings(portal: PortalId) {
     },
     onSuccess: (saved) => {
       queryClient.setQueryData(["/api/site-settings", portal], saved);
-      // Logo/favicon are site-wide — refresh every portal cache
+      // Soft refresh other portal caches without wiping current UI
       void queryClient.invalidateQueries({
         queryKey: ["/api/site-settings"],
-        refetchType: "active",
+        refetchType: "none",
       });
     },
   });

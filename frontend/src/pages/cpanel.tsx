@@ -398,7 +398,7 @@ function CpanelPageInner({ tab }: CpanelPageProps) {
                 <CardHeader>
                   <CardTitle>Cấu hình chung</CardTitle>
                   <CardDescription>
-                    Hotline, mạng xã hội, logo, popup — tương đương TNJS «Cấu hình chung» + «Hình ảnh».
+                    Hotline, mạng xã hội, popup — tương đương TNJS «Cấu hình chung». Logo site cố định trong /public/brand.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>

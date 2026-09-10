@@ -27,6 +27,7 @@ import {
 } from "@shared/pageSections";
 import type { Testimonial } from "@shared/schema";
 import { cn } from "@/lib/utils";
+import { scrollToHashId } from "@/lib/navigateAppHref";
 
 const HERO_POSITION_LAYOUT: Record<
   HeroContentPosition,
@@ -110,16 +111,7 @@ function resolveHref(href: string | undefined): {
 }
 
 function scrollToPageHash(hash: string) {
-  const id = hash.replace(/^#/, "").trim();
-  if (!id) return;
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.scrollIntoView({ behavior: "smooth", block: "start" });
-  try {
-    window.history.replaceState(null, "", `#${id}`);
-  } catch {
-    /* ignore */
-  }
+  scrollToHashId(hash);
 }
 
 /** True when href is an in-page hash (or current path + hash). */
@@ -698,7 +690,7 @@ export function PageSectionsRenderer({
     const scrollFromHash = () => {
       const hash = window.location.hash;
       if (!hash || hash.length <= 1) return;
-      window.setTimeout(() => scrollToPageHash(hash), 80);
+      scrollToHashId(hash);
     };
     scrollFromHash();
     window.addEventListener("hashchange", scrollFromHash);

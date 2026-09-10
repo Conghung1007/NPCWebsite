@@ -16,6 +16,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { apiRequest } from "@/lib/queryClient";
 import type { User as AppUser } from "@shared/schema";
 import { cn } from "@/lib/utils";
+import { navigateAppHref } from "@/lib/navigateAppHref";
 import { usePortal } from "@/contexts/PortalContext";
 import {
   getNavigation,
@@ -113,7 +114,6 @@ function Brand({
 }) {
   const { portal: portalId, meta } = usePortal();
   const { data: settings } = useSiteSettings(portalId);
-  const logoUrl = settings?.logoUrl?.trim() || "";
   const brandName = settings?.siteName?.trim() || BRAND_FULL_NAME;
 
   return (
@@ -125,9 +125,7 @@ function Brand({
     >
       <TriNhanBrand
         size={compact ? "sm" : portal ? "md" : "md"}
-        imageUrl={logoUrl || undefined}
         imageAlt={brandName}
-        preferDefaultImage={false}
         subtitle={
           showTagline && !compact
             ? portalId === "group"
@@ -160,6 +158,7 @@ function NavLinkItem({
 }) {
   const active =
     forceActive ?? (!item.external && isActivePath(location, item.href));
+  const [, setLocation] = useLocation();
   const pill = !mobile;
   const className = cn(
     "relative font-medium transition-colors duration-200 whitespace-nowrap",
@@ -253,14 +252,24 @@ function NavLinkItem({
     item.href.includes("?") ||
     item.href.includes("#")
   ) {
+    const isExternal = item.external || /^https?:\/\//i.test(item.href);
     return (
       <a
         href={item.href}
-        onClick={onNavigate}
+        onClick={(e) => {
+          if (isExternal) {
+            onNavigate?.();
+            return;
+          }
+          // Same-origin hash / query links: SPA navigate (avoid full reload freeze)
+          e.preventDefault();
+          onNavigate?.();
+          navigateAppHref(item.href, setLocation);
+        }}
         data-testid={`nav-link-${item.shortName}`}
         className={className}
         aria-current={active ? "page" : undefined}
-        rel={item.external ? "noopener noreferrer" : undefined}
+        rel={isExternal ? "noopener noreferrer" : undefined}
       >
         {inner}
       </a>

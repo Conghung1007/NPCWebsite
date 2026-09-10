@@ -65,7 +65,6 @@ export function Footer() {
               <TriNhanBrand
                 size="md"
                 tone="onDark"
-                imageUrl={settings?.logoUrl?.trim() || undefined}
                 subtitle={portal === "group" ? undefined : meta.label}
               />
             </div>
