@@ -14,8 +14,6 @@ import NotFound from "@/pages/not-found";
 import PortalHome from "@/pages/portal-home";
 import Login from "@/pages/login";
 
-const VisaServices = lazy(() => import("@/pages/visa-services"));
-const StudyAbroad = lazy(() => import("@/pages/study-abroad"));
 const RedirectToTnjs = lazy(() =>
   import("@/pages/redirect-tnjs").then((m) => ({ default: m.RedirectToTnjs })),
 );
@@ -31,7 +29,6 @@ const ExamResult = lazy(() => import("@/pages/exam-result"));
 const Register = lazy(() => import("@/pages/register"));
 const RegisterSuccess = lazy(() => import("@/pages/register-success"));
 const ForgotPassword = lazy(() => import("@/pages/forgot-password"));
-const Contact = lazy(() => import("@/pages/contact"));
 const ArticleDetail = lazy(() => import("@/pages/article-detail"));
 const CreateArticle = lazy(() => import("@/pages/create-article"));
 const EditArticle = lazy(() => import("@/pages/edit-article"));
@@ -43,14 +40,29 @@ const CertificatePage = lazy(() => import("@/pages/certificate"));
 const ProfilePage = lazy(() => import("@/pages/profile"));
 const CpanelPage = lazy(() => import("@/pages/cpanel"));
 const CompanyRedirect = lazy(() => import("@/pages/company-redirect"));
-const PortalSectionRoute = lazy(() =>
-  import("@/pages/portal-section-routes").then((m) => ({
-    default: m.PortalSectionRoute,
+const BlockStaticPage = lazy(() =>
+  import("@/components/BlockStaticPage").then((m) => ({
+    default: m.BlockStaticPage,
   })),
 );
-const PortalNewsRoute = lazy(() =>
-  import("@/pages/portal-section-routes").then((m) => ({
-    default: m.PortalNewsRoute,
+const BlockSectionPage = lazy(() =>
+  import("@/pages/block-marketing-routes").then((m) => ({
+    default: m.BlockSectionPage,
+  })),
+);
+const BlockContactPage = lazy(() =>
+  import("@/pages/block-marketing-routes").then((m) => ({
+    default: m.BlockContactPage,
+  })),
+);
+const BlockNewsPage = lazy(() =>
+  import("@/pages/block-marketing-routes").then((m) => ({
+    default: m.BlockNewsPage,
+  })),
+);
+const LegacyMarketingRedirect = lazy(() =>
+  import("@/pages/block-marketing-routes").then((m) => ({
+    default: m.LegacyMarketingRedirect,
   })),
 );
 const DynamicBlockPage = lazy(() => import("@/pages/dynamic-block-page"));
@@ -84,32 +96,44 @@ function Router() {
         <Switch>
           <Route path="/" component={PortalHome} />
           <Route path="/company" component={CompanyRedirect} />
-          <Route path="/visa-services" component={VisaServices} />
-          <Route path="/study-abroad" component={StudyAbroad} />
+          <Route
+            path="/visa-services"
+            component={() => (
+              <BlockStaticPage
+                layoutKey="visa-services"
+                portal="huongnghiep"
+                label="Dịch vụ visa"
+              />
+            )}
+          />
+          <Route
+            path="/study-abroad"
+            component={() => <LegacyMarketingRedirect fromPath="/study-abroad" />}
+          />
           <Route path="/japanese-training" component={RedirectToTnjs} />
           <Route
             path="/du-hoc"
-            component={() => <PortalSectionRoute slug="du-hoc" />}
+            component={() => <BlockSectionPage slug="du-hoc" />}
           />
           <Route
             path="/di-lam"
-            component={() => <PortalSectionRoute slug="di-lam" />}
+            component={() => <BlockSectionPage slug="di-lam" />}
           />
           <Route
             path="/dao-tao-nghe"
-            component={() => <PortalSectionRoute slug="dao-tao-nghe" />}
+            component={() => <BlockSectionPage slug="dao-tao-nghe" />}
           />
           <Route
             path="/bien-phien-dich"
-            component={() => <PortalSectionRoute slug="bien-phien-dich" />}
+            component={() => <BlockSectionPage slug="bien-phien-dich" />}
           />
           <Route
             path="/ky-nang-mem"
-            component={() => <PortalSectionRoute slug="ky-nang-mem" />}
+            component={() => <BlockSectionPage slug="ky-nang-mem" />}
           />
           <Route
             path="/tu-van-doanh-nghiep"
-            component={() => <PortalSectionRoute slug="tu-van-doanh-nghiep" />}
+            component={() => <BlockSectionPage slug="tu-van-doanh-nghiep" />}
           />
           <Route path="/classes" component={ClassesPage} />
           <Route
@@ -146,39 +170,39 @@ function Router() {
             component={({ params }) => <ProfilePage tab={params.tab} />}
           />
           <Route path="/profile" component={() => <ProfilePage />} />
-          <Route path="/contact" component={Contact} />
-          <Route path="/news" component={PortalNewsRoute} />
+          <Route path="/contact" component={BlockContactPage} />
+          <Route path="/news" component={BlockNewsPage} />
           <Route
             path="/countries"
-            component={() => <PortalSectionRoute slug="countries" />}
+            component={() => <LegacyMarketingRedirect fromPath="/countries" />}
           />
           <Route
             path="/schools"
-            component={() => <PortalSectionRoute slug="schools" />}
+            component={() => <LegacyMarketingRedirect fromPath="/schools" />}
           />
           <Route
             path="/costs"
-            component={() => <PortalSectionRoute slug="costs" />}
+            component={() => <LegacyMarketingRedirect fromPath="/costs" />}
           />
           <Route
             path="/documents"
-            component={() => <PortalSectionRoute slug="documents" />}
+            component={() => <LegacyMarketingRedirect fromPath="/documents" />}
           />
           <Route
             path="/faq"
-            component={() => <PortalSectionRoute slug="faq" />}
+            component={() => <LegacyMarketingRedirect fromPath="/faq" />}
           />
           <Route
             path="/courses"
-            component={() => <PortalSectionRoute slug="courses" />}
+            component={() => <LegacyMarketingRedirect fromPath="/courses" />}
           />
           <Route
             path="/schedule"
-            component={() => <PortalSectionRoute slug="schedule" />}
+            component={() => <LegacyMarketingRedirect fromPath="/schedule" />}
           />
           <Route
             path="/enterprise"
-            component={() => <PortalSectionRoute slug="enterprise" />}
+            component={() => <LegacyMarketingRedirect fromPath="/enterprise" />}
           />
           <Route path="/article/:id" component={ArticleDetail} />
           <Route path="/create-article" component={CreateArticle} />

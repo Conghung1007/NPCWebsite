@@ -1,10 +1,12 @@
 import {
-  PORTAL_HOME_SEGMENT,
   toPublicPortalPath,
   type PortalId,
 } from "./portal";
 
-/** Metadata for portal sub-pages (content lives in portal-sections.tsx defaults + site_contents). */
+/**
+ * Child pages that appear in header nav (and thus in Cpanel «Nội dung trang»).
+ * Extra legacy helpers (countries, faq, …) were removed from the CMS list.
+ */
 export const PORTAL_SECTION_CATALOG: Array<{
   slug: string;
   portal: PortalId;
@@ -14,50 +16,20 @@ export const PORTAL_SECTION_CATALOG: Array<{
   {
     slug: "du-hoc",
     portal: "huongnghiep",
-    label: "Du học (track)",
+    label: "Du học",
     publicPath: toPublicPortalPath("huongnghiep", "/du-hoc"),
   },
   {
     slug: "di-lam",
     portal: "huongnghiep",
-    label: "Đi làm (track)",
+    label: "Đi làm",
     publicPath: toPublicPortalPath("huongnghiep", "/di-lam"),
   },
   {
     slug: "dao-tao-nghe",
     portal: "huongnghiep",
-    label: "Đào tạo nghề (track)",
+    label: "Đào tạo nghề",
     publicPath: toPublicPortalPath("huongnghiep", "/dao-tao-nghe"),
-  },
-  {
-    slug: "countries",
-    portal: "huongnghiep",
-    label: "Quốc gia du học",
-    publicPath: toPublicPortalPath("huongnghiep", "/countries"),
-  },
-  {
-    slug: "schools",
-    portal: "huongnghiep",
-    label: "Trường học",
-    publicPath: toPublicPortalPath("huongnghiep", "/schools"),
-  },
-  {
-    slug: "costs",
-    portal: "huongnghiep",
-    label: "Chi phí du học",
-    publicPath: toPublicPortalPath("huongnghiep", "/costs"),
-  },
-  {
-    slug: "documents",
-    portal: "huongnghiep",
-    label: "Hồ sơ du học",
-    publicPath: toPublicPortalPath("huongnghiep", "/documents"),
-  },
-  {
-    slug: "faq",
-    portal: "huongnghiep",
-    label: "FAQ du học",
-    publicPath: toPublicPortalPath("huongnghiep", "/faq"),
   },
   {
     slug: "bien-phien-dich",
@@ -77,28 +49,8 @@ export const PORTAL_SECTION_CATALOG: Array<{
     label: "Tư vấn doanh nghiệp",
     publicPath: toPublicPortalPath("dichvu", "/tu-van-doanh-nghiep"),
   },
-  {
-    slug: "courses",
-    portal: "dichvu",
-    label: "Khóa học",
-    publicPath: toPublicPortalPath("dichvu", "/courses"),
-  },
-  {
-    slug: "schedule",
-    portal: "dichvu",
-    label: "Lịch khai giảng",
-    publicPath: toPublicPortalPath("dichvu", "/schedule"),
-  },
-  {
-    slug: "enterprise",
-    portal: "dichvu",
-    label: "Doanh nghiệp",
-    publicPath: toPublicPortalPath("dichvu", "/enterprise"),
-  },
 ];
 
 export function portalSectionSitePage(slug: string): string {
   return `section-${slug}`;
 }
-
-export { PORTAL_HOME_SEGMENT };

@@ -8,6 +8,7 @@ export const cmsPageKeys = {
   portal: (portal: PortalId | "all") =>
     ["/api/cms-pages", portal] as const,
   hidden: ["/api/cms-pages/hidden"] as const,
+  labels: ["/api/cms-pages/labels"] as const,
 };
 
 function appendCmsPage(
@@ -54,6 +55,16 @@ export type HiddenCmsPages = {
   entries?: Array<{ portal: string; path: string }>;
 };
 
+export type CmsPageLabels = {
+  labels: Record<string, string>;
+  entries: Array<{
+    pageId: string;
+    portal: string;
+    path: string;
+    label: string;
+  }>;
+};
+
 export function useHiddenCmsPages() {
   return useQuery<HiddenCmsPages>({
     queryKey: cmsPageKeys.hidden,
@@ -63,6 +74,84 @@ export function useHiddenCmsPages() {
       return res.json();
     },
     staleTime: 30_000,
+  });
+}
+
+export function useCmsPageLabels() {
+  return useQuery<CmsPageLabels>({
+    queryKey: cmsPageKeys.labels,
+    queryFn: async () => {
+      const res = await apiFetch("/api/cms-pages/labels");
+      if (!res.ok) throw new Error("Không tải được tên trang");
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+}
+
+export function useUpdateRegistryPageLabel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { id: string; label: string }) => {
+      const res = await apiRequest(
+        "PUT",
+        `/api/cms-pages/labels/${encodeURIComponent(payload.id)}`,
+        { label: payload.label },
+      );
+      return res.json() as Promise<{
+        pageId: string;
+        label: string;
+        publicPath: string;
+        portal: string;
+      }>;
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData<CmsPageLabels>(cmsPageKeys.labels, (old) => {
+        const labels = { ...(old?.labels ?? {}), [updated.pageId]: updated.label };
+        const entries = [
+          ...(old?.entries ?? []).filter((e) => e.pageId !== updated.pageId),
+          {
+            pageId: updated.pageId,
+            portal: updated.portal,
+            path: updated.publicPath,
+            label: updated.label,
+          },
+        ];
+        return { labels, entries };
+      });
+      queryClient.invalidateQueries({ queryKey: cmsPageKeys.labels });
+    },
+  });
+}
+
+export function useResetRegistryPageLabel() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: { id: string }) => {
+      const res = await apiRequest(
+        "DELETE",
+        `/api/cms-pages/labels/${encodeURIComponent(payload.id)}`,
+      );
+      return res.json() as Promise<{
+        pageId: string;
+        label: string;
+        publicPath: string;
+        portal: string;
+        reset: boolean;
+      }>;
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData<CmsPageLabels>(cmsPageKeys.labels, (old) => {
+        if (!old) return { labels: {}, entries: [] };
+        const labels = { ...old.labels };
+        delete labels[updated.pageId];
+        return {
+          labels,
+          entries: old.entries.filter((e) => e.pageId !== updated.pageId),
+        };
+      });
+      queryClient.invalidateQueries({ queryKey: cmsPageKeys.labels });
+    },
   });
 }
 

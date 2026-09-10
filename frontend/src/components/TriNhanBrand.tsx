@@ -14,12 +14,11 @@ type TriNhanBrandProps = {
   tone?: BrandTone;
   /** Portal / tagline dưới hàng logo + tên */
   subtitle?: string;
-  /** Prefer uploaded CMS logo when provided */
+  /** Custom mark/icon only — chữ «Trí Nhân / Academy» luôn giữ nguyên */
   imageUrl?: string | null;
   imageAlt?: string;
   /**
-   * Use designed PNG lockup from /public/brand when no CMS logo.
-   * Default false — SVG emblem + “Trí Nhân Academy” ngang hàng.
+   * @deprecated Kept for call-site compat. CMS logo never replaces brand text.
    */
   preferDefaultImage?: boolean;
 };
@@ -31,7 +30,6 @@ const sizeMap = {
     academy: "text-[8px] sm:text-[9px]",
     sub: "text-[10px] sm:text-[11px]",
     gap: "gap-2.5",
-    img: "h-9 max-w-[10.5rem] sm:h-10 sm:max-w-[12rem]",
   },
   md: {
     mark: 44,
@@ -39,7 +37,6 @@ const sizeMap = {
     academy: "text-[9px] sm:text-[10px]",
     sub: "text-[11px] sm:text-xs",
     gap: "gap-3",
-    img: "h-11 max-w-[12.5rem] sm:h-12 sm:max-w-[14rem]",
   },
   lg: {
     mark: 52,
@@ -47,7 +44,6 @@ const sizeMap = {
     academy: "text-[10px] sm:text-[11px]",
     sub: "text-xs sm:text-sm",
     gap: "gap-3.5",
-    img: "h-12 max-w-[14rem] sm:h-14 sm:max-w-[16rem]",
   },
 } as const;
 
@@ -107,9 +103,10 @@ export function TriNhanMark({
 }
 
 /**
- * Lockup: [sách]  Trí Nhân     ← 2 hàng chữ, khối cao ngang logo
+ * Lockup: [mark]  Trí Nhân     ← chữ luôn cố định
  *                ACADEMY
- *         Hướng nghiệp / hệ sinh thái… ← dòng dưới (ngoài khối logo)
+ *         tagline…
+ * Đổi logo ở Cpanel chỉ thay file ảnh mark, không thay chữ.
  */
 export function TriNhanBrand({
   className,
@@ -118,7 +115,6 @@ export function TriNhanBrand({
   subtitle,
   imageUrl,
   imageAlt = BRAND_FULL_NAME,
-  preferDefaultImage = false,
 }: TriNhanBrandProps) {
   const s = sizeMap[size];
   const titleColor = tone === "default" ? "text-foreground" : "text-white";
@@ -127,39 +123,23 @@ export function TriNhanBrand({
   const subtitleColor =
     tone === "default" ? "text-muted-foreground/90" : "text-white/70";
 
-  const cmsLogo = imageUrl?.trim() || "";
-  const showImage =
-    cmsLogo ||
-    (preferDefaultImage && tone === "default" ? BRAND_DEFAULT_LOGO : "");
-
-  if (showImage) {
-    return (
-      <span className={cn("inline-flex flex-col items-start gap-1", className)}>
-        <img
-          src={showImage}
-          alt={imageAlt}
-          className={cn("w-auto object-contain object-left", s.img)}
-        />
-        {subtitle ? (
-          <span
-            className={cn(
-              "pl-0.5 tracking-wide leading-snug",
-              subtitleColor,
-              s.sub,
-            )}
-          >
-            {subtitle}
-          </span>
-        ) : null}
-      </span>
-    );
-  }
+  const markUrl = imageUrl?.trim() || "";
 
   return (
     <span className={cn("inline-flex flex-col items-start min-w-0", className)}>
-      {/* Hàng logo: sách + (Trí Nhân / ACADEMY 2 dòng), cao bằng logo */}
       <span className={cn("inline-flex items-center min-w-0", s.gap)}>
-        <TriNhanMark size={s.mark} tone={tone} />
+        {markUrl ? (
+          <img
+            src={markUrl}
+            alt={imageAlt}
+            width={s.mark}
+            height={s.mark}
+            className="shrink-0 rounded-[22%] object-cover"
+            style={{ width: s.mark, height: s.mark }}
+          />
+        ) : (
+          <TriNhanMark size={s.mark} tone={tone} />
+        )}
         <span
           className="flex min-w-0 flex-col justify-center gap-0"
           style={{ height: s.mark }}
@@ -184,7 +164,6 @@ export function TriNhanBrand({
           </span>
         </span>
       </span>
-      {/* Tagline dưới toàn bộ khối logo */}
       {subtitle ? (
         <span className={cn("mt-1 inline-flex min-w-0 items-start", s.gap)}>
           <span className="shrink-0" style={{ width: s.mark }} aria-hidden />

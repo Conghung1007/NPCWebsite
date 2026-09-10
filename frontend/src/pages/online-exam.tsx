@@ -324,7 +324,7 @@ export function OnlineExamPage({ embed = false }: { embed?: boolean }) {
       <EditableHeroCarousel
         imageTypePrefix="exam"
         altPrefix="Luyện thi hero"
-        minHeightClassName="min-h-[calc(72svh-var(--header-height))]"
+        minHeightClassName="site-hero"
       >
         <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 lg:px-8 lg:py-20">
           <div className="max-w-2xl">

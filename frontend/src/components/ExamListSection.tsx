@@ -108,7 +108,7 @@ function ExamCard({
   );
 
   return (
-    <article className="group flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-lg transition-transform duration-300 hover:-translate-y-1.5 home-fade-up">
+    <article className="motion-card group flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-lg transition-transform duration-300 home-fade-up">
       <div
         className="relative flex h-28 flex-col items-center justify-center px-4 text-white"
         style={{

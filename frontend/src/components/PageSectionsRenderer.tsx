@@ -19,12 +19,50 @@ import { portalHref } from "@/lib/portal";
 import {
   LAYOUT_PAGE_IMAGE_PREFIX,
   isLayoutPageId,
+  normalizeHeroContentPosition,
   parsePortalHref,
+  type HeroContentPosition,
   type PageSection,
   type SectionType,
 } from "@shared/pageSections";
 import type { Testimonial } from "@shared/schema";
 import { cn } from "@/lib/utils";
+
+const HERO_POSITION_LAYOUT: Record<
+  HeroContentPosition,
+  { outer: string; inner: string; text: string; actions: string }
+> = {
+  "bottom-left": {
+    outer: "items-end",
+    inner: "justify-start",
+    text: "text-left",
+    actions: "justify-start",
+  },
+  "bottom-right": {
+    outer: "items-end",
+    inner: "justify-end",
+    text: "text-right",
+    actions: "justify-end",
+  },
+  "top-left": {
+    outer: "items-start",
+    inner: "justify-start",
+    text: "text-left",
+    actions: "justify-start",
+  },
+  "top-right": {
+    outer: "items-start",
+    inner: "justify-end",
+    text: "text-right",
+    actions: "justify-end",
+  },
+  center: {
+    outer: "items-center",
+    inner: "justify-center",
+    text: "text-center",
+    actions: "justify-center",
+  },
+};
 
 function str(props: Record<string, unknown>, key: string, fallback = ""): string {
   const v = props[key];
@@ -112,16 +150,16 @@ function CtaLink({
   const resolved = resolveHref(href);
   const btn =
     variant === "outline" ? (
-      <span className="inline-flex items-center justify-center rounded-md border-2 border-white bg-transparent px-8 py-3.5 text-sm font-bold uppercase tracking-wide text-white transition-colors hover:bg-white hover:text-neutral-900">
+      <span className="motion-press inline-flex items-center justify-center rounded-md border-2 border-white bg-transparent px-8 py-3.5 text-sm font-bold uppercase tracking-wide text-white hover:bg-white hover:text-neutral-900">
         {label}
       </span>
     ) : (
       <span
-        className="inline-flex items-center justify-center gap-2 rounded-md px-8 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-lg transition-opacity hover:opacity-95"
+        className="motion-press group/cta inline-flex items-center justify-center gap-2 rounded-md px-8 py-3.5 text-sm font-bold uppercase tracking-wide text-white shadow-lg hover:opacity-95"
         style={{ backgroundColor: TNJS.orange }}
       >
         {label}
-        <ArrowRight className="h-4 w-4" />
+        <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover/cta:translate-x-0.5" />
       </span>
     );
 
@@ -154,10 +192,12 @@ function SectionShell({
   children,
   bg,
   className,
+  id,
 }: {
   children: ReactNode;
   bg?: "white" | "cream" | "green" | "charcoal";
   className?: string;
+  id?: string;
 }) {
   const style =
     bg === "green"
@@ -169,6 +209,7 @@ function SectionShell({
           : undefined;
   return (
     <section
+      id={id}
       className={cn("py-16 sm:py-20", bg === "white" && "bg-white", className)}
       style={style}
     >
@@ -184,33 +225,63 @@ function HeroSection({ section }: { section: PageSection }) {
     ? LAYOUT_PAGE_IMAGE_PREFIX[portal]
     : "group";
   const prefix = strOr(p, "imageTypePrefix", defaultPrefix);
+  const position = normalizeHeroContentPosition(p.contentPosition);
+  const layout = HERO_POSITION_LAYOUT[position];
+  const isBottom = position.startsWith("bottom");
+  const isTop = position.startsWith("top");
+
   return (
     <EditableHeroCarousel
       imageTypePrefix={prefix}
       altPrefix={`${str(p, "brandName", "Trí Nhân Academy")} hero`}
-      minHeightClassName="min-h-[calc(70svh-var(--header-height))]"
+      minHeightClassName="site-hero"
     >
-      <div className="mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
-        <div className="max-w-3xl">
-          <p className="mb-4 font-display text-4xl font-bold tracking-tight text-white drop-shadow-sm sm:text-5xl lg:text-6xl">
-            {str(p, "brandName", "Trí Nhân Academy")}
-          </p>
-          <h1 className="mb-4 font-display text-2xl font-semibold leading-snug text-white/95 sm:text-3xl lg:text-4xl">
-            {str(p, "title")}
-          </h1>
-          <p className="mb-8 max-w-2xl text-base leading-relaxed text-white/85 sm:text-lg">
-            {str(p, "description")}
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <CtaLink
-              href={str(p, "ctaPrimaryHref")}
-              label={str(p, "ctaPrimaryLabel")}
-            />
-            <CtaLink
-              href={str(p, "ctaSecondaryHref")}
-              label={str(p, "ctaSecondaryLabel")}
-              variant="outline"
-            />
+      <div
+        className={cn(
+          "flex min-h-[var(--site-hero-height)] w-full",
+          layout.outer,
+          isBottom && "pb-10 sm:pb-12",
+          isTop && "pt-2 sm:pt-4",
+        )}
+      >
+        <div
+          className={cn(
+            "mx-auto flex w-full max-w-7xl px-4 py-12 sm:px-6 sm:py-16 lg:px-8",
+            layout.inner,
+          )}
+        >
+          <div className={cn("motion-hero-stage max-w-3xl w-full", layout.text)}>
+            <p className="motion-hero-item mb-4 font-display text-4xl font-bold tracking-tight text-white drop-shadow-sm sm:text-5xl lg:text-6xl">
+              {str(p, "brandName", "Trí Nhân Academy")}
+            </p>
+            <h1 className="motion-hero-item mb-4 font-display text-2xl font-semibold leading-snug text-white/95 sm:text-3xl lg:text-4xl">
+              {str(p, "title")}
+            </h1>
+            <p
+              className={cn(
+                "motion-hero-item mb-8 max-w-2xl text-base leading-relaxed text-white/85 sm:text-lg",
+                position === "center" && "mx-auto",
+                position.endsWith("right") && "ml-auto",
+              )}
+            >
+              {str(p, "description")}
+            </p>
+            <div
+              className={cn(
+                "motion-hero-item flex flex-wrap gap-3",
+                layout.actions,
+              )}
+            >
+              <CtaLink
+                href={str(p, "ctaPrimaryHref")}
+                label={str(p, "ctaPrimaryLabel")}
+              />
+              <CtaLink
+                href={str(p, "ctaSecondaryHref")}
+                label={str(p, "ctaSecondaryLabel")}
+                variant="outline"
+              />
+            </div>
           </div>
         </div>
       </div>
@@ -278,7 +349,7 @@ function FeatureGridSection({ section }: { section: PageSection }) {
               ? item.id
               : `feature-${i}`;
           return (
-            <div key={key} className="text-center sm:text-left">
+            <div key={key} className="reveal-child text-center sm:text-left">
               <p
                 className="mb-2 text-xs font-bold tracking-[0.2em]"
                 style={{ color: TNJS.green }}
@@ -338,7 +409,7 @@ function CardsSection({ section }: { section: PageSection }) {
               : `card-${i}-${title}`;
 
           const card = (
-            <article className="group flex h-full flex-col overflow-hidden rounded-xl bg-white text-left shadow-lg transition-transform duration-300 hover:-translate-y-1.5">
+            <article className="motion-card group flex h-full flex-col overflow-hidden rounded-xl bg-white text-left shadow-lg">
               {imageType ? (
                 <EditableContentImage
                   imageType={imageType}
@@ -405,14 +476,20 @@ function CardsSection({ section }: { section: PageSection }) {
             </article>
           );
 
-          if (!href?.trim()) return <div key={key}>{card}</div>;
+          if (!href?.trim()) {
+            return (
+              <div key={key} className="reveal-child h-full">
+                {card}
+              </div>
+            );
+          }
           const cardHash = inPageHashTarget(resolved.href);
           if (cardHash) {
             return (
               <a
                 key={key}
                 href={cardHash}
-                className="block h-full"
+                className="reveal-child block h-full"
                 onClick={(e) => {
                   e.preventDefault();
                   scrollToPageHash(cardHash);
@@ -428,14 +505,18 @@ function CardsSection({ section }: { section: PageSection }) {
                 key={key}
                 href={resolved.href}
                 rel="noopener noreferrer"
-                className="block h-full"
+                className="reveal-child block h-full"
               >
                 {card}
               </a>
             );
           }
           return (
-            <Link key={key} href={resolved.href} className="block h-full">
+            <Link
+              key={key}
+              href={resolved.href}
+              className="reveal-child block h-full"
+            >
               {card}
             </Link>
           );
@@ -524,7 +605,7 @@ function CtaFormSection({ section }: { section: PageSection }) {
   const p = section.props;
   const defaultService = str(p, "defaultService");
   return (
-    <SectionShell bg="green">
+    <SectionShell bg="green" id="tu-van">
       <TnjsPillTitle variant="onGreen">
         {str(p, "title", "Đăng ký tư vấn")}
       </TnjsPillTitle>
@@ -613,10 +694,15 @@ export function PageSectionsRenderer({
     .sort((a, b) => a.sortOrder - b.sortOrder);
 
   useEffect(() => {
-    const hash = typeof window !== "undefined" ? window.location.hash : "";
-    if (!hash || hash.length <= 1) return;
-    const t = window.setTimeout(() => scrollToPageHash(hash), 80);
-    return () => window.clearTimeout(t);
+    if (typeof window === "undefined") return;
+    const scrollFromHash = () => {
+      const hash = window.location.hash;
+      if (!hash || hash.length <= 1) return;
+      window.setTimeout(() => scrollToPageHash(hash), 80);
+    };
+    scrollFromHash();
+    window.addEventListener("hashchange", scrollFromHash);
+    return () => window.removeEventListener("hashchange", scrollFromHash);
   }, [ordered.map((s) => s.id).join(",")]);
 
   return (

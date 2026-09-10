@@ -36,10 +36,11 @@ export function ImageManager({
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Query existing images
+  // Query existing images only when the gallery tab is open (avoid listing all R2 on upload)
   const { data: existingImages, isLoading: loadingImages, error: imagesError } = useQuery({
     queryKey: ["/api/images/list"],
-    enabled: isOpen,
+    enabled: isOpen && activeTab === "existing",
+    staleTime: 30_000,
   });
 
   // Delete image mutation
@@ -142,16 +143,13 @@ export function ImageManager({
       const serverUploadData = await serverUploadResponse.json();
       const finalUploadUrl = serverUploadData.imageUrl;
 
-      // Update image directly and switch to existing tab
       onImageUpdate(finalUploadUrl);
-      
-      // Refresh image pickers + public UI image slots
-      queryClient.invalidateQueries({ queryKey: ["/api/images/list"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/ui-images"] });
-      
-      // Switch to existing tab
-      setActiveTab("existing");
-      
+      handleClose();
+
+      // Refresh galleries in background — do not block UI
+      void queryClient.invalidateQueries({ queryKey: ["/api/images/list"] });
+      void queryClient.invalidateQueries({ queryKey: ["/api/ui-images"] });
+
       toast({
         title: "Thành công",
         description: "Hình ảnh đã được upload và cập nhật thành công!"
@@ -284,6 +282,8 @@ export function ImageManager({
                                 <img
                                   src={image.url}
                                   alt={image.name}
+                                  loading="lazy"
+                                  decoding="async"
                                   className="w-full h-20 object-cover rounded"
                                   onClick={() => setSelectedExistingImage(image.url)}
                                   onError={(e) => {

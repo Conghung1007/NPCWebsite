@@ -6,6 +6,7 @@ import { isPortalId } from "@shared/portal";
 import {
   defaultLayoutForPage,
   defaultCustomPageLayout,
+  defaultLayoutForMarketingKey,
   isLayoutPageId,
   normalizeSections,
   pageSectionSchema,
@@ -90,6 +91,16 @@ export async function getPageLayout(
     };
   }
 
+  const marketing = defaultLayoutForMarketingKey(page, portal);
+  if (marketing?.length) {
+    return {
+      page,
+      portal,
+      sections: normalizeSections(page, marketing, template),
+      isDefault: true,
+    };
+  }
+
   return { page, portal, sections: [], isDefault: true };
 }
 
@@ -130,17 +141,20 @@ export async function resetPageLayout(
 ): Promise<{ page: string; portal: string; sections: PageSection[]; isDefault: boolean }> {
   await ensurePageLayoutsTable();
   const template = resolveTemplate(page, portal);
+  const marketing = defaultLayoutForMarketingKey(page, portal);
   const sections = isLayoutPageId(page)
     ? normalizeSections(page, defaultLayoutForPage(page))
-    : normalizeSections(
-        page,
-        defaultCustomPageLayout(template, {
-          title: "Nội dung trang",
-          description: "",
-          imagePrefix: page.replace(/[^a-z0-9-]/gi, "").slice(0, 12) || "page",
-        }),
-        template,
-      );
+    : marketing?.length
+      ? normalizeSections(page, marketing, template)
+      : normalizeSections(
+          page,
+          defaultCustomPageLayout(template, {
+            title: "Nội dung trang",
+            description: "",
+            imagePrefix: page.replace(/[^a-z0-9-]/gi, "").slice(0, 12) || "page",
+          }),
+          template,
+        );
 
   const existing = await db
     .select()

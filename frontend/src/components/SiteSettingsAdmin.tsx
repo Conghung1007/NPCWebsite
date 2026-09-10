@@ -21,14 +21,20 @@ export function SiteSettingsAdmin() {
 
   const [form, setForm] = useState<SiteSettingsInput | null>(null);
   const [imgTarget, setImgTarget] = useState<
-    "logoUrl" | "logoFooterUrl" | "popupImageUrl" | null
+    "logoUrl" | "popupImageUrl" | null
   >(null);
 
   useEffect(() => {
     if (data) setForm({ ...data });
   }, [data]);
 
-  if (isLoading || !form) {
+  if (isLoading && !form) {
+    return (
+      <p className="text-sm text-muted-foreground py-8 text-center">Đang tải…</p>
+    );
+  }
+
+  if (!form) {
     return (
       <p className="text-sm text-muted-foreground py-8 text-center">Đang tải…</p>
     );
@@ -38,9 +44,10 @@ export function SiteSettingsAdmin() {
     setForm((p) => (p ? { ...p, [key]: value } : p));
   };
 
-  const handleSave = async () => {
+  const handleSave = async (override?: SiteSettingsInput) => {
+    const payload = override ?? form;
     try {
-      await saveMutation.mutateAsync(form);
+      await saveMutation.mutateAsync(payload);
       toast({ title: "Đã lưu cấu hình" });
     } catch {
       toast({
@@ -120,41 +127,36 @@ export function SiteSettingsAdmin() {
       <section className="space-y-4">
         <h3 className="text-sm font-semibold border-b pb-2">Logo & liên kết pháp lý</h3>
         <p className="text-xs text-muted-foreground -mt-2">
-          Nên upload logo lockup «Trí Nhân Academy» (nền trong suốt). Nếu để trống,
-          site dùng biểu tượng sách + chữ Trí Nhân / Academy.
+          Upload file ảnh biểu tượng (mark) — dùng chung cho header và footer.
+          Chữ «Trí Nhân Academy» luôn giữ nguyên.
         </p>
         <div className="grid gap-4 sm:grid-cols-2">
-          {(
-            [
-              ["logoUrl", "Logo header", "site-logo"],
-              ["logoFooterUrl", "Logo footer", "site-logo-footer"],
-            ] as const
-          ).map(([field, label, imgType]) => (
-            <div key={field} className="space-y-2 rounded-lg border p-3">
-              <Label>{label}</Label>
-              {form[field] ? (
-                <img src={form[field]} alt="" className="h-12 object-contain" />
-              ) : null}
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                onClick={() => setImgTarget(field)}
-              >
-                <Upload className="h-4 w-4 mr-1" /> Chọn ảnh
-              </Button>
-              <ImageManager
-                isOpen={imgTarget === field}
-                onClose={() => setImgTarget(null)}
-                onImageUpdate={(url) => {
-                  set(field, url);
-                  setImgTarget(null);
-                }}
-                imageType={imgType}
-                altText={label}
-              />
-            </div>
-          ))}
+          <div className="space-y-2 rounded-lg border p-3">
+            <Label>Logo</Label>
+            {form.logoUrl ? (
+              <img src={form.logoUrl} alt="" className="h-12 object-contain" />
+            ) : null}
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => setImgTarget("logoUrl")}
+            >
+              <Upload className="h-4 w-4 mr-1" /> Chọn ảnh
+            </Button>
+            <ImageManager
+              isOpen={imgTarget === "logoUrl"}
+              onClose={() => setImgTarget(null)}
+              onImageUpdate={(url) => {
+                const next = { ...form, logoUrl: url };
+                setForm(next);
+                setImgTarget(null);
+                void handleSave(next);
+              }}
+              imageType="site-logo"
+              altText="Logo"
+            />
+          </div>
           <div className="space-y-1.5">
             <Label>Link chính sách bảo mật</Label>
             <Input

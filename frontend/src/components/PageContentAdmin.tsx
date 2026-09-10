@@ -35,22 +35,26 @@ import { useAdminPortal } from "@/contexts/AdminPortalContext";
 import { PageLayoutAdmin } from "@/components/PageLayoutAdmin";
 import { SiteContentEditor } from "@/components/SiteContentEditor";
 import { PageImageSlotsAdmin } from "@/components/PageImageSlotsAdmin";
-import { PortalSectionEditor } from "@/components/PortalSectionEditor";
-import { getSectionBySlug } from "@/pages/portal-sections";
 import {
   useCmsPages,
   useCreateCmsPage,
   useDeleteCmsPage,
   useHiddenCmsPages,
+  useCmsPageLabels,
   useUpdateCmsPage,
+  useUpdateRegistryPageLabel,
+  useResetRegistryPageLabel,
 } from "@/hooks/useCmsPages";
 import {
   canDeletePageContent,
+  comparePageContentEntries,
   getPageContentDefaults,
   getLayoutPortal,
   getLayoutPageKey,
   getPagesForPortal,
   isPortalHomePage,
+  pageNavHint,
+  pageUpdatesHeaderNav,
   type PageContentEntry,
 } from "@shared/pageContentRegistry";
 import { normalizeCmsSlug, validateCmsSlug } from "@shared/cmsPages";
@@ -83,11 +87,7 @@ function mergePages(
   staticPages: PageContentEntry[],
   customPages: PageContentEntry[],
 ): PageContentEntry[] {
-  return [...staticPages, ...customPages].sort((a, b) => {
-    if (a.portal !== b.portal) return a.portal.localeCompare(b.portal);
-    if (a.isCustom !== b.isCustom) return a.isCustom ? 1 : -1;
-    return a.label.localeCompare(b.label, "vi");
-  });
+  return [...staticPages, ...customPages].sort(comparePageContentEntries);
 }
 
 type CreatePageFormProps = {
@@ -230,8 +230,11 @@ export function PageContentAdmin() {
     filter === "all" ? "all" : filter,
   );
   const { data: hiddenPages } = useHiddenCmsPages();
+  const { data: pageLabels } = useCmsPageLabels();
   const createPage = useCreateCmsPage();
   const updatePage = useUpdateCmsPage();
+  const updateRegistryLabel = useUpdateRegistryPageLabel();
+  const resetRegistryLabel = useResetRegistryPageLabel();
   const deletePage = useDeleteCmsPage();
 
   const hiddenIdSet = useMemo(
@@ -239,10 +242,19 @@ export function PageContentAdmin() {
     [hiddenPages?.ids],
   );
 
+  const labeledStaticPages = useMemo(() => {
+    const labels = pageLabels?.labels ?? {};
+    return staticPages.map((p) =>
+      labels[p.id] ? { ...p, label: labels[p.id] } : p,
+    );
+  }, [staticPages, pageLabels?.labels]);
+
   const pages = useMemo(() => {
-    const visibleStatic = staticPages.filter((p) => !hiddenIdSet.has(p.id));
+    const visibleStatic = labeledStaticPages.filter(
+      (p) => !hiddenIdSet.has(p.id),
+    );
     return mergePages(visibleStatic, customPages);
-  }, [staticPages, customPages, hiddenIdSet]);
+  }, [labeledStaticPages, customPages, hiddenIdSet]);
 
   const createPortalOptions = useMemo(
     () => (allowedPortals ? allowedPortals : [...PORTAL_IDS]),
@@ -268,6 +280,7 @@ export function PageContentAdmin() {
   const [editLabel, setEditLabel] = useState("");
   const [editSlug, setEditSlug] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editTargetId, setEditTargetId] = useState<string | null>(null);
 
   const normalizedSlug = useMemo(
     () => normalizeCmsSlug(newSlug || newLabel),
@@ -389,19 +402,12 @@ export function PageContentAdmin() {
     if (!selected) return;
     const allowed = new Set<string>();
     if (selected.editor === "blocks") allowed.add("blocks");
-    if (selected.editor === "legacy" || selected.editor === "portal-section") {
-      allowed.add("text");
-    }
+    if (selected.editor === "legacy") allowed.add("text");
     if (selected.imageSlots.length > 0) allowed.add("images");
     if (!allowed.has(activeTab)) {
       setActiveTab(selected.editor === "blocks" ? "blocks" : "text");
     }
   }, [selected, activeTab]);
-
-  const portalSectionFallback = useMemo(() => {
-    if (!selected?.sectionSlug) return null;
-    return getSectionBySlug(selected.portal, selected.sectionSlug) || null;
-  }, [selected?.portal, selected?.sectionSlug]);
 
   const grouped = useMemo(() => {
     const map = new Map<PortalId, PageContentEntry[]>();
@@ -513,17 +519,25 @@ export function PageContentAdmin() {
     setDeleteOpen(true);
   };
 
-  const openEditDialog = () => {
-    if (!selected?.isCustom) return;
-    setEditLabel(selected.label);
-    setEditSlug(pageEntrySlug(selected));
+  const openEditDialog = (page: PageContentEntry) => {
+    setEditTargetId(page.id);
+    setEditLabel(page.label);
+    setEditSlug(page.isCustom ? pageEntrySlug(page) : "");
     setEditDescription(
-      selected.description === "Trang khối tùy chỉnh"
-        ? ""
-        : selected.description,
+      page.isCustom
+        ? page.description === "Trang khối tùy chỉnh"
+          ? ""
+          : page.description
+        : page.description,
     );
     setEditOpen(true);
   };
+
+  const editTarget =
+    (editTargetId
+      ? pages.find((p) => p.id === editTargetId) ||
+        (selectedCache?.id === editTargetId ? selectedCache : null)
+      : null) ?? null;
 
   const normalizedEditSlug = useMemo(
     () => normalizeCmsSlug(editSlug || editLabel),
@@ -531,30 +545,30 @@ export function PageContentAdmin() {
   );
 
   const editSlugError = useMemo(() => {
-    if (!selected?.isCustom) return null;
-    if (!editLabel.trim() && !editSlug.trim()) return null;
-    const currentSlug = pageEntrySlug(selected);
+    if (!editTarget) return null;
+    if (!editLabel.trim()) return "Nhập tên trang";
+    if (!editTarget.isCustom) return null;
+    const currentSlug = pageEntrySlug(editTarget);
     if (normalizedEditSlug !== currentSlug) {
       const base = validateCmsSlug(normalizedEditSlug);
       if (base) return base;
       const clash = customPages.some(
         (p) =>
-          p.id !== selected.id &&
-          p.portal === selected.portal &&
+          p.id !== editTarget.id &&
+          p.portal === editTarget.portal &&
           pageEntrySlug(p) === normalizedEditSlug,
       );
       if (clash) return "Slug đã tồn tại trong portal này";
       const staticClash = staticPages.some(
         (p) =>
-          p.portal === selected.portal &&
+          p.portal === editTarget.portal &&
           pageEntrySlug(p) === normalizedEditSlug,
       );
       if (staticClash) return "Slug trùng trang hệ thống của portal này";
     }
-    if (!editLabel.trim()) return "Nhập tên trang";
     return null;
   }, [
-    selected,
+    editTarget,
     editLabel,
     editSlug,
     normalizedEditSlug,
@@ -562,40 +576,99 @@ export function PageContentAdmin() {
     staticPages,
   ]);
 
-  const canSaveEdit =
-    !!selected?.isCustom &&
-    !!editLabel.trim() &&
-    !!normalizedEditSlug &&
-    !editSlugError &&
-    !updatePage.isPending &&
-    (editLabel.trim() !== selected.label ||
-      normalizedEditSlug !== pageEntrySlug(selected) ||
+  const renamePending =
+    updatePage.isPending ||
+    updateRegistryLabel.isPending ||
+    resetRegistryLabel.isPending;
+
+  const canSaveEdit = (() => {
+    if (!editTarget || !editLabel.trim() || editSlugError || renamePending) {
+      return false;
+    }
+    if (!editTarget.isCustom) {
+      return editLabel.trim() !== editTarget.label;
+    }
+    return (
+      editLabel.trim() !== editTarget.label ||
+      normalizedEditSlug !== pageEntrySlug(editTarget) ||
       (editDescription.trim() || "") !==
-        (selected.description === "Trang khối tùy chỉnh"
+        (editTarget.description === "Trang khối tùy chỉnh"
           ? ""
-          : selected.description));
+          : editTarget.description)
+    );
+  })();
+
+  const editHasCustomLabel =
+    !!editTarget &&
+    !editTarget.isCustom &&
+    !!pageLabels?.labels?.[editTarget.id];
 
   const handleUpdatePage = async () => {
-    if (!selected?.isCustom || !canSaveEdit) return;
+    if (!editTarget || !canSaveEdit) return;
     try {
+      if (!editTarget.isCustom) {
+        const updated = await updateRegistryLabel.mutateAsync({
+          id: editTarget.id,
+          label: editLabel.trim(),
+        });
+        toast({
+          title: "Đã đổi tên trang",
+          description: pageUpdatesHeaderNav(editTarget)
+            ? "Tên mới áp dụng trên menu con header (và footer nếu có)."
+            : "Chỉ đổi tên trong Cpanel — trang này không gắn mục menu header.",
+        });
+        setEditOpen(false);
+        setEditTargetId(null);
+        if (selectedId === editTarget.id) {
+          setSelectedCache({ ...editTarget, label: updated.label });
+        }
+        return;
+      }
+
       const { updated } = await updatePage.mutateAsync({
-        id: selected.id,
+        id: editTarget.id,
         label: editLabel.trim(),
         description: editDescription.trim(),
         slug: normalizedEditSlug,
-        previousSlug: pageEntrySlug(selected),
-        portal: selected.portal,
+        previousSlug: pageEntrySlug(editTarget),
+        portal: editTarget.portal,
       });
       toast({
         title: "Đã cập nhật trang",
-        description: `Mở tại ${updated.publicPath}`,
+        description: `Mở tại ${updated.publicPath} (không tự thêm vào header).`,
       });
       setEditOpen(false);
+      setEditTargetId(null);
       setSelectedCache(updated);
       setSelectedId(updated.id);
     } catch (err) {
       toast({
         title: "Không cập nhật được trang",
+        description: err instanceof Error ? err.message : "Thử lại",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleResetLabel = async () => {
+    if (!editTarget || editTarget.isCustom || !editHasCustomLabel) return;
+    try {
+      const updated = await resetRegistryLabel.mutateAsync({
+        id: editTarget.id,
+      });
+      toast({
+        title: "Đã khôi phục tên mặc định",
+        description: updated.label,
+      });
+      setEditLabel(updated.label);
+      setEditOpen(false);
+      setEditTargetId(null);
+      if (selectedId === editTarget.id) {
+        setSelectedCache({ ...editTarget, label: updated.label });
+      }
+    } catch (err) {
+      toast({
+        title: "Không khôi phục được",
         description: err instanceof Error ? err.message : "Thử lại",
         variant: "destructive",
       });
@@ -682,31 +755,45 @@ export function PageContentAdmin() {
               </p>
               <ul className="space-y-0.5">
                 {portalPages.map((p) => (
-                  <li key={p.id}>
+                  <li key={p.id} className="group/page relative">
                     <button
                       type="button"
                       onClick={() => selectPage(p.id)}
                       className={cn(
-                        "w-full text-left rounded-lg px-3 py-2 text-sm transition-colors",
+                        "w-full text-left rounded-lg pl-3 pr-9 py-2 text-sm transition-colors",
                         selectedId === p.id
                           ? "bg-[#00A651]/10 text-[#007A3D] font-semibold"
                           : "text-neutral-700 hover:bg-neutral-100",
                       )}
                     >
                       <span className="line-clamp-2">{p.label}</span>
-                      {isPortalHomePage(p) ? (
-                        <span className="block text-[10px] font-normal text-neutral-400 mt-0.5">
-                          Trang chủ cổng · không xóa
-                        </span>
-                      ) : p.isCustom ? (
-                        <span className="block text-[10px] font-normal text-neutral-400 mt-0.5">
-                          Tùy chỉnh · {p.publicPath}
-                        </span>
-                      ) : (
-                        <span className="block text-[10px] font-normal text-neutral-400 mt-0.5">
-                          Trang con · {p.publicPath}
-                        </span>
+                      <span className="block text-[10px] font-normal text-neutral-400 mt-0.5">
+                        {isPortalHomePage(p)
+                          ? "Trang chủ cổng · không xóa"
+                          : p.isCustom
+                            ? `Tùy chỉnh · ${p.publicPath}`
+                            : pageUpdatesHeaderNav(p)
+                              ? `Menu · ${p.publicPath}`
+                              : `Nội dung · ${p.publicPath}`}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      title="Đổi tên trang"
+                      aria-label={`Đổi tên ${p.label}`}
+                      disabled={renamePending}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        openEditDialog(p);
+                      }}
+                      className={cn(
+                        "absolute right-1 top-1.5 inline-flex h-7 w-7 items-center justify-center rounded-md text-neutral-400 transition-colors",
+                        "hover:bg-white hover:text-[#007A3D]",
+                        "opacity-100 sm:opacity-0 sm:group-hover/page:opacity-100 sm:focus-visible:opacity-100",
+                        selectedId === p.id && "sm:opacity-100",
                       )}
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
                     </button>
                   </li>
                 ))}
@@ -715,9 +802,9 @@ export function PageContentAdmin() {
           ))}
         </nav>
         <p className="text-[11px] text-muted-foreground px-1">
-          Mỗi cổng giữ <strong>một trang chủ</strong> (không xóa). Các trang con
-          có thể xóa. Bấm <strong>Thêm</strong> để tạo trang khối mới; trang tùy
-          chỉnh có nút <strong>Đổi tên</strong>.
+          Danh sách khớp menu con từng cổng. Hub (Đào tạo → tnjs.vn, Hướng nghiệp,
+          Dịch vụ, Luyện thi, Tư vấn) cố định trên header. Bút = đổi tên;{" "}
+          <strong>Thêm</strong> = trang khối mới (không tự lên menu).
         </p>
       </aside>
 
@@ -744,32 +831,22 @@ export function PageContentAdmin() {
                 </h2>
                 <p className="text-sm text-muted-foreground mt-0.5">
                   {selected.description}
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  {pageNavHint(selected)}
                   {selected.editor === "blocks" ? (
                     <>
                       {" "}
-                      · Khối lưu tại{" "}
-                      <code className="text-xs font-mono">
-                        {getLayoutPortal(selected)}/{getLayoutPageKey(selected).slice(0, 8)}…
+                      · Khối:{" "}
+                      <code className="text-[11px] font-mono">
+                        {getLayoutPortal(selected)}/
+                        {getLayoutPageKey(selected).slice(0, 8)}…
                       </code>
-                      {selected.publicPath === "/"
-                        ? " (trang chủ portal)"
-                        : ` (${selected.publicPath})`}
                     </>
                   ) : null}
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                {selected.isCustom ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={openEditDialog}
-                    disabled={updatePage.isPending}
-                  >
-                    <Pencil className="h-4 w-4 mr-1.5" />
-                    Đổi tên
-                  </Button>
-                ) : null}
                 {canDeletePageContent(selected) ? (
                   <Button
                     variant="outline"
@@ -816,7 +893,7 @@ export function PageContentAdmin() {
                     Khối nội dung
                   </TabsTrigger>
                 ) : null}
-                {selected.editor === "legacy" || selected.editor === "portal-section" ? (
+                {selected.editor === "legacy" ? (
                   <TabsTrigger value="text" className="gap-1.5">
                     <FileText className="h-4 w-4" />
                     Văn bản
@@ -863,15 +940,6 @@ export function PageContentAdmin() {
                 </TabsContent>
               ) : null}
 
-              {selected.editor === "portal-section" && portalSectionFallback ? (
-                <TabsContent value="text" className="mt-4">
-                  <PortalSectionEditor
-                    fallback={portalSectionFallback}
-                    portal={selected.portal}
-                  />
-                </TabsContent>
-              ) : null}
-
               {selected.imageSlots.length > 0 && selected.editor !== "blocks" ? (
                 <TabsContent value="images" className="mt-4">
                   <PageImageSlotsAdmin page={selected} />
@@ -905,8 +973,9 @@ export function PageContentAdmin() {
       <Dialog
         open={editOpen}
         onOpenChange={(open) => {
-          if (updatePage.isPending) return;
+          if (renamePending) return;
           setEditOpen(open);
+          if (!open) setEditTargetId(null);
         }}
       >
         <DialogContent className="sm:max-w-md">
@@ -920,7 +989,7 @@ export function PageContentAdmin() {
                 id="cms-edit-label"
                 value={editLabel}
                 onChange={(e) => setEditLabel(e.target.value)}
-                disabled={updatePage.isPending}
+                disabled={renamePending}
                 autoFocus
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && canSaveEdit) {
@@ -929,62 +998,94 @@ export function PageContentAdmin() {
                   }
                 }}
               />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cms-edit-slug">URL slug</Label>
-              <div className="flex items-center gap-1 text-sm">
-                <span className="text-muted-foreground shrink-0">/</span>
-                <Input
-                  id="cms-edit-slug"
-                  value={editSlug}
-                  onChange={(e) => setEditSlug(e.target.value)}
-                  disabled={updatePage.isPending}
-                  aria-invalid={!!editSlugError}
-                />
-              </div>
-              {editSlugError ? (
-                <p className="text-xs text-destructive">{editSlugError}</p>
-              ) : selected ? (
+              {!editTarget?.isCustom ? (
                 <p className="text-xs text-muted-foreground">
-                  URL công khai:{" "}
-                  <code className="rounded bg-muted px-1">
-                    {toPublicPortalPath(
-                      selected.portal,
-                      `/${normalizedEditSlug || "…"}`,
-                    )}
-                  </code>
-                  {normalizedEditSlug !== pageEntrySlug(selected)
-                    ? " · Đổi slug sẽ đổi địa chỉ trang"
-                    : ""}
+                  {editTarget && pageUpdatesHeaderNav(editTarget)
+                    ? "Tên này hiện trong Cpanel và trên menu con header của cổng."
+                    : "Tên này chỉ hiện trong Cpanel (không gắn mục menu header)."}
                 </p>
               ) : null}
+              {editSlugError && !editTarget?.isCustom ? (
+                <p className="text-xs text-destructive">{editSlugError}</p>
+              ) : null}
             </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="cms-edit-desc">Mô tả (tùy chọn)</Label>
-              <Textarea
-                id="cms-edit-desc"
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                rows={2}
-                disabled={updatePage.isPending}
-                maxLength={500}
-              />
-            </div>
+            {editTarget?.isCustom ? (
+              <>
+                <div className="space-y-1.5">
+                  <Label htmlFor="cms-edit-slug">URL slug</Label>
+                  <div className="flex items-center gap-1 text-sm">
+                    <span className="text-muted-foreground shrink-0">/</span>
+                    <Input
+                      id="cms-edit-slug"
+                      value={editSlug}
+                      onChange={(e) => setEditSlug(e.target.value)}
+                      disabled={renamePending}
+                      aria-invalid={!!editSlugError}
+                    />
+                  </div>
+                  {editSlugError ? (
+                    <p className="text-xs text-destructive">{editSlugError}</p>
+                  ) : editTarget ? (
+                    <p className="text-xs text-muted-foreground">
+                      URL công khai:{" "}
+                      <code className="rounded bg-muted px-1">
+                        {toPublicPortalPath(
+                          editTarget.portal,
+                          `/${normalizedEditSlug || "…"}`,
+                        )}
+                      </code>
+                      {normalizedEditSlug !== pageEntrySlug(editTarget)
+                        ? " · Đổi slug sẽ đổi địa chỉ trang"
+                        : ""}
+                    </p>
+                  ) : null}
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="cms-edit-desc">Mô tả (tùy chọn)</Label>
+                  <Textarea
+                    id="cms-edit-desc"
+                    value={editDescription}
+                    onChange={(e) => setEditDescription(e.target.value)}
+                    rows={2}
+                    disabled={renamePending}
+                    maxLength={500}
+                  />
+                </div>
+              </>
+            ) : null}
           </div>
-          <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setEditOpen(false)}
-              disabled={updatePage.isPending}
-            >
-              Hủy
-            </Button>
-            <Button
-              onClick={() => void handleUpdatePage()}
-              disabled={!canSaveEdit}
-            >
-              {updatePage.isPending ? "Đang lưu…" : "Lưu"}
-            </Button>
+          <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between">
+            <div className="flex gap-2 w-full sm:w-auto">
+              {editHasCustomLabel ? (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="text-muted-foreground"
+                  onClick={() => void handleResetLabel()}
+                  disabled={renamePending}
+                >
+                  Khôi phục mặc định
+                </Button>
+              ) : null}
+            </div>
+            <div className="flex gap-2 w-full sm:w-auto justify-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setEditOpen(false);
+                  setEditTargetId(null);
+                }}
+                disabled={renamePending}
+              >
+                Hủy
+              </Button>
+              <Button
+                onClick={() => void handleUpdatePage()}
+                disabled={!canSaveEdit}
+              >
+                {renamePending ? "Đang lưu…" : "Lưu"}
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

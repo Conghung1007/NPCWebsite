@@ -118,6 +118,72 @@ export function hiddenPathsForPortal(
     });
 }
 
+/** Apply Cpanel display-name overrides onto header/footer nav items.
+ * Match by public path; never apply to external URLs; hash links only match path+hash.
+ */
+export function applyNavLabelOverrides(
+  items: NavItem[],
+  entries:
+    | readonly { portal: string; path: string; label: string }[]
+    | null
+    | undefined,
+  portal: PortalId,
+): NavItem[] {
+  if (!entries?.length) return items;
+  const byPath = new Map<string, string>();
+  for (const e of entries) {
+    if (e.portal !== portal || !e.label?.trim()) continue;
+    const key = normalizeNavMatchPath(e.path);
+    if (!key) continue;
+    byPath.set(key, e.label.trim());
+  }
+  if (byPath.size === 0) return items;
+
+  return items.map((item) => {
+    if (item.external || /^https?:\/\//i.test(item.href)) {
+      return item.children?.length
+        ? {
+            ...item,
+            children: applyNavLabelOverrides(item.children, entries, portal),
+          }
+        : item;
+    }
+
+    const matchKey = navItemMatchKey(item.href);
+    // Bare "/" overrides must not paint hash CTAs (e.g. /#tu-van) or other roots.
+    const label =
+      matchKey && byPath.has(matchKey) ? byPath.get(matchKey) : undefined;
+
+    const next: NavItem = label
+      ? { ...item, name: label, shortName: label }
+      : { ...item };
+    if (item.children?.length) {
+      next.children = applyNavLabelOverrides(item.children, entries, portal);
+    }
+    return next;
+  });
+}
+
+/** Normalize stored override paths for matching (keeps #hash when present). */
+export function normalizeNavMatchPath(path: string): string | null {
+  const raw = (path || "").trim();
+  if (!raw || /^https?:\/\//i.test(raw)) return null;
+  const hashIdx = raw.indexOf("#");
+  const pathPart = hashIdx >= 0 ? raw.slice(0, hashIdx) : raw;
+  const hashPart = hashIdx >= 0 ? raw.slice(hashIdx) : "";
+  let p = pathPart.split("?")[0] || "/";
+  if (!p.startsWith("/")) p = `/${p}`;
+  if (p.length > 1 && p.endsWith("/")) p = p.slice(0, -1) || "/";
+  if (hashPart && hashPart !== "#") return `${p === "" ? "/" : p}${hashPart}`;
+  return p || "/";
+}
+
+/** Match key for a nav href (pathname, or pathname+#hash). External → null. */
+export function navItemMatchKey(href: string): string | null {
+  if (!href || /^https?:\/\//i.test(href)) return null;
+  return normalizeNavMatchPath(href);
+}
+
 /** Internal path prefixes allowed per portal (after strip). */
 export const PORTAL_PATHS: Record<PortalId, string[]> = {
   group: ["/", "/contact", "/japanese-training", "/lien-he"],
@@ -350,11 +416,6 @@ export function getNavigation(portal: PortalId): NavItem[] {
         href: portalPath("huongnghiep", "/news"),
         shortName: "Tin tức",
       },
-      {
-        name: "Tư vấn miễn phí",
-        href: portalPath("huongnghiep", "/contact"),
-        shortName: "Tư vấn",
-      },
     ];
   }
 
@@ -381,11 +442,6 @@ export function getNavigation(portal: PortalId): NavItem[] {
         shortName: "Tư vấn DN",
         hideBelowXl: true,
       },
-      {
-        name: "Tư vấn miễn phí",
-        href: portalPath("dichvu", "/contact"),
-        shortName: "Tư vấn",
-      },
     ];
   }
 
@@ -406,11 +462,6 @@ export function getNavigation(portal: PortalId): NavItem[] {
         name: "Tin tức",
         href: portalPath("luyenthi", "/news"),
         shortName: "Tin tức",
-      },
-      {
-        name: "Tư vấn miễn phí",
-        href: portalPath("luyenthi", "/contact"),
-        shortName: "Tư vấn",
       },
     ];
   }
@@ -440,7 +491,7 @@ export function getNavigation(portal: PortalId): NavItem[] {
     },
     {
       name: "Tư vấn miễn phí",
-      href: portalPath("group", "/contact"),
+      href: portalPath("group", "/#tu-van"),
       shortName: "Tư vấn",
     },
   ];

@@ -31,7 +31,7 @@ export const SECTION_META: Record<
     label: "Hero",
     description: "Banner / carousel đầu trang với thương hiệu và nút CTA",
     settings:
-      "Thương hiệu, tiêu đề, mô tả, prefix ảnh, CTA chính/phụ (chữ + link)",
+      "Thương hiệu, tiêu đề, mô tả, prefix ảnh, vị trí chữ/nút, CTA chính/phụ (chữ + link)",
   },
   rich_text: {
     label: "Nội dung chữ",
@@ -145,6 +145,7 @@ export const PAGE_SECTION_WHITELIST: Record<LayoutPageId, SectionType[]> = {
     "feature_grid",
     "cards",
     "testimonials",
+    "articles",
     "cta_form",
   ],
   luyenthi: [
@@ -202,6 +203,28 @@ export const savePageLayoutSchema = z.object({
 
 export type SavePageLayoutInput = z.infer<typeof savePageLayoutSchema>;
 
+/** Vị trí khối chữ + nút trong Hero (mặc định góc dưới trái). */
+export const HERO_CONTENT_POSITIONS = [
+  { value: "bottom-left", label: "Góc dưới bên trái" },
+  { value: "bottom-right", label: "Góc dưới bên phải" },
+  { value: "top-left", label: "Góc trên bên trái" },
+  { value: "top-right", label: "Góc trên bên phải" },
+  { value: "center", label: "Trung tâm" },
+] as const;
+
+export type HeroContentPosition =
+  (typeof HERO_CONTENT_POSITIONS)[number]["value"];
+
+export function normalizeHeroContentPosition(
+  raw: unknown,
+): HeroContentPosition {
+  const v = typeof raw === "string" ? raw.trim() : "";
+  if (HERO_CONTENT_POSITIONS.some((p) => p.value === v)) {
+    return v as HeroContentPosition;
+  }
+  return "bottom-left";
+}
+
 function nid(prefix: string) {
   return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 }
@@ -250,6 +273,7 @@ export function defaultPropsForType(
         title: "Tiêu đề hero",
         description: "Mô tả ngắn hỗ trợ tiêu đề.",
         imageTypePrefix: prefix,
+        contentPosition: "bottom-left",
         ctaPrimaryLabel: "Tìm hiểu thêm",
         ctaPrimaryHref: "/contact",
         ctaSecondaryLabel: "Liên hệ",
@@ -358,6 +382,180 @@ export function defaultCustomPageLayout(
   ];
 }
 
+/** Seed layout for migrated marketing pages (registry layoutKey). */
+export function defaultMarketingPageLayout(
+  template: LayoutPageId,
+  opts: {
+    title: string;
+    description?: string;
+    imagePrefix: string;
+    includeCta?: boolean;
+    includeArticles?: boolean;
+    articleCategory?: string;
+    defaultService?: string;
+  },
+): PageSection[] {
+  const base = defaultCustomPageLayout(template, opts);
+  let order = base.length;
+  if (opts.includeArticles) {
+    base.push(
+      createSection(
+        "articles",
+        {
+          title: "Tin tức & cập nhật",
+          description: "",
+          category:
+            opts.articleCategory ||
+            (template === "huongnghiep"
+              ? "study-abroad"
+              : template === "dichvu"
+                ? "soft-skills"
+                : template === "luyenthi"
+                  ? "japanese-training"
+                  : "japanese-training"),
+          limit: 6,
+        },
+        order++,
+        template,
+      ),
+    );
+  }
+  if (opts.includeCta !== false) {
+    base.push(
+      createSection(
+        "cta_form",
+        {
+          title: "Tư vấn miễn phí",
+          description:
+            "Để lại thông tin — đội ngũ Trí Nhân Academy sẽ liên hệ trong giờ hành chính.",
+          defaultService: opts.defaultService || "",
+        },
+        order++,
+        template,
+      ),
+    );
+  }
+  return base;
+}
+
+/**
+ * Defaults when page_layouts has no row yet for a registry marketing page.
+ * Keys match PageContentEntry.id / layoutKey.
+ */
+export function defaultLayoutForMarketingKey(
+  pageKey: string,
+  portal: string,
+): PageSection[] | null {
+  const template: LayoutPageId =
+    portal === "huongnghiep" ||
+    portal === "dichvu" ||
+    portal === "luyenthi" ||
+    portal === "group"
+      ? (portal as LayoutPageId)
+      : "group";
+
+  const seeds: Record<
+    string,
+    {
+      title: string;
+      description?: string;
+      imagePrefix: string;
+      includeCta?: boolean;
+      includeArticles?: boolean;
+      articleCategory?: string;
+      defaultService?: string;
+    }
+  > = {
+    "visa-services": {
+      title: "Dịch vụ visa",
+      description:
+        "Hỗ trợ hồ sơ visa du học, lao động và các loại thị thực liên quan.",
+      imagePrefix: "visa",
+      defaultService: "visa",
+    },
+    "group-contact": {
+      title: "Liên hệ với chúng tôi",
+      description: "Đội ngũ Trí Nhân Academy sẵn sàng tư vấn.",
+      imagePrefix: "contact",
+      includeCta: true,
+    },
+    "huongnghiep-contact": {
+      title: "Liên hệ — Hướng nghiệp",
+      description: "Tư vấn du học, đi làm và đào tạo nghề.",
+      imagePrefix: "contact",
+      defaultService: "study-abroad",
+    },
+    "dichvu-contact": {
+      title: "Liên hệ — Dịch vụ",
+      description: "Biên phiên dịch, kỹ năng mềm và tư vấn doanh nghiệp.",
+      imagePrefix: "contact",
+      defaultService: "interpreting",
+    },
+    "luyenthi-contact": {
+      title: "Liên hệ — Luyện thi",
+      description: "Hỗ trợ luyện đề và khóa học.",
+      imagePrefix: "contact",
+      defaultService: "online-exam",
+    },
+    "huongnghiep-news": {
+      title: "Tin tức hướng nghiệp",
+      description: "Cập nhật du học, việc làm và đào tạo nghề.",
+      imagePrefix: "huongnghiep",
+      includeArticles: true,
+      includeCta: false,
+      articleCategory: "study-abroad",
+    },
+    "luyenthi-news": {
+      title: "Tin tức luyện thi",
+      description: "Tin tức và mẹo luyện thi.",
+      imagePrefix: "exam",
+      includeArticles: true,
+      includeCta: false,
+      articleCategory: "japanese-training",
+    },
+    "section-du-hoc": {
+      title: "Du học",
+      description: "Lộ trình và hỗ trợ du học cùng Trí Nhân Academy.",
+      imagePrefix: "du-hoc",
+      defaultService: "study-abroad",
+    },
+    "section-di-lam": {
+      title: "Đi làm",
+      description: "Định hướng việc làm và phát triển nghề nghiệp.",
+      imagePrefix: "di-lam",
+      defaultService: "study-abroad",
+    },
+    "section-dao-tao-nghe": {
+      title: "Đào tạo nghề",
+      description: "Chương trình đào tạo nghề theo nhu cầu thực tế.",
+      imagePrefix: "dao-tao-nghe",
+      defaultService: "study-abroad",
+    },
+    "section-bien-phien-dich": {
+      title: "Biên phiên dịch",
+      description: "Dịch vụ biên phiên dịch chuyên nghiệp.",
+      imagePrefix: "bien-phien-dich",
+      defaultService: "interpreting",
+    },
+    "section-ky-nang-mem": {
+      title: "Kỹ năng mềm",
+      description: "Đào tạo kỹ năng mềm cho cá nhân và tổ chức.",
+      imagePrefix: "ky-nang-mem",
+      defaultService: "soft-skills",
+    },
+    "section-tu-van-doanh-nghiep": {
+      title: "Tư vấn doanh nghiệp",
+      description: "Giải pháp đào tạo và tư vấn cho doanh nghiệp.",
+      imagePrefix: "tu-van-doanh-nghiep",
+      defaultService: "enterprise",
+    },
+  };
+
+  const seed = seeds[pageKey];
+  if (!seed) return null;
+  return defaultMarketingPageLayout(template, seed);
+}
+
 /** Default layouts seed — mirrors current portal homes. */
 export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
   switch (page) {
@@ -374,7 +572,7 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
             ctaPrimaryLabel: "Đào tạo tiếng Nhật",
             ctaPrimaryHref: "https://tnjs.vn/",
             ctaSecondaryLabel: "Tư vấn miễn phí",
-            ctaSecondaryHref: "/contact",
+            ctaSecondaryHref: "/#tu-van",
           },
           0,
         ),

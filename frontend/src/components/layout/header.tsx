@@ -23,14 +23,15 @@ import {
   portalPath,
   filterNavByHiddenPaths,
   hiddenPathsForPortal,
+  applyNavLabelOverrides,
   stripPortalPrefix,
   resolvePortalFromPath,
   GROUP_CONTACT_PATH,
   type NavItem,
   type PortalId,
 } from "@/lib/portal";
+import { useHiddenCmsPages, useCmsPageLabels } from "@/hooks/useCmsPages";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
-import { useHiddenCmsPages } from "@/hooks/useCmsPages";
 import { TriNhanBrand, BRAND_FULL_NAME } from "@/components/TriNhanBrand";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 
@@ -70,7 +71,16 @@ function isActivePath(location: string, href: string) {
 function hubItemPortal(item: NavItem): PortalId | "contact" | null {
   if (item.external || /^https?:\/\//i.test(item.href)) return null;
   const path = item.href.split("?")[0]?.split("#")[0] || "/";
-  if (path === GROUP_CONTACT_PATH || path === "/contact") return "contact";
+  const hash = item.href.includes("#")
+    ? item.href.slice(item.href.indexOf("#") + 1)
+    : "";
+  if (
+    path === GROUP_CONTACT_PATH ||
+    path === "/contact" ||
+    (path === "/" && hash === "tu-van")
+  ) {
+    return "contact";
+  }
   return resolvePortalFromPath(path);
 }
 
@@ -81,10 +91,12 @@ function isHubItemActive(
 ): boolean {
   const kind = hubItemPortal(item);
   if (kind === "contact") {
-    return (
-      portal === "group" &&
-      (location === "/contact" || location === GROUP_CONTACT_PATH)
-    );
+    if (portal !== "group") return false;
+    if (location === "/contact" || location === GROUP_CONTACT_PATH) return true;
+    if (typeof window !== "undefined" && window.location.hash === "#tu-van") {
+      return location === "/" || location === "";
+    }
+    return false;
   }
   if (!kind) return false;
   return portal === kind;
@@ -162,9 +174,9 @@ function NavLinkItem({
             pill && active && "bg-[#00A651] text-white",
           )
         : cn(
-            "inline-flex items-center px-3.5 py-2 text-sm tracking-[0.01em]",
+            "inline-flex items-center px-3.5 py-2 text-[15px] xl:text-base font-semibold tracking-[0.01em]",
             respectHideBelowXl && item.hideBelowXl && "hidden xl:inline-flex",
-            pill && active && "rounded-full bg-[#00A651] px-3.5 text-white font-semibold",
+            pill && active && "rounded-full bg-[#00A651] px-3.5 text-white",
           ),
     mobile
       ? active
@@ -284,9 +296,14 @@ function HubNavLinks({
 }) {
   const { portal } = usePortal();
   const { data: hidden } = useHiddenCmsPages();
-  const navigation = filterNavByHiddenPaths(
-    getNavigation("group"),
-    hiddenPathsForPortal(hidden?.entries, "group"),
+  const { data: pageLabels } = useCmsPageLabels();
+  const navigation = applyNavLabelOverrides(
+    filterNavByHiddenPaths(
+      getNavigation("group"),
+      hiddenPathsForPortal(hidden?.entries, "group"),
+    ),
+    pageLabels?.entries,
+    "group",
   );
 
   if (mobile) {
@@ -301,9 +318,13 @@ function HubNavLinks({
             portal === kind &&
             portal !== "group";
           const children = showChildren
-            ? filterNavByHiddenPaths(
-                getNavigation(portal),
-                hiddenPathsForPortal(hidden?.entries, portal),
+            ? applyNavLabelOverrides(
+                filterNavByHiddenPaths(
+                  getNavigation(portal),
+                  hiddenPathsForPortal(hidden?.entries, portal),
+                ),
+                pageLabels?.entries,
+                portal,
               )
             : [];
 
@@ -366,11 +387,16 @@ function PortalChildNavLinks({
 }) {
   const { portal } = usePortal();
   const { data: hidden } = useHiddenCmsPages();
+  const { data: pageLabels } = useCmsPageLabels();
   if (portal === "group") return null;
 
-  const navigation = filterNavByHiddenPaths(
-    getNavigation(portal),
-    hiddenPathsForPortal(hidden?.entries, portal),
+  const navigation = applyNavLabelOverrides(
+    filterNavByHiddenPaths(
+      getNavigation(portal),
+      hiddenPathsForPortal(hidden?.entries, portal),
+    ),
+    pageLabels?.entries,
+    portal,
   );
 
   return (
@@ -705,30 +731,33 @@ export function Header() {
         Bỏ qua điều hướng
       </a>
 
-      {/* Desktop: hub portals always; child row when inside a product portal */}
-      {isSubPortal ? (
-        <nav
+      {/* Desktop: fixed primary row; child row expands downward only */}
+      <nav className="mx-auto hidden w-full lg:block" aria-label="Điều hướng chính">
+        <div
           className={cn(
-            "mx-auto hidden lg:grid w-full max-w-[90rem] px-5 sm:px-8 lg:px-10",
-            "grid-cols-[auto_minmax(0,1fr)_auto] grid-rows-2 gap-x-8 xl:gap-x-12 items-center",
-            "transition-[padding] duration-300 ease-out",
-            scrolled ? "py-1.5" : "py-2.5",
+            "mx-auto grid w-full max-w-[90rem] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-x-6 xl:gap-x-10 px-5 sm:px-8 lg:px-10 transition-[height] duration-300 ease-out",
+            scrolled
+              ? "h-[var(--header-primary-height-scrolled)]"
+              : "h-[var(--header-primary-height)]",
           )}
-          aria-label="Điều hướng chính"
         >
-          <div className="row-span-2 self-center">
-            <Brand portal compact={scrolled} showTagline={!scrolled} />
-          </div>
-
-          <div className="flex min-h-10 min-w-0 items-center pl-6 xl:pl-10">
-            <HubNavLinks
-              location={location}
-              respectHideBelowXl={false}
-              className="flex w-full min-w-0 flex-nowrap items-center gap-x-1 overflow-x-auto overscroll-x-contain xl:gap-x-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          <div className="flex min-w-0 items-center justify-start">
+            <Brand
+              portal={isSubPortal}
+              compact={scrolled}
+              showTagline={!scrolled && !isSubPortal}
             />
           </div>
 
-          <div className="row-span-2 self-center flex items-center gap-3 shrink-0">
+          <div className="flex min-w-0 items-center justify-center">
+            <HubNavLinks
+              location={location}
+              respectHideBelowXl={false}
+              className="flex flex-nowrap items-center justify-center gap-x-0.5 xl:gap-x-1"
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 shrink-0">
             {portal === "luyenthi" && (
               <div className="flex h-10 items-center">
                 <CartButton />
@@ -736,35 +765,32 @@ export function Header() {
             )}
             <AuthActions user={user} onLogout={handleLogout} />
           </div>
+        </div>
 
-          <div className="flex min-h-11 min-w-0 items-center border-t border-border/40 pl-6 xl:pl-10">
-            <PortalChildNavLinks
-              location={location}
-              stacked
-              className="flex w-full min-w-0 flex-nowrap items-center gap-x-2.5 overflow-x-auto overscroll-x-contain xl:gap-x-4 2xl:gap-x-6 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-            />
-          </div>
-        </nav>
-      ) : (
-        <nav
+        <div
           className={cn(
-            "mx-auto hidden lg:flex w-full max-w-[90rem] items-center justify-between gap-6 sm:gap-8 px-5 sm:px-8 lg:px-10 transition-[height,padding] duration-300 ease-out",
-            scrolled
-              ? "h-[var(--header-height-scrolled)]"
-              : "h-[var(--header-height)]",
+            "grid w-full border-border/35 transition-[grid-template-rows,opacity,border-color] duration-300 ease-out",
+            isSubPortal
+              ? "grid-rows-[1fr] opacity-100 border-t"
+              : "grid-rows-[0fr] opacity-0 border-t border-transparent pointer-events-none",
           )}
-          aria-label="Điều hướng chính"
+          aria-hidden={!isSubPortal}
         >
-          <Brand compact={scrolled} />
-          <HubNavLinks
-            location={location}
-            className="flex flex-1 justify-center gap-1 xl:gap-1.5"
-          />
-          <div className="flex items-center gap-4 shrink-0">
-            <AuthActions user={user} onLogout={handleLogout} />
+          <div className="min-h-0 overflow-hidden">
+            <div
+              className="mx-auto flex h-[var(--header-child-row-height)] w-full max-w-[90rem] items-center justify-center px-5 sm:px-8 lg:px-10"
+            >
+              {isSubPortal ? (
+                <PortalChildNavLinks
+                  location={location}
+                  stacked
+                  className="flex max-w-[min(100vw-12rem,42rem)] flex-nowrap items-center justify-center gap-x-1.5 overflow-x-auto overscroll-x-contain xl:gap-x-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                />
+              ) : null}
+            </div>
           </div>
-        </nav>
-      )}
+        </div>
+      </nav>
 
       {/* Mobile / tablet bar */}
       <nav

@@ -20,7 +20,15 @@ import {
   listHiddenPageIds,
   listHiddenPublicPathEntries,
 } from "./cmsHiddenPages";
+import {
+  listPageLabelOverrides,
+  listPageLabelPathEntries,
+  upsertPageLabelSchema,
+  upsertRegistryPageLabel,
+  clearRegistryPageLabel,
+} from "./cmsPageLabels";
 import { cmsPageToContentEntry } from "@shared/cmsPages";
+import { getPageContentEntry } from "@shared/pageContentRegistry";
 import { getSiteSettings, upsertSiteSettings } from "./siteSettings";
 import {
   getMonthlyAnalytics,
@@ -3268,6 +3276,73 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  /** Display-name overrides for static registry pages (Cpanel + header). */
+  app.get("/api/cms-pages/labels", async (_req, res) => {
+    try {
+      const labels = await listPageLabelOverrides();
+      const entries = await listPageLabelPathEntries();
+      res.json({ labels, entries });
+    } catch (error) {
+      console.error("Error fetching cms page labels:", error);
+      res.status(500).json({ message: "Không thể tải tên trang" });
+    }
+  });
+
+  app.put(
+    "/api/cms-pages/labels/:id",
+    requireAdminOrManager,
+    async (req, res) => {
+      try {
+        const { label } = upsertPageLabelSchema.parse(req.body);
+        const updated = await upsertRegistryPageLabel(req.params.id, label);
+        if (!updated) {
+          const entry = getPageContentEntry(req.params.id);
+          if (!entry) {
+            return res.status(404).json({ message: "Không tìm thấy trang" });
+          }
+          return res.status(400).json({
+            message: "Trang tùy chỉnh hãy dùng API cập nhật cms-pages",
+          });
+        }
+        res.json(updated);
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          return res.status(400).json({
+            message: error.errors[0]?.message || "Dữ liệu không hợp lệ",
+          });
+        }
+        const msg =
+          error instanceof Error ? error.message : "Không thể đổi tên trang";
+        console.error("Error updating cms page label:", error);
+        res.status(400).json({ message: msg });
+      }
+    },
+  );
+
+  app.delete(
+    "/api/cms-pages/labels/:id",
+    requireAdminOrManager,
+    async (req, res) => {
+      try {
+        const entry = getPageContentEntry(req.params.id);
+        if (!entry || entry.isCustom) {
+          return res.status(404).json({ message: "Không tìm thấy trang hệ thống" });
+        }
+        await clearRegistryPageLabel(req.params.id);
+        res.json({
+          pageId: entry.id,
+          label: entry.label,
+          publicPath: entry.publicPath,
+          portal: entry.portal,
+          reset: true,
+        });
+      } catch (error) {
+        console.error("Error clearing cms page label:", error);
+        res.status(500).json({ message: "Không thể khôi phục tên mặc định" });
+      }
+    },
+  );
+
   app.get("/api/cms-pages/by-slug/:slug", async (req, res) => {
     try {
       const portal = normalizePortalAlias(req.query.portal as string) || req.portal;
@@ -4203,7 +4278,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate unique filename
       const timestamp = Date.now();
-      const fileExtension = file.originalname.split('.').pop();
+      let uploadBuffer = file.buffer;
+      let uploadMime = file.mimetype;
+      let fileExtension = file.originalname.split(".").pop() || "bin";
+
+      // Logo mark: resize/compress so upload + header decode stay light
+      if (imageType === "site-logo" || imageType === "site-logo-footer") {
+        try {
+          const processed = await processAvatarImage(file.buffer);
+          uploadBuffer = processed.buffer;
+          uploadMime = processed.contentType;
+          fileExtension = processed.ext;
+        } catch (err) {
+          console.error("Logo image process failed:", err);
+          return res.status(400).json({
+            error: "File ảnh không hợp lệ. Hãy dùng JPG, PNG hoặc WebP.",
+          });
+        }
+      }
+
       const uniqueFileName = `${imageType}-${timestamp}.${fileExtension}`;
       
       // Upload directly to R2 from server using multiR2Storage
@@ -4214,7 +4307,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         maxSizeBytes: 10 * 1024 * 1024
       };
       
-      const uploadResult = await multiR2Storage.uploadFile(file.buffer, uniqueFileName, file.mimetype, uploadConfig);
+      const uploadResult = await multiR2Storage.uploadFile(uploadBuffer, uniqueFileName, uploadMime, uploadConfig);
       
       if (!uploadResult.success) {
         return res.status(500).json({ error: uploadResult.error || "Upload to R2 failed" });

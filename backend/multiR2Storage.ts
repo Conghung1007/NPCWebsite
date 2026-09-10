@@ -133,16 +133,34 @@ export class MultiR2StorageService {
     }
   }
 
-  /** List objects under a prefix (single page, for UI). */
+  /** List objects under a prefix (first page only — for image picker UI). */
   async listFiles(provider: string, prefix: string = ""): Promise<FileInfo[]> {
-    const objects = await this.listAllObjects(provider, prefix, 100);
-    return objects.map((obj) => ({
-      name: obj.key.split("/").pop() || obj.key,
-      key: obj.key,
-      url: `/api/proxy-image/${provider}/${obj.key}`,
-      lastModified: obj.lastModified.toISOString(),
-      size: obj.size,
-    }));
+    const config = EXTERNAL_R2_CONFIGS[provider];
+    if (!config) {
+      throw new Error(`Provider ${provider} not found`);
+    }
+    const client = r2Manager.getClient(provider);
+    if (!client) {
+      throw new Error(`Client for provider ${provider} not available`);
+    }
+
+    const response = await client.send(
+      new ListObjectsV2Command({
+        Bucket: config.bucketName,
+        Prefix: prefix,
+        MaxKeys: 60,
+      }),
+    );
+
+    return (response.Contents || [])
+      .filter((obj) => obj.Key && !obj.Key.endsWith("/") && obj.Size)
+      .map((obj) => ({
+        name: obj.Key!.split("/").pop() || obj.Key!,
+        key: obj.Key!,
+        url: `/api/proxy-image/${provider}/${obj.Key}`,
+        lastModified: (obj.LastModified || new Date(0)).toISOString(),
+        size: obj.Size || 0,
+      }));
   }
 
   /** Paginated list of all objects under a prefix. */

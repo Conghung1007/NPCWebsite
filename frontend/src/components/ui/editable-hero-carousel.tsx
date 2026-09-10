@@ -30,7 +30,7 @@ export function EditableHeroCarousel({
   imageTypePrefix,
   altPrefix = "Hero",
   className,
-  minHeightClassName = "min-h-[calc(78svh-var(--header-height))]",
+  minHeightClassName = "site-hero",
   overlayClassName,
   autoplayMs = 6000,
   children,
@@ -112,7 +112,7 @@ export function EditableHeroCarousel({
   return (
     <section
       className={cn(
-        "relative text-white overflow-hidden flex items-center",
+        "relative text-white overflow-hidden",
         minHeightClassName,
         className,
       )}
@@ -122,12 +122,12 @@ export function EditableHeroCarousel({
           {slides.map((slide) => (
             <div
               key={slide.type}
-              className="relative min-w-0 flex-[0_0_100%] min-h-[calc(78svh-var(--header-height))]"
+              className="relative min-w-0 flex-[0_0_100%] min-h-[var(--site-hero-height)]"
             >
               <img
                 src={slide.url}
                 alt=""
-                className="absolute inset-0 w-full h-full object-cover"
+                className="hero-kenburns absolute inset-0 w-full h-full object-cover"
                 onError={(e) => {
                   e.currentTarget.src =
                     "https://images.unsplash.com/photo-1528164344705-47542687000d?auto=format&fit=crop&w=2092&q=80";
@@ -227,8 +227,8 @@ export function EditableHeroCarousel({
         </>
       )}
 
-      <div className="relative z-[1] w-full pointer-events-none">
-        <div className="pointer-events-auto">{children}</div>
+      <div className="relative z-[1] w-full min-h-[inherit] pointer-events-none">
+        <div className="pointer-events-auto h-full min-h-[inherit]">{children}</div>
       </div>
     </section>
   );

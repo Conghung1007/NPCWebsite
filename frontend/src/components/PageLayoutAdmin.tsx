@@ -41,9 +41,11 @@ import {
   LAYOUT_PAGE_IMAGE_PREFIX,
   PAGE_SECTION_WHITELIST,
   SECTION_META,
+  HERO_CONTENT_POSITIONS,
   collectImageTypesFromSections,
   createSection,
   isLayoutPageId,
+  normalizeHeroContentPosition,
   type LayoutPageId,
   type PageSection,
   type SectionType,
@@ -81,7 +83,10 @@ function sectionSummary(section: PageSection): string {
     case "hero": {
       const brand = String(p.brandName || "").trim();
       const prefix = String(p.imageTypePrefix || "").trim();
-      return [brand, title, prefix ? `ảnh: ${prefix}-*` : null]
+      const pos = normalizeHeroContentPosition(p.contentPosition);
+      const posLabel =
+        HERO_CONTENT_POSITIONS.find((x) => x.value === pos)?.label || pos;
+      return [brand, title, posLabel, prefix ? `ảnh: ${prefix}-*` : null]
         .filter(Boolean)
         .join(" · ");
     }
@@ -824,6 +829,26 @@ function SectionPropsForm({
             onChange={(e) => set("description", e.target.value)}
             rows={3}
           />
+        </Field>
+        <Field label="Vị trí chữ & nút">
+          <Select
+            value={normalizeHeroContentPosition(p.contentPosition)}
+            onValueChange={(v) => set("contentPosition", v)}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {HERO_CONTENT_POSITIONS.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <p className="text-xs text-muted-foreground">
+            Mặc định: góc dưới bên trái. Chọn góc hoặc trung tâm banner.
+          </p>
         </Field>
         <Field label="Prefix ảnh hero">
           <Input

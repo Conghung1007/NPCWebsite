@@ -25,10 +25,15 @@ export function useSaveSiteSettings(portal: PortalId) {
         ...payload,
         portal,
       });
-      return res.json();
+      return res.json() as Promise<SiteSettings>;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/site-settings"] });
+    onSuccess: (saved) => {
+      queryClient.setQueryData(["/api/site-settings", portal], saved);
+      // Soft refresh other portal caches without wiping current UI
+      void queryClient.invalidateQueries({
+        queryKey: ["/api/site-settings"],
+        refetchType: "none",
+      });
     },
   });
 }

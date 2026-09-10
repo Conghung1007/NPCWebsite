@@ -29,22 +29,36 @@ img, video, iframe, object, embed {
 
 /* Site header — fixed; expanded height reserved for main offset */
 :root {
-  --header-height: 5.75rem; /* ~92px desktop expanded */
-  --header-height-scrolled: 4rem; /* 64px sticky compact */
+  --header-primary-height: 5.75rem; /* top bar: brand + hub + auth */
+  --header-primary-height-scrolled: 4rem;
+  --header-child-row-height: 2.75rem; /* sub-portal child links below */
+  --header-height: var(--header-primary-height);
+  --header-height-scrolled: var(--header-primary-height-scrolled);
+  /*
+   * Hero size matches tnjs.vn homepage banner (assets 1366×565).
+   * Floor keeps room for overlay copy/forms on narrow screens.
+   */
+  --site-hero-height: max(22rem, calc(100vw * 565 / 1366));
 }
 
 @media (max-width: 640px) {
   :root {
-    --header-height: 4.25rem; /* 68px */
-    --header-height-scrolled: 3.5rem; /* 56px */
+    --header-primary-height: 4.25rem;
+    --header-primary-height-scrolled: 3.5rem;
+    --header-height: var(--header-primary-height);
+    --header-height-scrolled: var(--header-primary-height-scrolled);
   }
 }
 
-/* Sub-portals (TNJS / Du học / Đào tạo): two-row desktop header */
+/* Sub-portals: grow header downward only — primary row stays put */
 @media (min-width: 1024px) {
   :root:has(.site-header--stacked) {
-    --header-height: 7.25rem;
-    --header-height-scrolled: 6rem;
+    --header-height: calc(
+      var(--header-primary-height) + var(--header-child-row-height)
+    );
+    --header-height-scrolled: calc(
+      var(--header-primary-height-scrolled) + var(--header-child-row-height)
+    );
   }
 }
 
@@ -193,6 +207,11 @@ html[data-portal="dichvu"] {
 }
 
 @layer components {
+  /* Full-bleed hero — same visual height ratio as https://tnjs.vn/ */
+  .site-hero {
+    min-height: var(--site-hero-height);
+  }
+
   .hero-gradient {
     background: linear-gradient(135deg, hsl(142, 76%, 36%) 0%, hsl(142, 69%, 58%) 100%);
   }
@@ -281,6 +300,82 @@ html[data-portal="dichvu"] {
     }
   }
 
+  /* Animaxxing-inspired: choreographed hero entrance (stagger timeline) */
+  @keyframes motionHeroIn {
+    from {
+      opacity: 0;
+      transform: translate3d(0, 22px, 0);
+      filter: blur(4px);
+    }
+    to {
+      opacity: 1;
+      transform: translate3d(0, 0, 0);
+      filter: blur(0);
+    }
+  }
+
+  @keyframes heroKenBurns {
+    0% {
+      transform: scale(1.04) translate3d(0, 0, 0);
+    }
+    100% {
+      transform: scale(1.12) translate3d(-1.2%, 0.8%, 0);
+    }
+  }
+
+  .motion-hero-stage .motion-hero-item {
+    opacity: 0;
+    animation: motionHeroIn 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .motion-hero-stage .motion-hero-item:nth-child(1) {
+    animation-delay: 0.05s;
+  }
+  .motion-hero-stage .motion-hero-item:nth-child(2) {
+    animation-delay: 0.16s;
+  }
+  .motion-hero-stage .motion-hero-item:nth-child(3) {
+    animation-delay: 0.28s;
+  }
+  .motion-hero-stage .motion-hero-item:nth-child(4) {
+    animation-delay: 0.4s;
+  }
+
+  .hero-kenburns {
+    animation: heroKenBurns 22s ease-in-out infinite alternate;
+    will-change: transform;
+  }
+
+  .motion-press {
+    transition:
+      transform 0.28s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.28s ease,
+      background-color 0.2s ease,
+      color 0.2s ease,
+      opacity 0.2s ease;
+  }
+
+  .motion-press:hover {
+    transform: translateY(-2px) scale(1.02);
+  }
+
+  .motion-press:active {
+    transform: translateY(0) scale(0.98);
+  }
+
+  .motion-card {
+    transition:
+      transform 0.35s cubic-bezier(0.22, 1, 0.36, 1),
+      box-shadow 0.35s ease;
+  }
+
+  .motion-card:hover {
+    transform: translateY(-6px);
+    box-shadow:
+      0 18px 40px -18px rgba(0, 0, 0, 0.28),
+      0 8px 16px -8px rgba(0, 0, 0, 0.12);
+  }
+
   @keyframes routeProgress {
     0% {
       transform: scaleX(0.08);
@@ -311,10 +406,10 @@ html[data-portal="dichvu"] {
 
   .reveal-section {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(28px);
     transition:
-      opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
-      transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+      opacity 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
     will-change: opacity, transform;
   }
 
@@ -322,6 +417,45 @@ html[data-portal="dichvu"] {
     opacity: 1;
     transform: translateY(0);
     will-change: auto;
+  }
+
+  /* Stagger children when section enters (Animaxxing-style cascade) */
+  .reveal-section .reveal-child {
+    opacity: 0;
+    transform: translateY(16px);
+    transition:
+      opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .reveal-section.is-inview .reveal-child {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  .reveal-section.is-inview .reveal-child:nth-child(1) {
+    transition-delay: 0.04s;
+  }
+  .reveal-section.is-inview .reveal-child:nth-child(2) {
+    transition-delay: 0.1s;
+  }
+  .reveal-section.is-inview .reveal-child:nth-child(3) {
+    transition-delay: 0.16s;
+  }
+  .reveal-section.is-inview .reveal-child:nth-child(4) {
+    transition-delay: 0.22s;
+  }
+  .reveal-section.is-inview .reveal-child:nth-child(5) {
+    transition-delay: 0.28s;
+  }
+  .reveal-section.is-inview .reveal-child:nth-child(6) {
+    transition-delay: 0.34s;
+  }
+  .reveal-section.is-inview .reveal-child:nth-child(7) {
+    transition-delay: 0.4s;
+  }
+  .reveal-section.is-inview .reveal-child:nth-child(8) {
+    transition-delay: 0.46s;
   }
 
   .route-progress {
@@ -406,8 +540,21 @@ html[data-portal="dichvu"] {
     }
 
     .reveal-section {
-      transform: translateY(12px);
-      transition-duration: 0.4s;
+      transform: translateY(16px);
+      transition-duration: 0.45s;
+    }
+
+    .motion-hero-stage .motion-hero-item {
+      animation-duration: 0.5s;
+      filter: none;
+    }
+
+    .hero-kenburns {
+      animation-duration: 28s;
+    }
+
+    .motion-card:hover {
+      transform: translateY(-3px);
     }
   }
 
@@ -416,14 +563,29 @@ html[data-portal="dichvu"] {
     .page-enter,
     .route-progress,
     .page-loading-hero,
-    .page-loading-card {
+    .page-loading-card,
+    .motion-hero-stage .motion-hero-item,
+    .hero-kenburns {
       animation: none !important;
     }
 
-    .reveal-section {
+    .motion-hero-stage .motion-hero-item {
+      opacity: 1;
+      filter: none;
+      transform: none;
+    }
+
+    .reveal-section,
+    .reveal-section .reveal-child {
       opacity: 1;
       transform: none;
       transition: none;
+    }
+
+    .motion-press:hover,
+    .motion-press:active,
+    .motion-card:hover {
+      transform: none;
     }
 
     html {

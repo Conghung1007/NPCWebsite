@@ -4,10 +4,10 @@ import { MapPin, Phone, Mail, Facebook, Youtube, Linkedin } from "lucide-react";
 import { useContactInfo } from "@/hooks/useContactInfo";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
 import { usePortal } from "@/contexts/PortalContext";
-import { getFooterServices, filterNavByHiddenPaths, hiddenPathsForPortal } from "@/lib/portal";
+import { getFooterServices, filterNavByHiddenPaths, hiddenPathsForPortal, applyNavLabelOverrides } from "@/lib/portal";
 import { TNJS } from "@/lib/tnjsTheme";
 import { TriNhanBrand, BRAND_FULL_NAME } from "@/components/TriNhanBrand";
-import { useHiddenCmsPages } from "@/hooks/useCmsPages";
+import { useHiddenCmsPages, useCmsPageLabels } from "@/hooks/useCmsPages";
 import { normalizeContactContent } from "@/lib/googleMapsEmbed";
 
 function SocialIcon({ href, label, children }: { href: string; label: string; children: ReactNode }) {
@@ -30,9 +30,14 @@ export function Footer() {
   const { portal, meta } = usePortal();
   const { data: settings } = useSiteSettings(portal);
   const { data: hidden } = useHiddenCmsPages();
-  const services = filterNavByHiddenPaths(
-    getFooterServices(portal),
-    hiddenPathsForPortal(hidden?.entries, portal),
+  const { data: pageLabels } = useCmsPageLabels();
+  const services = applyNavLabelOverrides(
+    filterNavByHiddenPaths(
+      getFooterServices(portal),
+      hiddenPathsForPortal(hidden?.entries, portal),
+    ),
+    pageLabels?.entries,
+    portal,
   );
 
   const getContactIcon = (type: string) => {
@@ -57,24 +62,12 @@ export function Footer() {
         <div className="mx-auto mb-8 grid w-4/5 max-w-4/5 grid-cols-1 gap-6 sm:grid-cols-2 lg:mb-12 lg:grid-cols-3 lg:gap-8">
           <div className="sm:col-span-2 lg:col-span-1">
             <div className="mb-4 lg:mb-6">
-              {settings?.logoFooterUrl?.trim() || settings?.logoUrl?.trim() ? (
-                <img
-                  src={
-                    settings.logoFooterUrl?.trim() ||
-                    settings.logoUrl?.trim() ||
-                    ""
-                  }
-                  alt={settings?.siteName || BRAND_FULL_NAME}
-                  className="h-10 w-auto max-w-[14rem] object-contain object-left sm:h-12"
-                />
-              ) : (
-                <TriNhanBrand
-                  size="md"
-                  tone="onDark"
-                  preferDefaultImage={false}
-                  subtitle={portal === "group" ? undefined : meta.label}
-                />
-              )}
+              <TriNhanBrand
+                size="md"
+                tone="onDark"
+                imageUrl={settings?.logoUrl?.trim() || undefined}
+                subtitle={portal === "group" ? undefined : meta.label}
+              />
             </div>
             <p className="mb-4 text-sm text-white/60 sm:text-base lg:mb-6">
               {meta.tagline}.

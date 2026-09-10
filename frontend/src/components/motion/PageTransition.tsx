@@ -6,8 +6,8 @@ interface PageTransitionProps {
 }
 
 /**
- * Soft page enter on route change (opacity + slight rise).
- * Keyed by location so each navigation remounts the animation.
+ * Soft page enter on route change + scroll-reveal choreography.
+ * Inspired by directed motion (stagger / timeline feel) without heavy deps.
  */
 export function PageTransition({ children }: PageTransitionProps) {
   const [location] = useLocation();
@@ -22,7 +22,6 @@ export function PageTransition({ children }: PageTransitionProps) {
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) return;
 
-    // Scroll-reveal for sections after paint (skip first/hero — already in page-enter)
     const sections = Array.from(
       root.querySelectorAll<HTMLElement>("section"),
     );
@@ -52,9 +51,9 @@ export function PageTransition({ children }: PageTransitionProps) {
       },
       {
         root: null,
-        // Earlier trigger on mobile so content doesn't pop in late
-        rootMargin: "0px 0px -8% 0px",
-        threshold: 0.08,
+        // Trigger a bit earlier so stagger children feel intentional
+        rootMargin: "0px 0px -12% 0px",
+        threshold: 0.06,
       },
     );
 
