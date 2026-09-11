@@ -7,6 +7,10 @@ import { ChevronUp } from "lucide-react";
 import { PageTransition } from "@/components/motion/PageTransition";
 import { PageViewTracker } from "@/components/PageViewTracker";
 import { SitePopup } from "@/components/SitePopup";
+import {
+  FloatingContactWidgets,
+  useFloatStackCount,
+} from "@/components/FloatingContactWidgets";
 import { cn } from "@/lib/utils";
 
 interface LayoutProps {
@@ -16,8 +20,16 @@ interface LayoutProps {
 export function Layout({ children }: LayoutProps) {
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [location] = useLocation();
+  const floatCount = useFloatStackCount();
+  const scrollTopBottom =
+    floatCount <= 0
+      ? "bottom-4 sm:bottom-6"
+      : floatCount === 1
+        ? "bottom-28 sm:bottom-32"
+        : floatCount === 2
+          ? "bottom-40 sm:bottom-44"
+          : "bottom-[17.5rem] sm:bottom-[19rem]";
 
-  // Instant jump to top on navigate — smoother with page-enter than smooth-scroll fight
   useEffect(() => {
     window.scrollTo(0, 0);
     document.documentElement.scrollTop = 0;
@@ -64,11 +76,13 @@ export function Layout({ children }: LayoutProps) {
         <PageTransition>{children}</PageTransition>
       </main>
       <Footer />
+      <FloatingContactWidgets />
 
       <Button
         onClick={scrollToTop}
         className={cn(
-          "fixed bottom-4 right-4 sm:bottom-6 sm:right-6 w-12 h-12 rounded-full shadow-lg z-[100]",
+          "fixed right-4 sm:right-6 w-12 h-12 rounded-full shadow-lg z-[100]",
+          scrollTopBottom,
           "bg-primary hover:bg-[hsl(142,76%,30%)] text-white",
           "transition-all duration-300 ease-out",
           showScrollTop

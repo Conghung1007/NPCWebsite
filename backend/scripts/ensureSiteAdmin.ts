@@ -43,8 +43,44 @@ async function main() {
         popup_image_url text NOT NULL DEFAULT '',
         popup_link_url text NOT NULL DEFAULT '',
         popup_delay_ms integer NOT NULL DEFAULT 1500,
+        float_widgets_enabled boolean NOT NULL DEFAULT true,
+        float_cta_enabled boolean NOT NULL DEFAULT true,
+        float_cta_label text NOT NULL DEFAULT 'Tư vấn miễn phí',
+        float_cta_href text NOT NULL DEFAULT '/#tu-van',
+        float_cta_image_url text NOT NULL DEFAULT '',
+        float_messenger_enabled boolean NOT NULL DEFAULT true,
+        float_messenger_url text NOT NULL DEFAULT '',
+        float_zalo_enabled boolean NOT NULL DEFAULT true,
+        float_call_enabled boolean NOT NULL DEFAULT true,
         updated_at timestamp NOT NULL DEFAULT now()
       )
+    `);
+    await client.query(`
+      ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_widgets_enabled boolean NOT NULL DEFAULT true
+    `);
+    await client.query(`
+      ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_cta_enabled boolean NOT NULL DEFAULT true
+    `);
+    await client.query(`
+      ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_cta_label text NOT NULL DEFAULT 'Tư vấn miễn phí'
+    `);
+    await client.query(`
+      ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_cta_href text NOT NULL DEFAULT '/#tu-van'
+    `);
+    await client.query(`
+      ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_cta_image_url text NOT NULL DEFAULT ''
+    `);
+    await client.query(`
+      ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_messenger_enabled boolean NOT NULL DEFAULT true
+    `);
+    await client.query(`
+      ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_messenger_url text NOT NULL DEFAULT ''
+    `);
+    await client.query(`
+      ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_zalo_enabled boolean NOT NULL DEFAULT true
+    `);
+    await client.query(`
+      ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_call_enabled boolean NOT NULL DEFAULT true
     `);
     await client.query(`
       CREATE UNIQUE INDEX IF NOT EXISTS site_settings_portal_idx

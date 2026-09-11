@@ -22,6 +22,7 @@ import {
   normalizeGoogleMapsEmbedUrl,
   resolveOfficeMapEmbed,
 } from "@/lib/googleMapsEmbed";
+import { FloatingContactAdmin } from "@/components/FloatingContactAdmin";
 
 export function ContactInfoManager() {
   const { toast } = useToast();
@@ -239,6 +240,7 @@ export function ContactInfoManager() {
 
   return (
     <div className="space-y-6">
+      <FloatingContactAdmin />
       <Card>
         <CardHeader>
           <div className="flex justify-between items-start gap-4">

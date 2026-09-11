@@ -195,6 +195,16 @@ export const siteSettings = pgTable(
     popupImageUrl: text("popup_image_url").notNull().default(""),
     popupLinkUrl: text("popup_link_url").notNull().default(""),
     popupDelayMs: integer("popup_delay_ms").notNull().default(1500),
+    /** TNJS-style floating contact widgets */
+    floatWidgetsEnabled: boolean("float_widgets_enabled").notNull().default(true),
+    floatCtaEnabled: boolean("float_cta_enabled").notNull().default(true),
+    floatCtaLabel: text("float_cta_label").notNull().default("Tư vấn miễn phí"),
+    floatCtaHref: text("float_cta_href").notNull().default("/#tu-van"),
+    floatCtaImageUrl: text("float_cta_image_url").notNull().default(""),
+    floatMessengerEnabled: boolean("float_messenger_enabled").notNull().default(true),
+    floatMessengerUrl: text("float_messenger_url").notNull().default(""),
+    floatZaloEnabled: boolean("float_zalo_enabled").notNull().default(true),
+    floatCallEnabled: boolean("float_call_enabled").notNull().default(true),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({

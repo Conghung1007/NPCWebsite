@@ -529,6 +529,43 @@ html[data-portal="dichvu"] {
     animation-delay: 0.2s;
   }
 
+  /* TNJS-style pulsing call FAB */
+  .float-call-btn {
+    background: transparent;
+    overflow: visible;
+  }
+
+  .float-call-ring {
+    position: absolute;
+    inset: 0;
+    border-radius: 9999px;
+    background: rgba(0, 166, 81, 0.45);
+    animation: floatCallPulse 1.8s ease-out infinite;
+  }
+
+  .float-call-ring--delay {
+    animation-delay: 0.6s;
+  }
+
+  @keyframes floatCallPulse {
+    0% {
+      transform: scale(1);
+      opacity: 0.7;
+    }
+    100% {
+      transform: scale(1.85);
+      opacity: 0;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .float-call-ring,
+    .float-call-ring--delay {
+      animation: none;
+      opacity: 0;
+    }
+  }
+
   /* Mobile: shorter / subtler motion */
   @media (max-width: 640px) {
     .page-enter {

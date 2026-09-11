@@ -1,5 +1,5 @@
 import { eq } from "drizzle-orm";
-import { db } from "./db";
+import { db, pool } from "./db";
 import { siteSettings, type SiteSetting } from "@shared/schema";
 import {
   mergeSiteSettings,
@@ -7,6 +7,36 @@ import {
   type SiteSettingsInput,
 } from "@shared/siteSettings";
 import type { PortalId } from "@shared/portal";
+
+let floatColumnsReady: Promise<void> | null = null;
+
+/** Idempotent ALTER for floating-widget columns (production may lag drizzle push). */
+export function ensureFloatWidgetColumns(): Promise<void> {
+  if (!floatColumnsReady) {
+    floatColumnsReady = (async () => {
+      const alters = [
+        `ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_widgets_enabled boolean NOT NULL DEFAULT true`,
+        `ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_cta_enabled boolean NOT NULL DEFAULT true`,
+        `ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_cta_label text NOT NULL DEFAULT 'Tư vấn miễn phí'`,
+        `ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_cta_href text NOT NULL DEFAULT '/#tu-van'`,
+        `ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_cta_image_url text NOT NULL DEFAULT ''`,
+        `ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_messenger_enabled boolean NOT NULL DEFAULT true`,
+        `ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_messenger_url text NOT NULL DEFAULT ''`,
+        `ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_zalo_enabled boolean NOT NULL DEFAULT true`,
+        `ALTER TABLE site_settings ADD COLUMN IF NOT EXISTS float_call_enabled boolean NOT NULL DEFAULT true`,
+      ];
+      for (const sql of alters) {
+        await pool.query(sql);
+      }
+    })().catch((err) => {
+      console.error("ensureFloatWidgetColumns failed:", err);
+      floatColumnsReady = null;
+      // Don't block reads forever if ALTER fails (e.g. permission) — retry next call
+      throw err;
+    });
+  }
+  return floatColumnsReady;
+}
 
 function rowToInput(row: SiteSetting): SiteSettingsInput {
   return {
@@ -19,7 +49,6 @@ function rowToInput(row: SiteSetting): SiteSettingsInput {
     zaloUrl: row.zaloUrl || "",
     linkedinUrl: row.linkedinUrl || "",
     tiktokUrl: row.tiktokUrl || "",
-    // Kept in DB for schema compat; frontend brand mark is static /public/brand
     logoUrl: row.logoUrl || "",
     logoFooterUrl: row.logoFooterUrl || "",
     faviconUrl: row.faviconUrl || "",
@@ -31,12 +60,26 @@ function rowToInput(row: SiteSetting): SiteSettingsInput {
     popupImageUrl: row.popupImageUrl || "",
     popupLinkUrl: row.popupLinkUrl || "",
     popupDelayMs: row.popupDelayMs ?? 1500,
+    floatWidgetsEnabled: row.floatWidgetsEnabled ?? true,
+    floatCtaEnabled: row.floatCtaEnabled ?? true,
+    floatCtaLabel: row.floatCtaLabel || "Tư vấn miễn phí",
+    floatCtaHref: row.floatCtaHref || "/#tu-van",
+    floatCtaImageUrl: row.floatCtaImageUrl || "",
+    floatMessengerEnabled: row.floatMessengerEnabled ?? true,
+    floatMessengerUrl: row.floatMessengerUrl || "",
+    floatZaloEnabled: row.floatZaloEnabled ?? true,
+    floatCallEnabled: row.floatCallEnabled ?? true,
   };
 }
 
 export async function getSiteSettings(
   portal: PortalId = "group",
 ): Promise<SiteSettingsInput & { portal: PortalId }> {
+  try {
+    await ensureFloatWidgetColumns();
+  } catch {
+    /* columns may already exist / retry later */
+  }
   const [row] = await db
     .select()
     .from(siteSettings)
@@ -53,6 +96,11 @@ export async function upsertSiteSettings(
   portal: PortalId,
   input: SiteSettingsInput,
 ): Promise<SiteSettingsInput & { portal: PortalId }> {
+  try {
+    await ensureFloatWidgetColumns();
+  } catch {
+    /* retry next time */
+  }
   const parsed = siteSettingsInputSchema.parse(input);
   const existing = await db
     .select()
@@ -61,6 +109,21 @@ export async function upsertSiteSettings(
     .limit(1);
 
   const prev = existing[0] ? rowToInput(existing[0]) : null;
+
+  const floatValues = {
+    floatWidgetsEnabled: parsed.floatWidgetsEnabled ?? true,
+    floatCtaEnabled: parsed.floatCtaEnabled ?? true,
+    floatCtaLabel: parsed.floatCtaLabel?.trim() || "Tư vấn miễn phí",
+    floatCtaHref: parsed.floatCtaHref?.trim() || "/#tu-van",
+    floatCtaImageUrl: parsed.floatCtaImageUrl || "",
+    floatMessengerEnabled: parsed.floatMessengerEnabled ?? true,
+    floatMessengerUrl: parsed.floatMessengerUrl || "",
+    floatZaloEnabled: parsed.floatZaloEnabled ?? true,
+    floatCallEnabled: parsed.floatCallEnabled ?? true,
+  };
+
+  // Float widgets are site-wide and only authoritative on hub (group)
+  const applyFloat = portal === "group";
 
   const values = {
     siteName: parsed.siteName || "",
@@ -72,7 +135,6 @@ export async function upsertSiteSettings(
     zaloUrl: parsed.zaloUrl || "",
     linkedinUrl: parsed.linkedinUrl || "",
     tiktokUrl: parsed.tiktokUrl || "",
-    // Preserve legacy logo columns; UI no longer edits them
     logoUrl: prev?.logoUrl || parsed.logoUrl || "",
     logoFooterUrl: prev?.logoFooterUrl || parsed.logoFooterUrl || "",
     faviconUrl: parsed.faviconUrl?.trim()
@@ -86,6 +148,21 @@ export async function upsertSiteSettings(
     popupImageUrl: parsed.popupImageUrl || "",
     popupLinkUrl: parsed.popupLinkUrl || "",
     popupDelayMs: parsed.popupDelayMs ?? 1500,
+    ...(applyFloat
+      ? floatValues
+      : prev
+        ? {
+            floatWidgetsEnabled: prev.floatWidgetsEnabled,
+            floatCtaEnabled: prev.floatCtaEnabled,
+            floatCtaLabel: prev.floatCtaLabel,
+            floatCtaHref: prev.floatCtaHref,
+            floatCtaImageUrl: prev.floatCtaImageUrl,
+            floatMessengerEnabled: prev.floatMessengerEnabled,
+            floatMessengerUrl: prev.floatMessengerUrl,
+            floatZaloEnabled: prev.floatZaloEnabled,
+            floatCallEnabled: prev.floatCallEnabled,
+          }
+        : floatValues),
     updatedAt: new Date(),
   };
 

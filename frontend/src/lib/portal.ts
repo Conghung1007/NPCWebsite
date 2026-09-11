@@ -492,7 +492,7 @@ export function getNavigation(portal: PortalId): NavItem[] {
     {
       name: "Tư vấn miễn phí",
       href: portalPath("group", "/#tu-van"),
-      shortName: "Tư vấn",
+      shortName: "Tư vấn miễn phí",
     },
   ];
 }

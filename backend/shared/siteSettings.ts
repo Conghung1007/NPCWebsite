@@ -22,6 +22,15 @@ export const siteSettingsInputSchema = z.object({
   popupImageUrl: z.string().max(500).optional().default(""),
   popupLinkUrl: z.string().max(500).optional().default(""),
   popupDelayMs: z.number().int().min(0).max(60000).optional().default(1500),
+  floatWidgetsEnabled: z.boolean().optional().default(true),
+  floatCtaEnabled: z.boolean().optional().default(true),
+  floatCtaLabel: z.string().max(80).optional().default("Tư vấn miễn phí"),
+  floatCtaHref: z.string().max(500).optional().default("/#tu-van"),
+  floatCtaImageUrl: z.string().max(500).optional().default(""),
+  floatMessengerEnabled: z.boolean().optional().default(true),
+  floatMessengerUrl: z.string().max(500).optional().default(""),
+  floatZaloEnabled: z.boolean().optional().default(true),
+  floatCallEnabled: z.boolean().optional().default(true),
 });
 
 export type SiteSettingsInput = z.infer<typeof siteSettingsInputSchema>;
@@ -49,6 +58,15 @@ export const DEFAULT_SITE_SETTINGS: SiteSettingsInput = {
   popupImageUrl: "",
   popupLinkUrl: "",
   popupDelayMs: 1500,
+  floatWidgetsEnabled: true,
+  floatCtaEnabled: true,
+  floatCtaLabel: "Tư vấn miễn phí",
+  floatCtaHref: "/#tu-van",
+  floatCtaImageUrl: "",
+  floatMessengerEnabled: true,
+  floatMessengerUrl: "",
+  floatZaloEnabled: true,
+  floatCallEnabled: true,
 };
 
 export function mergeSiteSettings(

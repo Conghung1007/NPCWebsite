@@ -6,14 +6,21 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { useAdminPortal } from "@/contexts/AdminPortalContext";
-import { useSaveSiteSettings, useSiteSettings } from "@/hooks/useSiteSettings";
+import {
+  useSaveSiteSettings,
+  useSiteSettings,
+  type SiteSettings,
+} from "@/hooks/useSiteSettings";
 import { ImageManager } from "@/components/ui/image-manager";
 import type { SiteSettingsInput } from "@shared/siteSettings";
 import { PORTAL_META, type PortalId } from "@/lib/portal";
+import { pickFloatWidgetFields } from "@/lib/floatContact";
 
 export function SiteSettingsAdmin() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const { filter, defaultPortal } = useAdminPortal();
   const portal = (filter === "all" ? defaultPortal : filter) as PortalId;
   const { data, isLoading } = useSiteSettings(portal);
@@ -49,7 +56,20 @@ export function SiteSettingsAdmin() {
   };
 
   const handleSave = async (override?: SiteSettingsInput) => {
-    const payload = override ?? form;
+    const base = override ?? form;
+    // Never let «Cấu hình site» clobber float widgets edited under Thông tin liên hệ
+    const groupCached = queryClient.getQueryData<SiteSettings>([
+      "/api/site-settings",
+      "group",
+    ]);
+    const floatSource =
+      portal === "group"
+        ? groupCached || data || base
+        : groupCached || pickFloatWidgetFields(null);
+    const payload: SiteSettingsInput = {
+      ...base,
+      ...pickFloatWidgetFields(floatSource),
+    };
     try {
       const saved = await saveMutation.mutateAsync(payload);
       setForm({ ...saved });
@@ -71,6 +91,9 @@ export function SiteSettingsAdmin() {
           <strong>
             {PORTAL_META[portal]?.label || PORTAL_META[portal]?.brand || portal}
           </strong>
+          <span className="block sm:inline sm:before:content-['·_'] mt-0.5 sm:mt-0 text-xs">
+            Nút nổi Messenger/Zalo/Gọi chỉnh ở Thông tin liên hệ
+          </span>
         </p>
         <Button
           size="sm"
