@@ -539,7 +539,7 @@ html[data-portal="dichvu"] {
     position: absolute;
     inset: 0;
     border-radius: 9999px;
-    background: rgba(0, 166, 81, 0.45);
+    background: rgba(255, 136, 0, 0.45);
     animation: floatCallPulse 1.8s ease-out infinite;
   }
 

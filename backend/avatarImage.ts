@@ -102,6 +102,33 @@ export async function processSiteLogoImage(
   return { buffer, contentType: "image/webp", ext: "webp" };
 }
 
+const FLOAT_CTA_MAX_H = 200;
+const FLOAT_CTA_MAX_W = 140;
+
+/**
+ * Floating CTA mascot: keep transparency, fit in a tall slot (TNJS-style).
+ */
+export async function processFloatCtaImage(
+  input: Buffer,
+): Promise<ProcessedAvatar> {
+  const detected = detectImageMime(input);
+  if (!detected) {
+    throw new Error("INVALID_IMAGE");
+  }
+
+  const buffer = await sharp(input, { animated: false, failOn: "truncated" })
+    .rotate()
+    .ensureAlpha()
+    .resize(FLOAT_CTA_MAX_W, FLOAT_CTA_MAX_H, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .webp({ quality: 88, alphaQuality: 100 })
+    .toBuffer();
+
+  return { buffer, contentType: "image/webp", ext: "webp" };
+}
+
 /** Parse `/api/proxy-image/{provider}/avatars/...` into R2 delete args. */
 export function parseStoredAvatarRef(
   avatarUrl: string | null | undefined,

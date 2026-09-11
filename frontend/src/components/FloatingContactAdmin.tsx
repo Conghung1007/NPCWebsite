@@ -13,20 +13,20 @@ import {
 } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
-import {
-  useSaveSiteSettings,
-  useSiteSettings,
-  type SiteSettings,
-} from "@/hooks/useSiteSettings";
+import { useSaveSiteSettings, useSiteSettings } from "@/hooks/useSiteSettings";
 import { ImageManager } from "@/components/ui/image-manager";
 import type { SiteSettingsInput } from "@shared/siteSettings";
 import {
+  DEFAULT_FLOAT_CALL,
+  DEFAULT_FLOAT_FACEBOOK,
+  DEFAULT_FLOAT_MESSENGER,
+  DEFAULT_FLOAT_ZALO,
   pickFloatWidgetFields,
   resolveFloatLinks,
 } from "@/lib/floatContact";
 import { apiFetch } from "@/lib/queryClient";
 
-/** Cpanel controls for TNJS-style floating contact widgets (group-wide). */
+/** Cpanel: floating contact widgets (group-wide). */
 export function FloatingContactAdmin() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -34,36 +34,42 @@ export function FloatingContactAdmin() {
   const saveMutation = useSaveSiteSettings("group");
   const [form, setForm] = useState<SiteSettingsInput | null>(null);
   const [imgOpen, setImgOpen] = useState(false);
+  const [imageBusy, setImageBusy] = useState(false);
 
   useEffect(() => {
     if (data && form === null) setForm({ ...data });
   }, [data, form]);
 
-  // After successful external refetch, soft-sync float preview fields if form pristine-ish
-  useEffect(() => {
-    if (!data || !form) return;
-    // Keep local edits; only seed once via form===null above
-  }, [data, form]);
-
   const preview = useMemo(() => {
     if (!form) return null;
-    const links = resolveFloatLinks(form);
-    const parts: string[] = [];
     if (form.floatWidgetsEnabled === false) {
       return "Đang tắt toàn bộ nút nổi.";
     }
-    if (form.floatCtaEnabled !== false) parts.push("CTA trái");
-    if (links.messenger) parts.push("Messenger");
-    else if (form.floatMessengerEnabled !== false) {
-      parts.push("Messenger (thiếu link)");
+    const links = resolveFloatLinks(form);
+    const parts: string[] = [];
+    if (form.floatCtaEnabled !== false) {
+      parts.push(
+        form.floatCtaImageUrl?.trim()
+          ? "CTA trái (ảnh đã upload)"
+          : "CTA trái (ảnh mặc định)",
+      );
     }
-    if (links.zalo) parts.push("Zalo");
-    else if (form.floatZaloEnabled !== false) parts.push("Zalo (thiếu số/link)");
-    if (links.call) parts.push("Gọi");
-    else if (form.floatCallEnabled !== false) parts.push("Gọi (thiếu hotline)");
+    if (form.floatMessengerEnabled !== false && links.messenger) {
+      parts.push(
+        form.floatMessengerUrl?.trim() || form.facebookUrl?.trim()
+          ? "Messenger"
+          : "Messenger (mặc định)",
+      );
+    }
+    if (form.floatZaloEnabled !== false && links.zalo) {
+      parts.push(form.zaloUrl?.trim() ? "Zalo" : "Zalo (mặc định)");
+    }
+    if (form.floatCallEnabled !== false && links.call) {
+      parts.push(form.hotline?.trim() ? "Gọi" : "Gọi (mặc định)");
+    }
     return parts.length
       ? `Sẽ hiện: ${parts.join(" · ")}`
-      : "Chưa có nút nào đủ cấu hình để hiện.";
+      : "Chưa có nút nào được bật.";
   }, [form]);
 
   if (isLoading && !form) {
@@ -80,25 +86,33 @@ export function FloatingContactAdmin() {
     setForm((p) => (p ? { ...p, [key]: value } : p));
   };
 
+  /** Merge float fields onto latest hub settings and persist. */
+  const persist = async (
+    nextForm: SiteSettingsInput,
+    okTitle = "Đã lưu nút liên hệ nổi",
+  ) => {
+    const res = await apiFetch("/api/site-settings?portal=group");
+    const latest = (res.ok ? await res.json() : data) as SiteSettingsInput;
+    const payload: SiteSettingsInput = {
+      ...latest,
+      ...pickFloatWidgetFields(nextForm),
+      hotline: nextForm.hotline || "",
+      zaloUrl: nextForm.zaloUrl || "",
+      facebookUrl: nextForm.facebookUrl || "",
+    };
+    const saved = await saveMutation.mutateAsync(payload);
+    setForm({ ...saved });
+    void queryClient.invalidateQueries({
+      queryKey: ["/api/site-settings"],
+      refetchType: "active",
+    });
+    toast({ title: okTitle });
+    return saved;
+  };
+
   const handleSave = async () => {
     try {
-      // Merge onto latest server row so we don't wipe popup/site fields edited elsewhere
-      const res = await apiFetch("/api/site-settings?portal=group");
-      const latest = (res.ok ? await res.json() : data) as SiteSettingsInput;
-      const payload: SiteSettingsInput = {
-        ...latest,
-        ...pickFloatWidgetFields(form),
-        hotline: form.hotline || "",
-        zaloUrl: form.zaloUrl || "",
-        facebookUrl: form.facebookUrl || "",
-      };
-      const saved = await saveMutation.mutateAsync(payload);
-      setForm({ ...saved });
-      void queryClient.invalidateQueries({
-        queryKey: ["/api/site-settings"],
-        refetchType: "active",
-      });
-      toast({ title: "Đã lưu nút liên hệ nổi" });
+      await persist(form);
     } catch {
       toast({
         title: "Lỗi",
@@ -108,17 +122,40 @@ export function FloatingContactAdmin() {
     }
   };
 
+  const applyCtaImage = async (url: string) => {
+    const next = { ...form, floatCtaImageUrl: url };
+    setForm(next);
+    setImgOpen(false);
+    setImageBusy(true);
+    try {
+      await persist(
+        next,
+        url ? "Đã upload ảnh và lưu cấu hình" : "Đã gỡ ảnh — dùng ảnh mặc định",
+      );
+    } catch {
+      toast({
+        title: "Lỗi",
+        description:
+          "Ảnh đã lên R2 nhưng chưa lưu được cấu hình. Bấm «Lưu» lại.",
+        variant: "destructive",
+      });
+    } finally {
+      setImageBusy(false);
+    }
+  };
+
   const masterOn = form.floatWidgetsEnabled !== false;
+  const busy = saveMutation.isPending || imageBusy;
 
   return (
     <Card className="mb-6">
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <CardTitle className="text-base">Nút liên hệ nổi (kiểu TNJS)</CardTitle>
+            <CardTitle className="text-base">Nút liên hệ nổi</CardTitle>
             <CardDescription className="mt-1">
               Góc trái: ảnh + tư vấn. Góc phải: Messenger, Zalo, Gọi. Dùng chung
-              toàn site.
+              toàn site. Ảnh CTA tự lưu ngay sau khi upload lên R2.
             </CardDescription>
             {preview ? (
               <p className="mt-2 text-xs font-medium text-[#008A42]">{preview}</p>
@@ -126,11 +163,11 @@ export function FloatingContactAdmin() {
           </div>
           <Button
             size="sm"
-            disabled={saveMutation.isPending}
+            disabled={busy}
             onClick={() => void handleSave()}
           >
             <Save className="h-4 w-4 mr-1.5" />
-            {saveMutation.isPending ? "Đang lưu…" : "Lưu"}
+            {busy ? "Đang lưu…" : "Lưu"}
           </Button>
         </div>
       </CardHeader>
@@ -144,7 +181,7 @@ export function FloatingContactAdmin() {
         </div>
 
         <fieldset
-          disabled={!masterOn}
+          disabled={!masterOn || busy}
           className="space-y-6 disabled:opacity-55"
         >
           <section className="space-y-3 rounded-lg border p-4">
@@ -174,34 +211,49 @@ export function FloatingContactAdmin() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label>Ảnh nhân vật (góc trái, tùy chọn)</Label>
+              <Label>Ảnh nhân vật (góc trái)</Label>
               {form.floatCtaImageUrl ? (
-                <img
-                  src={form.floatCtaImageUrl}
-                  alt=""
-                  className="h-24 object-contain object-bottom"
-                />
+                <div className="space-y-1">
+                  <img
+                    src={form.floatCtaImageUrl}
+                    alt=""
+                    className="h-24 object-contain object-bottom"
+                  />
+                  <p className="text-[11px] text-muted-foreground break-all">
+                    {form.floatCtaImageUrl}
+                  </p>
+                </div>
               ) : (
-                <p className="text-xs text-muted-foreground">
-                  PNG nền trong suốt, nhân vật đứng từ mép dưới — trên mobile hẹp
-                  ảnh tự ẩn, chỉ còn nút.
-                </p>
+                <div className="space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Đang dùng ảnh mặc định. Upload PNG nền trong suốt để thay
+                    (tự lưu sau upload).
+                  </p>
+                  <img
+                    src="/brand/float-cta-mascot.png"
+                    alt=""
+                    className="h-24 object-contain object-bottom opacity-90"
+                  />
+                </div>
               )}
               <div className="flex flex-wrap gap-2">
                 <Button
                   type="button"
                   size="sm"
                   variant="outline"
+                  disabled={busy}
                   onClick={() => setImgOpen(true)}
                 >
-                  <Upload className="h-4 w-4 mr-1" /> Chọn ảnh
+                  <Upload className="h-4 w-4 mr-1" />{" "}
+                  {imageBusy ? "Đang xử lý…" : "Chọn ảnh"}
                 </Button>
                 {form.floatCtaImageUrl ? (
                   <Button
                     type="button"
                     size="sm"
                     variant="ghost"
-                    onClick={() => set("floatCtaImageUrl", "")}
+                    disabled={busy}
+                    onClick={() => void applyCtaImage("")}
                   >
                     Gỡ ảnh
                   </Button>
@@ -211,8 +263,7 @@ export function FloatingContactAdmin() {
                 isOpen={imgOpen}
                 onClose={() => setImgOpen(false)}
                 onImageUpdate={(url) => {
-                  set("floatCtaImageUrl", url);
-                  setImgOpen(false);
+                  void applyCtaImage(url);
                 }}
                 imageType="float-cta"
                 altText="Ảnh CTA nổi"
@@ -224,7 +275,8 @@ export function FloatingContactAdmin() {
           <section className="space-y-3 rounded-lg border p-4">
             <p className="text-sm font-medium">Góc phải — Messenger / Zalo / Gọi</p>
             <p className="text-xs text-muted-foreground -mt-1">
-              Nút chỉ hiện khi đủ link/số tương ứng.
+              Để trống sẽ dùng số/link mặc định thương hiệu. Điền rồi bấm Lưu để
+              ghi đè.
             </p>
 
             <div className="flex items-center gap-2">
@@ -239,7 +291,7 @@ export function FloatingContactAdmin() {
               <Input
                 value={form.floatMessengerUrl || ""}
                 onChange={(e) => set("floatMessengerUrl", e.target.value)}
-                placeholder="https://m.me/YourPage"
+                placeholder={DEFAULT_FLOAT_MESSENGER}
                 disabled={form.floatMessengerEnabled === false}
               />
             </div>
@@ -248,7 +300,7 @@ export function FloatingContactAdmin() {
               <Input
                 value={form.facebookUrl || ""}
                 onChange={(e) => set("facebookUrl", e.target.value)}
-                placeholder="https://www.facebook.com/YourPage"
+                placeholder={DEFAULT_FLOAT_FACEBOOK}
                 disabled={form.floatMessengerEnabled === false}
               />
             </div>
@@ -265,7 +317,7 @@ export function FloatingContactAdmin() {
               <Input
                 value={form.zaloUrl || ""}
                 onChange={(e) => set("zaloUrl", e.target.value)}
-                placeholder="https://zalo.me/09… — trống thì dùng hotline"
+                placeholder={DEFAULT_FLOAT_ZALO}
                 disabled={form.floatZaloEnabled === false}
               />
             </div>
@@ -282,7 +334,7 @@ export function FloatingContactAdmin() {
               <Input
                 value={form.hotline || ""}
                 onChange={(e) => set("hotline", e.target.value)}
-                placeholder="09xx xxx xxx"
+                placeholder={DEFAULT_FLOAT_CALL}
                 disabled={form.floatCallEnabled === false}
               />
             </div>
@@ -291,15 +343,4 @@ export function FloatingContactAdmin() {
       </CardContent>
     </Card>
   );
-}
-
-/** After float admin saves, allow re-seed of admin form from cache if needed. */
-export function resetFloatingContactAdminForm(
-  queryClient: ReturnType<typeof useQueryClient>,
-) {
-  const latest = queryClient.getQueryData<SiteSettings>([
-    "/api/site-settings",
-    "group",
-  ]);
-  return latest;
 }

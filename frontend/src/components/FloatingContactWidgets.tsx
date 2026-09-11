@@ -2,10 +2,14 @@ import type { ReactNode } from "react";
 import { useLocation } from "wouter";
 import { Phone } from "lucide-react";
 import { useSiteSettings } from "@/hooks/useSiteSettings";
+import { useContactInfo } from "@/hooks/useContactInfo";
 import { navigateAppHref } from "@/lib/navigateAppHref";
 import { resolveFloatLinks } from "@/lib/floatContact";
 import { TNJS } from "@/lib/tnjsTheme";
 import { cn } from "@/lib/utils";
+
+/** Default mascot when Cpanel float CTA image is empty (TNJS-style). */
+export const DEFAULT_FLOAT_CTA_IMAGE = "/brand/float-cta-mascot.png";
 
 function ZaloGlyph({ className }: { className?: string }) {
   return (
@@ -57,13 +61,21 @@ function isAppChromePath(location: string): boolean {
  */
 export function FloatingContactWidgets() {
   const { data: settings, isLoading } = useSiteSettings("group");
+  const { data: contactInfos = [] } = useContactInfo();
   const [location, setLocation] = useLocation();
 
   if (isAppChromePath(location) || isLoading || !settings?.floatWidgetsEnabled) {
     return null;
   }
 
-  const links = resolveFloatLinks(settings);
+  const contactHotline =
+    contactInfos
+      .filter((c) => c.type === "hotline" && c.isActive !== false)
+      .flatMap((c) => (Array.isArray(c.content) ? c.content : []))
+      .map((line) => String(line || "").trim())
+      .find((line) => line.length > 0) || null;
+
+  const links = resolveFloatLinks(settings, { contactHotline });
   const showCta = settings.floatCtaEnabled !== false;
   const ctaLabel = (settings.floatCtaLabel || "Tư vấn miễn phí").trim();
   const ctaHref = (settings.floatCtaHref || "/#tu-van").trim();
@@ -94,7 +106,7 @@ export function FloatingContactWidgets() {
       ? {
           key: "call",
           href: links.call,
-          label: `Gọi ${settings.hotline}`,
+          label: `Gọi ${links.callLabel}`,
           newTab: false,
           className: "float-call-btn",
           icon: <Phone className="h-6 w-6 text-white" strokeWidth={2.4} />,
@@ -111,36 +123,43 @@ export function FloatingContactWidgets() {
 
   if (!showCta && rightButtons.length === 0) return null;
 
+  // Empty CMS field → brand default mascot (TNJS-style icon3)
+  const mascotSrc = ctaImage || DEFAULT_FLOAT_CTA_IMAGE;
+
   return (
     <>
       {showCta ? (
         <div
-          className="pointer-events-none fixed bottom-0 left-0 z-[90] flex items-end gap-0 pl-1 sm:pl-2 pb-[env(safe-area-inset-bottom)]"
+          className="float-cta-bar pointer-events-none fixed bottom-0 left-2 z-[90] sm:left-2.5 pb-[env(safe-area-inset-bottom)]"
           data-testid="float-cta"
         >
-          {ctaImage ? (
+          <div
+            className="pointer-events-auto relative flex h-9 items-center justify-end rounded-t-md pl-[4.75rem] pr-3 shadow-lg sm:h-10 sm:pl-[5.25rem] sm:pr-4"
+            style={{
+              background:
+                "linear-gradient(105deg, #E85D04 0%, #FF8800 45%, #FFB020 100%)",
+            }}
+          >
             <img
-              src={ctaImage}
+              src={mascotSrc}
               alt=""
-              className="pointer-events-none relative z-[1] hidden h-[7.5rem] w-auto max-w-[7rem] object-contain object-bottom min-[380px]:block sm:h-36 sm:max-w-[8.5rem]"
+              width={70}
+              height={100}
+              className="pointer-events-none absolute bottom-0 left-1 z-[1] h-[5.5rem] w-auto max-w-[4.5rem] object-contain object-bottom sm:left-1.5 sm:h-[6.25rem] sm:max-w-[4.75rem]"
               decoding="async"
             />
-          ) : null}
-          <a
-            href={ctaHref}
-            onClick={(e) => {
-              if (/^https?:\/\//i.test(ctaHref)) return;
-              e.preventDefault();
-              navigateAppHref(ctaHref, setLocation);
-            }}
-            className={cn(
-              "pointer-events-auto mb-3 inline-flex max-w-[10.5rem] items-center justify-center rounded-md px-3 py-2.5 text-center text-[11px] font-bold uppercase leading-snug tracking-wide text-white shadow-lg transition hover:brightness-105 sm:mb-4 sm:max-w-[13rem] sm:px-4 sm:text-xs",
-              ctaImage ? "ml-2 min-[380px]:-ml-2 sm:-ml-3" : "ml-2",
-            )}
-            style={{ backgroundColor: TNJS.greenDeep }}
-          >
-            {ctaLabel}
-          </a>
+            <a
+              href={ctaHref}
+              onClick={(e) => {
+                if (/^https?:\/\//i.test(ctaHref)) return;
+                e.preventDefault();
+                navigateAppHref(ctaHref, setLocation);
+              }}
+              className="relative z-[2] max-w-[11rem] text-right text-[11px] font-bold uppercase leading-tight tracking-wide text-white transition hover:brightness-110 sm:max-w-[13rem] sm:text-[13px] sm:tracking-wider"
+            >
+              {ctaLabel}
+            </a>
+          </div>
         </div>
       ) : null}
 
@@ -172,7 +191,7 @@ export function FloatingContactWidgets() {
                   />
                   <span
                     className="relative z-[1] flex h-12 w-12 items-center justify-center rounded-full sm:h-14 sm:w-14"
-                    style={{ backgroundColor: TNJS.green }}
+                    style={{ backgroundColor: TNJS.orange }}
                   >
                     {btn.icon}
                   </span>
@@ -191,8 +210,15 @@ export function FloatingContactWidgets() {
 /** Right-stack button count for scroll-top offset (0 = default position). */
 export function useFloatStackCount(): number {
   const { data } = useSiteSettings("group");
+  const { data: contactInfos = [] } = useContactInfo();
   const [location] = useLocation();
   if (isAppChromePath(location)) return 0;
   if (!data?.floatWidgetsEnabled) return 0;
-  return resolveFloatLinks(data).rightCount;
+  const contactHotline =
+    contactInfos
+      .filter((c) => c.type === "hotline" && c.isActive !== false)
+      .flatMap((c) => (Array.isArray(c.content) ? c.content : []))
+      .map((line) => String(line || "").trim())
+      .find((line) => line.length > 0) || null;
+  return resolveFloatLinks(data, { contactHotline }).rightCount;
 }

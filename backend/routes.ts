@@ -91,6 +91,7 @@ import {
   parseStoredAvatarRef,
   processAvatarImage,
   processSiteLogoImage,
+  processFloatCtaImage,
 } from "./avatarImage";
 import {
   EXAM_PACKAGE_PRICE_VND,
@@ -4292,6 +4293,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           fileExtension = processed.ext;
         } catch (err) {
           console.error("Logo image process failed:", err);
+          return res.status(400).json({
+            error: "File ảnh không hợp lệ. Hãy dùng JPG, PNG hoặc WebP.",
+          });
+        }
+      }
+
+      // Float CTA mascot: keep alpha, shrink for header-corner slot
+      if (imageType === "float-cta") {
+        try {
+          const processed = await processFloatCtaImage(file.buffer);
+          uploadBuffer = processed.buffer;
+          uploadMime = processed.contentType;
+          fileExtension = processed.ext;
+        } catch (err) {
+          console.error("Float CTA image process failed:", err);
           return res.status(400).json({
             error: "File ảnh không hợp lệ. Hãy dùng JPG, PNG hoặc WebP.",
           });

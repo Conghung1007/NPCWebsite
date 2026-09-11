@@ -163,8 +163,8 @@ function NavLinkItem({
     forceActive ?? (!item.external && isActivePath(location, item.href));
   const [, setLocation] = useLocation();
 
-  const ctaGradient =
-    "text-white bg-gradient-to-r from-[#E85D04] via-[#FF8800] to-[#FFB020] shadow-[0_2px_12px_rgba(255,136,0,0.38)] hover:brightness-105";
+  const ctaText =
+    "font-semibold text-[#FF8800] hover:text-[#E67700]";
 
   const className = cn(
     "relative font-medium transition-[color,background,filter,box-shadow] duration-200 whitespace-nowrap",
@@ -172,7 +172,10 @@ function NavLinkItem({
       ? cn(
           "block w-full text-left px-4 py-3 text-[15px] rounded-xl",
           emphasize
-            ? cn("font-semibold", ctaGradient)
+            ? cn(
+                ctaText,
+                active ? "bg-[#FF8800]/10" : "hover:bg-muted/70",
+              )
             : active
               ? "text-primary bg-primary/8"
               : "text-foreground/85 hover:bg-muted/70 hover:text-foreground",
@@ -183,7 +186,7 @@ function NavLinkItem({
             respectHideBelowXl && item.hideBelowXl && "hidden xl:inline-flex",
             "rounded-full px-2.5 font-semibold text-[12px] xl:px-3.5 xl:text-[13px]",
             emphasize
-              ? cn("normal-case tracking-[0.02em]", ctaGradient)
+              ? cn("normal-case tracking-[0.02em]", ctaText)
               : cn(
                   "uppercase tracking-[0.04em]",
                   active
@@ -195,7 +198,7 @@ function NavLinkItem({
             "inline-flex items-center px-3.5 py-2 text-[15px] xl:text-base font-semibold tracking-[0.01em]",
             respectHideBelowXl && item.hideBelowXl && "hidden xl:inline-flex",
             emphasize
-              ? cn("rounded-full motion-press", ctaGradient)
+              ? ctaText
               : active
                 ? "rounded-full bg-[#00A651] px-3.5 text-white"
                 : "text-muted-foreground hover:text-foreground",

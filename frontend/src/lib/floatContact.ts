@@ -15,6 +15,13 @@ export const FLOAT_WIDGET_KEYS = [
 
 export type FloatWidgetKey = (typeof FLOAT_WIDGET_KEYS)[number];
 
+/** Brand defaults (same contacts as tnjs.vn) when Cpanel fields are still empty. */
+export const DEFAULT_FLOAT_HOTLINE = "0964 885 053";
+export const DEFAULT_FLOAT_CALL = "028 6274 9261";
+export const DEFAULT_FLOAT_ZALO = "https://zalo.me/0964885053";
+export const DEFAULT_FLOAT_MESSENGER = "https://m.me/NgoaiNguTriNhan";
+export const DEFAULT_FLOAT_FACEBOOK = "https://www.facebook.com/NgoaiNguTriNhan/";
+
 export function pickFloatWidgetFields(
   source: Partial<SiteSettingsInput> | null | undefined,
 ): Pick<SiteSettingsInput, FloatWidgetKey> {
@@ -58,7 +65,12 @@ export function resolveMessengerUrl(
       return null;
     }
     const page = u.pathname.split("/").filter(Boolean)[0];
-    if (!page || page === "share" || page === "profile.php" || page === "people") {
+    if (
+      !page ||
+      page === "share" ||
+      page === "profile.php" ||
+      page === "people"
+    ) {
       return null;
     }
     return `https://m.me/${decodeURIComponent(page)}`;
@@ -91,27 +103,52 @@ export type FloatResolvedLinks = {
   messenger: string | null;
   zalo: string | null;
   call: string | null;
+  callLabel: string;
   rightCount: number;
 };
 
+export type FloatResolveOptions = {
+  /** First hotline line from contact_info when site_settings.hotline empty */
+  contactHotline?: string | null;
+};
+
+/**
+ * Resolve FAB hrefs. Empty Cpanel fields fall back to contact_info then brand defaults
+ * so the right stack always shows like tnjs.vn out of the box.
+ */
 export function resolveFloatLinks(
   settings: Partial<SiteSettingsInput> | null | undefined,
+  opts?: FloatResolveOptions,
 ): FloatResolvedLinks {
   const s = settings || {};
-  const messenger =
-    s.floatMessengerEnabled !== false
-      ? resolveMessengerUrl(s.floatMessengerUrl || "", s.facebookUrl || "")
-      : null;
+  const hotline =
+    (s.hotline || "").trim() ||
+    (opts?.contactHotline || "").trim() ||
+    DEFAULT_FLOAT_CALL;
   const zalo =
     s.floatZaloEnabled !== false
-      ? resolveZaloUrl(s.zaloUrl || "", s.hotline || "")
+      ? resolveZaloUrl(
+          s.zaloUrl || "",
+          (s.hotline || "").trim() || DEFAULT_FLOAT_HOTLINE,
+        ) || DEFAULT_FLOAT_ZALO
+      : null;
+  const facebook = (s.facebookUrl || "").trim() || DEFAULT_FLOAT_FACEBOOK;
+  const messengerDirect =
+    (s.floatMessengerUrl || "").trim() || DEFAULT_FLOAT_MESSENGER;
+
+  const messenger =
+    s.floatMessengerEnabled !== false
+      ? resolveMessengerUrl(messengerDirect, facebook) ||
+        DEFAULT_FLOAT_MESSENGER
       : null;
   const call =
-    s.floatCallEnabled !== false ? resolveTelHref(s.hotline || "") : null;
+    s.floatCallEnabled !== false ? resolveTelHref(hotline) : null;
+
   return {
     messenger,
     zalo,
     call,
+    callLabel: hotline,
     rightCount: [messenger, zalo, call].filter(Boolean).length,
   };
 }
