@@ -1,3 +1,7 @@
+# Production source of truth: GitHub branch `main` → Railway service `web`.
+# Do not deploy feature branches (e.g. NPCv1.0) with `railway up` — merge to main first.
+# Local helper: npm run deploy:prod   (guards branch + clean tree)
+
 [build]
 builder = "NIXPACKS"
 buildCommand = "npm install --include=dev && npm run build"
