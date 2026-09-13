@@ -11,6 +11,8 @@ interface ArticleSectionProps {
   category: string;
   title: string;
   description?: string;
+  /** Max items before pagination (CMS section prop). */
+  limit?: number;
   /** When true, skip heading (parent already shows one). */
   hideHeader?: boolean;
   /** When true, no outer section padding/bg — nest inside another section. */
@@ -21,11 +23,13 @@ export function ArticleSection({
   category,
   title,
   description,
+  limit,
   hideHeader = false,
   embedded = false,
 }: ArticleSectionProps) {
   const [currentPage, setCurrentPage] = useState(1);
-  const articlesPerPage = 9;
+  const articlesPerPage =
+    typeof limit === "number" && limit > 0 ? Math.min(limit, 24) : 9;
   const sectionRef = useRef<HTMLDivElement>(null);
   const reactId = useId();
   const sectionDomId = `articles-${category}`.replace(/[^a-z0-9-]/gi, "-");
@@ -34,8 +38,12 @@ export function ArticleSection({
   const { data: allArticles, isLoading, error } = useQuery<Article[]>({
     queryKey: ["/api/articles", category, portal],
     queryFn: async () => {
+      const qs = new URLSearchParams();
+      if (category && category !== "__all__") {
+        qs.set("category", category);
+      }
       const response = await apiFetch(
-        `/api/articles?category=${encodeURIComponent(category)}`,
+        `/api/articles${qs.toString() ? `?${qs}` : ""}`,
       );
       if (!response.ok) {
         throw new Error("Failed to fetch articles");
@@ -44,10 +52,10 @@ export function ArticleSection({
     },
   });
 
-  // Reset page when category changes
+  // Reset page when category or page size changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [category]);
+  }, [category, articlesPerPage]);
 
   const sortedArticles = allArticles
     ? [...allArticles].sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))

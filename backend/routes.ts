@@ -86,12 +86,14 @@ import { registerCommerceRoutes } from "./commerceRoutes";
 import { portalMiddleware } from "./portalMiddleware";
 import { ensureContentSlugs } from "./ensureContentSlugs";
 import { portalFromArticleCategory, normalizeAllowedPortals, normalizePortalAlias, canAccessPortal, sanitizePortalsInput } from "@shared/portal";
+import { isArticleCategory } from "@shared/articleCategories";
 import { rateLimit } from "./rateLimit";
 import {
   parseStoredAvatarRef,
   processAvatarImage,
   processSiteLogoImage,
   processFloatCtaImage,
+  processArticleImage,
 } from "./avatarImage";
 import {
   EXAM_PACKAGE_PRICE_VND,
@@ -3164,7 +3166,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const category = req.query.category as string | undefined;
       const allPortals = req.query.all === "1";
-      const portal = allPortals ? undefined : req.portal;
+      // Prefer ?portal= (Cpanel filter) over X-Portal from /cpanel (always "group")
+      const portal = allPortals
+        ? undefined
+        : normalizePortalAlias(req.query.portal as string) || req.portal;
       const sessionUser = (req.session as any)?.user;
       const allowed = isAdminOrManager(sessionUser)
         ? sessionAllowedPortals(sessionUser)
@@ -3174,8 +3179,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return denyPortalAccess(res);
       }
 
-      let articles = category
-        ? await storage.getArticlesByCategory(category, portal)
+      const categoryFilter =
+        category && category !== "__all__" ? category : undefined;
+
+      let articles = categoryFilter
+        ? await storage.getArticlesByCategory(categoryFilter, portal)
         : await storage.getAllArticles(portal);
 
       if (allowed && allPortals) {
@@ -3529,24 +3537,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/articles", requireAdminOrManager, async (req, res) => {
     try {
-      const { title, content, category, portal: bodyPortal } = req.body;
+      const { title, content, category } = req.body;
       
       if (!title || !content || !category) {
         return res.status(400).json({ message: "Title, content, and category are required" });
+      }
+      if (!isArticleCategory(category)) {
+        return res.status(400).json({
+          message:
+            "Danh mục không hợp lệ. Chọn: study-abroad, visa-services, japanese-training, soft-skills.",
+        });
+      }
+
+      // Portal always follows category so CMS articles blocks match.
+      const portal = portalFromArticleCategory(category);
+      const allowed = sessionAllowedPortals((req as any).user);
+      if (!canAccessPortal(allowed, portal)) {
+        return denyPortalAccess(res);
       }
 
       const promotedContent = await promoteArticleContentImages(
         typeof content === "string" ? content : "",
       );
       const imageUrl = firstArticleImageUrl(promotedContent);
-      const portal =
-        normalizePortalAlias(bodyPortal) ||
-        portalFromArticleCategory(category);
-
-      const allowed = sessionAllowedPortals((req as any).user);
-      if (!canAccessPortal(allowed, portal)) {
-        return denyPortalAccess(res);
-      }
 
       const article = await storage.createArticle({
         title,
@@ -3574,27 +3587,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
       if (!file) {
         return res.status(400).json({ message: "No image file provided" });
       }
-      if (!file.mimetype.startsWith("image/")) {
-        return res.status(400).json({ message: "Only image files are allowed" });
-      }
-      if (file.size > 5 * 1024 * 1024) {
-        return res.status(400).json({ message: "Image size cannot exceed 5MB" });
+      if (file.size > 8 * 1024 * 1024) {
+        return res.status(400).json({ message: "Image size cannot exceed 8MB" });
       }
 
-      const timestamp = Date.now();
-      const fileExtension = file.originalname.split(".").pop() || "jpg";
-      const fileName = `${timestamp}-${Math.random().toString(36).substring(7)}.${fileExtension}`;
+      let processed;
+      try {
+        processed = await processArticleImage(file.buffer);
+      } catch {
+        return res.status(400).json({
+          message: "File không phải ảnh hợp lệ (JPEG/PNG/WebP/GIF).",
+        });
+      }
+
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${processed.ext}`;
       const folder = "article-temp-images";
 
       const uploadResult = await multiR2Storage.uploadFile(
-        file.buffer,
+        processed.buffer,
         fileName,
-        file.mimetype,
+        processed.contentType,
         {
           provider: "primary",
           folder,
           allowedTypes: ["image/*"],
-          maxSizeBytes: 5 * 1024 * 1024,
+          maxSizeBytes: 8 * 1024 * 1024,
         },
       );
 
@@ -3657,14 +3674,40 @@ export async function registerRoutes(app: Express): Promise<Server> {
     return Array.from(new Set(urls));
   }
 
-  /** Promote article-temp-images → article-images and rewrite content URLs */
+  function articleImageFilename(url: string): string | null {
+    try {
+      const path = url.includes("://")
+        ? new URL(url).pathname
+        : url.split("?")[0].split("#")[0];
+      const name = path.split("/").pop();
+      return name && name.length > 0 ? decodeURIComponent(name) : null;
+    } catch {
+      return url.split("/").pop()?.split("?")[0] || null;
+    }
+  }
+
+  function isArticleTempUrl(url: string): boolean {
+    return /\/api\/article-temp-images\//i.test(url);
+  }
+
+  function isArticlePermanentUrl(url: string): boolean {
+    return /\/api\/article-images\//i.test(url);
+  }
+
+  function normalizeArticleImagePath(url: string): string {
+    const filename = articleImageFilename(url);
+    if (!filename) return url;
+    if (isArticleTempUrl(url)) return `/api/article-temp-images/${filename}`;
+    if (isArticlePermanentUrl(url)) return `/api/article-images/${filename}`;
+    return url;
+  }
+
+  /** Promote article-temp-images → article-images and rewrite content URLs (idempotent). */
   async function promoteArticleContentImages(content: string): Promise<string> {
     let next = content || "";
-    const tempUrls = extractContentImageUrls(next).filter((u) =>
-      u.includes("/api/article-temp-images/"),
-    );
+    const tempUrls = extractContentImageUrls(next).filter(isArticleTempUrl);
     for (const tempUrl of tempUrls) {
-      const filename = tempUrl.split("/").pop();
+      const filename = articleImageFilename(tempUrl);
       if (!filename) continue;
       const moved = await multiR2Storage.moveFile(
         "primary",
@@ -3677,14 +3720,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
       const permanent = `/api/article-images/${filename}`;
+      // Replace exact + any absolute/query variants of the same temp file
       next = next.split(tempUrl).join(permanent);
+      const normalizedTemp = `/api/article-temp-images/${filename}`;
+      if (normalizedTemp !== tempUrl) {
+        next = next.split(normalizedTemp).join(permanent);
+      }
     }
     return next;
   }
 
   function firstArticleImageUrl(content: string): string | null {
-    const urls = extractContentImageUrls(content);
+    const urls = extractContentImageUrls(content).map(normalizeArticleImagePath);
     return urls[0] || null;
+  }
+
+  function permanentFilenamesFromUrls(urls: string[]): Set<string> {
+    const set = new Set<string>();
+    for (const u of urls) {
+      if (!isArticlePermanentUrl(u)) continue;
+      const name = articleImageFilename(u);
+      if (name) set.add(name);
+    }
+    return set;
   }
 
   app.get("/api/articles/:id", async (req, res) => {
@@ -3740,10 +3798,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/articles/:id", requireAdminOrManager, async (req, res) => {
     try {
       const { id } = req.params;
-      const { title, content, category, portal: bodyPortal } = req.body;
+      const { title, content, category } = req.body;
       
       if (!title || !content || !category) {
         return res.status(400).json({ message: "Title, content, and category are required" });
+      }
+      if (!isArticleCategory(category)) {
+        return res.status(400).json({
+          message:
+            "Danh mục không hợp lệ. Chọn: study-abroad, visa-services, japanese-training, soft-skills.",
+        });
       }
 
       const existing = await storage.getArticle(id);
@@ -3754,41 +3818,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const promotedContent = await promoteArticleContentImages(
-        typeof content === "string" ? content : "",
-      );
-      const imageUrl = firstArticleImageUrl(promotedContent);
-
-      // Delete permanent article images removed from content
-      const oldPermanent = extractContentImageUrls(existing.content || "").filter((u) =>
-        u.includes("/api/article-images/"),
-      );
-      if (existing.imageUrl?.includes("/api/article-images/")) {
-        oldPermanent.push(existing.imageUrl);
-      }
-      const newPermanent = new Set(
-        extractContentImageUrls(promotedContent).filter((u) =>
-          u.includes("/api/article-images/"),
-        ),
-      );
-      for (const url of Array.from(new Set(oldPermanent))) {
-        if (!newPermanent.has(url)) {
-          const filename = url.split("/").pop();
-          if (filename) {
-            await multiR2Storage.deleteFile("primary", `article-images/${filename}`);
-          }
-        }
-      }
-
-      const portal =
-        normalizePortalAlias(bodyPortal) ||
-        normalizePortalAlias(existing.portal) ||
-        portalFromArticleCategory(category);
-
+      const portal = portalFromArticleCategory(category);
       const allowed = sessionAllowedPortals((req as any).user);
       if (!canAccessPortal(allowed, existing.portal) || !canAccessPortal(allowed, portal)) {
         return denyPortalAccess(res);
       }
+
+      const promotedContent = await promoteArticleContentImages(
+        typeof content === "string" ? content : "",
+      );
+      const imageUrl = firstArticleImageUrl(promotedContent);
 
       const updatedArticle = await storage.updateArticle(id, {
         title,
@@ -3797,6 +3836,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
         imageUrl,
         portal,
       });
+
+      // Delete removed permanents only after DB success (best-effort)
+      const oldPermanent = extractContentImageUrls(existing.content || "");
+      if (existing.imageUrl) oldPermanent.push(existing.imageUrl);
+      const oldNames = permanentFilenamesFromUrls(oldPermanent);
+      const newNames = permanentFilenamesFromUrls(
+        extractContentImageUrls(promotedContent),
+      );
+      for (const filename of Array.from(oldNames)) {
+        if (!newNames.has(filename)) {
+          await multiR2Storage.deleteFile(
+            "primary",
+            `article-images/${filename}`,
+          );
+        }
+      }
 
       res.json({ article: updatedArticle });
     } catch (error) {

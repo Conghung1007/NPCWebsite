@@ -54,14 +54,14 @@ import { BlockImageSlot, HeroBlockImageSlots } from "@/components/BlockImageSlot
 import { ImageManager } from "@/components/ui/image-manager";
 import { Switch } from "@/components/ui/switch";
 import { CONTACT_SERVICES_BY_PORTAL } from "@/components/ui/contact-form";
-import { isPortalId, type PortalId } from "@/lib/portal";
-
-const ARTICLE_CATEGORIES = [
-  { value: "visa-services", label: "Dịch vụ visa" },
-  { value: "study-abroad", label: "Tư vấn du học" },
-  { value: "japanese-training", label: "Đào tạo tiếng Nhật" },
-  { value: "soft-skills", label: "Kỹ năng mềm" },
-] as const;
+import { isPortalId, PORTAL_META, type PortalId } from "@/lib/portal";
+import {
+  ARTICLE_CATEGORIES,
+  articleCategoryMeta,
+  categoriesForPortal,
+  defaultCategoryForPortal,
+  portalFromArticleCategory,
+} from "@shared/articleCategories";
 
 const HERO_PREFIX_PRESETS = [
   { value: "group", label: "group" },
@@ -105,8 +105,14 @@ function sectionSummary(section: PageSection): string {
     case "articles": {
       const cat = String(p.category || "").trim();
       const label =
-        ARTICLE_CATEGORIES.find((c) => c.value === cat)?.label || cat;
-      return [title, label].filter(Boolean).join(" · ");
+        cat === "__all__"
+          ? "Tất cả danh mục cổng"
+          : ARTICLE_CATEGORIES.find((c) => c.value === cat)?.label || cat;
+      const limit =
+        typeof p.limit === "number" && Number.isFinite(p.limit)
+          ? p.limit
+          : 6;
+      return [title, label, `${limit}/trang`].filter(Boolean).join(" · ");
     }
     case "cta_form": {
       const svc = String(p.defaultService || "").trim();
@@ -1233,8 +1239,28 @@ function SectionPropsForm({
   }
 
   if (section.type === "articles") {
-    const category = String(p.category ?? "japanese-training");
-    const known = ARTICLE_CATEGORIES.some((c) => c.value === category);
+    const portalCats = categoriesForPortal(
+      portalId === "group" ? "all" : portalId,
+    );
+    const defaultCat = defaultCategoryForPortal(
+      portalId === "group" ? "luyenthi" : portalId,
+    );
+    const rawCategory = String(p.category ?? defaultCat);
+    const category = rawCategory || defaultCat;
+    const isAll = category === "__all__";
+    const known =
+      isAll || portalCats.some((c) => c.value === category);
+    const catPortal = isAll
+      ? null
+      : articleCategoryMeta(category)?.portal ??
+        portalFromArticleCategory(category);
+    const mismatch =
+      !isAll &&
+      catPortal &&
+      portalId !== "group" &&
+      catPortal !== portalId;
+    const limitVal = clampInt(Number(p.limit ?? 6), 1, 24, 6);
+
     return (
       <div className="space-y-4 py-1">
         <Field label="Tiêu đề">
@@ -1252,28 +1278,59 @@ function SectionPropsForm({
         </Field>
         <Field label="Chuyên mục bài viết">
           <Select
-            value={category || "japanese-training"}
+            value={category}
             onValueChange={(v) => set("category", v)}
           >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {!known && category ? (
+              <SelectItem value="__all__">
+                Tất cả danh mục của cổng này
+              </SelectItem>
+              {!known && category && category !== "__all__" ? (
                 <SelectItem value={category}>
-                  {category} (giá trị cũ — chọn lại)
+                  {category} (không thuộc cổng — chọn lại)
                 </SelectItem>
               ) : null}
-              {ARTICLE_CATEGORIES.map((c) => (
+              {portalCats.map((c) => (
                 <SelectItem key={c.value} value={c.value}>
                   {c.label}
+                  {PORTAL_META[c.portal]
+                    ? ` · ${PORTAL_META[c.portal].brand}`
+                    : ""}
                 </SelectItem>
               ))}
             </SelectContent>
           </Select>
-          <p className="text-xs text-muted-foreground">
-            Khớp chuyên mục khi tạo bài trong Cpanel → Bài viết.
-          </p>
+          {mismatch ? (
+            <p className="text-xs text-amber-700 mt-1">
+              Danh mục này thuộc cổng{" "}
+              <strong>
+                {PORTAL_META[catPortal as PortalId]?.brand || catPortal}
+              </strong>
+              , trong khi trang đang là{" "}
+              <strong>{PORTAL_META[portalId]?.brand || portalId}</strong> —
+              khối sẽ trống. Chọn danh mục đúng cổng hoặc «Tất cả danh mục».
+            </p>
+          ) : (
+            <p className="text-xs text-muted-foreground mt-1">
+              Phải khớp danh mục khi tạo bài (Cpanel → Bài viết). Portal của bài
+              được gán tự động theo danh mục.
+            </p>
+          )}
+        </Field>
+        <Field label="Số bài mỗi trang (1–24)">
+          <Input
+            type="number"
+            min={1}
+            max={24}
+            value={limitVal}
+            onChange={(e) => {
+              const n = Number(e.target.value);
+              set("limit", clampInt(n, 1, 24, 6));
+            }}
+          />
         </Field>
       </div>
     );

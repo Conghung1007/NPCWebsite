@@ -1,6 +1,6 @@
 import type { SiteSettingsInput } from "@shared/siteSettings";
 
-/** Keys owned by Cpanel → Thông tin liên hệ → Nút nổi (group hub only). */
+/** Keys owned by Cpanel → Thông tin liên hệ → Nút nổi (group hub). */
 export const FLOAT_WIDGET_KEYS = [
   "floatWidgetsEnabled",
   "floatCtaEnabled",
@@ -36,6 +36,35 @@ export function pickFloatWidgetFields(
     floatMessengerUrl: s.floatMessengerUrl || "",
     floatZaloEnabled: s.floatZaloEnabled ?? true,
     floatCallEnabled: s.floatCallEnabled ?? true,
+  };
+}
+
+/**
+ * Contact fields edited under Thông tin liên hệ (nút nổi) — Cấu hình chung
+ * must not overwrite these when saving.
+ */
+export const CONTACT_OWNED_SITE_KEYS = [
+  "hotline",
+  "email",
+  "address",
+  "facebookUrl",
+  "zaloUrl",
+  ...FLOAT_WIDGET_KEYS,
+] as const satisfies ReadonlyArray<keyof SiteSettingsInput>;
+
+export type ContactOwnedSiteKey = (typeof CONTACT_OWNED_SITE_KEYS)[number];
+
+export function pickContactOwnedSiteFields(
+  source: Partial<SiteSettingsInput> | null | undefined,
+): Pick<SiteSettingsInput, ContactOwnedSiteKey> {
+  const s = source || {};
+  return {
+    hotline: s.hotline || "",
+    email: s.email || "",
+    address: s.address || "",
+    facebookUrl: s.facebookUrl || "",
+    zaloUrl: s.zaloUrl || "",
+    ...pickFloatWidgetFields(s),
   };
 }
 

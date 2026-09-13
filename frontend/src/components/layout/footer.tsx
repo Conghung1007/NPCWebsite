@@ -29,6 +29,8 @@ export function Footer() {
   const { data: contactInfos = [] } = useContactInfo();
   const { portal, meta } = usePortal();
   const { data: settings } = useSiteSettings(portal);
+  /** Facebook / Zalo / hotline live on group (Thông tin liên hệ → nút nổi). */
+  const { data: groupSettings } = useSiteSettings("group");
   const { data: hidden } = useHiddenCmsPages();
   const { data: pageLabels } = useCmsPageLabels();
   const services = applyNavLabelOverrides(
@@ -39,6 +41,17 @@ export function Footer() {
     pageLabels?.entries,
     portal,
   );
+
+  const facebookHref =
+    groupSettings?.facebookUrl?.trim() ||
+    settings?.facebookUrl?.trim() ||
+    "";
+  const footerHotline =
+    groupSettings?.hotline?.trim() || settings?.hotline?.trim() || "";
+  const footerEmail =
+    groupSettings?.email?.trim() || settings?.email?.trim() || "";
+  const footerAddress =
+    groupSettings?.address?.trim() || settings?.address?.trim() || "";
 
   const getContactIcon = (type: string) => {
     switch (type) {
@@ -74,7 +87,7 @@ export function Footer() {
               Chuyên nghiệp - Uy tín - Hiệu quả.
             </p>
             <div className="flex justify-center space-x-3 sm:justify-start">
-              <SocialIcon href={settings?.facebookUrl || ""} label="Facebook">
+              <SocialIcon href={facebookHref} label="Facebook">
                 <Facebook className="h-4 w-4 sm:h-5 sm:w-5" />
               </SocialIcon>
               <SocialIcon href={settings?.youtubeUrl || ""} label="YouTube">
@@ -151,19 +164,19 @@ export function Footer() {
                   <div className="flex items-center justify-center sm:justify-start">
                     <MapPin className="mr-3 h-5 w-5 flex-shrink-0" />
                     <span className="text-sm">
-                      {settings?.address?.trim() || "TP. Hồ Chí Minh"}
+                      {footerAddress || "TP. Hồ Chí Minh"}
                     </span>
                   </div>
                   <div className="flex items-center justify-center sm:justify-start">
                     <Phone className="mr-3 h-5 w-5 flex-shrink-0" />
                     <span className="text-sm">
-                      {settings?.hotline?.trim() || "Hotline"}
+                      {footerHotline || "Hotline"}
                     </span>
                   </div>
                   <div className="flex items-center justify-center sm:justify-start">
                     <Mail className="mr-3 h-5 w-5 flex-shrink-0" />
                     <span className="text-sm">
-                      {settings?.email?.trim() || "info@trinhan.academy"}
+                      {footerEmail || "info@trinhan.academy"}
                     </span>
                   </div>
                 </>

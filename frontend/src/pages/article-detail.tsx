@@ -13,6 +13,8 @@ import { articleContentToHtml,
 import { articlePublicPath } from "@/lib/contentPaths";
 import { looksLikeUuid } from "@shared/contentSlug";
 
+import { articleCategoryLabel } from "@shared/articleCategories";
+
 export default function ArticleDetail({
   id: idProp,
 }: {
@@ -49,21 +51,31 @@ export default function ArticleDetail({
     }
   }, [article, id, setLocation]);
 
-  // Fetch all articles for related articles section
+  // Related: same portal + category (not ambient X-Portal from legacy /article/:id)
   const { data: allArticles } = useQuery<Article[]>({
-    queryKey: ["/api/articles"],
+    queryKey: [
+      "/api/articles",
+      "related",
+      article?.portal,
+      article?.category,
+    ],
+    queryFn: async () => {
+      if (!article) return [];
+      const qs = new URLSearchParams({
+        category: article.category,
+        portal: article.portal || "group",
+      });
+      const res = await fetch(`/api/articles?${qs}`, {
+        credentials: "include",
+        headers: { "X-Portal": article.portal || "group" },
+      });
+      if (!res.ok) return [];
+      return res.json();
+    },
     enabled: !!article,
   });
 
-  const getServiceName = (category: string) => {
-    const serviceNames: Record<string, string> = {
-      'visa-services': 'Dịch vụ Visa',
-      'study-abroad': 'Du học',
-      'japanese-training': 'Đào tạo tiếng Nhật',
-
-    };
-    return serviceNames[category] || category;
-  };
+  const getServiceName = (category: string) => articleCategoryLabel(category);
 
   const formatDate = (date: string) => {
     return new Date(date).toLocaleDateString("vi-VN", {
@@ -75,11 +87,10 @@ export default function ArticleDetail({
     });
   };
 
-  // Get 3 random related articles (excluding current article)
+  // Get related articles (same category; exclude current)
   const getRelatedArticles = () => {
     if (!allArticles || !article) return [];
-    
-    const otherArticles = allArticles.filter(a => a.id !== article.id);
+    const otherArticles = allArticles.filter((a) => a.id !== article.id);
     const shuffled = [...otherArticles].sort(() => 0.5 - Math.random());
     return shuffled.slice(0, 3);
   };
@@ -193,7 +204,19 @@ export default function ArticleDetail({
                 Đội ngũ chuyên gia của Trí Nhân Academy sẵn sàng hỗ trợ bạn với dịch vụ{" "}
                 {getServiceName(article.category).toLowerCase()}.
               </p>
-              <Button onClick={() => setLocation("/contact")}>
+              <Button
+                onClick={() =>
+                  setLocation(
+                    article.portal === "group"
+                      ? "/contact"
+                      : article.portal === "huongnghiep"
+                        ? "/huong-nghiep/contact"
+                        : article.portal === "dichvu"
+                          ? "/dich-vu/contact"
+                          : "/luyen-thi/contact",
+                  )
+                }
+              >
                 Liên hệ ngay
               </Button>
             </div>

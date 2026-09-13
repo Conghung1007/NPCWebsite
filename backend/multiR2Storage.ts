@@ -4,6 +4,7 @@ import {
   CopyObjectCommand,
   DeleteObjectCommand,
   ListObjectsV2Command,
+  HeadObjectCommand,
 } from "@aws-sdk/client-s3";
 import { randomUUID } from "crypto";
 
@@ -248,6 +249,28 @@ export class MultiR2StorageService {
     }
   }
 
+  /** True if object key exists in the provider bucket. */
+  async objectExists(
+    provider: string,
+    filePath: string,
+  ): Promise<boolean> {
+    try {
+      const config = EXTERNAL_R2_CONFIGS[provider];
+      if (!config) return false;
+      const client = r2Manager.getClient(provider);
+      if (!client) return false;
+      await client.send(
+        new HeadObjectCommand({
+          Bucket: config.bucketName,
+          Key: filePath,
+        }),
+      );
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
   /**
    * Server-side copy within the same R2 bucket (no download/re-upload).
    * CopySource must be URL-encoded for keys with special characters.
@@ -297,21 +320,28 @@ export class MultiR2StorageService {
     }
   }
 
-  /** Copy then delete source (atomic-enough promote for temp → permanent). */
+  /** Copy then delete source. Idempotent if dest already exists and source is gone. */
   async moveFile(
     provider: string,
     sourceKey: string,
     destKey: string,
   ): Promise<{ success: boolean; error?: string }> {
     const copied = await this.copyFile(provider, sourceKey, destKey);
-    if (!copied.success) return copied;
+    if (!copied.success) {
+      const destOk = await this.objectExists(provider, destKey);
+      if (destOk) {
+        // Already promoted (retry after partial failure)
+        await this.deleteFile(provider, sourceKey);
+        return { success: true };
+      }
+      return copied;
+    }
 
     const deleted = await this.deleteFile(provider, sourceKey);
     if (!deleted.success) {
       console.warn(
         `Copied ${sourceKey} → ${destKey} but failed to delete source: ${deleted.error}`,
       );
-      // Still treat as success — permanent file exists
     }
     return { success: true };
   }

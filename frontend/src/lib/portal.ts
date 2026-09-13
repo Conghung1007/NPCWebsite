@@ -442,6 +442,11 @@ export function getNavigation(portal: PortalId): NavItem[] {
         shortName: "Tư vấn DN",
         hideBelowXl: true,
       },
+      {
+        name: "Tin tức",
+        href: portalPath("dichvu", "/news"),
+        shortName: "Tin tức",
+      },
     ];
   }
 

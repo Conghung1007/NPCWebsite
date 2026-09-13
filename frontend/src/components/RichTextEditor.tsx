@@ -125,7 +125,7 @@ export function RichTextEditor({
       const nextTemps = new Set(extractTempImageUrlsFromHtml(html));
       const removed = prevTemps.filter((url) => !nextTemps.has(url));
       if (removed.length > 0) {
-        void cleanupTempMediaUrls(removed, "qbank");
+        void cleanupTempMediaUrls(removed, "article");
       }
       lastHtmlForCleanup.current = html;
       lastOnChangeValue.current = html;
@@ -202,6 +202,7 @@ export function RichTextEditor({
     if (htmlValue !== lastOnChangeValue.current && htmlValue !== editor.getHTML()) {
       editor.commands.setContent(htmlValue, { emitUpdate: false });
       lastOnChangeValue.current = htmlValue;
+      lastHtmlForCleanup.current = htmlValue;
     }
   }, [value, editor]);
 

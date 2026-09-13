@@ -1,5 +1,6 @@
 import { pool } from "./db";
 import { allocateUniqueSlug, slugifyTitle } from "@shared/contentSlug";
+import { portalFromArticleCategory } from "@shared/articleCategories";
 
 let ready: Promise<void> | null = null;
 
@@ -14,7 +15,8 @@ async function columnExists(table: string, column: string): Promise<boolean> {
 }
 
 /**
- * Ensure articles.slug / exams.slug exist and backfill from titles.
+ * Ensure articles.slug / exams.slug exist, backfill slugs, and sync article.portal
+ * from category so CMS blocks (portal + category) can list them.
  */
 export async function ensureContentSlugs(): Promise<void> {
   if (!ready) {
@@ -38,9 +40,28 @@ export async function ensureContentSlugs(): Promise<void> {
       const articleRows = await pool.query<{
         id: string;
         title: string;
+        category: string;
         portal: string;
         slug: string | null;
-      }>(`SELECT id, title, portal, slug FROM articles`);
+      }>(`SELECT id, title, category, portal, slug FROM articles`);
+
+      // Sync portal from category (fixes legacy group / mismatched rows)
+      for (const row of articleRows.rows) {
+        const expected = portalFromArticleCategory(row.category);
+        if (row.portal === expected) continue;
+        try {
+          await pool.query(`UPDATE articles SET portal = $1 WHERE id = $2`, [
+            expected,
+            row.id,
+          ]);
+          row.portal = expected;
+        } catch (err) {
+          console.warn(
+            `ensureContentSlugs: could not set portal=${expected} for article ${row.id}:`,
+            err,
+          );
+        }
+      }
 
       const usedArticle = new Set(
         articleRows.rows

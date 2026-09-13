@@ -96,19 +96,7 @@ export function sanitizePortalsInput(raw: unknown): PortalId[] | null {
 }
 
 /** Map article category → portal */
-export function portalFromArticleCategory(category: string): PortalId {
-  switch (category) {
-    case "japanese-training":
-      return "luyenthi";
-    case "study-abroad":
-    case "visa-services":
-      return "huongnghiep";
-    case "soft-skills":
-      return "dichvu";
-    default:
-      return "group";
-  }
-}
+export { portalFromArticleCategory } from "./articleCategories";
 
 function normalizePathname(pathname: string): string {
   const raw = (pathname.split("?")[0] || "/").split("#")[0] || "/";

@@ -1,6 +1,6 @@
 /** Shared helpers to delete abandoned temp R2 media from the browser. */
 
-export type TempMediaContext = "qbank" | "exam";
+export type TempMediaContext = "qbank" | "exam" | "article";
 
 type CleanupBucket =
   | "questionImages"

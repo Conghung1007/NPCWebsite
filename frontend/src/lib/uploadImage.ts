@@ -1,6 +1,6 @@
 /**
- * Upload an image to R2 via the article/media multipart endpoint.
- * Returns an app-relative URL like `/api/article-images/...`.
+ * Upload an image to R2 via the article media endpoint.
+ * Returns a temp URL `/api/article-temp-images/...` (promoted on article save).
  */
 export async function uploadImageToR2(file: File): Promise<string> {
   const formData = new FormData();
@@ -9,6 +9,7 @@ export async function uploadImageToR2(file: File): Promise<string> {
   const res = await fetch("/api/upload/image", {
     method: "POST",
     body: formData,
+    credentials: "include",
   });
 
   if (!res.ok) {

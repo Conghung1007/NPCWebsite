@@ -55,8 +55,9 @@ export const SECTION_META: Record<
   },
   articles: {
     label: "Tin bài",
-    description: "Danh sách bài viết theo chuyên mục",
-    settings: "Tiêu đề, mô tả, chuyên mục bài viết",
+    description:
+      "Danh sách bài viết theo chuyên mục (khớp Cpanel → Bài viết + cổng trang)",
+    settings: "Tiêu đề, mô tả, chuyên mục (hoặc tất cả của cổng), số lượng/trang",
   },
   cta_form: {
     label: "Form tư vấn",
@@ -322,6 +323,7 @@ export function defaultPropsForType(
         title: "Tin tức",
         description: "",
         category: articleCategory,
+        limit: 6,
       };
     case "cta_form":
       return {
@@ -512,6 +514,14 @@ export function defaultLayoutForMarketingKey(
       includeArticles: true,
       includeCta: false,
       articleCategory: "japanese-training",
+    },
+    "dichvu-news": {
+      title: "Tin tức dịch vụ",
+      description: "Cập nhật biên phiên dịch, kỹ năng mềm và tư vấn doanh nghiệp.",
+      imagePrefix: "dichvu",
+      includeArticles: true,
+      includeCta: false,
+      articleCategory: "soft-skills",
     },
     "section-du-hoc": {
       title: "Du học",
@@ -764,13 +774,23 @@ export function defaultLayoutForPage(page: LayoutPageId): PageSection[] {
           1,
         ),
         createSection(
+          "articles",
+          {
+            title: "Tin tức & cập nhật",
+            description: "",
+            category: "soft-skills",
+            limit: 6,
+          },
+          2,
+        ),
+        createSection(
           "cta_form",
           {
             title: "Form liên hệ dịch vụ",
             description: "Chọn loại dịch vụ và để lại thông tin — chúng tôi phản hồi sớm.",
             defaultService: "",
           },
-          2,
+          3,
         ),
       ];
     case "luyenthi":

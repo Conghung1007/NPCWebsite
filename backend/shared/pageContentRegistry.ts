@@ -164,6 +164,17 @@ export const PAGE_CONTENT_REGISTRY: PageContentEntry[] = [
     sectionTemplate: "huongnghiep",
     imageSlots: [],
   },
+  {
+    id: "dichvu-news",
+    portal: "dichvu",
+    label: "Tin tức",
+    description: "Tin tức cổng Dịch vụ — bố cục khối",
+    publicPath: pub("dichvu", "/news"),
+    editor: "blocks",
+    layoutKey: "dichvu-news",
+    sectionTemplate: "dichvu",
+    imageSlots: [],
+  },
   ...PORTAL_SECTION_CATALOG.map(
     (s): PageContentEntry => ({
       id: `section-${s.slug}`,
@@ -216,6 +227,7 @@ const PAGE_PATH_NAV_ORDER: Record<PortalId, string[]> = {
     pub("dichvu", "/bien-phien-dich"),
     pub("dichvu", "/ky-nang-mem"),
     pub("dichvu", "/tu-van-doanh-nghiep"),
+    pub("dichvu", "/news"),
   ],
   luyenthi: [
     pub("luyenthi", "/"),

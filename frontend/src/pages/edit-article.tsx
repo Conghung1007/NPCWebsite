@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { useLocation } from "wouter";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useLocation, useRoute } from "wouter";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -7,21 +7,49 @@ import { z } from "zod";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Form,
+  FormControl,
+  FormDescription,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { ArrowLeft, Edit3 } from "lucide-react";
 import { RichTextEditor } from "@/components/RichTextEditor";
-import { extractTempImageUrlsFromHtml, cleanupTempMediaUrls } from "@/lib/tempMediaCleanup";
+import {
+  extractTempImageUrlsFromHtml,
+  cleanupTempMediaUrls,
+} from "@/lib/tempMediaCleanup";
 import type { Article } from "@shared/schema";
 import { apiFetch } from "@/lib/queryClient";
-import { PORTAL_IDS, PORTAL_META } from "@/lib/portal";
+import { PORTAL_META, type PortalId } from "@/lib/portal";
+import {
+  ARTICLE_CATEGORIES,
+  articleCategoryMeta,
+  isArticleCategory,
+  portalFromArticleCategory,
+  type ArticleCategoryValue,
+} from "@shared/articleCategories";
+
+const categoryValues = ARTICLE_CATEGORIES.map((c) => c.value) as [
+  ArticleCategoryValue,
+  ...ArticleCategoryValue[],
+];
 
 const editArticleSchema = z.object({
   title: z.string().min(1, "Tiêu đề không được để trống"),
   content: z.string().min(10, "Nội dung phải có ít nhất 10 ký tự"),
-  category: z.string().min(1, "Vui lòng chọn danh mục"),
-  portal: z.enum(["group", "huongnghiep", "dichvu", "luyenthi"]),
+  category: z.enum(categoryValues),
 });
 
 type EditArticleForm = z.infer<typeof editArticleSchema>;
@@ -30,56 +58,63 @@ export default function EditArticle() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  
-  // Extract article ID from URL path
-  const currentPath = window.location.pathname;
-  const articleId = currentPath.split('/edit-article/')[1];
+  const [, params] = useRoute("/edit-article/:id");
+  const articleId = params?.id;
+  const [legacyCategory, setLegacyCategory] = useState<string | null>(null);
 
   const form = useForm<EditArticleForm>({
     resolver: zodResolver(editArticleSchema),
     defaultValues: {
       title: "",
       content: "",
-      category: "",
-      portal: "group",
+      category: "study-abroad",
     },
   });
 
-  // Fetch article data
+  const category = form.watch("category");
+  const portal = useMemo(
+    () => portalFromArticleCategory(category) as PortalId,
+    [category],
+  );
+  const categoryMeta = articleCategoryMeta(category);
+
   const { data: article, isLoading: articleLoading } = useQuery<Article>({
     queryKey: ["/api/articles", articleId],
     queryFn: async () => {
       const response = await apiFetch(`/api/articles/${articleId}`);
-      if (!response.ok) {
-        throw new Error("Không thể tải bài viết");
-      }
+      if (!response.ok) throw new Error("Không thể tải bài viết");
       return response.json();
     },
     enabled: !!articleId,
   });
 
-  // Update form when article data is loaded
   useEffect(() => {
-    if (article) {
+    if (!article) return;
+    if (!isArticleCategory(article.category)) {
+      setLegacyCategory(article.category);
       form.reset({
         title: article.title,
         content: article.content,
-        category: article.category,
-        portal: (article.portal as EditArticleForm["portal"]) || "group",
+        category: "study-abroad",
       });
+      return;
     }
+    setLegacyCategory(null);
+    form.reset({
+      title: article.title,
+      content: article.content,
+      category: article.category,
+    });
   }, [article, form]);
 
   const updateArticleMutation = useMutation({
     mutationFn: async (data: EditArticleForm) => {
       const response = await apiFetch(`/api/articles/${articleId}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
-      
+
       if (!response.ok) {
         let message = "Có lỗi xảy ra khi cập nhật bài viết";
         try {
@@ -90,19 +125,20 @@ export default function EditArticle() {
         }
         throw new Error(message);
       }
-      
+
       return response.json();
     },
     onSuccess: () => {
+      setLegacyCategory(null);
       queryClient.invalidateQueries({ queryKey: ["/api/articles"] });
       queryClient.invalidateQueries({ queryKey: ["/api/articles", articleId] });
       toast({
         title: "Thành công",
         description: "Bài viết đã được cập nhật thành công!",
       });
-      window.history.back();
+      setLocation("/cpanel/articles");
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       toast({
         title: "Lỗi",
         description: error.message || "Có lỗi xảy ra khi cập nhật bài viết",
@@ -114,54 +150,47 @@ export default function EditArticle() {
   const leaveForm = () => {
     void cleanupTempMediaUrls(
       extractTempImageUrlsFromHtml(form.getValues("content") || ""),
-      "qbank",
+      "article",
     );
-    window.history.back();
+    setLocation("/cpanel/articles");
   };
 
-  const onSubmit = (data: EditArticleForm) => {
-    updateArticleMutation.mutate(data);
-  };
-
-  const categoryOptions = [
-    { value: "visa-services", label: "Dịch vụ Visa" },
-    { value: "study-abroad", label: "Du học" },
-    { value: "japanese-training", label: "Đào tạo tiếng Nhật" },
-    { value: "soft-skills", label: "Kỹ năng mềm" },
-  ];
+  useEffect(() => {
+    const onLeave = () => {
+      const urls = extractTempImageUrlsFromHtml(form.getValues("content") || "");
+      if (urls.length === 0) return;
+      void cleanupTempMediaUrls(urls, "article");
+    };
+    window.addEventListener("pagehide", onLeave);
+    return () => window.removeEventListener("pagehide", onLeave);
+  }, [form]);
 
   if (!articleId) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <p className="text-red-500">Không tìm thấy ID bài viết</p>
-          <Button onClick={() => window.history.back()} className="mt-4">
-            Quay lại quản lý bài viết
-          </Button>
-        </div>
+      <div className="container mx-auto px-4 py-8 text-center">
+        <p className="text-red-500">Không tìm thấy ID bài viết</p>
+        <Button onClick={leaveForm} className="mt-4">
+          Quay lại quản lý bài viết
+        </Button>
       </div>
     );
   }
 
   if (articleLoading) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <p>Đang tải bài viết...</p>
-        </div>
+      <div className="container mx-auto px-4 py-8 text-center">
+        <p>Đang tải bài viết...</p>
       </div>
     );
   }
 
   if (!article) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="text-center">
-          <p className="text-red-500">Không tìm thấy bài viết</p>
-          <Button onClick={() => window.history.back()} className="mt-4">
-            Quay lại quản lý bài viết
-          </Button>
-        </div>
+      <div className="container mx-auto px-4 py-8 text-center">
+        <p className="text-red-500">Không tìm thấy bài viết</p>
+        <Button onClick={leaveForm} className="mt-4">
+          Quay lại quản lý bài viết
+        </Button>
       </div>
     );
   }
@@ -169,21 +198,16 @@ export default function EditArticle() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-4xl mx-auto">
-        {/* Header */}
         <div className="flex items-center gap-4 mb-8">
-          <Button 
-            variant="outline" 
-            onClick={leaveForm}
-          >
+          <Button variant="outline" onClick={leaveForm}>
             <ArrowLeft className="w-4 h-4 mr-2" />
-            Quay lại
+            Quay lại Cpanel
           </Button>
           <h1 className="text-3xl font-bold text-gray-900">
             Chỉnh sửa bài viết
           </h1>
         </div>
 
-        {/* Edit Article Form */}
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
@@ -192,9 +216,22 @@ export default function EditArticle() {
             </CardTitle>
           </CardHeader>
           <CardContent>
+            {legacyCategory ? (
+              <p className="mb-4 rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+                Danh mục cũ «{legacyCategory}» không còn hợp lệ. Hãy chọn danh
+                mục mới bên dưới rồi lưu.
+              </p>
+            ) : null}
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                {/* Title */}
+              <form
+                onSubmit={form.handleSubmit((data) => {
+                  if (legacyCategory) {
+                    setLegacyCategory(null);
+                  }
+                  updateArticleMutation.mutate(data);
+                })}
+                className="space-y-6"
+              >
                 <FormField
                   control={form.control}
                   name="title"
@@ -202,9 +239,9 @@ export default function EditArticle() {
                     <FormItem>
                       <FormLabel>Tiêu đề bài viết *</FormLabel>
                       <FormControl>
-                        <Input 
-                          placeholder="Nhập tiêu đề bài viết..." 
-                          {...field} 
+                        <Input
+                          placeholder="Nhập tiêu đề bài viết..."
+                          {...field}
                         />
                       </FormControl>
                       <FormMessage />
@@ -212,58 +249,43 @@ export default function EditArticle() {
                   )}
                 />
 
-                {/* Category */}
                 <FormField
                   control={form.control}
                   name="category"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Danh mục *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <FormLabel>Danh mục (cổng hiển thị) *</FormLabel>
+                      <Select
+                        onValueChange={(v) => {
+                          setLegacyCategory(null);
+                          field.onChange(v);
+                        }}
+                        value={field.value}
+                      >
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Chọn danh mục bài viết" />
+                            <SelectValue placeholder="Chọn danh mục" />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {categoryOptions.map((option) => (
+                          {ARTICLE_CATEGORIES.map((option) => (
                             <SelectItem key={option.value} value={option.value}>
-                              {option.label}
+                              {option.label} · {PORTAL_META[option.portal].brand}
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      <FormDescription>
+                        Cổng: <strong>{PORTAL_META[portal].brand}</strong>
+                        {categoryMeta?.appearsOn
+                          ? ` — ${categoryMeta.appearsOn}.`
+                          : "."}
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                <FormField
-                  control={form.control}
-                  name="portal"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Portal *</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Chọn portal" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {PORTAL_IDS.map((id) => (
-                            <SelectItem key={id} value={id}>
-                              {PORTAL_META[id].brand}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                {/* Content */}
                 <FormField
                   control={form.control}
                   name="content"
@@ -274,30 +296,33 @@ export default function EditArticle() {
                         <RichTextEditor
                           value={field.value}
                           onChange={field.onChange}
-                          placeholder="Nhập nội dung bài viết... Sử dụng các nút định dạng để tạo văn bản đẹp và chèn hình ảnh ở bất kỳ vị trí nào."
+                          placeholder="Nhập nội dung… Ảnh đầu tiên = ảnh bìa danh sách."
                         />
                       </FormControl>
+                      <FormDescription>
+                        Ảnh bìa = ảnh đầu tiên trong nội dung.
+                      </FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
 
-                {/* Submit Button */}
-                <div className="flex gap-4">
-                  <Button 
-                    type="submit" 
+                <div className="flex flex-wrap gap-4">
+                  <Button
+                    type="submit"
                     disabled={updateArticleMutation.isPending}
                     className="flex items-center gap-2"
                   >
                     <Edit3 className="w-4 h-4" />
-                    {updateArticleMutation.isPending ? "Đang cập nhật..." : "Cập nhật bài viết"}
+                    {updateArticleMutation.isPending
+                      ? "Đang cập nhật..."
+                      : "Cập nhật bài viết"}
                   </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline"
-                    onClick={leaveForm}
-                  >
+                  <Button type="button" variant="outline" onClick={leaveForm}>
                     Hủy
+                  </Button>
+                  <Button type="button" variant="ghost" asChild>
+                    <Link href="/cpanel/page-content">Mở Nội dung trang</Link>
                   </Button>
                 </div>
               </form>

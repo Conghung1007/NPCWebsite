@@ -46,8 +46,8 @@ export const articles = pgTable("articles", {
   content: text("content").notNull(),
   imageUrl: text("image_url"),
   videoUrl: text("video_url"), // Add video URL field
-  category: text("category").notNull(), // visa-services, study-abroad, japanese-training
-  portal: text("portal").notNull().default("group"), // group | huongnghiep | dichvu | luyenthi
+  category: text("category").notNull(), // study-abroad | visa-services | japanese-training | soft-skills
+  portal: text("portal").notNull().default("group"), // derived from category for CMS listings
   sortOrder: integer("sort_order").default(0),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });

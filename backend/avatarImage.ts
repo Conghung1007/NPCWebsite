@@ -129,6 +129,32 @@ export async function processFloatCtaImage(
   return { buffer, contentType: "image/webp", ext: "webp" };
 }
 
+const ARTICLE_MAX_EDGE = 1920;
+const ARTICLE_WEBP_QUALITY = 85;
+
+/**
+ * Article body images: validate magic bytes, auto-orient, fit ≤1920px, WebP.
+ */
+export async function processArticleImage(
+  input: Buffer,
+): Promise<ProcessedAvatar> {
+  const detected = detectImageMime(input);
+  if (!detected) {
+    throw new Error("INVALID_IMAGE");
+  }
+
+  const buffer = await sharp(input, { animated: false, failOn: "truncated" })
+    .rotate()
+    .resize(ARTICLE_MAX_EDGE, ARTICLE_MAX_EDGE, {
+      fit: "inside",
+      withoutEnlargement: true,
+    })
+    .webp({ quality: ARTICLE_WEBP_QUALITY })
+    .toBuffer();
+
+  return { buffer, contentType: "image/webp", ext: "webp" };
+}
+
 /** Parse `/api/proxy-image/{provider}/avatars/...` into R2 delete args. */
 export function parseStoredAvatarRef(
   avatarUrl: string | null | undefined,

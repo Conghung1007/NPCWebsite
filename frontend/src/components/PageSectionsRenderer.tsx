@@ -570,6 +570,13 @@ function TestimonialsSection({ section }: { section: PageSection }) {
 
 function ArticlesBlock({ section }: { section: PageSection }) {
   const p = section.props;
+  const portal = resolvePortal();
+  const defaultCat =
+    portal === "huongnghiep"
+      ? "study-abroad"
+      : portal === "dichvu"
+        ? "soft-skills"
+        : "japanese-training";
   return (
     <SectionShell bg="white">
       <TnjsPillTitle variant="onLight">
@@ -583,9 +590,16 @@ function ArticlesBlock({ section }: { section: PageSection }) {
         <div className="mb-8" />
       )}
       <ArticleSection
-        category={strOr(p, "category", "japanese-training")}
+        category={strOr(p, "category", defaultCat)}
         title={str(p, "title", "Tin tức")}
         description={undefined}
+        limit={
+          typeof p.limit === "number"
+            ? p.limit
+            : Number.isFinite(Number(p.limit))
+              ? Number(p.limit)
+              : 6
+        }
         hideHeader
         embedded
       />

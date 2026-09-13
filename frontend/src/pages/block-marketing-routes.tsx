@@ -99,12 +99,10 @@ export function BlockContactPage() {
 
 export function BlockNewsPage() {
   const { portal } = usePortal();
-  if (portal === "group" || portal === "dichvu") {
+  if (portal === "group") {
     return (
       <div className="max-w-xl mx-auto px-4 py-16 text-center text-muted-foreground">
-        {portal === "dichvu"
-          ? "Cổng Dịch vụ chưa có trang tin trên menu. Dùng trang chủ cổng để đăng nội dung."
-          : "Chọn Hướng nghiệp hoặc Luyện thi để xem tin tức."}
+        Chọn Hướng nghiệp, Dịch vụ hoặc Luyện thi để xem tin tức.
       </div>
     );
   }

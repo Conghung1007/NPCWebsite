@@ -16,7 +16,10 @@ import {
 import { ImageManager } from "@/components/ui/image-manager";
 import type { SiteSettingsInput } from "@shared/siteSettings";
 import { PORTAL_META, type PortalId } from "@/lib/portal";
-import { pickFloatWidgetFields } from "@/lib/floatContact";
+import {
+  pickContactOwnedSiteFields,
+  pickFloatWidgetFields,
+} from "@/lib/floatContact";
 
 export function SiteSettingsAdmin() {
   const { toast } = useToast();
@@ -57,18 +60,21 @@ export function SiteSettingsAdmin() {
 
   const handleSave = async (override?: SiteSettingsInput) => {
     const base = override ?? form;
-    // Never let «Cấu hình site» clobber float widgets edited under Thông tin liên hệ
+    // Hotline / email / address / FB / Zalo / float widgets → Thông tin liên hệ
     const groupCached = queryClient.getQueryData<SiteSettings>([
       "/api/site-settings",
       "group",
     ]);
-    const floatSource =
+    const contactSource =
       portal === "group"
         ? groupCached || data || base
-        : groupCached || pickFloatWidgetFields(null);
+        : {
+            ...pickContactOwnedSiteFields(data || base),
+            ...pickFloatWidgetFields(groupCached || null),
+          };
     const payload: SiteSettingsInput = {
       ...base,
-      ...pickFloatWidgetFields(floatSource),
+      ...pickContactOwnedSiteFields(contactSource),
     };
     try {
       const saved = await saveMutation.mutateAsync(payload);
@@ -92,7 +98,8 @@ export function SiteSettingsAdmin() {
             {PORTAL_META[portal]?.label || PORTAL_META[portal]?.brand || portal}
           </strong>
           <span className="block sm:inline sm:before:content-['·_'] mt-0.5 sm:mt-0 text-xs">
-            Nút nổi Messenger/Zalo/Gọi chỉnh ở Thông tin liên hệ
+            Hotline, email, địa chỉ, Facebook, Zalo và nút nổi → tab Thông tin
+            liên hệ
           </span>
         </p>
         <Button
@@ -107,38 +114,30 @@ export function SiteSettingsAdmin() {
 
       <section className="space-y-4">
         <h3 className="text-sm font-semibold border-b pb-2">Thông tin chung</h3>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label>Tên hiển thị</Label>
-            <Input value={form.siteName} onChange={(e) => set("siteName", e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Hotline</Label>
-            <Input value={form.hotline} onChange={(e) => set("hotline", e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Email</Label>
-            <Input value={form.email} onChange={(e) => set("email", e.target.value)} />
-          </div>
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label>Địa chỉ</Label>
-            <Textarea
-              rows={2}
-              value={form.address}
-              onChange={(e) => set("address", e.target.value)}
-            />
-          </div>
+        <div className="space-y-1.5">
+          <Label>Tên hiển thị</Label>
+          <Input
+            value={form.siteName}
+            onChange={(e) => set("siteName", e.target.value)}
+          />
         </div>
+        <p className="text-xs text-muted-foreground">
+          Hotline / email / địa chỉ chỉnh trong{" "}
+          <strong>Thông tin liên hệ</strong> (danh sách văn phòng, hotline,
+          email).
+        </p>
       </section>
 
       <section className="space-y-4">
-        <h3 className="text-sm font-semibold border-b pb-2">Mạng xã hội</h3>
+        <h3 className="text-sm font-semibold border-b pb-2">Mạng xã hội (footer)</h3>
+        <p className="text-xs text-muted-foreground -mt-2">
+          Facebook &amp; Zalo chỉnh ở Thông tin liên hệ (nút nổi). Các kênh dưới
+          đây chỉ dùng nếu gắn icon trên footer.
+        </p>
         <div className="grid gap-3 sm:grid-cols-2">
           {(
             [
-              ["facebookUrl", "Facebook"],
               ["youtubeUrl", "YouTube"],
-              ["zaloUrl", "Zalo"],
               ["linkedinUrl", "LinkedIn"],
               ["tiktokUrl", "TikTok"],
             ] as const
@@ -167,7 +166,10 @@ export function SiteSettingsAdmin() {
           </div>
           <div className="space-y-1.5">
             <Label>Link điều khoản</Label>
-            <Input value={form.termsUrl} onChange={(e) => set("termsUrl", e.target.value)} />
+            <Input
+              value={form.termsUrl}
+              onChange={(e) => set("termsUrl", e.target.value)}
+            />
           </div>
         </div>
       </section>
@@ -212,7 +214,9 @@ export function SiteSettingsAdmin() {
                 type="number"
                 min={0}
                 value={form.popupDelayMs}
-                onChange={(e) => set("popupDelayMs", Number(e.target.value) || 0)}
+                onChange={(e) =>
+                  set("popupDelayMs", Number(e.target.value) || 0)
+                }
               />
             </div>
           </div>
