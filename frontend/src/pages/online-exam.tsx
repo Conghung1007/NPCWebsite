@@ -33,8 +33,9 @@ import {
 import { type Exam } from "@shared/schema";
 import { cn } from "@/lib/utils";
 import { resolveExamAccess } from "@shared/examAccess";
-import { portalHref, tnjsTrainingHref } from "@/lib/portal";
+import { portalHref, tnjsTrainingHref, PORTAL_META } from "@/lib/portal";
 import { examPublicPath } from "@/lib/contentPaths";
+import { DocumentHead } from "@/components/DocumentHead";
 
 type ExamListItem = Exam & {
   timeLimit?: number;
@@ -287,19 +288,6 @@ export function OnlineExamPage({ embed = false }: { embed?: boolean }) {
     if (currentPage > totalPages) setCurrentPage(totalPages);
   }, [currentPage, totalPages]);
 
-  useEffect(() => {
-    document.title = "Luyện thi — Trí Nhân Academy";
-    const content =
-      "Luyện thi tiếng Nhật online tại Trí Nhân Academy: đề miễn phí không cần đăng nhập, đề chính thức lưu kết quả. Luyện JLPT và kiểm tra trình độ.";
-    let meta = document.querySelector('meta[name="description"]');
-    if (!meta) {
-      meta = document.createElement("meta");
-      meta.setAttribute("name", "description");
-      document.head.appendChild(meta);
-    }
-    meta.setAttribute("content", content);
-  }, []);
-
   const scrollToExams = (nextFilter?: ExamFilter) => {
     if (nextFilter) setFilter(nextFilter);
     requestAnimationFrame(() => {
@@ -318,6 +306,13 @@ export function OnlineExamPage({ embed = false }: { embed?: boolean }) {
 
   return (
     <div className="w-full max-w-full bg-white">
+      {!embed ? (
+        <DocumentHead
+          title={PORTAL_META.luyenthi.documentTitle}
+          description={PORTAL_META.luyenthi.description}
+          canonicalPath="/luyen-thi/online-exam"
+        />
+      ) : null}
       {!embed ? (
       <>
       {/* Hero — CTA cam như tnjs.vn */}

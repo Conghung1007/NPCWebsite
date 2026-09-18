@@ -409,6 +409,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   } catch (err) {
     console.error("ensureContentSlugs failed:", err);
   }
+
+  const { handleSitemap, handleRobots } = await import("./sitemap");
+  app.get("/sitemap.xml", (req, res) => {
+    void handleSitemap(req, res);
+  });
+  app.get("/robots.txt", (req, res) => {
+    handleRobots(req, res);
+  });
+
   registerCommerceRoutes(app);
 
   // Serve static files from frontend/public directory

@@ -92,7 +92,6 @@ export function PortalProvider({ children }: { children: ReactNode }) {
   );
 
   useEffect(() => {
-    document.title = PORTAL_META[portal].documentTitle;
     document.documentElement.dataset.portal = portal;
   }, [portal]);
 

@@ -2,6 +2,7 @@ import express, { type Express } from "express";
 import fs from "fs";
 import path from "path";
 import { type Server } from "http";
+import { sendSeoAwareIndex } from "./seoHtml";
 
 export function log(message: string, source = "express") {
   const formattedTime = new Date().toLocaleTimeString("en-US", {
@@ -30,6 +31,8 @@ export function serveStatic(app: Express) {
     );
   }
 
+  const indexHtmlPath = path.resolve(distPath, "index.html");
+
   app.use(express.static(distPath, { index: false }));
 
   // SPA fallback for client routes. Do NOT fall back for hashed /assets/*
@@ -42,7 +45,7 @@ export function serveStatic(app: Express) {
     if (urlPath.startsWith("/assets/")) {
       return res.sendStatus(404);
     }
-    res.sendFile(path.resolve(distPath, "index.html"));
+    void sendSeoAwareIndex(req, res, indexHtmlPath);
   });
 }
 

@@ -11,6 +11,8 @@ import { apiFetch } from "@/lib/queryClient";
 import type { Article, Exam } from "@shared/schema";
 import { articlePublicPath, examPublicPath } from "@/lib/contentPaths";
 import { looksLikeUuid } from "@shared/contentSlug";
+import { DocumentHead } from "@/components/DocumentHead";
+import { PORTAL_META, portalPath } from "@/lib/portal";
 
 const ExamTaking = lazy(() => import("@/pages/exam-taking"));
 const ArticleDetail = lazy(() => import("@/pages/article-detail"));
@@ -103,14 +105,27 @@ export default function DynamicBlockPage() {
 
   if (!pageMeta) return <NotFound />;
 
+  const cmsCanonical = pageMeta.publicPath || portalPath(pageMeta.portal, `/${pageMeta.slug || slug}`);
+  const cmsTitle = pageMeta.label || slug;
+  const cmsDescription =
+    pageMeta.description?.trim() ||
+    `${cmsTitle} — ${PORTAL_META[pageMeta.portal]?.brand || "Trí Nhân Academy"}.`;
+
   if (isError || !data) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-16 text-center text-muted-foreground space-y-3">
-        <p>Không tải được nội dung trang {pageMeta.label}.</p>
-        <Button variant="outline" size="sm" onClick={() => refetch()}>
-          Tải lại
-        </Button>
-      </div>
+      <>
+        <DocumentHead
+          title={cmsTitle}
+          description={cmsDescription}
+          canonicalPath={cmsCanonical}
+        />
+        <div className="max-w-xl mx-auto px-4 py-16 text-center text-muted-foreground space-y-3">
+          <p>Không tải được nội dung trang {pageMeta.label}.</p>
+          <Button variant="outline" size="sm" onClick={() => refetch()}>
+            Tải lại
+          </Button>
+        </div>
+      </>
     );
   }
 
@@ -118,11 +133,27 @@ export default function DynamicBlockPage() {
   const hasVisible = sections.some((s) => s.enabled !== false);
   if (!hasVisible) {
     return (
-      <div className="max-w-xl mx-auto px-4 py-16 text-center text-muted-foreground">
-        <p>Trang {pageMeta.label} chưa có khối nội dung hiển thị.</p>
-      </div>
+      <>
+        <DocumentHead
+          title={cmsTitle}
+          description={cmsDescription}
+          canonicalPath={cmsCanonical}
+        />
+        <div className="max-w-xl mx-auto px-4 py-16 text-center text-muted-foreground">
+          <p>Trang {pageMeta.label} chưa có khối nội dung hiển thị.</p>
+        </div>
+      </>
     );
   }
 
-  return <PageSectionsRenderer sections={sections} />;
+  return (
+    <>
+      <DocumentHead
+        title={cmsTitle}
+        description={cmsDescription}
+        canonicalPath={cmsCanonical}
+      />
+      <PageSectionsRenderer sections={sections} />
+    </>
+  );
 }

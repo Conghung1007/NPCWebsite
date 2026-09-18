@@ -1,9 +1,15 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { AlertCircle } from "lucide-react";
+import { DocumentHead } from "@/components/DocumentHead";
 
 export default function NotFound() {
   return (
     <div className="min-h-screen w-full flex items-center justify-center bg-gray-50">
+      <DocumentHead
+        title="Không tìm thấy trang"
+        description="Trang bạn tìm kiếm không tồn tại trên Trí Nhân Academy."
+        noindex
+      />
       <Card className="w-full max-w-md mx-4">
         <CardContent className="pt-6">
           <div className="flex mb-4 gap-2">

@@ -2,7 +2,7 @@ import { useEffect } from "react";
 import { useLocation } from "wouter";
 import { usePortal } from "@/contexts/PortalContext";
 import { BlockStaticPage } from "@/components/BlockStaticPage";
-import { portalPath, type PortalId } from "@/lib/portal";
+import { portalPath, type PortalId, PORTAL_META } from "@/lib/portal";
 
 const SECTION_META: Record<
   string,
@@ -80,6 +80,8 @@ export function BlockSectionPage({ slug }: { slug: string }) {
       layoutKey={meta.layoutKey}
       portal={meta.portal}
       label={meta.label}
+      canonicalPath={portalPath(meta.portal, `/${slug}`)}
+      seoDescription={`${meta.label} — ${PORTAL_META[meta.portal].brand}. ${PORTAL_META[meta.portal].tagline}.`}
     />
   );
 }
@@ -93,6 +95,8 @@ export function BlockContactPage() {
       layoutKey={layoutKey}
       portal={portal}
       label="Liên hệ"
+      seoDescription={`Liên hệ ${PORTAL_META[portal].brand} — tư vấn hướng nghiệp, du học, dịch vụ và luyện thi.`}
+      canonicalPath={portalPath(portal, "/contact")}
     />
   );
 }
@@ -111,6 +115,8 @@ export function BlockNewsPage() {
       layoutKey={`${portal}-news`}
       portal={portal}
       label="Tin tức"
+      seoDescription={`Tin tức ${PORTAL_META[portal].brand} — cập nhật mới nhất về hướng nghiệp, dịch vụ và luyện thi.`}
+      canonicalPath={portalPath(portal, "/news")}
     />
   );
 }

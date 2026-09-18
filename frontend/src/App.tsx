@@ -103,6 +103,8 @@ function Router() {
                 layoutKey="visa-services"
                 portal="huongnghiep"
                 label="Dịch vụ visa"
+                canonicalPath="/huong-nghiep/visa-services"
+                seoDescription="Dịch vụ visa Nhật Bản tại Trí Nhân Academy — tư vấn hồ sơ và lộ trình rõ ràng."
               />
             )}
           />

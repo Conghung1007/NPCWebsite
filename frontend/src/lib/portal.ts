@@ -354,31 +354,45 @@ export function groupOrigin(): string {
 
 export const PORTAL_META: Record<
   PortalId,
-  { brand: string; label: string; tagline: string; documentTitle: string }
+  {
+    brand: string;
+    label: string;
+    tagline: string;
+    documentTitle: string;
+    description: string;
+  }
 > = {
   group: {
     brand: "Trí Nhân Academy",
     label: "Trí Nhân Academy",
     tagline: "Hệ sinh thái giáo dục & quốc tế",
     documentTitle: "Trí Nhân Academy",
+    description:
+      "Trí Nhân Academy — hướng nghiệp, du học, dịch vụ biên phiên dịch & kỹ năng mềm, luyện thi tiếng Nhật. Đồng hành lộ trình học tập và phát triển nghề nghiệp.",
   },
   huongnghiep: {
     brand: "Hướng nghiệp Trí Nhân",
     label: "Hướng nghiệp",
     tagline: "Du học · Đi làm · Đào tạo nghề",
     documentTitle: "Hướng nghiệp — Trí Nhân Academy",
+    description:
+      "Tư vấn hướng nghiệp, du học Nhật Bản, đi làm và đào tạo nghề tại Trí Nhân Academy. Lộ trình rõ ràng từ định hướng đến thực tiễn.",
   },
   dichvu: {
     brand: "Dịch vụ Trí Nhân",
     label: "Dịch vụ",
     tagline: "Biên phiên dịch · Kỹ năng mềm · Tư vấn DN",
     documentTitle: "Dịch vụ — Trí Nhân Academy",
+    description:
+      "Dịch vụ biên phiên dịch, đào tạo kỹ năng mềm và tư vấn doanh nghiệp tại Trí Nhân Academy.",
   },
   luyenthi: {
     brand: "Luyện thi Trí Nhân",
     label: "Luyện thi",
     tagline: "Thi thử & luyện đề",
     documentTitle: "Luyện thi — Trí Nhân Academy",
+    description:
+      "Luyện thi tiếng Nhật online: thi thử, luyện đề JLPT và theo dõi kết quả tại Trí Nhân Academy.",
   },
 };
 

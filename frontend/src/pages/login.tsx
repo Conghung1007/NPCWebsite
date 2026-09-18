@@ -10,6 +10,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { AuthShell, authLinkWithRedirect, authRedirectParam } from "@/components/AuthShell";
 import { AuthDivider, GoogleSignInButton } from "@/components/GoogleSignInButton";
 import { TNJS } from "@/lib/tnjsTheme";
+import { DocumentHead } from "@/components/DocumentHead";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -63,6 +64,12 @@ export default function Login() {
   };
 
   return (
+    <>
+      <DocumentHead
+        title="Đăng nhập"
+        description="Đăng nhập tài khoản Trí Nhân Academy."
+        noindex
+      />
     <AuthShell
       title="Chào mừng trở lại"
       subtitle="Đăng nhập để mua gói đề, lưu kết quả thi và quản lý tài khoản của bạn."
@@ -170,5 +177,6 @@ export default function Login() {
         </Button>
       </form>
     </AuthShell>
+    </>
   );
 }

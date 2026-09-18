@@ -6,12 +6,18 @@ import { ArrowLeft, Calendar, Tag } from "lucide-react";
 import { ArticleCard } from "@/components/ArticleCard";
 import type { Article } from "@shared/schema";
 import { useEffect, useMemo } from "react";
-import { articleContentToHtml,
+import {
+  articleContentToHtml,
   getArticleCoverUrl,
+  getArticlePlainPreview,
   isHtmlContent,
 } from "@/lib/articleContent";
 import { articlePublicPath } from "@/lib/contentPaths";
 import { looksLikeUuid } from "@shared/contentSlug";
+import {
+  DocumentHead,
+  buildArticleJsonLd,
+} from "@/components/DocumentHead";
 
 import { articleCategoryLabel } from "@shared/articleCategories";
 
@@ -122,6 +128,11 @@ export default function ArticleDetail({
   if (error || !article) {
     return (
       <div className="container mx-auto px-4 py-8">
+        <DocumentHead
+          title="Không tìm thấy bài viết"
+          description="Bài viết không tồn tại hoặc đã bị xóa."
+          noindex
+        />
         <div className="text-center">
           <h1 className="text-2xl font-bold text-gray-900 mb-4">Không tìm thấy bài viết</h1>
           <p className="text-gray-600 mb-6">Bài viết bạn đang tìm kiếm không tồn tại hoặc đã bị xóa.</p>
@@ -134,8 +145,29 @@ export default function ArticleDetail({
     );
   }
 
+  const publicPath = articlePublicPath(article);
+  const metaDescription = getArticlePlainPreview(article.content, 160);
+  const articleJsonLd = buildArticleJsonLd({
+    title: article.title,
+    description: metaDescription,
+    url: publicPath,
+    image: coverUrl,
+    datePublished:
+      article.createdAt != null
+        ? new Date(article.createdAt.toString()).toISOString()
+        : null,
+  });
+
   return (
     <div className="container mx-auto px-4 py-8">
+      <DocumentHead
+        title={article.title}
+        description={metaDescription}
+        canonicalPath={publicPath}
+        image={coverUrl}
+        type="article"
+        jsonLd={articleJsonLd}
+      />
       <div className="max-w-3xl mx-auto">
         <Button
           variant="outline"
@@ -152,7 +184,7 @@ export default function ArticleDetail({
             <div className="w-full aspect-[21/9] max-h-80 overflow-hidden bg-muted">
               <img
                 src={coverUrl}
-                alt=""
+                alt={article.title}
                 className="w-full h-full object-cover"
               />
             </div>

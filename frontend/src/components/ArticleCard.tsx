@@ -51,8 +51,9 @@ export function ArticleCard({ article, onClick }: ArticleCardProps) {
         {showImage ? (
           <img
             src={coverUrl!}
-            alt=""
+            alt={article.title}
             loading="lazy"
+            decoding="async"
             className="w-full h-full object-cover"
             onError={() => setImageFailed(true)}
           />
