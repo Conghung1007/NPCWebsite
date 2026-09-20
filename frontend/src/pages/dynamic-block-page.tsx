@@ -13,6 +13,7 @@ import { articlePublicPath, examPublicPath } from "@/lib/contentPaths";
 import { looksLikeUuid } from "@shared/contentSlug";
 import { DocumentHead } from "@/components/DocumentHead";
 import { PORTAL_META, portalPath } from "@/lib/portal";
+import { markExamSessionActive } from "@/lib/examReturn";
 
 const ExamTaking = lazy(() => import("@/pages/exam-taking"));
 const ArticleDetail = lazy(() => import("@/pages/article-detail"));
@@ -84,6 +85,7 @@ export default function DynamicBlockPage() {
   if (contentLoading) return <LoadingShell />;
 
   if (content?.type === "exam") {
+    markExamSessionActive(true);
     return (
       <Suspense fallback={<LoadingShell />}>
         <ExamTaking examId={content.exam.id} />

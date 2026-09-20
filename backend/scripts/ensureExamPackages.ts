@@ -20,6 +20,9 @@ async function main() {
     await client.query(
       `ALTER TABLE exams ADD COLUMN IF NOT EXISTS package_id text`,
     );
+    await client.query(
+      `ALTER TABLE exams ADD COLUMN IF NOT EXISTS package_sort_order integer NOT NULL DEFAULT 0`,
+    );
 
     await client.query(`
       CREATE TABLE IF NOT EXISTS exam_packages (

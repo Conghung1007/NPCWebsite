@@ -1162,7 +1162,8 @@ export class MemStorage implements IStorage {
       question => 
         !question.parentId &&
         (question.questionText.toLowerCase().includes(term) ||
-        (question.description && question.description.toLowerCase().includes(term)))
+        (question.description && question.description.toLowerCase().includes(term)) ||
+        (question.questionTitle && question.questionTitle.toLowerCase().includes(term)))
     ).sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0));
   }
 
@@ -2106,7 +2107,11 @@ export class DatabaseStorage implements IStorage {
     const term = `%${searchTerm.toLowerCase()}%`;
     return await db.select().from(questions)
       .where(
-        sql`${questions.parentId} IS NULL AND (LOWER(${questions.questionText}) LIKE ${term} OR LOWER(${questions.description}) LIKE ${term})`
+        sql`${questions.parentId} IS NULL AND (
+          LOWER(${questions.questionText}) LIKE ${term}
+          OR LOWER(COALESCE(${questions.description}, '')) LIKE ${term}
+          OR LOWER(COALESCE(${questions.questionTitle}, '')) LIKE ${term}
+        )`
       )
       .orderBy(questions.sortOrder);
   }

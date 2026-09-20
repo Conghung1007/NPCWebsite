@@ -8,6 +8,7 @@ import { Layout } from "@/components/layout/layout";
 import { PortalProvider } from "@/contexts/PortalContext";
 import { PortalRouteGuard } from "@/components/PortalRouteGuard";
 import { DeployChunkErrorBoundary } from "@/components/DeployChunkErrorBoundary";
+import { ExamReturnTracker } from "@/components/ExamReturnTracker";
 import { usePortalLocation } from "@/lib/usePortalLocation";
 
 import NotFound from "@/pages/not-found";
@@ -237,6 +238,7 @@ function App() {
       <TooltipProvider>
         <WouterRouter hook={usePortalLocation}>
           <PortalProvider>
+            <ExamReturnTracker />
             <Toaster />
             <DeployChunkErrorBoundary fallback={<PageFallback />}>
               <PortalRouteGuard>

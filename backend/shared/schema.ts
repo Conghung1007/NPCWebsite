@@ -107,6 +107,8 @@ export const exams = pgTable("exams", {
   isLevelTrial: boolean("is_level_trial").default(false),
   /** Optional link to purchasable exam package */
   packageId: text("package_id"),
+  /** Order of exam within its package (admin link order; 0 = first / trial) */
+  packageSortOrder: integer("package_sort_order").default(0),
 
   // New flexible sections structure
   sections: jsonb("sections"), // Array of {id, sectionName, timeLimit, passingScore, content?, descriptionImageUrls?, descriptionAudioUrl?, questionSets: {id, name, questionIds}[]}

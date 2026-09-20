@@ -2,7 +2,7 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { randomUUID } from "crypto";
 import { storage } from "./storage";
-import { insertContactRequestSchema, insertArticleSchema, registrationFormSchema, resetPasswordSchema, ContactInfo, InsertContactInfo, insertTestimonialSchema, updateTestimonialSchema, upsertSiteContentSchema, bulkUpsertSiteContentSchema, updateProfileSchema } from "@shared/schema";
+import { insertContactRequestSchema, insertArticleSchema, registrationFormSchema, resetPasswordSchema, ContactInfo, InsertContactInfo, insertTestimonialSchema, updateTestimonialSchema, upsertSiteContentSchema, bulkUpsertSiteContentSchema, updateProfileSchema, questions } from "@shared/schema";
 import { z } from "zod";
 import {
   getPageLayout,
@@ -135,7 +135,14 @@ import {
   getExamPackageOrderWithPackage,
   updateExamPackageOrderPayment,
 } from "./examPackageCheckout";
+import {
+  buildQuestionImportTemplate,
+  isXlsxBuffer,
+  parseQuestionsFromExcel,
+} from "./questionExcelImport";
 import { createPayosPaymentLink, isPayosConfigured } from "./payos";
+import { db } from "./db";
+import { sql } from "drizzle-orm";
 import { resolvePublicBaseUrl } from "@shared/origins";
 import { buildPayosCancelUrl, buildPayosReturnUrl } from "./payosOrderCode";
 
@@ -206,6 +213,76 @@ async function canAccessExamAttempt(
   if (isAdminOrManager(sessionUser)) return true;
   const exam = await storage.getExam(attempt.examId);
   return !!exam?.isDemo;
+}
+
+/** Full answer keys: owner or staff only (demo guests / other users get score-only). */
+function canViewExamAttemptDetails(
+  attempt: { userId?: string | null },
+  sessionUser: any,
+): boolean {
+  if (isAdminOrManager(sessionUser)) return true;
+  if (sessionUser?.id && attempt.userId && sessionUser.id === attempt.userId) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Score-only view: strip answers & answer keys from attempt payload.
+ */
+function sanitizeDemoAttemptForGuest(attempt: any): any {
+  const sectionResults = attempt.sectionResults;
+  let safeResults: unknown = sectionResults;
+  if (Array.isArray(sectionResults)) {
+    safeResults = sectionResults.map((s: any) => ({
+      sectionId: s.sectionId,
+      type: s.type,
+      timeSpent: s.timeSpent,
+      score: s.score,
+      answers: {},
+    }));
+  } else if (sectionResults && typeof sectionResults === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, val] of Object.entries(sectionResults as Record<string, any>)) {
+      out[key] = {
+        sectionId: val?.sectionId ?? key,
+        type: val?.type,
+        timeSpent: val?.timeSpent,
+        score: val?.score,
+        answers: {},
+      };
+    }
+    safeResults = out;
+  }
+
+  const snap = attempt.scoringSnapshot as any;
+  let safeSnap = snap;
+  if (snap?.questions && typeof snap.questions === "object") {
+    const questions: Record<string, { points: number; parentId?: string | null }> = {};
+    for (const [id, q] of Object.entries(snap.questions as Record<string, any>)) {
+      questions[id] = {
+        points: Number(q?.points) || 1,
+        parentId: q?.parentId ?? null,
+      };
+    }
+    safeSnap = {
+      capturedAt: snap.capturedAt,
+      examPassingScore: snap.examPassingScore ?? null,
+      sections: snap.sections || [],
+      questions,
+    };
+  }
+
+  return {
+    ...attempt,
+    sectionResults: safeResults,
+    scoringSnapshot: safeSnap,
+    clientState: null,
+    vocabularyAnswers: null,
+    grammarAnswers: null,
+    listeningAnswers: null,
+    readingAnswers: null,
+  };
 }
 
 /**
@@ -1518,7 +1595,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         allQuestions = filterQuestionsForTrialIds(allQuestions, allowedIds);
       }
 
-      res.json(allQuestions);
+      // Taking UI must not receive answer keys (score server-side only)
+      const forTaking = allQuestions.map((q) => {
+        const { correctAnswer: _c, explanation: _e, ...rest } = q as any;
+        const subQuestions = Array.isArray((q as any).subQuestions)
+          ? (q as any).subQuestions.map((sq: any) => {
+              const { correctAnswer: _sc, explanation: _se, ...subRest } = sq;
+              return subRest;
+            })
+          : undefined;
+        return { ...rest, subQuestions };
+      });
+
+      res.json(forTaking);
     } catch (error) {
       console.error("Error fetching questions:", error);
       res.status(500).json({ message: "Có lỗi xảy ra khi lấy câu hỏi" });
@@ -1561,6 +1650,179 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.status(500).json({ message: "Có lỗi xảy ra khi lấy danh sách câu hỏi" });
     }
   });
+
+  /** Download Excel template for bulk question import */
+  app.get("/api/questions/import/template", requireAdminOrManager, async (req, res) => {
+    try {
+      const buf = buildQuestionImportTemplate();
+      res.setHeader(
+        "Content-Type",
+        "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+      );
+      res.setHeader(
+        "Content-Disposition",
+        'attachment; filename="mau-nhap-cau-hoi.xlsx"',
+      );
+      res.send(buf);
+    } catch (error) {
+      console.error("Error building question import template:", error);
+      res.status(500).json({ message: "Không tạo được file mẫu" });
+    }
+  });
+
+  const excelImportUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 },
+  });
+  const excelImportRateLimit = rateLimit(20, 60);
+
+  /** Bulk import questions from Excel (.xlsx) */
+  app.post(
+    "/api/questions/import",
+    requireAdminOrManager,
+    excelImportRateLimit,
+    (req, res, next) => {
+      excelImportUpload.single("file")(req, res, (err) => {
+        if (err) {
+          if (err instanceof multer.MulterError && err.code === "LIMIT_FILE_SIZE") {
+            return res.status(400).json({ message: "File Excel không được vượt quá 5MB" });
+          }
+          return res.status(400).json({ message: "Không tải được file Excel" });
+        }
+        next();
+      });
+    },
+    async (req, res) => {
+      try {
+        const file = req.file;
+        if (!file?.buffer?.length) {
+          return res.status(400).json({ message: "Thiếu file Excel (.xlsx)" });
+        }
+        const name = (file.originalname || "").toLowerCase();
+        if (!name.endsWith(".xlsx") || !isXlsxBuffer(file.buffer)) {
+          return res.status(400).json({
+            message: "Chỉ hỗ trợ file .xlsx hợp lệ (không dùng .xls)",
+          });
+        }
+
+        const parsed = parseQuestionsFromExcel(file.buffer);
+        if (parsed.questions.length === 0) {
+          return res.status(400).json({
+            message: "Không nhập được câu hỏi nào. Kiểm tra lỗi từng dòng.",
+            created: 0,
+            errors: parsed.errors,
+            skippedEmptyRows: parsed.skippedEmptyRows,
+          });
+        }
+
+        const [maxRow] = await db
+          .select({
+            maxSort: sql<number>`coalesce(max(${questions.sortOrder}), 0)`,
+          })
+          .from(questions);
+        let nextSort = Number(maxRow?.maxSort || 0) + 1;
+
+        const created: Array<{ id: string; subCount: number; sourceLabel: string }> = [];
+        const createErrors: Array<{ row: number; message: string }> = [];
+
+        for (const q of parsed.questions) {
+          const primaryRow = q.excelRows[0] || 0;
+          try {
+            const subs = q.subQuestions || [];
+            await db.transaction(async (tx) => {
+              const parentId = randomUUID();
+              await tx.insert(questions).values({
+                id: parentId,
+                examId: null,
+                category: q.category,
+                language: q.language,
+                questionTitle: q.questionTitle,
+                description: q.description,
+                descriptionImageUrl: null,
+                descriptionImageUrls: null,
+                descriptionAudioUrl: null,
+                questionText: q.questionText,
+                questionType: q.questionType,
+                imageUrl: null,
+                imageUrls: null,
+                audioUrl: null,
+                options: q.options,
+                correctAnswer: q.correctAnswer,
+                explanation: q.explanation,
+                points: q.points,
+                sortOrder: nextSort,
+                parentId: null,
+                createdAt: new Date(),
+              });
+              nextSort += 1;
+
+              for (const sub of subs) {
+                await tx.insert(questions).values({
+                  id: randomUUID(),
+                  examId: null,
+                  category: q.category,
+                  language: q.language,
+                  questionTitle: null,
+                  description: null,
+                  descriptionImageUrl: null,
+                  descriptionImageUrls: null,
+                  descriptionAudioUrl: null,
+                  questionText: sub.questionText,
+                  questionType: "multiple_choice",
+                  imageUrl: null,
+                  imageUrls: null,
+                  audioUrl: null,
+                  options: sub.options,
+                  correctAnswer: sub.correctAnswer,
+                  explanation: sub.explanation,
+                  points: sub.points,
+                  sortOrder: nextSort,
+                  parentId,
+                  createdAt: new Date(),
+                });
+                nextSort += 1;
+              }
+
+              created.push({
+                id: parentId,
+                subCount: subs.length,
+                sourceLabel: q.sourceLabel,
+              });
+            });
+          } catch (err: any) {
+            createErrors.push({
+              row: primaryRow,
+              message: `${q.sourceLabel}: ${err?.message || "Không tạo được câu hỏi"}`,
+            });
+          }
+        }
+
+        const status =
+          created.length === 0
+            ? 400
+            : parsed.errors.length || createErrors.length
+              ? 207
+              : 201;
+
+        res.status(status).json({
+          message:
+            created.length === 0
+              ? "Không tạo được câu hỏi nào"
+              : parsed.errors.length || createErrors.length
+                ? `Đã nhập ${created.length} câu hỏi (${parsed.errors.length + createErrors.length} lỗi/cảnh báo)`
+                : `Đã nhập ${created.length} câu hỏi`,
+          created: created.length,
+          createdIds: created,
+          errors: [...parsed.errors, ...createErrors],
+          skippedEmptyRows: parsed.skippedEmptyRows,
+          partial: Boolean(parsed.errors.length || createErrors.length) && created.length > 0,
+        });
+      } catch (error) {
+        console.error("Error importing questions from Excel:", error);
+        res.status(500).json({ message: "Không nhập được file Excel" });
+      }
+    },
+  );
 
   app.get("/api/questions/category/:category", async (req, res) => {
     try {
@@ -1753,6 +2015,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error listing exam package entitlements:", error);
       res.status(500).json({ message: "Không tải được quyền luyện thi" });
+    }
+  });
+
+  /** Public package detail + exams in package (for storefront preview). */
+  app.get("/api/exam-packages/:id", async (req, res) => {
+    try {
+      res.set("Cache-Control", "no-store");
+      const pkg = await getExamPackage(req.params.id);
+      if (!pkg || !pkg.isActive) {
+        return res.status(404).json({ message: "Không tìm thấy gói đề" });
+      }
+      const packageExams = await listExamsInPackage(pkg.id, { activeOnly: true });
+      const linkedExamCount = packageExams.length;
+      res.json({
+        ...pkg,
+        linkedExamCount,
+        displayExamCount: resolveDisplayExamCount(pkg.examCount, linkedExamCount),
+        exams: packageExams.map((e) => ({
+          id: e.id,
+          title: e.title,
+          slug: e.slug,
+          description: e.description,
+          level: e.level,
+          isDemo: e.isDemo,
+          isLevelTrial: e.isLevelTrial,
+        })),
+      });
+    } catch (error) {
+      console.error("Error fetching exam package detail:", error);
+      res.status(500).json({ message: "Không tải được chi tiết gói đề" });
     }
   });
 
@@ -2329,6 +2621,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ message: "Phần thi không hợp lệ" });
       }
 
+      // Idempotent resume: same section already started — keep original clock
+      if (
+        attempt.currentSectionId === sectionId &&
+        attempt.sectionStartedAt &&
+        attempt.status === "in_progress"
+      ) {
+        return res.json(attempt);
+      }
+
       const now = new Date();
       let waitExtra = 0;
       if (attempt.lastSectionCompletedAt) {
@@ -2402,11 +2703,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         draftAnswers = filtered;
       }
 
-      const nextClientState = {
-        ...(typeof clientState === "object" && clientState ? clientState : {}),
-        ...(draftAnswers
-          ? { currentSectionAnswers: draftAnswers }
-          : {}),
+      const existingCs =
+        attempt.clientState && typeof attempt.clientState === "object"
+          ? (attempt.clientState as Record<string, unknown>)
+          : {};
+      const incomingCs =
+        typeof clientState === "object" && clientState
+          ? (clientState as Record<string, unknown>)
+          : {};
+
+      // Merge — never drop trial meta / accessMode when client omits them
+      const nextClientState: Record<string, unknown> = {
+        ...existingCs,
+        ...incomingCs,
+        trialQuestionIds:
+          incomingCs.trialQuestionIds ?? existingCs.trialQuestionIds,
+        trialSectionIds:
+          incomingCs.trialSectionIds ?? existingCs.trialSectionIds,
+        accessMode: incomingCs.accessMode ?? existingCs.accessMode,
+        ...(draftAnswers ? { currentSectionAnswers: draftAnswers } : {}),
       };
 
       const updated = await storage.updateExamAttempt(id, {
@@ -2675,7 +2990,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
       }
 
-      res.json({ ...attempt, user });
+      const exam = await storage.getExam(attempt.examId);
+      const scoreOnly =
+        !!exam?.isDemo && !canViewExamAttemptDetails(attempt, sessionUser);
+
+      const payload = scoreOnly
+        ? sanitizeDemoAttemptForGuest(attempt)
+        : attempt;
+
+      res.json({ ...payload, user, scoreOnly: scoreOnly || undefined });
     } catch (error) {
       console.error("Error fetching exam attempt:", error);
       res.status(500).json({ message: "Có lỗi xảy ra khi lấy kết quả thi" });
@@ -2700,6 +3023,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const exam = await storage.getExam(attempt.examId);
       if (!exam) {
         return res.status(404).json({ message: "Không tìm thấy đề thi" });
+      }
+
+      // Demo: full keys only for owner/staff — everyone else gets score summary
+      if (exam.isDemo && !canViewExamAttemptDetails(attempt, sessionUser)) {
+        const snap = (attempt.scoringSnapshot as any) || null;
+        let safeSnap = snap;
+        if (snap?.questions && typeof snap.questions === "object") {
+          const questions: Record<string, { points: number; parentId?: string | null }> = {};
+          for (const [qid, q] of Object.entries(snap.questions as Record<string, any>)) {
+            questions[qid] = {
+              points: Number((q as any)?.points) || 1,
+              parentId: (q as any)?.parentId ?? null,
+            };
+          }
+          safeSnap = {
+            capturedAt: snap.capturedAt,
+            examPassingScore: snap.examPassingScore ?? null,
+            sections: snap.sections || [],
+            questions,
+          };
+        }
+        return res.json({
+          scoreOnly: true,
+          questions: [],
+          scoringSnapshot: safeSnap,
+          sectionMeta: safeSnap?.sections || null,
+          examPassingScore:
+            safeSnap?.examPassingScore ?? (exam as any).passingScore ?? null,
+        });
       }
 
       const snapshot = attempt.scoringSnapshot as any;

@@ -139,7 +139,17 @@ export function authRedirectParam(): string {
   return raw && raw.startsWith("/") && !raw.startsWith("//") ? raw : "";
 }
 
+/** Build /login or /register with an explicit return path (or current ?redirect=). */
+export function authLinkWithReturn(base: string, returnPath?: string | null): string {
+  const candidate =
+    returnPath && returnPath.startsWith("/") && !returnPath.startsWith("//")
+      ? returnPath
+      : authRedirectParam();
+  return candidate
+    ? `${base}?redirect=${encodeURIComponent(candidate)}`
+    : base;
+}
+
 export function authLinkWithRedirect(base: string): string {
-  const redirect = authRedirectParam();
-  return redirect ? `${base}?redirect=${encodeURIComponent(redirect)}` : base;
+  return authLinkWithReturn(base);
 }

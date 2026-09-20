@@ -204,25 +204,42 @@ export async function countExamsInPackage(packageId: string): Promise<number> {
 export type PackageExamSummary = {
   id: string;
   title: string;
+  slug: string | null;
+  description: string | null;
   level: string | null;
   isActive: boolean | null;
   isDemo: boolean | null;
+  isLevelTrial: boolean | null;
+  packageSortOrder: number | null;
 };
 
 export async function listExamsInPackage(
   packageId: string,
+  opts?: { activeOnly?: boolean },
 ): Promise<PackageExamSummary[]> {
+  const conditions = [eq(exams.packageId, packageId)];
+  if (opts?.activeOnly) {
+    conditions.push(eq(exams.isActive, true));
+  }
   return db
     .select({
       id: exams.id,
       title: exams.title,
+      slug: exams.slug,
+      description: exams.description,
       level: exams.level,
       isActive: exams.isActive,
       isDemo: exams.isDemo,
+      isLevelTrial: exams.isLevelTrial,
+      packageSortOrder: exams.packageSortOrder,
     })
     .from(exams)
-    .where(eq(exams.packageId, packageId))
-    .orderBy(asc(exams.title));
+    .where(and(...conditions))
+    .orderBy(
+      asc(exams.packageSortOrder),
+      desc(exams.isLevelTrial),
+      asc(exams.title),
+    );
 }
 
 /** Replace exams linked to a package (moves exams from other packages if selected). */
@@ -244,7 +261,7 @@ export async function setPackageExams(
 
   await db
     .update(exams)
-    .set({ packageId: null, isLevelTrial: false })
+    .set({ packageId: null, isLevelTrial: false, packageSortOrder: 0 })
     .where(eq(exams.packageId, packageId));
 
   if (uniqueIds.length === 0) {
@@ -261,16 +278,16 @@ export async function setPackageExams(
   const missingIds = uniqueIds.filter((id) => !existingSet.has(id));
 
   if (validIds.length > 0) {
-    await db
-      .update(exams)
-      .set({ packageId, isLevelTrial: false })
-      .where(inArray(exams.id, validIds));
-
-    const trialExamId = validIds[0];
-    await db
-      .update(exams)
-      .set({ isLevelTrial: true })
-      .where(eq(exams.id, trialExamId));
+    for (let i = 0; i < validIds.length; i++) {
+      await db
+        .update(exams)
+        .set({
+          packageId,
+          isLevelTrial: i === 0,
+          packageSortOrder: i,
+        })
+        .where(eq(exams.id, validIds[i]));
+    }
   }
 
   const linkedCount = await countExamsInPackage(packageId);

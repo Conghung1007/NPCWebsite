@@ -1,13 +1,14 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
-import { BookOpen, Check, Clock, ShoppingCart } from "lucide-react";
+import { BookOpen, Check, Clock } from "lucide-react";
 import { Link } from "wouter";
 import { cn } from "@/lib/utils";
 import { TNJS } from "@/lib/tnjsTheme";
 import { TnjsPillTitle } from "@/components/TnjsUi";
+import { ExamPackageDetailDialog } from "@/components/ExamPackageDetailDialog";
 import {
   buildPackageCardBullets,
   formatExamCountShort,
@@ -147,6 +148,7 @@ export function ExamPackagesSection({
   const { isAuthenticated } = useAuth();
   const { toast } = useToast();
   const { addPackage, cart } = useCart();
+  const [detailPkg, setDetailPkg] = useState<StorePackage | null>(null);
 
   const { data: packages = [], isLoading } = useQuery<StorePackage[]>({
     queryKey: ["/api/exam-packages"],
@@ -181,14 +183,26 @@ export function ExamPackagesSection({
 
   const sorted = useMemo(() => {
     const list = sortPackages(packages);
-    if (cartPackageIds.size === 0) return list;
-    return list.filter((pkg) => !cartPackageIds.has(pkg.id));
-  }, [packages, cartPackageIds]);
+    // On cart upsell only: hide packages already in cart. Storefront keeps them so users can open detail.
+    if (stayOnPage && cartPackageIds.size > 0) {
+      return list.filter((pkg) => !cartPackageIds.has(pkg.id));
+    }
+    return list;
+  }, [packages, cartPackageIds, stayOnPage]);
+
+  const detailEnt = detailPkg ? byPackageId.get(detailPkg.id) : undefined;
+  const detailActive =
+    !!detailPkg &&
+    (detailEnt?.status === "active" ||
+      (!!detailPkg.level && me?.activeLevels?.includes(detailPkg.level)));
+  const detailPending = detailEnt?.status === "pending";
+  const detailInCart = !!detailPkg && cartPackageIds.has(detailPkg.id);
 
   const handleAddToCart = (pkg: StorePackage) => {
     addPackage.mutate(pkg.id, {
       onSuccess: () => {
         toast({ title: "Đã thêm vào giỏ", description: pkg.name });
+        setDetailPkg(null);
         if (!stayOnPage) {
           window.location.href = "/cart";
         }
@@ -201,21 +215,6 @@ export function ExamPackagesSection({
         });
       },
     });
-  };
-
-  const handlePackageClick = (pkg: StorePackage, active: boolean, pending: boolean) => {
-    if (active) {
-      document.getElementById("exam-list")?.scrollIntoView({ behavior: "smooth" });
-      return;
-    }
-    if (pending) {
-      toast({
-        title: "Đang chờ duyệt",
-        description: "Gói đề sẽ mở sau khi được xác nhận.",
-      });
-      return;
-    }
-    handleAddToCart(pkg);
   };
 
   const descTone =
@@ -269,7 +268,7 @@ export function ExamPackagesSection({
         >
           <BookOpen className="mx-auto mb-3 h-10 w-10 opacity-70" />
           <p className="text-sm opacity-90">
-            {cartPackageIds.size > 0 && packages.length > 0
+            {stayOnPage && cartPackageIds.size > 0 && packages.length > 0
               ? "Các gói đang bán đã có trong giỏ hoặc bạn đã sở hữu quyền thi."
               : "Chưa có gói đề đang bán. Admin tạo gói trong Cpanel → Quản lý gói đề."}
           </p>
@@ -289,17 +288,19 @@ export function ExamPackagesSection({
               pending: !!pending,
             });
             const comingSoon = examCount === 0 && !active;
+            const inCart = cartPackageIds.has(pkg.id);
 
             return (
               <button
                 key={pkg.id}
                 type="button"
-                onClick={() => handlePackageClick(pkg, !!active, !!pending)}
-                disabled={(!active && !pending && addPackage.isPending) || comingSoon}
+                onClick={() => setDetailPkg(pkg)}
+                disabled={comingSoon}
                 className={cn(
                   "group flex flex-col overflow-hidden rounded-xl bg-white text-left shadow-lg",
                   "transition-transform duration-300 hover:-translate-y-1.5 focus:outline-none",
                   "focus-visible:ring-2 focus-visible:ring-offset-2",
+                  comingSoon && "cursor-not-allowed opacity-80",
                   titleVariant === "onLight"
                     ? "focus-visible:ring-emerald-600 focus-visible:ring-offset-white"
                     : "focus-visible:ring-white focus-visible:ring-offset-[color:var(--tnjs-green)]",
@@ -332,6 +333,10 @@ export function ExamPackagesSection({
                       style={{ backgroundColor: TNJS.orange }}
                     >
                       Chờ duyệt
+                    </span>
+                  ) : inCart ? (
+                    <span className="absolute right-2 top-2 rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-sky-700">
+                      Trong giỏ
                     </span>
                   ) : comingSoon ? (
                     <span className="absolute right-2 top-2 rounded-full bg-white/90 px-2 py-0.5 text-[10px] font-bold text-neutral-600">
@@ -390,23 +395,24 @@ export function ExamPackagesSection({
                           ? "#D97706"
                           : comingSoon
                             ? "#9CA3AF"
-                            : TNJS.orange,
+                            : inCart
+                              ? "#0284C7"
+                              : TNJS.orange,
                     }}
                   >
                     {active ? (
-                      "Xem chi tiết"
+                      "Xem đề trong gói"
                     ) : pending ? (
                       <>
                         <Clock className="h-4 w-4" />
-                        Đang chờ duyệt
+                        Xem chi tiết
                       </>
                     ) : comingSoon ? (
                       "Đang cập nhật"
+                    ) : inCart ? (
+                      "Xem đề trong gói"
                     ) : (
-                      <>
-                        <ShoppingCart className="h-4 w-4" />
-                        Thêm vào giỏ
-                      </>
+                      "Xem chi tiết"
                     )}
                   </span>
                 </div>
@@ -415,6 +421,22 @@ export function ExamPackagesSection({
           })}
         </div>
       )}
+
+      <ExamPackageDetailDialog
+        pkg={detailPkg}
+        open={!!detailPkg}
+        onOpenChange={(open) => {
+          if (!open) setDetailPkg(null);
+        }}
+        ownsPackage={detailActive}
+        pending={!!detailPending}
+        inCart={detailInCart}
+        isAuthenticated={isAuthenticated}
+        addPending={addPackage.isPending}
+        onAddToCart={() => {
+          if (detailPkg) handleAddToCart(detailPkg);
+        }}
+      />
 
       {!hideCartLink && sorted.length > 0 ? (
         <p

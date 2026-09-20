@@ -17,11 +17,12 @@ import { Pagination } from "@/components/ui/pagination";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { cleanupTempMediaUrl, cleanupTempMediaUrls, isTempMediaUrl } from "@/lib/tempMediaCleanup";
-import { Plus, Search, Edit, Trash2, HelpCircle, BookOpen, Volume2, Eye, Filter, Save, X, Minus, ChevronLeft, ChevronRight, Image as ImageIcon } from "lucide-react";
+import { Plus, Search, Edit, Trash2, HelpCircle, BookOpen, Volume2, Eye, Filter, Save, X, Minus, ChevronLeft, ChevronRight, Image as ImageIcon, FileSpreadsheet } from "lucide-react";
 import { AudioUploader } from "@/components/AudioUploader";
 import { QuestionImageUploader } from "@/components/QuestionImageUploader";
 import { ImagePreviewBox } from "@/components/ImagePreviewBox";
 import { MultipleImagePreviewBox } from "@/components/MultipleImagePreviewBox";
+import { QuestionExcelImportDialog } from "@/components/QuestionExcelImportDialog";
 import type { Question } from "@shared/schema";
 
 const questionCategories = [
@@ -141,6 +142,7 @@ export function QuestionBankManager() {
     isOpen: false,
     question: null
   });
+  const [excelImportOpen, setExcelImportOpen] = useState(false);
 
   // Audio upload state
   const [isUploadingAudio, setIsUploadingAudio] = useState(false);
@@ -941,6 +943,16 @@ export function QuestionBankManager() {
             </div>
 
             {/* Add Question Button */}
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setExcelImportOpen(true)}
+              className="flex items-center gap-2"
+              data-testid="button-import-excel"
+            >
+              <FileSpreadsheet className="w-4 h-4" />
+              Nhập Excel
+            </Button>
             <Button 
               onClick={handleOpenCreate} 
               className="flex items-center gap-2"
@@ -952,6 +964,11 @@ export function QuestionBankManager() {
           </div>
         </CardContent>
       </Card>
+
+      <QuestionExcelImportDialog
+        open={excelImportOpen}
+        onOpenChange={setExcelImportOpen}
+      />
 
       {/* Questions Table */}
       <Card>

@@ -117,8 +117,19 @@ export function countScorableUnits<
   T extends { subQuestions?: T[] | null; options?: unknown },
 >(question: T): number {
   if (question.subQuestions?.length) {
-    const hasParentOptions =
-      Array.isArray(question.options) && question.options.length > 0;
+    const opts = question.options;
+    const hasParentOptions = Array.isArray(opts)
+      ? opts.length > 0
+      : typeof opts === "string"
+        ? (() => {
+            try {
+              const parsed = JSON.parse(opts);
+              return Array.isArray(parsed) && parsed.length > 0;
+            } catch {
+              return false;
+            }
+          })()
+        : false;
     return (hasParentOptions ? 1 : 0) + question.subQuestions.length;
   }
   return 1;
@@ -126,7 +137,7 @@ export function countScorableUnits<
 
 /** Count answered scorable units up to and including `sectionIndex`. */
 export function countAnsweredScorableUnits<
-  T extends { id: string; subQuestions?: T[] | null },
+  T extends { id: string; subQuestions?: T[] | null; options?: unknown },
 >(sections: Array<{ questions: T[] }>, sectionIndex: number, answers: Record<string, string>): number {
   let count = 0;
   for (let i = 0; i < sectionIndex; i++) {
@@ -139,8 +150,7 @@ export function countAnsweredScorableUnits<
   for (const q of section.questions) {
     if (q.subQuestions?.length) {
       const hasParentOptions =
-        Array.isArray((q as { options?: unknown[] }).options) &&
-        (q as { options?: unknown[] }).options!.length > 0;
+        countScorableUnits(q) > q.subQuestions.length;
       if (hasParentOptions && answers[q.id]) count += 1;
       for (const sub of q.subQuestions) {
         if (answers[sub.id]) count += 1;
@@ -156,7 +166,7 @@ export function countAnsweredScorableUnits<
  * Keep the first `limit` scorable units across sections (section order preserved).
  */
 export function truncateSectionsForTrial<
-  T extends { id: string; subQuestions?: T[] | null },
+  T extends { id: string; subQuestions?: T[] | null; options?: unknown },
   S extends {
     id: string;
     sectionName?: string;
@@ -179,8 +189,7 @@ export function truncateSectionsForTrial<
 
       if (question.subQuestions?.length) {
         const hasParentOptions =
-          Array.isArray((question as { options?: unknown[] }).options) &&
-          (question as { options?: unknown[] }).options!.length > 0;
+          countScorableUnits(question) > question.subQuestions.length;
         const keptSubs: T[] = [];
         let includeParent = false;
 
@@ -220,8 +229,8 @@ export function collectTrialQuestionIdsFromSections<
   for (const section of sections) {
     for (const q of section.questions) {
       if (q.subQuestions?.length) {
-        const hasParentOptions =
-          Array.isArray(q.options) && q.options.length > 0;
+        const units = countScorableUnits(q);
+        const hasParentOptions = units > q.subQuestions.length;
         if (hasParentOptions) ids.push(q.id);
         for (const sub of q.subQuestions) {
           ids.push(sub.id);

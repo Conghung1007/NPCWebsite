@@ -5,6 +5,8 @@ import { ArrowLeft, Printer, Download, XCircle } from "lucide-react";
 import { type ExamAttempt, type Exam } from "@shared/schema";
 import { useRef, useState } from "react";
 import { examKeys } from "@/lib/queryKeys";
+import { getExamReturnPath, clearExamReturnPath } from "@/lib/examReturn";
+import { useExamSessionLock } from "@/components/ExamReturnTracker";
 const logoBackground = "/api/static/logo-certificate.png";
 
 type AttemptWithUser = ExamAttempt & {
@@ -17,6 +19,7 @@ interface CertificatePageProps {
 
 export function CertificatePage({ attemptId }: CertificatePageProps) {
   const [, setLocation] = useLocation();
+  useExamSessionLock();
   const certificateRef = useRef<HTMLDivElement>(null);
   const [isDownloading, setIsDownloading] = useState(false);
 
@@ -70,8 +73,14 @@ export function CertificatePage({ attemptId }: CertificatePageProps) {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <p className="text-xl text-gray-600">Không tìm thấy thông tin chứng nhận</p>
-          <Button onClick={() => setLocation("/online-exam")} className="mt-4">
-            Về trang chủ
+          <Button
+            onClick={() => {
+              clearExamReturnPath();
+              setLocation(getExamReturnPath());
+            }}
+            className="mt-4"
+          >
+            Quay lại
           </Button>
         </div>
       </div>

@@ -2,24 +2,28 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { Clock, ChevronLeft, ChevronRight, FileText, CheckCircle, ArrowRight, Volume2, Eye, BookOpen, MessageSquare, Headphones, FileInput, ShoppingCart } from "lucide-react";
+import { Clock, ChevronLeft, ChevronRight, FileText, CheckCircle, ArrowRight, ShoppingCart, X } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { useAuth } from "@/hooks/useAuth";
 import { useCart } from "@/hooks/useCart";
 import { useToast } from "@/hooks/use-toast";
+import { cn } from "@/lib/utils";
 import { type Exam, type Question, type User } from "@shared/schema";
 import { ExamAudioPlayer } from "@/components/ExamAudioPlayer";
 import { ExamProtectedContent, ProtectedExamImage } from "@/components/ExamProtectedContent";
 import { examKeys } from "@/lib/queryKeys";
-import { resolveExamMediaUrl } from "@/lib/examMediaUrl";
+import { resolveExamMediaUrl, asMediaUrlList } from "@/lib/examMediaUrl";
 import { examPublicPath } from "@/lib/contentPaths";
 import { looksLikeUuid } from "@shared/contentSlug";
+import {
+  getExamReturnPath,
+  clearExamReturnPath,
+} from "@/lib/examReturn";
+import { useExamSessionLock } from "@/components/ExamReturnTracker";
 import {
   EXAM_PACKAGE_PRICE_VND,
   EXAM_TRIAL_QUESTION_LIMIT,
@@ -27,8 +31,125 @@ import {
   truncateSectionsForTrial,
   countAnsweredScorableUnits,
   collectTrialQuestionIdsFromSections,
-  countScorableUnits,
 } from "@shared/examAccess";
+
+function optionList(options: unknown): unknown[] {
+  if (Array.isArray(options)) return options;
+  if (typeof options === "string") {
+    try {
+      const parsed = JSON.parse(options);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
+/** Passage parents have subs but no answer options. */
+function isPassageParent(question: Question | any): boolean {
+  const subs = question?.subQuestions;
+  const hasSubs = Array.isArray(subs) && subs.length > 0;
+  return hasSubs && optionList(question?.options).length === 0;
+}
+
+function isQuestionFullyAnswered(
+  question: Question | any,
+  answers: Record<string, string>,
+): boolean {
+  const subs = (question as any).subQuestions || [];
+  if (Array.isArray(subs) && subs.length > 0) {
+    const allSubs = subs.every((sq: any) => answers[sq.id] !== undefined);
+    if (isPassageParent(question)) return allSubs;
+    return answers[question.id] !== undefined && allSubs;
+  }
+  return answers[question.id] !== undefined;
+}
+
+function countScorableUnitsSafe(question: Question | any): number {
+  const subs = (question as any).subQuestions || [];
+  if (Array.isArray(subs) && subs.length > 0) {
+    return (isPassageParent(question) ? 0 : 1) + subs.length;
+  }
+  return 1;
+}
+
+function countAnsweredInSection(
+  questions: Question[],
+  answers: Record<string, string>,
+): number {
+  let n = 0;
+  for (const q of questions) {
+    const subs = (q as any).subQuestions || [];
+    if (Array.isArray(subs) && subs.length > 0) {
+      if (!isPassageParent(q) && answers[q.id] !== undefined) n += 1;
+      for (const sq of subs) {
+        if (answers[sq.id] !== undefined) n += 1;
+      }
+    } else if (answers[q.id] !== undefined) {
+      n += 1;
+    }
+  }
+  return n;
+}
+
+function TakingOptionImages({ option }: { option: unknown }) {
+  if (typeof option === "string" || !option || typeof option !== "object") {
+    return null;
+  }
+  const o = option as { imageUrl?: string; imageUrls?: unknown };
+  const urls = asMediaUrlList(o.imageUrls);
+  const legacy = o.imageUrl?.trim();
+  const list = urls.length > 0 ? urls : legacy ? [legacy] : [];
+  if (list.length === 0) return null;
+  return (
+    <div className="flex flex-wrap gap-2">
+      {list.map((imageUrl, imgIndex) => (
+        <ProtectedExamImage
+          key={imgIndex}
+          src={imageUrl}
+          imageKind="answer"
+          alt={`Option illustration ${imgIndex + 1}`}
+          className="max-w-full h-auto rounded-md shadow-sm max-h-[700px]"
+        />
+      ))}
+    </div>
+  );
+}
+
+function ExamOptionRow({
+  id,
+  value,
+  selected,
+  label,
+  option,
+}: {
+  id: string;
+  value: string;
+  selected: boolean;
+  label: string;
+  option: unknown;
+}) {
+  return (
+    <Label
+      htmlFor={id}
+      className={cn(
+        "flex items-start gap-3 p-4 rounded-xl border-2 cursor-pointer transition-colors",
+        selected
+          ? "border-primary bg-primary/5 shadow-sm"
+          : "border-neutral-200 bg-white hover:border-primary/40 hover:bg-neutral-50",
+      )}
+    >
+      <RadioGroupItem value={value} id={id} className="mt-1 shrink-0" />
+      <div className="flex-1 min-w-0 space-y-2">
+        <span className="text-base text-neutral-900 leading-relaxed block">
+          {label}
+        </span>
+        <TakingOptionImages option={option} />
+      </div>
+    </Label>
+  );
+}
 
 // Fisher-Yates shuffle algorithm to randomize question order
 function shuffleArray<T>(array: T[]): T[] {
@@ -72,6 +193,9 @@ type ExamDraft = {
   examSections: ExamSection[];
   waitStartTime: number | null;
   sectionCompleted: boolean;
+  trialQuestionIds?: string[];
+  trialSectionIds?: string[];
+  accessMode?: ExamAccessMode;
 };
 
 function examDraftKey(examId: string) {
@@ -114,6 +238,7 @@ interface ExamTakingPageProps {
 
 export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [, setLocation] = useLocation();
+  useExamSessionLock();
   const { user } = useAuth();
   const { addPackage } = useCart();
   const { toast } = useToast();
@@ -145,6 +270,10 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const [sectionsReady, setSectionsReady] = useState(false);
   const purchaseNavRef = useRef<"home" | "cart" | null>(null);
   const trialSubmitTriggeredRef = useRef(false);
+  const trialMetaRef = useRef<{
+    trialQuestionIds?: string[];
+    trialSectionIds?: string[];
+  }>({});
 
   // Derive/shuffle sections only once (or restore from draft) — avoid wiping answers/timer
   const sectionsInitializedRef = useRef(false);
@@ -224,7 +353,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const handlePurchaseDismiss = useCallback(() => {
     clearExamDraft(examId);
     setShowPurchaseDialog(false);
-    setLocation("/");
+    setLocation(getExamReturnPath());
   }, [examId, setLocation]);
 
   const handlePurchaseAddToCart = useCallback(() => {
@@ -396,7 +525,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
       if (serverAttempt?.status === "in_progress") {
         const cs = (serverAttempt.clientState || {}) as any;
-        let sections =
+        let sections: ExamSection[] =
           (cs.examSections?.length ? cs.examSections : draft?.examSections) ||
           deriveExamSections(exam, allQuestions);
         const modeFromCs = (cs.accessMode || examAccess?.mode) as ExamAccessMode | undefined;
@@ -418,6 +547,18 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         );
         setSectionResults(cs.sectionResults || draft?.sectionResults || {});
         setSectionCompleted(!!(cs.sectionCompleted ?? draft?.sectionCompleted));
+        if (modeFromCs === "trial") {
+          trialMetaRef.current = {
+            trialQuestionIds:
+              cs.trialQuestionIds ||
+              draft?.trialQuestionIds ||
+              collectTrialQuestionIdsFromSections(sections),
+            trialSectionIds:
+              cs.trialSectionIds ||
+              draft?.trialSectionIds ||
+              sections.map((s) => s.id),
+          };
+        }
         const section = sections[idx];
         const limitSec = section ? section.timeLimit * 60 : 0;
         let remaining = draft?.sectionTimeLeft ?? limitSec;
@@ -479,6 +620,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       examSections,
       waitStartTime,
       sectionCompleted,
+      accessMode,
+      trialQuestionIds: trialMetaRef.current.trialQuestionIds,
+      trialSectionIds: trialMetaRef.current.trialSectionIds,
     });
   }, [
     examId,
@@ -512,6 +656,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             completedSections: Array.from(completedSections),
             sectionResults,
             sectionCompleted,
+            trialQuestionIds: trialMetaRef.current.trialQuestionIds,
+            trialSectionIds: trialMetaRef.current.trialSectionIds,
             examSections: examSections.map((s) => ({
               ...s,
             })),
@@ -578,12 +724,9 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     if (!isExamInProgress) return;
 
     // Handle browser back/forward navigation
-    const handlePopState = (e: PopStateEvent) => {
-      e.preventDefault();
-      // Show custom dialog instead of window.confirm
-      setPendingExitAction(() => () => {
-        // Allow navigation by not pushing back to history
-      });
+    const handlePopState = () => {
+      setPendingExitAction(null);
+      setPendingNavigation(getExamReturnPath());
       setShowExitDialog(true);
       // Always push back to stay on page until user decides
       window.history.pushState(null, '', window.location.href);
@@ -638,7 +781,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   // Show immediate exit confirmation
   const showExitConfirmation = () => {
     if (isExamInProgress) {
-      setPendingNavigation("/");
+      setPendingNavigation(getExamReturnPath());
       setShowExitDialog(true);
     }
   };
@@ -750,7 +893,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   // Helper: Get total scorable units in a section (aligned with trial limit)
   const getTotalQuestionCount = (questions: Question[]) => {
     return questions.reduce(
-      (sum, question) => sum + countScorableUnits(question as any),
+      (sum, question) => sum + countScorableUnitsSafe(question),
       0,
     );
   };
@@ -812,12 +955,10 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       ...sectionResults,
       [currentSection.id]: results
     };
-    
-    setSectionResults(updatedSectionResults);
-    setCompletedSections(prev => new Set([...Array.from(prev), currentSection.id]));
-    
+
     const isLastSection = currentSectionIndex >= examSections.length - 1;
-    
+
+    // Last section: submit without optimistic local complete (rollback-safe)
     if (isLastSection) {
       setIsSubmitting(true);
       submitExamMutation.mutate({
@@ -828,12 +969,19 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       return;
     }
 
+    const prevResults = sectionResults;
+    const prevCompleted = completedSections;
+    setSectionResults(updatedSectionResults);
+    setCompletedSections((prev) => new Set([...Array.from(prev), currentSection.id]));
+
     try {
       setIsSubmitting(true);
       await completeSectionOnServer(attemptId, currentSection.id, sectionAnswers);
       setSectionCompleted(true);
     } catch (error) {
       console.error("Error completing section:", error);
+      setSectionResults(prevResults);
+      setCompletedSections(prevCompleted);
       trialSubmitTriggeredRef.current = false;
       toast({
         title: "Không hoàn thành được phần thi",
@@ -843,7 +991,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
     } finally {
       setIsSubmitting(false);
     }
-  }, [getCurrentSection, getSectionConfig, sectionAnswers, sectionTimeLeft, isSubmitting, sectionResults, currentSectionIndex, examSections, attemptId, submitExamMutation, toast]);
+  }, [getCurrentSection, getSectionConfig, sectionAnswers, sectionTimeLeft, isSubmitting, sectionResults, completedSections, currentSectionIndex, examSections, attemptId, submitExamMutation, toast]);
 
   // Handle final exam submission (after last section overlay)
   const handleFinalSubmit = useCallback(() => {
@@ -1025,14 +1173,42 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         setCompletedSections(new Set(cs.completedSections || []));
         setSectionResults(cs.sectionResults || {});
         setSectionCompleted(!!cs.sectionCompleted);
+        if (modeFromServer === "trial") {
+          trialMetaRef.current = {
+            trialQuestionIds:
+              cs.trialQuestionIds ||
+              collectTrialQuestionIdsFromSections(restored),
+            trialSectionIds:
+              cs.trialSectionIds || restored.map((s) => s.id),
+          };
+        }
         const section = restored[cs.currentSectionIndex || 0];
         if (!cs.sectionCompleted && section) {
-          await startSectionOnServer(attempt.id, section.id);
-          setSectionTimeLeft(section.timeLimit * 60);
+          const limitSec = section.timeLimit * 60;
+          const sameSectionStarted =
+            attempt.currentSectionId === section.id && attempt.sectionStartedAt;
+          if (sameSectionStarted) {
+            const elapsed = Math.floor(
+              (Date.now() - new Date(attempt.sectionStartedAt).getTime()) / 1000
+            );
+            setSectionTimeLeft(Math.max(0, limitSec - elapsed));
+          } else {
+            await startSectionOnServer(attempt.id, section.id);
+            setSectionTimeLeft(limitSec);
+          }
         }
         setExamStarted(true);
         setWaitStartTime(Date.now());
         return;
+      }
+
+      if (modeFromServer === "trial") {
+        trialMetaRef.current = {
+          trialQuestionIds: collectTrialQuestionIdsFromSections(firstSections),
+          trialSectionIds: firstSections.map((s) => s.id),
+        };
+      } else {
+        trialMetaRef.current = {};
       }
 
       await startSectionOnServer(attempt.id, firstSection.id);
@@ -1045,7 +1221,12 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       setSectionTimeLeft(firstSection.timeLimit * 60);
     } catch (error) {
       console.error("Error starting exam:", error);
-      alert(error instanceof Error ? error.message : "Không bắt đầu được bài thi");
+      toast({
+        title: "Không bắt đầu được bài thi",
+        description:
+          error instanceof Error ? error.message : "Thử lại sau.",
+        variant: "destructive",
+      });
     } finally {
       setIsStarting(false);
     }
@@ -1084,7 +1265,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             <p className="text-gray-600 mb-6">
               Vui lòng đăng nhập lại hoặc tải lại trang.
             </p>
-            <Button onClick={() => setLocation("/")}>Về trang chủ</Button>
+            <Button onClick={() => setLocation(getExamReturnPath())}>Quay lại</Button>
           </CardContent>
         </Card>
       </div>
@@ -1101,8 +1282,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             <p className="text-gray-600 mb-6">
               Đề thi này không tồn tại, đã bị ẩn, hoặc đã bị xóa.
             </p>
-            <Button onClick={() => handleNavigateWithConfirm("/")}>
-              Về trang chủ
+            <Button onClick={() => handleNavigateWithConfirm(getExamReturnPath())}>
+              Quay lại
             </Button>
           </CardContent>
         </Card>
@@ -1120,8 +1301,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             <p className="text-gray-600 mb-6">
               Đề thi này hiện không mở để làm bài. Vui lòng chọn đề khác.
             </p>
-            <Button onClick={() => handleNavigateWithConfirm("/")}>
-              Về danh sách đề thi
+            <Button onClick={() => handleNavigateWithConfirm(getExamReturnPath())}>
+              Quay lại
             </Button>
           </CardContent>
         </Card>
@@ -1145,8 +1326,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               <Button variant="outline" onClick={() => handleNavigateWithConfirm("/login")}>
                 Đăng nhập
               </Button>
-              <Button onClick={() => handleNavigateWithConfirm("/")}>
-                Về cổng Luyện thi
+              <Button onClick={() => handleNavigateWithConfirm(getExamReturnPath())}>
+                Quay lại
               </Button>
             </div>
           </CardContent>
@@ -1170,8 +1351,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               <Button onClick={() => handleNavigateWithConfirm("/#exam-packages")}>
                 Xem gói &amp; QR
               </Button>
-              <Button variant="outline" onClick={() => handleNavigateWithConfirm("/")}>
-                Về cổng Luyện thi
+              <Button variant="outline" onClick={() => handleNavigateWithConfirm(getExamReturnPath())}>
+                Quay lại
               </Button>
             </div>
           </CardContent>
@@ -1212,8 +1393,8 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               <p className="text-gray-600 mb-6">
                 Đề thi này hiện tại chưa có câu hỏi nào. Vui lòng thử lại sau hoặc chọn đề thi khác.
               </p>
-              <Button onClick={() => handleNavigateWithConfirm("/online-exam")}>
-                Về trang chủ
+              <Button onClick={() => handleNavigateWithConfirm(getExamReturnPath())}>
+                Quay lại
               </Button>
             </CardContent>
           </Card>
@@ -1224,157 +1405,77 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
 
   // Show exam start screen
   if (!examStarted) {
-    // Calculate totals from dynamic sections (including sub-questions)
     const totalTime = examSections.reduce((sum, section) => sum + section.timeLimit, 0);
     const totalQuestions = examSections.reduce((sum, section) => sum + getTotalQuestionCount(section.questions), 0);
-    
-    // Get section icon and color
-    const getSectionIcon = (type: string) => {
-      const iconMap = {
-        "từ vựng": BookOpen,
-        "ngữ pháp": MessageSquare,
-        "đọc hiểu": FileInput,
-        "nghe hiểu": Headphones,
-      };
-      return iconMap[type as keyof typeof iconMap] || FileText;
-    };
-    
-    const getSectionColor = (type: string) => {
-      const colorMap = {
-        "từ vựng": "text-green-600",
-        "ngữ pháp": "text-blue-600", 
-        "đọc hiểu": "text-purple-600",
-        "nghe hiểu": "text-yellow-600",
-      };
-      return colorMap[type as keyof typeof colorMap] || "text-gray-600";
-    };
 
     return (
-      <div className="bg-gradient-to-br from-blue-50 via-white to-green-50 py-8 min-h-[80vh]">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 mt-5">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-start">
-            
-            {/* Left Column - Exam Overview */}
-            <div className="space-y-6">
-              <Card className="shadow-lg">
-                <CardHeader className="bg-gradient-to-r from-green-600 to-blue-600 text-white rounded-t-lg">
-                  <div className="flex items-center gap-4">
-                    <FileText className="w-8 h-8" data-testid="exam-icon" />
-                    <div>
-                      <CardTitle className="text-2xl" data-testid="exam-title">{exam?.title}</CardTitle>
-                      <p className="text-blue-100 mt-1" data-testid="exam-description">
-                        {exam?.description}
-                      </p>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="grid grid-cols-2 gap-6 mb-6">
-                    <div className="text-center p-4 bg-green-50 rounded-lg">
-                      <Clock className="w-8 h-8 text-green-600 mx-auto mb-2" />
-                      <div className="text-2xl font-bold text-green-600" data-testid="total-time">
-                        {totalTime}
-                      </div>
-                      <div className="text-sm text-gray-600">phút</div>
-                    </div>
-                    <div className="text-center p-4 bg-blue-50 rounded-lg">
-                      <FileText className="w-8 h-8 text-blue-600 mx-auto mb-2" />
-                      <div className="text-2xl font-bold text-blue-600" data-testid="total-questions">
-                        {totalQuestions}
-                      </div>
-                      <div className="text-sm text-gray-600">câu hỏi</div>
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                      <div className="flex items-start gap-3">
-                        <Eye className="w-5 h-5 text-yellow-600 mt-0.5" />
-                        <div className="text-sm text-yellow-800">
-                          <strong>Lưu ý quan trọng:</strong> Bạn không thể quay lại phần trước đã hoàn thành. 
-                          Hãy cân nhắc kỹ trước khi chuyển sang phần tiếp theo.
-                        </div>
-                      </div>
-                    </div>
-
-
-                    <div className="pt-4">
-                      <Button 
-                        onClick={startExam} 
-                        size="lg" 
-                        disabled={isStarting || examSections.length === 0}
-                        className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700"
-                        data-testid="button-start-exam"
-                      >
-                        <div className="flex items-center gap-2">
-                          <ArrowRight className="w-5 h-5" />
-                          {isStarting ? "Đang bắt đầu..." : "Bắt đầu làm bài"}
-                        </div>
-                      </Button>
-                      
-                      <Button 
-                        variant="outline" 
-                        onClick={() => handleNavigateWithConfirm("/")}
-                        className="w-full mt-3"
-                        data-testid="button-back-to-list"
-                      >
-                        <ChevronLeft className="w-4 h-4 mr-2" />
-                        Quay về danh sách đề thi
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+      <div className="min-h-[80vh] bg-neutral-50 py-8">
+        <div className="max-w-xl mx-auto px-4 sm:px-6">
+          <div className="rounded-2xl border border-neutral-200 bg-white shadow-sm overflow-hidden">
+            <div className="bg-primary px-6 py-5 text-primary-foreground">
+              <h1 className="text-xl sm:text-2xl font-semibold leading-snug" data-testid="exam-title">
+                {exam?.title}
+              </h1>
+              {exam?.description ? (
+                <p className="mt-1.5 text-sm text-primary-foreground/85 line-clamp-3" data-testid="exam-description">
+                  {exam.description}
+                </p>
+              ) : null}
             </div>
 
-            {/* Right Column - Section Timeline */}
-            <div className="space-y-6">
-              <Card className="shadow-lg">
-                <CardHeader>
-                  <CardTitle className="flex items-center gap-2">
-                    <CheckCircle className="w-5 h-5 text-green-600" />
-                    Cấu trúc bài thi ({examSections.length} phần)
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="p-6">
-                  <div className="space-y-4">
-                    {examSections.map((section, index) => {
-                      return (
-                        <div 
-                          key={section.id} 
-                          className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
-                          data-testid={`section-preview-${index}`}
-                        >
-                          <div className="flex-shrink-0">
-                            <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                              <FileText className="w-5 h-5 text-green-600" />
-                            </div>
-                          </div>
-                          
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-1">
-                              <h4 className="font-semibold text-gray-900">
-                                {index + 1}. {section.sectionName || (section as any).type || `Phần ${index + 1}`}
-                              </h4>
-                              <div className="flex items-center gap-4 text-sm text-gray-600">
-                                <span className="flex items-center gap-1">
-                                  <Clock className="w-3 h-3" />
-                                  {section.timeLimit} phút
-                                </span>
-                                <span className="flex items-center gap-1">
-                                  <FileText className="w-3 h-3" />
-                                  {getTotalQuestionCount(section.questions)} câu
-                                </span>
-                              </div>
-                            </div>
-                            
-                          </div>
-                        </div>
-                      );
-                    })}
+            <div className="p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-neutral-50 border border-neutral-100 px-4 py-3 text-center">
+                  <div className="text-2xl font-bold text-neutral-900 tabular-nums" data-testid="total-time">
+                    {totalTime}
                   </div>
-                </CardContent>
-              </Card>
+                  <div className="text-xs text-neutral-500 mt-0.5">phút</div>
+                </div>
+                <div className="rounded-xl bg-neutral-50 border border-neutral-100 px-4 py-3 text-center">
+                  <div className="text-2xl font-bold text-neutral-900 tabular-nums" data-testid="total-questions">
+                    {totalQuestions}
+                  </div>
+                  <div className="text-xs text-neutral-500 mt-0.5">câu</div>
+                </div>
+              </div>
+
+              <ul className="space-y-2">
+                {examSections.map((section, index) => (
+                  <li
+                    key={section.id}
+                    className="flex items-center justify-between gap-3 rounded-xl border border-neutral-100 bg-neutral-50/80 px-3.5 py-3"
+                    data-testid={`section-preview-${index}`}
+                  >
+                    <span className="text-sm font-medium text-neutral-900 min-w-0 truncate">
+                      {index + 1}. {section.sectionName || (section as any).type || `Phần ${index + 1}`}
+                    </span>
+                    <span className="shrink-0 text-xs text-neutral-500 tabular-nums">
+                      {section.timeLimit}′ · {getTotalQuestionCount(section.questions)} câu
+                    </span>
+                  </li>
+                ))}
+              </ul>
+
+              <div className="space-y-2.5 pt-1">
+                <Button
+                  onClick={startExam}
+                  size="lg"
+                  disabled={isStarting || examSections.length === 0}
+                  className="w-full"
+                  data-testid="button-start-exam"
+                >
+                  {isStarting ? "Đang bắt đầu..." : "Bắt đầu làm bài"}
+                </Button>
+                <Button
+                  variant="ghost"
+                  onClick={() => handleNavigateWithConfirm(getExamReturnPath())}
+                  className="w-full text-neutral-600"
+                  data-testid="button-back-to-list"
+                >
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Quay lại
+                </Button>
+              </div>
             </div>
           </div>
         </div>
@@ -1385,131 +1486,147 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
   const currentSection = getCurrentSection();
   const currentQuestion = currentSection?.questions[currentQuestionIndex];
   const totalQuestionsInSection = currentSection ? getTotalQuestionCount(currentSection.questions) : 0;
-  // Calculate progress based on parent questions (since navigation is parent-based)
-  const progress = (currentSection?.questions.length || 0) > 0 ? ((currentQuestionIndex + 1) / (currentSection?.questions.length || 1)) * 100 : 0;
-  // Count all answered questions (including sub-questions)
-  const allQuestionsFlat = currentSection ? getAllQuestionsFlat(currentSection.questions) : [];
-  const answeredCount = allQuestionsFlat.filter(q => sectionAnswers[q.id] !== undefined).length;
+  const answeredCount = currentSection
+    ? countAnsweredInSection(currentSection.questions, sectionAnswers)
+    : 0;
   const sectionConfig = getSectionConfig();
-  const SectionIcon = sectionConfig?.icon;
+  const parentCount = currentSection?.questions.length || 0;
+  const timeUrgent = sectionTimeLeft < 300;
+  const progressPct =
+    totalQuestionsInSection > 0
+      ? (answeredCount / totalQuestionsInSection) * 100
+      : 0;
 
   return (
-    <ExamProtectedContent className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-blue-50">
-      {/* Simplified Header */}
-      <div className="bg-white border-b border-gray-200 sticky top-0 z-20 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${sectionConfig?.color || 'bg-gradient-to-br from-blue-500 to-blue-600'} text-white shadow-md`}>
-                {SectionIcon && <SectionIcon className="w-5 h-5" />}
-              </div>
-              <div>
-                <h1 className="text-lg font-bold text-gray-900">
-                  {exam.title}
-                </h1>
-                <p className="text-sm text-gray-500 font-medium">
-                  {sectionConfig?.title || 'Đang tải'} - Câu {currentQuestionIndex + 1}/{currentSection?.questions.length || 0}
-                </p>
-              </div>
+    <ExamProtectedContent className="min-h-screen bg-neutral-50 pb-28 lg:pb-8">
+      {/* Sticky chrome: title + timer always visible */}
+      <div className="sticky top-0 z-20 border-b border-neutral-200 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/90">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-2.5">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="shrink-0 h-9 w-9 text-neutral-500 hover:text-neutral-900"
+              onClick={showExitConfirmation}
+              aria-label="Thoát"
+              data-testid="button-exit-exam"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+
+            <div className="min-w-0 flex-1">
+              <h1 className="text-sm sm:text-base font-semibold text-neutral-900 truncate">
+                {exam.title}
+              </h1>
+              <p className="text-xs text-neutral-500 truncate">
+                {sectionConfig?.title || `Phần ${currentSectionIndex + 1}`}
+                {" · "}
+                Câu {currentQuestionIndex + 1}/{parentCount}
+                {" · "}
+                {answeredCount}/{totalQuestionsInSection}
+              </p>
             </div>
-            {/* Section Progress Dots */}
-            <div className="flex items-center gap-2">
-              {examSections.map((section, index) => (
-                <div key={section.id} className="flex items-center">
-                  <div className={`w-2.5 h-2.5 rounded-full transition-all ${
-                    completedSections.has(section.id) ? 'bg-green-500 ring-2 ring-green-200' :
-                    currentSectionIndex === index ? 'bg-blue-500 ring-2 ring-blue-200 scale-125' : 'bg-gray-300'
-                  }`} />
-                  {index < examSections.length - 1 && <div className="w-4 h-0.5 bg-gray-300 mx-1" />}
-                </div>
-              ))}
+
+            <div
+              className={cn(
+                "shrink-0 flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 font-mono text-base sm:text-lg font-bold tabular-nums",
+                timeUrgent
+                  ? "bg-red-50 text-red-600 ring-1 ring-red-200"
+                  : "bg-neutral-100 text-neutral-900",
+              )}
+              data-testid="exam-timer"
+            >
+              <Clock className="h-4 w-4 opacity-70" />
+              {formatTime(sectionTimeLeft)}
             </div>
           </div>
+
+          {examSections.length > 1 && (
+            <div className="mt-2 flex items-center gap-1.5 pl-11">
+              {examSections.map((section, index) => (
+                <div
+                  key={section.id}
+                  className={cn(
+                    "h-1.5 flex-1 max-w-8 rounded-full transition-colors",
+                    completedSections.has(section.id)
+                      ? "bg-primary"
+                      : currentSectionIndex === index
+                        ? "bg-primary/60"
+                        : "bg-neutral-200",
+                  )}
+                  title={section.sectionName || `Phần ${index + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="h-0.5 bg-neutral-100">
+          <div
+            className="h-full bg-primary transition-[width] duration-300"
+            style={{ width: `${Math.min(100, progressPct)}%` }}
+          />
         </div>
       </div>
 
       {/* Section Completion Overlay */}
       {sectionCompleted && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <Card className="max-w-md mx-4">
-            <CardContent className="text-center py-8">
-              <div className="mb-4">
-                <CheckCircle className="w-16 h-16 text-green-500 mx-auto mb-4" />
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                  Hoàn thành phần {sectionConfig?.title || 'Đang tải'}!
-                </h3>
-                <p className="text-gray-600 mb-6">
-                  Bạn đã hoàn thành phần thi này. {hasNextSection() 
-                    ? "Nhấn nút bên dưới để chuyển sang phần tiếp theo."
-                    : "Nhấn nút bên dưới để nộp bài thi."
-                  }
-                </p>
-              </div>
-              
-              <div className="space-y-3">
-                <div className="text-sm text-gray-500">
-                  <p>Thời gian: {formatTime(((sectionConfig?.timeLimit || 0) * 60) - sectionTimeLeft)}</p>
-                </div>
-                
-                <Button 
-                  onClick={handleProceedToNext}
-                  className="w-full"
-                  size="lg"
-                >
-                  {hasNextSection() 
-                    ? `Chuyển sang phần tiếp theo`
-                    : "Nộp bài thi"
-                  }
-                  <ArrowRight className="w-4 h-4 ml-2" />
-                </Button>
-              </div>
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <Card className="max-w-sm w-full shadow-xl border-neutral-200">
+            <CardContent className="text-center py-8 px-6">
+              <CheckCircle className="w-14 h-14 text-primary mx-auto mb-3" />
+              <h3 className="text-lg font-semibold text-neutral-900 mb-6">
+                Xong {sectionConfig?.title || "phần này"}
+              </h3>
+              <Button onClick={handleProceedToNext} className="w-full" size="lg">
+                {hasNextSection() ? "Phần tiếp theo" : "Nộp bài"}
+                <ArrowRight className="w-4 h-4 ml-2" />
+              </Button>
             </CardContent>
           </Card>
         </div>
       )}
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-          {/* Left Column: Section Description + Question Content */}
-          <div className="lg:col-span-8 space-y-6">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 lg:gap-6 items-start">
+          <div className="lg:col-span-8 space-y-4">
             {/* Section Description */}
-            {currentSection && (currentSection.content || (currentSection.descriptionImageUrls && currentSection.descriptionImageUrls.length > 0) || currentSection.descriptionAudioUrl) && (
+            {currentSection && (currentSection.content || asMediaUrlList(currentSection.descriptionImageUrls).length > 0 || currentSection.descriptionAudioUrl) && (
               <div>
-              <Card className="shadow-lg border-emerald-200 bg-gradient-to-br from-emerald-50/50 to-white">
-                <CardHeader className="bg-gradient-to-r from-emerald-100/50 to-emerald-50/50 border-b border-emerald-200">
-                  <CardTitle className="text-xl font-bold text-emerald-700 flex items-center gap-2">
-                    <div className="w-1.5 h-6 bg-emerald-600 rounded-full"></div>
-                    Phần {currentSectionIndex + 1}: {currentSection.sectionName || (currentSection as any).type || ""}
+              <Card className="border-neutral-200 shadow-sm">
+                <CardHeader className="pb-3 pt-4 px-4 sm:px-5">
+                  <CardTitle className="text-base font-semibold text-neutral-800">
+                    {currentSection.sectionName || (currentSection as any).type || `Phần ${currentSectionIndex + 1}`}
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 p-6">
-                  {/* Section Description Text */}
+                <CardContent className="space-y-4 px-4 sm:px-5 pb-5">
                   {currentSection.content && (
-                    <div className="bg-blue-50/80 border border-blue-200 p-5 rounded-xl">
-                      <p className="text-gray-800 whitespace-pre-wrap leading-relaxed">
-                        {currentSection.content}
-                      </p>
-                    </div>
+                    <p className="text-neutral-800 whitespace-pre-wrap leading-relaxed text-[15px]">
+                      {currentSection.content}
+                    </p>
                   )}
                   
-                  {/* Section Description Images */}
-                  {currentSection.descriptionImageUrls && currentSection.descriptionImageUrls.length > 0 && (
-                    <div className="flex justify-center flex-wrap gap-4">
-                      {currentSection.descriptionImageUrls.map((imageUrl: string, index: number) => (
+                  {asMediaUrlList(currentSection.descriptionImageUrls).length > 0 && (
+                    <div className="flex justify-center flex-wrap gap-3">
+                      {asMediaUrlList(currentSection.descriptionImageUrls).map((imageUrl: string, index: number) => (
                         <ProtectedExamImage
                           key={index}
                           src={imageUrl}
-                          alt={`Section description ${index + 1}`}
-                          className="max-w-full h-auto rounded-lg shadow-sm max-h-[700px]"
+                          imageKind="description"
+                          alt=""
+                          className="max-w-full h-auto rounded-lg max-h-[700px]"
                           data-testid={`section-image-${index}`}
                         />
                       ))}
                     </div>
                   )}
                   
-                  {/* Section Description Audio */}
-                  {currentSection.descriptionAudioUrl && (
+                  {currentSection.descriptionAudioUrl &&
+                    resolveExamMediaUrl(
+                      currentSection.descriptionAudioUrl,
+                      "section-description-audio",
+                    ) && (
                     <div className="flex justify-center">
                       <ExamAudioPlayer
                         src={resolveExamMediaUrl(
@@ -1518,7 +1635,7 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                         )}
                         maxPlays={1}
                         className="w-full max-w-md"
-                        key={`section-audio-${currentSectionIndex}`}
+                        key={`section-audio-${currentSection.id}`}
                       />
                     </div>
                   )}
@@ -1530,57 +1647,47 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             {/* Question Content */}
             <div>
             {!currentQuestion ? (
-              <Card>
+              <Card className="border-neutral-200">
                 <CardContent className="p-8 text-center">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-green-600 mx-auto mb-4"></div>
-                  <p className="text-gray-600">Đang tải câu hỏi...</p>
+                  <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mx-auto mb-3"></div>
+                  <p className="text-neutral-500 text-sm">Đang tải…</p>
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-6">
-                {/* Question Set Name Display */}
+              <div className="space-y-4">
                 {(currentQuestion as any).questionSetName && (
-                  <Card className="bg-gradient-to-r from-green-50 to-emerald-50 border-green-300 shadow-sm">
-                    <CardContent className="py-3 px-5">
-                      <div className="flex items-center gap-2">
-                        <div className="w-1 h-5 bg-green-600 rounded-full"></div>
-                        <span className="text-sm font-semibold text-green-700">
-                          {(currentQuestion as any).questionSetName}
-                        </span>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <p className="text-sm font-medium text-primary px-0.5">
+                    {(currentQuestion as any).questionSetName}
+                  </p>
                 )}
 
                 {/* Common Description (for questions with sub-questions only) */}
                 {(currentQuestion as any).subQuestions && (currentQuestion as any).subQuestions.length > 0 && 
                  ((currentQuestion as any).description || 
-                  ((currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0) || 
+                  asMediaUrlList((currentQuestion as any).descriptionImageUrls).length > 0 || 
                   (currentQuestion as any).descriptionAudioUrl) && (
-                  <Card className="shadow-md border-amber-200 bg-gradient-to-br from-amber-50/50 to-white">
-                    <CardContent className="p-6 space-y-4">
-                      {/* Description Text */}
+                  <Card className="border-neutral-200 shadow-sm bg-neutral-50/50">
+                    <CardContent className="p-4 sm:p-5 space-y-3">
                       {(currentQuestion as any).description && (
-                        <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
+                        <div className="text-[15px] text-neutral-800 whitespace-pre-wrap leading-relaxed">
                           {(currentQuestion as any).description}
                         </div>
                       )}
                       
-                      {/* Description Images */}
-                      {((currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0) && (
-                        <div className="flex justify-center flex-wrap gap-4">
-                          {(currentQuestion as any).descriptionImageUrls.map((imageUrl: string, index: number) => (
+                      {asMediaUrlList((currentQuestion as any).descriptionImageUrls).length > 0 && (
+                        <div className="flex justify-center flex-wrap gap-3">
+                          {asMediaUrlList((currentQuestion as any).descriptionImageUrls).map((imageUrl: string, index: number) => (
                             <ProtectedExamImage
                               key={index}
                               src={imageUrl}
-                              alt={`Question description illustration ${index + 1}`}
-                              className="max-w-full h-auto rounded-lg shadow-sm max-h-[700px]"
+                              imageKind="description"
+                              alt=""
+                              className="max-w-full h-auto rounded-lg max-h-[700px]"
                             />
                           ))}
                         </div>
                       )}
                       
-                      {/* Description Audio */}
                       {(currentQuestion as any).descriptionAudioUrl && (
                         <div className="flex justify-center">
                           <ExamAudioPlayer
@@ -1598,477 +1705,315 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
                   </Card>
                 )}
 
-                {/* Regular Question or Sub-Questions */}
                 {(currentQuestion as any).subQuestions && (currentQuestion as any).subQuestions.length > 0 ? (
-                  /* Render Parent + Sub-Questions */
                   <>
-                    {/* Parent Question (Câu 1) */}
-                    <Card className="shadow-md border-blue-200 bg-gradient-to-br from-white to-blue-50/30">
-                      <CardHeader className="bg-gradient-to-r from-blue-100/50 to-blue-50/50 border-b border-blue-200">
-                        <CardTitle className="text-lg font-bold text-blue-900">
-                          <div>Câu {currentQuestionIndex + 1}.1:</div>
-                          <div className="whitespace-pre-wrap mt-1">{currentQuestion.questionText}</div>
+                    <Card className="border-neutral-200 shadow-sm">
+                      <CardHeader className="pb-3 pt-4 px-4 sm:px-5 border-b border-neutral-100">
+                        <CardTitle className="text-base sm:text-lg font-semibold text-neutral-900 space-y-1">
+                          <div className="text-xs font-medium text-neutral-500 uppercase tracking-wide">
+                            {isPassageParent(currentQuestion)
+                              ? `Đoạn văn · Câu ${currentQuestionIndex + 1}`
+                              : `Câu ${currentQuestionIndex + 1}.1`}
+                          </div>
+                          <div className="whitespace-pre-wrap font-normal text-[15px] sm:text-base leading-relaxed">
+                            {currentQuestion.questionText}
+                          </div>
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-6">
-                        {/* Parent Question Images */}
-                        {((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) && (
-                          <div className="flex justify-center flex-wrap gap-4">
-                            {(currentQuestion as any).imageUrls.map((imageUrl: string, index: number) => (
+                      <CardContent className="space-y-4 p-4 sm:p-5">
+                        {asMediaUrlList((currentQuestion as any).imageUrls).length > 0 && (
+                          <div className="flex justify-center flex-wrap gap-3">
+                            {asMediaUrlList((currentQuestion as any).imageUrls).map((imageUrl: string, index: number) => (
                               <ProtectedExamImage
                                 key={index}
                                 src={imageUrl}
-                                alt={`Question illustration ${index + 1}`}
-                                className="max-w-full h-auto rounded-lg shadow-sm max-h-[700px]"
+                                imageKind="question"
+                                alt=""
+                                className="max-w-full h-auto rounded-lg max-h-[700px]"
                               />
                             ))}
                           </div>
                         )}
 
-                        {/* Parent Question Audio */}
                         {(currentQuestion as any).audioUrl && (
-                          <div className="flex justify-center">
-                            <ExamAudioPlayer
-                              src={resolveExamMediaUrl((currentQuestion as any).audioUrl, "question-audio")}
-                              maxPlays={1}
-                              className="w-full max-w-md"
-                              key={`parent-audio-${currentQuestion.id}`}
-                            />
-                          </div>
+                          <ExamAudioPlayer
+                            src={resolveExamMediaUrl((currentQuestion as any).audioUrl, "question-audio")}
+                            maxPlays={1}
+                            className="w-full"
+                            key={`parent-audio-${currentQuestion.id}`}
+                          />
                         )}
 
-                        {/* Answer Options for Parent Question */}
-                        <RadioGroup
-                          value={sectionAnswers[currentQuestion.id] || ""}
-                          onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
-                        >
-                          {(currentQuestion.options as any[]).map((option: any, index: number) => {
-                            const optionText = typeof option === 'string' ? option : option.text;
-                            const optionImageUrl = typeof option === 'string' ? '' : option.imageUrl;
-                            const optionImageUrls = typeof option === 'string' ? [] : (option.imageUrls || []);
-                            
-                            return (
-                              <div key={index} className="flex items-start space-x-3 p-4 border-2 rounded-xl hover:border-blue-400 hover:bg-blue-50/50 transition-all cursor-pointer">
-                                <RadioGroupItem 
-                                  value={index.toString()} 
-                                  id={`parent-option-${currentQuestion.id}-${index}`} 
-                                  className="mt-1.5"
+                        {!isPassageParent(currentQuestion) && optionList(currentQuestion.options).length > 0 && (
+                          <RadioGroup
+                            value={sectionAnswers[currentQuestion.id] || ""}
+                            onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
+                            className="gap-2.5"
+                            disabled={sectionCompleted}
+                          >
+                            {optionList(currentQuestion.options).map((option: any, index: number) => {
+                              const optionText = typeof option === "string" ? option : option?.text;
+                              const value = index.toString();
+                              return (
+                                <ExamOptionRow
+                                  key={index}
+                                  id={`parent-option-${currentQuestion.id}-${index}`}
+                                  value={value}
+                                  selected={sectionAnswers[currentQuestion.id] === value}
+                                  label={`${String.fromCharCode(65 + index)}. ${optionText ?? ""}`}
+                                  option={option}
                                 />
-                                <div className="flex-1">
-                                  <Label 
-                                    htmlFor={`parent-option-${currentQuestion.id}-${index}`} 
-                                    className="cursor-pointer flex flex-col space-y-2"
-                                  >
-                                    <span className="text-sm">
-                                      {String.fromCharCode(65 + index)}. {optionText}
-                                    </span>
-                                    
-                                    {optionImageUrls.length > 0 && (
-                                      <div className="flex flex-wrap gap-2">
-                                        {optionImageUrls.map((imageUrl: string, imgIndex: number) => (
-                                          <ProtectedExamImage
-                                            key={imgIndex}
-                                            src={imageUrl}
-                                            alt={`Option ${String.fromCharCode(65 + index)} illustration ${imgIndex + 1}`}
-                                            className="max-w-full h-auto rounded-md shadow-sm max-h-[700px]"
-                                          />
-                                        ))}
-                                      </div>
-                                    )}
-                                    
-                                    {optionImageUrl && optionImageUrls.length === 0 && (
-                                      <ProtectedExamImage
-                                        src={optionImageUrl}
-                                        alt={`Option ${String.fromCharCode(65 + index)} illustration`}
-                                        className="max-w-full h-auto rounded-md shadow-sm max-h-[700px]"
-                                      />
-                                    )}
-                                  </Label>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </RadioGroup>
+                              );
+                            })}
+                          </RadioGroup>
+                        )}
                       </CardContent>
                     </Card>
 
-                    {/* Sub-Questions (Câu 2, 3, ...) */}
                     {(currentQuestion as any).subQuestions.map((subQuestion: any, subIndex: number) => (
-                      <Card key={subQuestion.id} className="shadow-md border-purple-200 bg-gradient-to-br from-white to-purple-50/30">
-                        <CardHeader className="bg-gradient-to-r from-purple-100/50 to-purple-50/50 border-b border-purple-200">
-                          <CardTitle className="text-lg font-bold text-purple-900">
-                            <div>Câu {currentQuestionIndex + 1}.{subIndex + 2}:</div>
-                            <div className="whitespace-pre-wrap mt-1">{subQuestion.questionText}</div>
+                      <Card key={subQuestion.id} className="border-neutral-200 shadow-sm">
+                        <CardHeader className="pb-3 pt-4 px-4 sm:px-5 border-b border-neutral-100">
+                          <CardTitle className="text-base sm:text-lg font-semibold text-neutral-900 space-y-1">
+                            <div className="text-xs font-medium text-neutral-500 uppercase tracking-wide">
+                              Câu {currentQuestionIndex + 1}.{subIndex + (isPassageParent(currentQuestion) ? 1 : 2)}
+                            </div>
+                            <div className="whitespace-pre-wrap font-normal text-[15px] sm:text-base leading-relaxed">
+                              {subQuestion.questionText}
+                            </div>
                           </CardTitle>
                         </CardHeader>
-                      <CardContent className="space-y-6">
-                        {/* Sub-Question Images */}
-                        {(subQuestion.imageUrls && subQuestion.imageUrls.length > 0) && (
-                          <div className="flex justify-center flex-wrap gap-4">
-                            {subQuestion.imageUrls.map((imageUrl: string, index: number) => (
-                              <ProtectedExamImage
-                                key={index}
-                                src={imageUrl}
-                                alt={`Question illustration ${index + 1}`}
-                                className="max-w-full h-auto rounded-lg shadow-sm max-h-[700px]"
-                              />
-                            ))}
-                          </div>
-                        )}
-
-                        {/* Sub-Question Audio */}
-                        {subQuestion.audioUrl && (
-                          <div className="flex justify-center">
-                            <ExamAudioPlayer
-                              src={resolveExamMediaUrl(subQuestion.audioUrl, "question-audio")}
-                              maxPlays={1}
-                              className="w-full max-w-md"
-                              key={`sub-audio-${subQuestion.id}`}
-                            />
-                          </div>
-                        )}
-
-                        {/* Answer Options for Sub-Question */}
-                        <RadioGroup
-                          value={sectionAnswers[subQuestion.id] || ""}
-                          onValueChange={(value) => handleAnswerChange(subQuestion.id, value)}
-                        >
-                          {(subQuestion.options as any[]).map((option: any, index: number) => {
-                            const optionText = typeof option === 'string' ? option : option.text;
-                            const optionImageUrl = typeof option === 'string' ? '' : option.imageUrl;
-                            const optionImageUrls = typeof option === 'string' ? [] : (option.imageUrls || []);
-                            
-                            return (
-                              <div key={index} className="flex items-start space-x-3 p-4 border-2 rounded-xl hover:border-purple-400 hover:bg-purple-50/50 transition-all cursor-pointer">
-                                <RadioGroupItem 
-                                  value={index.toString()} 
-                                  id={`sub-option-${subQuestion.id}-${index}`} 
-                                  className="mt-1.5"
-                                />
-                                <div className="flex-1">
-                                  <Label 
-                                    htmlFor={`sub-option-${subQuestion.id}-${index}`} 
-                                    className="cursor-pointer flex flex-col space-y-2"
-                                  >
-                                    <span className="text-sm">
-                                      {String.fromCharCode(65 + index)}. {optionText}
-                                    </span>
-                                    
-                                    {/* Display multiple option images (new format) */}
-                                    {optionImageUrls.length > 0 && (
-                                      <div className="flex flex-wrap gap-2">
-                                        {optionImageUrls.map((imageUrl: string, imgIndex: number) => (
-                                          <ProtectedExamImage
-                                            key={imgIndex}
-                                            src={imageUrl}
-                                            alt={`Option ${String.fromCharCode(65 + index)} illustration ${imgIndex + 1}`}
-                                            className="max-w-full h-auto rounded-md shadow-sm max-h-[700px]"
-                                          />
-                                        ))}
-                                      </div>
-                                    )}
-                                    
-                                    {/* Display single option image (legacy format) */}
-                                    {optionImageUrl && optionImageUrls.length === 0 && (
-                                      <ProtectedExamImage
-                                        src={optionImageUrl}
-                                        alt={`Option ${String.fromCharCode(65 + index)} illustration`}
-                                        className="max-w-full h-auto rounded-md shadow-sm max-h-[700px]"
-                                      />
-                                    )}
-                                  </Label>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </RadioGroup>
-                      </CardContent>
-                    </Card>
-                  ))}
-                  </>
-                ) : (
-                  /* Render Regular Question (No Sub-Questions) */
-                  <>
-                    {/* Common Description (for regular questions) */}
-                    {((currentQuestion as any).description || 
-                      ((currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0) || 
-                      (currentQuestion as any).descriptionAudioUrl) && (
-                      <Card className="shadow-md border-amber-200 bg-gradient-to-br from-amber-50/50 to-white">
-                        <CardContent className="p-6 space-y-4">
-                          {/* Description Text */}
-                          {(currentQuestion as any).description && (
-                            <div className="text-sm text-gray-800 whitespace-pre-wrap leading-relaxed">
-                              {(currentQuestion as any).description}
-                            </div>
-                          )}
-                          
-                          {/* Description Images */}
-                          {((currentQuestion as any).descriptionImageUrls && (currentQuestion as any).descriptionImageUrls.length > 0) && (
-                            <div className="flex justify-center flex-wrap gap-4">
-                              {(currentQuestion as any).descriptionImageUrls.map((imageUrl: string, index: number) => (
+                        <CardContent className="space-y-4 p-4 sm:p-5">
+                          {asMediaUrlList(subQuestion.imageUrls).length > 0 && (
+                            <div className="flex justify-center flex-wrap gap-3">
+                              {asMediaUrlList(subQuestion.imageUrls).map((imageUrl: string, index: number) => (
                                 <ProtectedExamImage
                                   key={index}
                                   src={imageUrl}
-                                  alt={`Question description illustration ${index + 1}`}
-                                  className="max-w-full h-auto rounded-lg shadow-sm max-h-[700px]"
+                                  imageKind="question"
+                                  alt=""
+                                  className="max-w-full h-auto rounded-lg max-h-[700px]"
                                 />
                               ))}
                             </div>
                           )}
-                          
-                          {/* Description Audio */}
-                          {(currentQuestion as any).descriptionAudioUrl && (
-                            <div className="flex justify-center">
-                              <ExamAudioPlayer
-                                src={resolveExamMediaUrl(
-                                  (currentQuestion as any).descriptionAudioUrl,
-                                  "question-description-audio"
-                                )}
-                                maxPlays={1}
-                                className="w-full max-w-md"
-                                key={`desc-audio-${currentQuestion.id}`}
-                              />
+
+                          {subQuestion.audioUrl && (
+                            <ExamAudioPlayer
+                              src={resolveExamMediaUrl(subQuestion.audioUrl, "question-audio")}
+                              maxPlays={1}
+                              className="w-full"
+                              key={`sub-audio-${subQuestion.id}`}
+                            />
+                          )}
+
+                          <RadioGroup
+                            value={sectionAnswers[subQuestion.id] || ""}
+                            onValueChange={(value) => handleAnswerChange(subQuestion.id, value)}
+                            className="gap-2.5"
+                            disabled={sectionCompleted}
+                          >
+                            {optionList(subQuestion.options).map((option: any, index: number) => {
+                              const optionText = typeof option === "string" ? option : option?.text;
+                              const value = index.toString();
+                              return (
+                                <ExamOptionRow
+                                  key={index}
+                                  id={`sub-option-${subQuestion.id}-${index}`}
+                                  value={value}
+                                  selected={sectionAnswers[subQuestion.id] === value}
+                                  label={`${String.fromCharCode(65 + index)}. ${optionText ?? ""}`}
+                                  option={option}
+                                />
+                              );
+                            })}
+                          </RadioGroup>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </>
+                ) : (
+                  <>
+                    {((currentQuestion as any).description || 
+                      asMediaUrlList((currentQuestion as any).descriptionImageUrls).length > 0 || 
+                      (currentQuestion as any).descriptionAudioUrl) && (
+                      <Card className="border-neutral-200 shadow-sm bg-neutral-50/50">
+                        <CardContent className="p-4 sm:p-5 space-y-3">
+                          {(currentQuestion as any).description && (
+                            <div className="text-[15px] text-neutral-800 whitespace-pre-wrap leading-relaxed">
+                              {(currentQuestion as any).description}
                             </div>
+                          )}
+                          {asMediaUrlList((currentQuestion as any).descriptionImageUrls).length > 0 && (
+                            <div className="flex justify-center flex-wrap gap-3">
+                              {asMediaUrlList((currentQuestion as any).descriptionImageUrls).map((imageUrl: string, index: number) => (
+                                <ProtectedExamImage
+                                  key={index}
+                                  src={imageUrl}
+                                  imageKind="description"
+                                  alt=""
+                                  className="max-w-full h-auto rounded-lg max-h-[700px]"
+                                />
+                              ))}
+                            </div>
+                          )}
+                          {(currentQuestion as any).descriptionAudioUrl && (
+                            <ExamAudioPlayer
+                              src={resolveExamMediaUrl(
+                                (currentQuestion as any).descriptionAudioUrl,
+                                "question-description-audio"
+                              )}
+                              maxPlays={1}
+                              className="w-full"
+                              key={`desc-audio-${currentQuestion.id}`}
+                            />
                           )}
                         </CardContent>
                       </Card>
                     )}
                     
-                    {/* Regular Question */}
-                    <Card className="shadow-md border-indigo-200 bg-gradient-to-br from-white to-indigo-50/30">
-                      <CardHeader className="bg-gradient-to-r from-indigo-100/50 to-indigo-50/50 border-b border-indigo-200">
-                        <CardTitle className="text-lg font-bold text-indigo-900">
-                          <div>Câu {currentQuestionIndex + 1}:</div>
-                          <div className="whitespace-pre-wrap mt-1">{currentQuestion.questionText}</div>
+                    <Card className="border-neutral-200 shadow-sm">
+                      <CardHeader className="pb-3 pt-4 px-4 sm:px-5 border-b border-neutral-100">
+                        <CardTitle className="text-base sm:text-lg font-semibold text-neutral-900 space-y-1">
+                          <div className="text-xs font-medium text-neutral-500 uppercase tracking-wide">
+                            Câu {currentQuestionIndex + 1}
+                          </div>
+                          <div className="whitespace-pre-wrap font-normal text-[15px] sm:text-base leading-relaxed">
+                            {currentQuestion.questionText}
+                          </div>
                         </CardTitle>
                       </CardHeader>
-                      <CardContent className="space-y-6">
-                        {/* Question Images */}
-                        {((currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.length > 0) || (currentQuestion as any).imageUrl ? (
-                          <div className="flex justify-center flex-wrap gap-4">
-                            {/* Show imageUrls array first (new format) */}
-                            {(currentQuestion as any).imageUrls && (currentQuestion as any).imageUrls.map((imageUrl: string, index: number) => (
+                      <CardContent className="space-y-4 p-4 sm:p-5">
+                        {(asMediaUrlList((currentQuestion as any).imageUrls).length > 0 ||
+                          !!(currentQuestion as any).imageUrl) && (
+                          <div className="flex justify-center flex-wrap gap-3">
+                            {asMediaUrlList((currentQuestion as any).imageUrls).map((imageUrl: string, index: number) => (
                               <ProtectedExamImage
                                 key={index}
                                 src={imageUrl}
-                                alt={`Question illustration ${index + 1}`}
-                                className="max-w-full h-auto rounded-lg shadow-sm max-h-[700px]"
+                                imageKind="question"
+                                alt=""
+                                className="max-w-full h-auto rounded-lg max-h-[700px]"
                               />
                             ))}
-                            {/* Show single imageUrl if no imageUrls (legacy support) */}
-                            {(currentQuestion as any).imageUrl && (!(currentQuestion as any).imageUrls || (currentQuestion as any).imageUrls.length === 0) && (
+                            {asMediaUrlList((currentQuestion as any).imageUrls).length === 0 &&
+                              (currentQuestion as any).imageUrl && (
                               <ProtectedExamImage
                                 src={(currentQuestion as any).imageUrl}
-                                alt="Question illustration"
-                                className="max-w-full h-auto rounded-lg shadow-sm max-h-[700px]"
+                                imageKind="question"
+                                alt=""
+                                className="max-w-full h-auto rounded-lg max-h-[700px]"
                               />
                             )}
                           </div>
-                        ) : null}
-
-                        {/* Question Audio */}
-                        {(currentQuestion as any).audioUrl && (
-                          <div className="flex justify-center">
-                            <ExamAudioPlayer
-                              src={resolveExamMediaUrl((currentQuestion as any).audioUrl, "question-audio")}
-                              maxPlays={1}
-                              className="w-full max-w-md"
-                              key={`audio-${currentQuestion.id}`}
-                            />
-                          </div>
                         )}
 
-                        {/* Answer Options */}
-                      <RadioGroup
-                        value={sectionAnswers[currentQuestion.id] || ""}
-                        onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
-                      >
-                        {(currentQuestion.options as any[]).map((option: any, index: number) => {
-                          const optionText = typeof option === 'string' ? option : option.text;
-                          const optionImageUrl = typeof option === 'string' ? '' : option.imageUrl;
-                          const optionImageUrls = typeof option === 'string' ? [] : (option.imageUrls || []);
-                          
-                          return (
-                            <div key={index} className="flex items-start space-x-3 p-4 border-2 rounded-xl hover:border-indigo-400 hover:bg-indigo-50/50 transition-all cursor-pointer">
-                              <RadioGroupItem 
-                                value={index.toString()} 
-                                id={`option-${index}`} 
-                                className="mt-1.5"
+                        {(currentQuestion as any).audioUrl && (
+                          <ExamAudioPlayer
+                            src={resolveExamMediaUrl((currentQuestion as any).audioUrl, "question-audio")}
+                            maxPlays={1}
+                            className="w-full"
+                            key={`audio-${currentQuestion.id}`}
+                          />
+                        )}
+
+                        <RadioGroup
+                          value={sectionAnswers[currentQuestion.id] || ""}
+                          onValueChange={(value) => handleAnswerChange(currentQuestion.id, value)}
+                          className="gap-2.5"
+                          disabled={sectionCompleted}
+                        >
+                          {optionList(currentQuestion.options).map((option: any, index: number) => {
+                            const optionText = typeof option === "string" ? option : option?.text;
+                            const value = index.toString();
+                            return (
+                              <ExamOptionRow
+                                key={index}
+                                id={`option-${currentQuestion.id}-${index}`}
+                                value={value}
+                                selected={sectionAnswers[currentQuestion.id] === value}
+                                label={`${String.fromCharCode(65 + index)}. ${optionText ?? ""}`}
+                                option={option}
                               />
-                              <div className="flex-1">
-                                <Label 
-                                  htmlFor={`option-${index}`} 
-                                  className="cursor-pointer flex flex-col space-y-2"
-                                >
-                                  <span className="text-sm">
-                                    {String.fromCharCode(65 + index)}. {optionText}
-                                  </span>
-                                  
-                                  {/* Display multiple option images (new format) */}
-                                  {optionImageUrls.length > 0 && (
-                                    <div className="flex flex-wrap gap-2">
-                                      {optionImageUrls.map((imageUrl: string, imgIndex: number) => (
-                                        <ProtectedExamImage
-                                          key={imgIndex}
-                                          src={imageUrl}
-                                          alt={`Option ${String.fromCharCode(65 + index)} illustration ${imgIndex + 1}`}
-                                          className="max-w-full h-auto rounded-md shadow-sm max-h-[700px]"
-                                        />
-                                      ))}
-                                    </div>
-                                  )}
-                                  
-                                  {/* Display single option image (legacy format) */}
-                                  {optionImageUrl && optionImageUrls.length === 0 && (
-                                    <ProtectedExamImage
-                                      src={optionImageUrl}
-                                      alt={`Option ${String.fromCharCode(65 + index)} illustration`}
-                                      className="max-w-full h-auto rounded-md shadow-sm max-h-[700px]"
-                                    />
-                                  )}
-                                </Label>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </RadioGroup>
-                    </CardContent>
-                  </Card>
+                            );
+                          })}
+                        </RadioGroup>
+                      </CardContent>
+                    </Card>
                   </>
                 )}
               </div>
             )}
 
-            {/* Navigation - Within Section Only */}
+            {/* Desktop nav */}
             {currentQuestion && (
-              <div className="flex justify-between mt-8 gap-4">
+              <div className="hidden sm:flex justify-between gap-3 mt-2">
                 <Button
                   variant="outline"
                   onClick={handlePrevious}
                   disabled={currentQuestionIndex === 0 || sectionCompleted}
                   size="lg"
-                  className="flex-1 border-2 hover:bg-blue-50 hover:border-blue-400 hover:text-blue-700 transition-all"
+                  className="min-w-[8rem]"
                 >
-                  <ChevronLeft className="w-5 h-5 mr-2" />
-                  Câu trước
+                  <ChevronLeft className="w-4 h-4 mr-1" />
+                  Trước
                 </Button>
                 <Button
                   onClick={handleNext}
-                  disabled={currentQuestionIndex === (currentSection?.questions.length || 0) - 1 || sectionCompleted}
+                  disabled={currentQuestionIndex >= parentCount - 1 || sectionCompleted}
                   size="lg"
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 shadow-md"
+                  className="min-w-[8rem]"
                 >
-                  Câu sau
-                  <ChevronRight className="w-5 h-5 ml-2" />
+                  Sau
+                  <ChevronRight className="w-4 h-4 ml-1" />
                 </Button>
               </div>
             )}
             </div>
           </div>
 
-          {/* Sticky Control Panel */}
-          <div className="lg:col-span-4">
-            <div className="sticky top-20 space-y-4 max-h-[calc(100vh-6rem)] overflow-y-auto">
-              {/* Timer Card */}
-              <Card className={`shadow-lg border-2 ${sectionTimeLeft < 300 ? 'border-red-400 bg-red-50' : 'border-blue-200 bg-gradient-to-br from-blue-50 to-white'}`}>
-                <CardContent className="p-6">
-                  <div className="text-center">
-                    <div className="flex items-center justify-center gap-2 mb-3">
-                      <Clock className={`w-6 h-6 ${sectionTimeLeft < 300 ? 'text-red-600' : 'text-blue-600'}`} />
-                      <span className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Thời gian</span>
-                    </div>
-                    <div className={`text-4xl font-bold font-mono ${sectionTimeLeft < 300 ? 'text-red-600' : 'text-blue-700'}`}>
-                      {formatTime(sectionTimeLeft)}
-                    </div>
-                    {sectionTimeLeft < 300 && (
-                      <p className="text-xs text-red-600 mt-2 font-medium">Sắp hết giờ!</p>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Progress Card */}
-              <Card className="shadow-md border-green-200 bg-gradient-to-br from-green-50 to-white">
-                <CardContent className="p-5">
-                  <div className="space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-semibold text-gray-700">Tiến độ</span>
-                      <span className="text-sm font-bold text-green-700">{answeredCount}/{totalQuestionsInSection}</span>
-                    </div>
-                    <Progress 
-                      value={totalQuestionsInSection > 0 ? (answeredCount / totalQuestionsInSection) * 100 : 0} 
-                      className="h-3" 
-                    />
-                    <p className="text-xs text-gray-600">Đã trả lời {answeredCount} câu</p>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Submit Button */}
-              <Button 
+          {/* Desktop sidebar */}
+          <div className="hidden lg:block lg:col-span-4">
+            <div className="sticky top-24 space-y-3">
+              <Button
                 onClick={() => setShowSubmitDialog(true)}
                 disabled={isSubmitting || sectionCompleted}
                 size="lg"
-                className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white shadow-lg text-base font-semibold py-6"
+                className="w-full"
               >
-                {hasNextSection() ? "Hoàn thành phần này" : "Nộp bài"}
+                {hasNextSection() ? "Xong phần này" : "Nộp bài"}
               </Button>
 
-              {/* Question Grid */}
-              <Card className="shadow-md border-gray-200">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm flex items-center gap-2 text-gray-700">
-                    <FileText className="w-4 h-4" />
-                    Danh sách câu hỏi
+              <Card className="border-neutral-200 shadow-sm">
+                <CardHeader className="pb-2 pt-4 px-4">
+                  <CardTitle className="text-sm font-medium text-neutral-600">
+                    Câu hỏi
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-5 gap-2 mb-4">
+                <CardContent className="px-4 pb-4">
+                  <div className="grid grid-cols-5 gap-1.5">
                     {(currentSection?.questions || []).map((question, index) => {
                       const isCurrent = index === currentQuestionIndex;
-                      const parentAnswered = sectionAnswers[question.id] !== undefined;
-                      const subQuestions = (question as any).subQuestions || [];
-                      const allSubAnswered = subQuestions.length > 0 
-                        ? subQuestions.every((sq: any) => sectionAnswers[sq.id] !== undefined)
-                        : true;
-                      const isAnswered = parentAnswered && allSubAnswered;
-                      
+                      const isAnswered = isQuestionFullyAnswered(question, sectionAnswers);
                       return (
                         <button
                           key={question.id}
                           type="button"
                           onClick={() => !sectionCompleted && setCurrentQuestionIndex(index)}
                           disabled={sectionCompleted}
-                          className={`
-                            w-full aspect-square text-sm rounded-lg font-semibold border-2 transition-all
-                            ${isCurrent
-                              ? 'bg-blue-600 text-white border-blue-600 shadow-md scale-105' 
+                          className={cn(
+                            "aspect-square text-sm rounded-lg font-semibold border transition-colors",
+                            isCurrent
+                              ? "bg-primary text-primary-foreground border-primary"
                               : isAnswered
-                                ? 'bg-green-100 text-green-800 border-green-400 hover:bg-green-200 hover:scale-105'
-                                : 'bg-gray-100 text-gray-700 border-gray-300 hover:bg-gray-200 hover:scale-105'
-                            }
-                            ${sectionCompleted ? 'cursor-not-allowed opacity-60' : ''}
-                          `}
+                                ? "bg-primary/10 text-primary border-primary/30 hover:bg-primary/15"
+                                : "bg-white text-neutral-700 border-neutral-200 hover:border-neutral-300",
+                            sectionCompleted && "opacity-60 cursor-not-allowed",
+                          )}
                         >
                           {index + 1}
                         </button>
                       );
                     })}
-                  </div>
-                  
-                  <div className="text-xs text-gray-600 space-y-1.5 border-t pt-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 bg-blue-600 rounded-lg border-2 border-blue-600"></div>
-                      <span>Câu hiện tại</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 bg-green-100 rounded-lg border-2 border-green-400"></div>
-                      <span>Đã trả lời</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-4 h-4 bg-gray-100 rounded-lg border-2 border-gray-300"></div>
-                      <span>Chưa trả lời</span>
-                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -2077,52 +2022,82 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
         </div>
       </div>
 
+      {/* Mobile bottom bar */}
+      <div className="fixed bottom-0 inset-x-0 z-30 lg:hidden border-t border-neutral-200 bg-white/95 backdrop-blur pb-[env(safe-area-inset-bottom)]">
+        <div className="px-3 py-2.5 flex items-center gap-2">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-11 w-11 shrink-0"
+            onClick={handlePrevious}
+            disabled={currentQuestionIndex === 0 || sectionCompleted}
+            aria-label="Câu trước"
+          >
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <Button
+            type="button"
+            className="flex-1 h-11"
+            disabled={isSubmitting || sectionCompleted}
+            onClick={() => setShowSubmitDialog(true)}
+          >
+            {hasNextSection() ? "Xong phần" : "Nộp bài"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            size="icon"
+            className="h-11 w-11 shrink-0"
+            onClick={handleNext}
+            disabled={currentQuestionIndex >= parentCount - 1 || sectionCompleted}
+            aria-label="Câu sau"
+          >
+            <ChevronRight className="h-5 w-5" />
+          </Button>
+        </div>
+        {parentCount > 0 && (
+          <div className="px-3 pb-2.5 overflow-x-auto flex gap-1.5">
+            {(currentSection?.questions || []).map((question, index) => {
+              const isCurrent = index === currentQuestionIndex;
+              const isAnswered = isQuestionFullyAnswered(question, sectionAnswers);
+              return (
+                <button
+                  key={question.id}
+                  type="button"
+                  onClick={() => !sectionCompleted && setCurrentQuestionIndex(index)}
+                  disabled={sectionCompleted}
+                  className={cn(
+                    "h-8 min-w-8 px-2 rounded-md text-xs font-semibold border shrink-0",
+                    isCurrent
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : isAnswered
+                        ? "bg-primary/10 text-primary border-primary/30"
+                        : "bg-neutral-50 text-neutral-600 border-neutral-200",
+                  )}
+                >
+                  {index + 1}
+                </button>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
       {/* Section Complete Confirmation Dialog */}
       <Dialog open={showSubmitDialog} onOpenChange={setShowSubmitDialog}>
         <DialogContent className="w-[90vw] max-w-md">
           <DialogHeader>
             <DialogTitle>
-              {hasNextSection() ? `Hoàn thành phần ${sectionConfig?.title || 'Đang tải'}` : "Hoàn thành bài thi"}
+              {hasNextSection() ? `Xong ${sectionConfig?.title || "phần này"}?` : "Nộp bài?"}
             </DialogTitle>
             <DialogDescription>
-              {hasNextSection() ? (
-                <>
-                  Bạn có chắc chắn muốn hoàn thành phần {sectionConfig?.title || 'Đang tải'} không?
-                  <br />
-                  <br />
-                  <strong>Thống kê phần này:</strong>
-                  <br />
-                  • Đã trả lời: {answeredCount}/{totalQuestionsInSection} câu
-                  <br />
-                  • Thời gian còn lại: {formatTime(sectionTimeLeft)}
-                  <br />
-                  <br />
-                  <span className="text-amber-600">
-                    Sau khi hoàn thành, bạn không thể quay lại phần này và sẽ chuyển sang phần tiếp theo.
-                  </span>
-                </>
-              ) : (
-                <>
-                  Bạn có chắc chắn muốn hoàn thành bài thi không?
-                  <br />
-                  <br />
-                  <strong>Thống kê phần cuối:</strong>
-                  <br />
-                  • Đã trả lời: {answeredCount}/{totalQuestionsInSection} câu
-                  <br />
-                  • Thời gian còn lại: {formatTime(sectionTimeLeft)}
-                  <br />
-                  <br />
-                  <span className="text-red-600">
-                    Sau khi nộp bài, bạn không thể thay đổi câu trả lời và sẽ nhận kết quả ngay.
-                  </span>
-                </>
-              )}
+              Đã trả lời {answeredCount}/{totalQuestionsInSection} · Còn {formatTime(sectionTimeLeft)}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowSubmitDialog(false)}>
-              {hasNextSection() ? "Tiếp tục làm bài" : "Xem lại bài"}
+              Quay lại
             </Button>
             <Button
               onClick={() => {
@@ -2131,17 +2106,11 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
               }}
               disabled={isSubmitting}
             >
-              {isSubmitting ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                  {hasNextSection() ? "Đang chuyển phần..." : "Đang nộp bài..."}
-                </>
-              ) : (
-                <>
-                  <ArrowRight className="w-4 h-4 mr-2" />
-                  {hasNextSection() ? "Chuyển phần tiếp theo" : "Nộp bài"}
-                </>
-              )}
+              {isSubmitting
+                ? "…"
+                : hasNextSection()
+                  ? "Xong phần"
+                  : "Nộp bài"}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2151,25 +2120,25 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
       <Dialog open={showExitDialog} onOpenChange={setShowExitDialog}>
         <DialogContent className="w-[90vw] max-w-md">
           <DialogHeader>
-            <DialogTitle className="text-lg font-semibold">Xác nhận</DialogTitle>
-            <DialogDescription className="text-base">
-              Bạn đang làm bài thi, bạn có rời bài thi không?
+            <DialogTitle>Rời bài thi?</DialogTitle>
+            <DialogDescription>
+              Tiến độ đang làm sẽ được giữ nếu bạn quay lại.
             </DialogDescription>
           </DialogHeader>
-          <DialogFooter className="gap-3">
+          <DialogFooter className="gap-2">
             <Button 
               variant="outline" 
               onClick={handleExitCancel}
               data-testid="button-cancel-exit"
             >
-              Hủy
+              Ở lại
             </Button>
             <Button 
               onClick={handleExitConfirm}
               data-testid="button-confirm-exit"
-              className="bg-red-600 hover:bg-red-700"
+              variant="destructive"
             >
-              OK
+              Rời đi
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -2188,22 +2157,25 @@ export function ExamTakingPage({ examId }: ExamTakingPageProps) {
             return;
           }
           clearExamDraft(examId);
-          setLocation("/");
+          setLocation(getExamReturnPath());
         }}
       >
         <DialogContent className="w-[90vw] max-w-md">
           <DialogHeader>
             <DialogTitle>Mua gói để tiếp tục</DialogTitle>
             <DialogDescription>
-              Bạn đã làm hết {EXAM_TRIAL_QUESTION_LIMIT} câu thi thử
-              {examAccess?.level ? ` cấp ${examAccess.level}` : ""}. Thêm gói đề (
-              {purchasePriceVnd.toLocaleString("vi-VN")}đ) vào giỏ để làm đầy đủ
-              đề. Đóng hộp thoại sẽ quay về trang chủ Luyện thi.
+              {examAccess?.requiresPurchase || examAccess?.mode === "denied"
+                ? `Cần mua gói${examAccess?.level ? ` ${examAccess.level}` : ""}${
+                    purchasePriceVnd
+                      ? ` (${purchasePriceVnd.toLocaleString("vi-VN")}đ)`
+                      : ""
+                  } để làm đầy đủ đề.`
+                : `Hết ${EXAM_TRIAL_QUESTION_LIMIT} câu thi thử. Mua gói (${purchasePriceVnd.toLocaleString("vi-VN")}đ) để làm đầy đủ đề.`}
             </DialogDescription>
           </DialogHeader>
           <DialogFooter className="flex-col sm:flex-row gap-2">
             <Button variant="outline" onClick={handlePurchaseDismiss}>
-              Về trang chủ
+              Quay lại
             </Button>
             <Button
               onClick={handlePurchaseAddToCart}
