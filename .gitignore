@@ -11,3 +11,4 @@ backend/migrations
 cookies.txt
 cookies2.txt
 .railway
+.env.bak-*

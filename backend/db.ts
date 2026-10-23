@@ -26,12 +26,23 @@ function createPool(connectionString: string) {
   const forceSsl =
     process.env.DATABASE_SSL === "1" || process.env.DATABASE_SSL === "true";
 
-  return new Pool({
+  const pool = new Pool({
     connectionString,
     ...(forceSsl || !isInternal
       ? { ssl: { rejectUnauthorized: false } }
       : {}),
+    // Neon suspends idle compute and drops connections; recycle before that and fail fast on cold starts.
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 15_000,
+    keepAlive: true,
   });
+
+  // Without a listener, an idle client dropped by the server crashes the process.
+  pool.on("error", (err) => {
+    console.error("[db] idle client error (connection will be replaced):", err.message);
+  });
+
+  return pool;
 }
 
 export const pool = createPool(process.env.DATABASE_URL);
